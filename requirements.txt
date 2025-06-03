@@ -1,0 +1,14 @@
+matplotlib==3.10.3
+meshcat==0.3.2
+meshcat-shapes==0.3.0
+meshio==5.3.5
+numpy==2.2.6
+open3d==0.19.0
+opencv-python==4.11.0.86
+pin==3.4.0
+pin-pink==3.3.0
+pyquaternion==0.9.9
+pyvista==0.45.2
+qpsolvers[open_source_solvers]
+scipy==1.15.3
+tqdm==4.67.1
