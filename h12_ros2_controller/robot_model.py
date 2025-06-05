@@ -10,11 +10,8 @@ import meshcat.geometry as geo
 import meshcat.transformations as tf
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from channel_interface import StateSubscriber
+from h12_ros2_controller.channel_interface import StateSubscriber
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class RobotModel:
     def __init__(self, filename: str):
@@ -45,7 +42,6 @@ class RobotModel:
         pin.forwardKinematics(self.model, self.data, self.q)
         pin.updateFramePlacements(self.model, self.data)
 
-
         # placeholder mask for reduced model
         self.reduced_mask = np.ones(self.model.nq, dtype=bool)
         # create a map of joint names, joint ids, and q ids
@@ -55,6 +51,8 @@ class RobotModel:
             joint_name = self.model.names[joint_id]
             self.joint_ids[joint_name] = joint_id
             self.joint_q_ids[joint_name] = self.model.joints[joint_id].idx_q
+        # create mask for main body joints
+        self.body_q_ids = [self.joint_q_ids[joint_name] for joint_name in BODY_JOINTS]
 
     def init_reduced_model(self, frozen_joints):
         frozen_ids = [self.joint_ids[joint_name] for joint_name in frozen_joints]
@@ -179,12 +177,9 @@ class RobotModel:
 
     def sync_subscriber(self):
         # update the q, dq, tau
-        self._q[0:20] = self.state_subscriber.q[0:20]
-        self._q[32:39] = self.state_subscriber.q[20:27]
-        self._dq[0:20] = self.state_subscriber.dq[0:20]
-        self._dq[32:39] = self.state_subscriber.dq[20:27]
-        self._tau[0:20] = self.state_subscriber.tau[0:20]
-        self._tau[32:39] = self.state_subscriber.tau[20:27]
+        self._q[self.body_q_ids] = self.state_subscriber.q
+        self._dq[self.body_q_ids] = self.state_subscriber.dq
+        self._tau[self.body_q_ids] = self.state_subscriber.tau
 
     def update_kinematics(self):
         # udpate data with the current joint positions
@@ -265,9 +260,9 @@ if __name__ == '__main__':
     # a simple shadowing program
     ChannelFactoryInitialize(id=0)
     # Example usage
-    # robot_model = RobotModel('assets/h1_2/h1_2_sphere.urdf')
-    robot_model = RobotModel('assets/h1_2/h1_2.urdf')
-    # robot_model = RobotModel('assets/h1_2/h1_2.xml')
+    # robot_model = RobotModel('./assets/h1_2/h1_2_sphere.urdf')
+    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    # robot_model = RobotModel('./assets/h1_2/h1_2.xml')
     robot_model.init_visualizer()
     robot_model.init_subscriber()
 
