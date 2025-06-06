@@ -11,6 +11,8 @@ def generate_launch_description():
     with open(URDF_ROS_PATH, 'r') as urdf_file:
         robot_description = urdf_file.read()
 
+    rviz_config_path = f'{PACKAGE_PATH}/rviz/default.rviz'
+
     return LaunchDescription([
         Node(
             package='robot_state_publisher',
@@ -25,4 +27,16 @@ def generate_launch_description():
             name='joint_state_publisher',
             output='screen'
         ),
+        TimerAction(  # slight delay to ensure robot_description is set
+            period=1.0,
+            actions=[
+                Node(
+                    package='rviz2',
+                    executable='rviz2',
+                    name='rviz2',
+                    arguments=['-d', rviz_config_path] if os.path.exists(rviz_config_path) else [],
+                    output='screen'
+                )
+            ]
+        )
     ])
