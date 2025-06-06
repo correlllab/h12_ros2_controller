@@ -3,15 +3,15 @@ from launch_ros.actions import Node
 from launch.actions import TimerAction
 
 import os
-from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_PATH
+from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_ROS_PATH
 
 def generate_launch_description():
     package_name = 'h12_ros2_controller'
 
-    with open(URDF_PATH, 'r') as urdf_file:
+    with open(URDF_ROS_PATH, 'r') as urdf_file:
         robot_description = urdf_file.read()
 
-    rviz_config_path = f'PACKAGE_PATH/rviz/default.rviz'
+    rviz_config_path = f'{PACKAGE_PATH}/rviz/default.rviz'
 
     return LaunchDescription([
         Node(

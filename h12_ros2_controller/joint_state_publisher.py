@@ -6,7 +6,7 @@ from std_msgs.msg import Header
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from h12_ros2_controller.robot_model import RobotModel
-from h12_ros2_controller.utility.path_definition import URDF_PATH
+from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
 from h12_ros2_controller.utility.joint_definition import ALL_JOINTS
 
 class JointStatePublisher(Node):
@@ -15,7 +15,7 @@ class JointStatePublisher(Node):
 
         # initialize robot model
         ChannelFactoryInitialize(id=0)
-        self.robot_model = RobotModel(URDF_PATH)
+        self.robot_model = RobotModel(URDF_PIN_PATH)
         self.robot_model.init_subscriber()
         self.get_logger().info('robot_model successfully initialized')
 
