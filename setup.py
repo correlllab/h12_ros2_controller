@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=['test']),
     include_package_data=True,
     data_files=data_files,
-    install_requires=['setuptools'] + requirements,
+    install_requires=['setuptools'] + requirements + ['controller_msgs'],
     zip_safe=True,
     maintainer='tonyzyt2000',
     maintainer_email='zhangyt2000@gmail.com',
@@ -47,6 +47,7 @@ setup(
     entry_points={
         'console_scripts': [
             'joint_state_publisher = h12_ros2_controller.joint_state_publisher:main',
+            'move_dual_arm_server = h12_ros2_controller.move_dual_arm_server:main',
         ],
     },
 )

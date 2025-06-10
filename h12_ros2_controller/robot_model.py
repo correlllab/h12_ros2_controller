@@ -11,7 +11,7 @@ import meshcat.transformations as tf
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from h12_ros2_controller.channel_interface import StateSubscriber
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
 
 class RobotModel:
     def __init__(self, filename: str):
@@ -54,7 +54,8 @@ class RobotModel:
         # create mask for main body joints
         self.body_q_ids = [self.joint_q_ids[joint_name] for joint_name in BODY_JOINTS]
 
-    def init_reduced_model(self, frozen_joints):
+    def init_reduced_model(self, enabled_joints):
+        frozen_joints = set(ALL_JOINTS) - set(enabled_joints)
         frozen_ids = [self.joint_ids[joint_name] for joint_name in frozen_joints]
         frozen_q_ids = [self.joint_q_ids[joint_name] for joint_name in frozen_joints]
         # create a reduced model
@@ -64,6 +65,8 @@ class RobotModel:
         self.reduced_data = self.reduced_model.createData()
         # set the reduced mask
         self.reduced_mask[frozen_q_ids] = False
+        # update the reduced q ids
+        self.reduced_q_ids = [self.joint_q_ids[joint_name] for joint_name in enabled_joints]
 
     @property
     def q(self):

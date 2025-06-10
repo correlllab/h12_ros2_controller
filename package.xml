@@ -2,10 +2,17 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>h12_ros2_controller</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.0.1</version>
+  <description>Arm controller of h1_2 robot</description>
   <maintainer email="zhangyt2000@gmail.com">tonyzyt2000</maintainer>
   <license>TODO: License declaration</license>
+
+  <build_depend>action_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>controller_msgs</build_depend>
+
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
