@@ -4,6 +4,7 @@ from rclpy.action import ActionServer
 from geometry_msgs.msg import Pose, PoseStamped
 
 import time
+import asyncio
 import numpy as np
 from pyquaternion import Quaternion
 
@@ -46,13 +47,13 @@ class MoveDualArmServer(Node):
         self.left_ee_target_timer = self.create_timer(1.0 / 100, self.publish_left_ee_target)
         self.right_ee_target_timer = self.create_timer(1.0 / 100, self.publish_right_ee_target)
 
-        # # action server to control dual arms
-        # self.action_server = ActionServer(
-        #     self,
-        #     DualArm,
-        #     'move_dual_arm',
-        #     self.execute_callback
-        # )
+        # action server to control dual arms
+        self.action_server = ActionServer(
+            self,
+            DualArm,
+            'move_dual_arm',
+            self.execute_callback
+        )
 
     @staticmethod
     def _pose_to_matrix(pose):
@@ -108,10 +109,10 @@ class MoveDualArmServer(Node):
 
         # set left and right target poses
         self.controller.left_ee_target_transformation = self._pose_to_matrix(
-            goal_handle.request.left_target_pose
+            goal_handle.request.left_target
         )
         self.controller.right_ee_target_transformation = self._pose_to_matrix(
-            goal_handle.request.right_target_pose
+            goal_handle.request.right_target
         )
 
         while True:
@@ -123,16 +124,16 @@ class MoveDualArmServer(Node):
             feedback_msg.left_error = left_error
             feedback_msg.right_error = right_error
             goal_handle.publish_feedback(feedback_msg)
-            self.get_logger().info(
-                f'Left error: {left_error:.4f}, Right error: {right_error:.4f}'
-            )
             # check if the goal is reached
-            if left_error < 0.01 and right_error < 0.01:
+            if left_error < 0.05 and right_error < 0.05:
                 self.get_logger().info('Goal reached')
                 break
             # control one step
+            # self.controller.sim_dual_arm_step()
             self.controller.control_dual_arm_step()
-            await rclpy.sleep(max(0.0, self.controller.dt - (time.time() - time_start)))
+
+            time.sleep(max(0, self.controller.dt - (time.time() - time_start)))
+            await asyncio.sleep(0)
 
         goal_handle.succeed()
         result = DualArm.Result()
