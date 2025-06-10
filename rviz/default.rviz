@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /RobotModel1
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz_common/Selection
@@ -362,207 +361,98 @@ Visualization Manager:
       Value: true
       Visual Enabled: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        L_hand_base_link:
-          Value: true
-        L_index_intermediate:
-          Value: true
-        L_index_proximal:
-          Value: true
-        L_middle_intermediate:
-          Value: true
-        L_middle_proximal:
-          Value: true
-        L_pinky_intermediate:
-          Value: true
-        L_pinky_proximal:
-          Value: true
-        L_ring_intermediate:
-          Value: true
-        L_ring_proximal:
-          Value: true
-        L_thumb_distal:
-          Value: true
-        L_thumb_intermediate:
-          Value: true
-        L_thumb_proximal:
-          Value: true
-        L_thumb_proximal_base:
-          Value: true
-        R_hand_base_link:
-          Value: true
-        R_index_intermediate:
-          Value: true
-        R_index_proximal:
-          Value: true
-        R_middle_intermediate:
-          Value: true
-        R_middle_proximal:
-          Value: true
-        R_pinky_intermediate:
-          Value: true
-        R_pinky_proximal:
-          Value: true
-        R_ring_intermediate:
-          Value: true
-        R_ring_proximal:
-          Value: true
-        R_thumb_distal:
-          Value: true
-        R_thumb_intermediate:
-          Value: true
-        R_thumb_proximal:
-          Value: true
-        R_thumb_proximal_base:
-          Value: true
-        head_camera_link:
-          Value: true
-        imu_link:
-          Value: true
-        left_ankle_pitch_link:
-          Value: true
-        left_ankle_roll_link:
-          Value: true
-        left_elbow_pitch_link:
-          Value: true
-        left_elbow_roll_link:
-          Value: true
-        left_hip_pitch_link:
-          Value: true
-        left_hip_roll_link:
-          Value: true
-        left_hip_yaw_link:
-          Value: true
-        left_knee_link:
-          Value: true
-        left_shoulder_pitch_link:
-          Value: true
-        left_shoulder_roll_link:
-          Value: true
-        left_shoulder_yaw_link:
-          Value: true
-        left_wrist_pitch_link:
-          Value: true
-        left_wrist_yaw_link:
-          Value: true
-        lidar_link:
-          Value: true
-        logo_link:
-          Value: true
-        pelvis:
-          Value: true
-        right_ankle_pitch_link:
-          Value: true
-        right_ankle_roll_link:
-          Value: true
-        right_elbow_pitch_link:
-          Value: true
-        right_elbow_roll_link:
-          Value: true
-        right_hip_pitch_link:
-          Value: true
-        right_hip_roll_link:
-          Value: true
-        right_hip_yaw_link:
-          Value: true
-        right_knee_link:
-          Value: true
-        right_shoulder_pitch_link:
-          Value: true
-        right_shoulder_roll_link:
-          Value: true
-        right_shoulder_yaw_link:
-          Value: true
-        right_wrist_pitch_link:
-          Value: true
-        right_wrist_yaw_link:
-          Value: true
-        torso_link:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        pelvis:
-          left_hip_yaw_link:
-            left_hip_pitch_link:
-              left_hip_roll_link:
-                left_knee_link:
-                  left_ankle_pitch_link:
-                    left_ankle_roll_link:
-                      {}
-          right_hip_yaw_link:
-            right_hip_pitch_link:
-              right_hip_roll_link:
-                right_knee_link:
-                  right_ankle_pitch_link:
-                    right_ankle_roll_link:
-                      {}
-          torso_link:
-            head_camera_link:
-              {}
-            imu_link:
-              {}
-            left_shoulder_pitch_link:
-              left_shoulder_roll_link:
-                left_shoulder_yaw_link:
-                  left_elbow_pitch_link:
-                    left_elbow_roll_link:
-                      left_wrist_pitch_link:
-                        left_wrist_yaw_link:
-                          L_hand_base_link:
-                            L_index_proximal:
-                              L_index_intermediate:
-                                {}
-                            L_middle_proximal:
-                              L_middle_intermediate:
-                                {}
-                            L_pinky_proximal:
-                              L_pinky_intermediate:
-                                {}
-                            L_ring_proximal:
-                              L_ring_intermediate:
-                                {}
-                            L_thumb_proximal_base:
-                              L_thumb_proximal:
-                                L_thumb_intermediate:
-                                  L_thumb_distal:
-                                    {}
-            lidar_link:
-              {}
-            logo_link:
-              {}
-            right_shoulder_pitch_link:
-              right_shoulder_roll_link:
-                right_shoulder_yaw_link:
-                  right_elbow_pitch_link:
-                    right_elbow_roll_link:
-                      right_wrist_pitch_link:
-                        right_wrist_yaw_link:
-                          R_hand_base_link:
-                            R_index_proximal:
-                              R_index_intermediate:
-                                {}
-                            R_middle_proximal:
-                              R_middle_intermediate:
-                                {}
-                            R_pinky_proximal:
-                              R_pinky_intermediate:
-                                {}
-                            R_ring_proximal:
-                              R_ring_intermediate:
-                                {}
-                            R_thumb_proximal_base:
-                              R_thumb_proximal:
-                                R_thumb_intermediate:
-                                  R_thumb_distal:
-                                    {}
+        {}
       Update Interval: 0
+      Value: false
+    - Alpha: 1
+      Axes Length: 0.20000000298023224
+      Axes Radius: 0.019999999552965164
+      Class: rviz_default_plugins/Pose
+      Color: 0; 0; 255
+      Enabled: true
+      Head Length: 0.05000000074505806
+      Head Radius: 0.05000000074505806
+      Name: left_ee_pose
+      Shaft Length: 0.30000001192092896
+      Shaft Radius: 0.019999999552965164
+      Shape: Axes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /left_ee_pose
+      Value: true
+    - Alpha: 1
+      Axes Length: 0.20000000298023224
+      Axes Radius: 0.019999999552965164
+      Class: rviz_default_plugins/Pose
+      Color: 0; 0; 255
+      Enabled: true
+      Head Length: 0.05000000074505806
+      Head Radius: 0.05000000074505806
+      Name: left_ee_target
+      Shaft Length: 0.30000001192092896
+      Shaft Radius: 0.019999999552965164
+      Shape: Axes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /left_ee_target
+      Value: true
+    - Alpha: 1
+      Axes Length: 0.20000000298023224
+      Axes Radius: 0.019999999552965164
+      Class: rviz_default_plugins/Pose
+      Color: 0; 0; 255
+      Enabled: true
+      Head Length: 0.05000000074505806
+      Head Radius: 0.05000000074505806
+      Name: right_ee_pose
+      Shaft Length: 0.30000001192092896
+      Shaft Radius: 0.019999999552965164
+      Shape: Axes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /right_ee_pose
+      Value: true
+    - Alpha: 1
+      Axes Length: 0.20000000298023224
+      Axes Radius: 0.019999999552965164
+      Class: rviz_default_plugins/Pose
+      Color: 0; 0; 255
+      Enabled: true
+      Head Length: 0.05000000074505806
+      Head Radius: 0.05000000074505806
+      Name: right_ee_target
+      Shaft Length: 0.30000001192092896
+      Shaft Radius: 0.019999999552965164
+      Shape: Axes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /right_ee_target
       Value: true
   Enabled: true
   Global Options:
@@ -610,7 +500,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.3731722831726074
+      Distance: 2.2329957485198975
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -625,10 +515,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.18539799749851227
+      Pitch: 0.15479636192321777
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.025397401303052902
+      Yaw: 0.0003972053527832031
     Saved: ~
 Window Geometry:
   Displays:
@@ -646,5 +536,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 43
-  Y: 218
+  X: 563
+  Y: 158

@@ -1,44 +1,44 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PoseStamped
 
 import time
 import numpy as np
 from pyquaternion import Quaternion
 
-from controller_msgs.action import MoveDualArm
+from controller_msgs.action import DualArm
 from h12_ros2_controller.controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self):
+    def __init__(self, dt=0.01, vlim=1.0):
         super().__init__('move_dual_arm_server')
         self.controller = ArmController(URDF_PIN_PATH,
-                                        dt=0.01,
-                                        vlim=1.0,
+                                        dt=dt,
+                                        vlim=vlim,
                                         visualize=False)
 
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
-            Pose,
+            PoseStamped,
             'left_ee_pose',
             10
         )
         self.right_ee_pose_publisher = self.create_publisher(
-            Pose,
+            PoseStamped,
             'right_ee_pose',
             10
         )
         # publisher of left and right end-effector target poses
         self.left_ee_target_publisher = self.create_publisher(
-            Pose,
-            'left_ee_target_pose',
+            PoseStamped,
+            'left_ee_target',
             10
         )
         self.right_ee_target_publisher = self.create_publisher(
-            Pose,
-            'right_ee_target_pose',
+            PoseStamped,
+            'right_ee_target',
             10
         )
         self.left_ee_pose_timer = self.create_timer(1.0 / 100, self.publish_left_ee_pose)
@@ -46,13 +46,13 @@ class MoveDualArmServer(Node):
         self.left_ee_target_timer = self.create_timer(1.0 / 100, self.publish_left_ee_target)
         self.right_ee_target_timer = self.create_timer(1.0 / 100, self.publish_right_ee_target)
 
-        # action server to control dual arms
-        self.action_server = ActionServer(
-            self,
-            MoveDualArm,
-            'move_dual_arm',
-            self.execute_callback
-        )
+        # # action server to control dual arms
+        # self.action_server = ActionServer(
+        #     self,
+        #     DualArm,
+        #     'move_dual_arm',
+        #     self.execute_callback
+        # )
 
     @staticmethod
     def _pose_to_matrix(pose):
@@ -79,25 +79,32 @@ class MoveDualArmServer(Node):
         pose.orientation.z = rotation.z
         return pose
 
+    def _stamp_pose(self, pose):
+        pose_stamped = PoseStamped()
+        pose_stamped.header.stamp = self.get_clock().now().to_msg()
+        pose_stamped.header.frame_id = 'pelvis'
+        pose_stamped.pose = pose
+        return pose_stamped
+
     def publish_left_ee_pose(self):
         left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
-        self.left_ee_pose_publisher.publish(left_ee_pose)
+        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
 
     def publish_right_ee_pose(self):
         right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
-        self.right_ee_pose_publisher.publish(right_ee_pose)
+        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
 
     def publish_left_ee_target(self):
         left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
-        self.left_ee_target_publisher.publish(left_ee_target)
+        self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
 
     def publish_right_ee_target(self):
         right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
-        self.right_ee_target_publisher.publish(right_ee_target)
+        self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
     async def execute_callback(self, goal_handle):
         self.get_logger().info('Received goal')
-        feedback_msg = MoveDualArm.Feedback()
+        feedback_msg = DualArm.Feedback()
 
         # set left and right target poses
         self.controller.left_ee_target_transformation = self._pose_to_matrix(
@@ -107,14 +114,28 @@ class MoveDualArmServer(Node):
             goal_handle.request.right_target_pose
         )
 
-        # for i in range(1, 11):
-        #     feedback_msg.progress = i * 10.0
-        #     goal_handle.publish_feedback(feedback_msg)
-        #     await rclpy.sleep(0.02)  # ~2 sec total
-        # TODO move
+        while True:
+            time_start = time.time()
+            # check the error
+            left_error = np.linalg.norm(self.controller.left_ee_error)
+            right_error = np.linalg.norm(self.controller.right_ee_error)
+            # publish feedback errors
+            feedback_msg.left_error = left_error
+            feedback_msg.right_error = right_error
+            goal_handle.publish_feedback(feedback_msg)
+            self.get_logger().info(
+                f'Left error: {left_error:.4f}, Right error: {right_error:.4f}'
+            )
+            # check if the goal is reached
+            if left_error < 0.01 and right_error < 0.01:
+                self.get_logger().info('Goal reached')
+                break
+            # control one step
+            self.controller.control_dual_arm_step()
+            await rclpy.sleep(max(0.0, self.controller.dt - (time.time() - time_start)))
 
         goal_handle.succeed()
-        result = MoveDualArm.Result()
+        result = DualArm.Result()
         result.success = True
 
         return result

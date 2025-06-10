@@ -47,7 +47,8 @@ setup(
     entry_points={
         'console_scripts': [
             'joint_state_publisher = h12_ros2_controller.joint_state_publisher:main',
-            'move_dual_arm_server = h12_ros2_controller.move_dual_arm_server:main',
+            'dual_arm_server = h12_ros2_controller.dual_arm_server:main',
+            'dual_arm_client = h12_ros2_controller.dual_arm_client:main',
         ],
     },
 )
