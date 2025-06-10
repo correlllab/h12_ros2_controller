@@ -10,6 +10,13 @@ Controller of the h12 robot with ROS2 services
 - Install the Unitree Python SDK from [here](https://github.com/unitreerobotics/unitree_sdk2_python/tree/master)
   so the code can communicate with the robot.
 
+## ROS Setup
+
+- Create an empty ros worksapce and place this repo under `src`.
+- The program uses customized message definions and that part can only be built by `ament_cmake`.
+- Copy the `controller_msgs` into `src` directory as well, so ROS can build the message package separately.
+- Run `colcon build` and then `source ./install/setup.bash` to build the project.
+
 ## Files
 
 TODO

@@ -1,0 +1,10 @@
+# Goal
+geometry_msgs/Pose left_target
+geometry_msgs/Pose right_target
+---
+# Result
+bool success
+---
+# Feedback
+float32 left_error
+float32 right_error
