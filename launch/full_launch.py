@@ -33,13 +33,7 @@ def generate_launch_description():
             name='dual_arm_server',
             output='screen'
         ),
-        Node(
-            package=package_name,
-            executable='dual_arm_client',
-            name='dual_arm_client',
-            output='screen'
-        ),
-        TimerAction(  # slight delay to ensure robot_description is set
+        TimerAction( # slight delay to ensure robot_description is set
             period=1.0,
             actions=[
                 Node(
@@ -50,5 +44,16 @@ def generate_launch_description():
                     output='screen'
                 )
             ]
-        )
+        ),
+        TimerAction( # slight delay to ensure server is ready
+            period=3.0,
+            actions=[
+                Node(
+                    package=package_name,
+                    executable='dual_arm_client',
+                    name='dual_arm_client',
+                    output='screen'
+                )
+            ]
+        ),
     ])

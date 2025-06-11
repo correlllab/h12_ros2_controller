@@ -22,7 +22,7 @@ class ArmController:
         self.visualize = visualize
 
         # initialize channel
-        ChannelFactoryInitialize(id=0)
+        ChannelFactoryInitialize()
 
         # initialize subscriber in robot model
         self.robot_model.init_subscriber()

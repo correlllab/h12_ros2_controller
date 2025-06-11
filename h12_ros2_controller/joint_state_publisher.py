@@ -14,7 +14,7 @@ class JointStatePublisher(Node):
         super().__init__('joint_state_publisher')
 
         # initialize robot model
-        ChannelFactoryInitialize(id=0)
+        ChannelFactoryInitialize()
         self.robot_model = RobotModel(URDF_PIN_PATH)
         self.robot_model.init_subscriber()
         self.get_logger().info('robot_model successfully initialized')
