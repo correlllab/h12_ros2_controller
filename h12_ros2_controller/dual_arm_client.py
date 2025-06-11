@@ -82,7 +82,7 @@ def main(args=None):
     # Example poses
     left_target = Pose()
     right_target = Pose()
-    left_target.position.x = 0.4
+    left_target.position.x = 0.5
     left_target.position.y = 0.2
     left_target.position.z = 0.1
     right_target.position.x = 0.3

@@ -345,6 +345,20 @@ class ArmController:
     def right_ee_error(self):
         return self.right_ee_task.compute_error(self.configuration)
 
+    def sync_robot_model(self):
+        # sync robot model and compute forward kinematics
+        self.robot_model.sync_subscriber()
+        self.robot_model.update_kinematics()
+
+    def update_robot_model(self):
+        # update visualizer if needed
+        if self.visualize:
+            self.robot_model.update_visualizer()
+            self.robot_model.visualize_wrench(self.left_ee_name)
+        # update configuration
+        self.configuration.update(self.robot_model.q)
+        self.reduced_configuration.update(self.robot_model.q_reduced)
+
     def limit_joint_vel(self, vel):
         # compute end effector velocity
         v_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)[0:3]
@@ -374,17 +388,9 @@ class ArmController:
         self.command_publisher.tau = tau[self.robot_model.body_q_ids]
 
     def lock_configuration(self, q):
-        # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
-        self.robot_model.update_kinematics()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
 
         # compute tau and enforce same q
         tau = pin.rnea(self.robot_model.model,
@@ -399,17 +405,9 @@ class ArmController:
         self.command_publisher.tau = tau
 
     def goto_configuration(self, q):
-        # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
-        self.robot_model.update_kinematics()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
 
         # use the joint task to solve joint velocity update
         self.joint_task.set_target(q)
@@ -466,17 +464,9 @@ class ArmController:
 
     def control_full_body_step(self):
         # t = time.time()
-        # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
-        self.robot_model.update_kinematics()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
 
         # solve IK and apply the control
         vel = self.solve_ik()
@@ -486,17 +476,9 @@ class ArmController:
 
     def control_dual_arm_step(self):
         # t = time.time()
-        # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
-        self.robot_model.update_kinematics()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
 
         # solve IK and apply the control
         vel = self.solve_reduced_ik()
@@ -506,14 +488,8 @@ class ArmController:
 
     def sim_full_body_step(self):
         # t = time.time()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        # update robot model
+        self.update_robot_model()
 
         # solve IK and apply the control
         vel = self.solve_ik()
@@ -524,14 +500,7 @@ class ArmController:
 
     def sim_dual_arm_step(self):
         # t = time.time()
-        # update visualizer if needed
-        if self.visualize:
-            self.robot_model.update_visualizer()
-            self.robot_model.visualize_wrench(self.left_ee_name)
-
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        self.update_robot_model()
 
         # solve IK and apply the control
         vel = self.solve_reduced_ik()

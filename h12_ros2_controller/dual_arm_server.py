@@ -88,18 +88,34 @@ class MoveDualArmServer(Node):
         return pose_stamped
 
     def publish_left_ee_pose(self):
+        # sync and update robot model
+        self.controller.sync_robot_model()
+        self.controller.update_robot_model()
+        # transform and publish the pose
         left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
 
     def publish_right_ee_pose(self):
+        # sync and update robot model
+        self.controller.sync_robot_model()
+        self.controller.update_robot_model()
+        # transform and publish the pose
         right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
 
     def publish_left_ee_target(self):
+        # sync and update robot model
+        self.controller.sync_robot_model()
+        self.controller.update_robot_model()
+        # transform and publish the pose
         left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
 
     def publish_right_ee_target(self):
+        # sync and update robot model
+        self.controller.sync_robot_model()
+        self.controller.update_robot_model()
+        # transform and publish the pose
         right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
