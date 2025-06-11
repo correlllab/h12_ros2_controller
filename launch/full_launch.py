@@ -27,12 +27,12 @@ def generate_launch_description():
             name='joint_state_publisher',
             output='screen'
         ),
-        Node(
-            package=package_name,
-            executable='dual_arm_server',
-            name='dual_arm_server',
-            output='screen'
-        ),
+        # Node(
+        #     package=package_name,
+        #     executable='dual_arm_server',
+        #     name='dual_arm_server',
+        #     output='screen'
+        # ),
         TimerAction( # slight delay to ensure robot_description is set
             period=1.0,
             actions=[
@@ -45,15 +45,15 @@ def generate_launch_description():
                 )
             ]
         ),
-        TimerAction( # slight delay to ensure server is ready
-            period=3.0,
-            actions=[
-                Node(
-                    package=package_name,
-                    executable='dual_arm_client',
-                    name='dual_arm_client',
-                    output='screen'
-                )
-            ]
-        ),
+        # TimerAction( # slight delay to ensure server is ready
+        #     period=3.0,
+        #     actions=[
+        #         Node(
+        #             package=package_name,
+        #             executable='dual_arm_client',
+        #             name='dual_arm_client',
+        #             output='screen'
+        #         )
+        #     ]
+        # ),
     ])
