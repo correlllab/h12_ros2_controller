@@ -13,13 +13,13 @@ from h12_ros2_controller.controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self, dt=0.01, vlim=1.0):
+    def __init__(self, dt=0.01, vlim=1.0, threshold=0.1):
         super().__init__('move_dual_arm_server')
+        self.threshold = threshold
         self.controller = ArmController(URDF_PIN_PATH,
                                         dt=dt,
                                         vlim=vlim,
                                         visualize=False)
-
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
             PoseStamped,
@@ -125,7 +125,7 @@ class MoveDualArmServer(Node):
             feedback_msg.right_error = right_error
             goal_handle.publish_feedback(feedback_msg)
             # check if the goal is reached
-            if left_error < 0.05 and right_error < 0.05:
+            if left_error < self.threshold and right_error < self.threshold:
                 self.get_logger().info('Goal reached')
                 break
             # control one step
