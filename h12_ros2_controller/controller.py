@@ -283,7 +283,6 @@ class ArmController:
 
     @property
     def left_ee_error(self):
-        # sync robot model and compute forward kinematics
         return self.left_ee_task.compute_error(self.configuration)
 
     '''
@@ -344,7 +343,6 @@ class ArmController:
 
     @property
     def right_ee_error(self):
-        # sync robot model and compute forward kinematics
         return self.right_ee_task.compute_error(self.configuration)
 
     def limit_joint_vel(self, vel):
