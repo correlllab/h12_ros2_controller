@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=['test']),
     include_package_data=True,
     data_files=data_files,
-    install_requires=['setuptools'] + requirements + ['controller_msgs'],
+    install_requires=['setuptools'] + requirements,
     zip_safe=True,
     maintainer='tonyzyt2000',
     maintainer_email='zhangyt2000@gmail.com',

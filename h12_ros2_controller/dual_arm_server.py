@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, CancelResponse
 from geometry_msgs.msg import Pose, PoseStamped
 
 import time
@@ -52,7 +52,8 @@ class MoveDualArmServer(Node):
             self,
             DualArm,
             'move_dual_arm',
-            self.execute_callback
+            execute_callback=self.execute_callback,
+            cancel_callback=self.cancel_callback
         )
 
     @staticmethod
@@ -133,6 +134,14 @@ class MoveDualArmServer(Node):
 
         while True:
             time_start = time.time()
+
+            if goal_handle.is_cancel_requested():
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = DualArm.Result()
+                result.success = False
+                return result
+
             # check the error
             left_error = np.linalg.norm(self.controller.left_ee_error)
             right_error = np.linalg.norm(self.controller.right_ee_error)
@@ -156,6 +165,10 @@ class MoveDualArmServer(Node):
         result.success = True
 
         return result
+
+    def cancel_callback(self, goal_handle):
+        self.get_logger().info('Canceling goal')
+        return CancelResponse.ACCEPT
 
 def main(args=None):
     rclpy.init(args=args)
