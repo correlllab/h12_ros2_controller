@@ -283,7 +283,7 @@ class ArmController:
 
     @property
     def left_ee_error(self):
-        return self.left_ee_task.compute_error(self.configuration)
+        return self.left_ee_task.compute_error(self.reduced_configuration)
 
     '''
     right end effector target properties
@@ -343,7 +343,7 @@ class ArmController:
 
     @property
     def right_ee_error(self):
-        return self.right_ee_task.compute_error(self.configuration)
+        return self.right_ee_task.compute_error(self.reduced_configuration)
 
     def sync_robot_model(self):
         # sync robot model and compute forward kinematics

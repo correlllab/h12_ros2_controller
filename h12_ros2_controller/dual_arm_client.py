@@ -3,8 +3,6 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseStamped
 
-import time
-import threading
 from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
 
@@ -103,7 +101,6 @@ class DualArmClient(Node):
         self.get_logger().info(f'Left Error: {feedback.left_error:.2f}; Right Error: {feedback.right_error:.2f}')
 
     def _keyboard_cancel(self, key):
-        print(key)
         if key == keyboard.Key.enter:
             if self.goal_handle is not None:
                 self.get_logger().info('Cancelling goal...')
@@ -139,17 +136,23 @@ def main(args=None):
 
     try:
         while rclpy.ok():
+            print('Left end-effector pose...')
             choice = input('Do you want to use home position? (y/n): ').lower()
             if choice == 'y':
                 left_pose = left_home
+            else:
+                left_pose = input_pose()
+
+            print('Right end-effector pose...')
+            choice = input('Do you want to use home position? (y/n): ').lower()
+            if choice == 'y':
                 right_pose = right_home
             else:
-                print('Left end-effector pose...')
-                left_pose = input_pose()
-                print('Right end-effector pose...')
                 right_pose = input_pose()
+
             node.send_goal(left_pose, right_pose)
 
+            input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
             if cont != 'y':
                 break
