@@ -258,19 +258,3 @@ class RobotModel:
                                np.zeros(self.model.nv))
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.tau - tau_gravity)
         return wrench
-
-if __name__ == '__main__':
-    # a simple shadowing program
-    ChannelFactoryInitialize(id=0)
-    # Example usage
-    # robot_model = RobotModel('./assets/h1_2/h1_2_sphere.urdf')
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
-    # robot_model = RobotModel('./assets/h1_2/h1_2.xml')
-    robot_model.init_visualizer()
-    robot_model.init_subscriber()
-
-    while True:
-        robot_model.sync_subscriber()
-        robot_model.update_kinematics()
-        robot_model.update_visualizer()
-        time.sleep(0.01)

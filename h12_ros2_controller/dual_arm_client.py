@@ -6,7 +6,7 @@ from geometry_msgs.msg import Pose, PoseStamped
 from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
 
-from controller_msgs.action import DualArm
+from custom_ros_messages.action import DualArm
 
 class DualArmClient(Node):
     def __init__(self):

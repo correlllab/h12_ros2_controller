@@ -13,23 +13,6 @@ data_files = [
     ('share/' + package_name + '/launch', glob('launch/*.py')),
     ('share/' + package_name + '/rviz', glob('rviz/*.rviz')),
 ]
-'''
-Access assets in the share directory of the package.
-
-Example usage:
-
-```python
-import os
-from ament_index_python.packages import get_package_share_directory
-
-package_path = get_package_share_directory('h12_ros2_controller')
-print(f'Asset file: {package_path}/assets/asset_file')
-```
-'''
-for path in glob('assets/**/*', recursive=True):
-    if os.path.isfile(path):  # Skip directories
-        install_path = os.path.join('share', package_name, os.path.dirname(path))
-        data_files.append((install_path, [path]))
 
 setup(
     name='h12_ros2_controller',
@@ -41,7 +24,7 @@ setup(
     zip_safe=True,
     maintainer='tonyzyt2000',
     maintainer_email='zhangyt2000@gmail.com',
-    description='TODO: Package description',
+    description='ROS2 package of h12 robot controller',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={

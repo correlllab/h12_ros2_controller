@@ -1,9 +1,7 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import TimerAction
 
-import os
-from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_ROS_PATH
+from h12_ros2_controller.utility.path_definition import URDF_ROS_PATH
 
 def generate_launch_description():
     package_name = 'h12_ros2_controller'

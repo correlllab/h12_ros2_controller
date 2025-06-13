@@ -3,16 +3,17 @@
 <package format="3">
   <name>h12_ros2_controller</name>
   <version>0.0.1</version>
-  <description>Arm controller of h1_2 robot</description>
+  <description>ROS2 package of h12 robot controller</description>
   <maintainer email="zhangyt2000@gmail.com">tonyzyt2000</maintainer>
   <license>TODO: License declaration</license>
 
-  <build_depend>action_msgs</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>controller_msgs</build_depend>
+  <depend>action_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>robot_state_publisher</depend>
 
-  <exec_depend>action_msgs</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
+  <depend>custom_ros_messages</depend>
+  <depend>h12_ros2_model</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

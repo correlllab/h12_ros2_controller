@@ -8,7 +8,7 @@ import asyncio
 import numpy as np
 from pyquaternion import Quaternion
 
-from controller_msgs.action import DualArm
+from custom_ros_messages.action import DualArm
 from h12_ros2_controller.controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
 
