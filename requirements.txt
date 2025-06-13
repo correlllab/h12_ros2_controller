@@ -7,6 +7,7 @@ open3d==0.19.0
 opencv-python==4.11.0.86
 pin==3.4.0
 pin-pink==3.3.0
+pynput==1.8.1
 pyquaternion==0.9.9
 pyvista==0.45.2
 qpsolvers[open_source_solvers]

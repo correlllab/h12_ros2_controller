@@ -55,6 +55,7 @@ class MoveDualArmServer(Node):
             execute_callback=self.execute_callback,
             cancel_callback=self.cancel_callback
         )
+        self.get_logger().info('Controller server initialized')
 
     @staticmethod
     def _pose_to_matrix(pose):
@@ -135,7 +136,7 @@ class MoveDualArmServer(Node):
         while True:
             time_start = time.time()
 
-            if goal_handle.is_cancel_requested():
+            if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
                 result = DualArm.Result()

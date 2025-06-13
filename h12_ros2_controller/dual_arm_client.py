@@ -3,7 +3,9 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseStamped
 
-from threading import Thread
+import time
+import threading
+from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
 
 from controller_msgs.action import DualArm
@@ -68,44 +70,44 @@ class DualArmClient(Node):
 
         self.action_client.wait_for_server()
 
+        # send action
         self.get_logger().info('Sending goal...')
         future = self.action_client.send_goal_async(
             goal_msg,
             feedback_callback=self.feedback_callback
         )
-
         rclpy.spin_until_future_complete(self, future)
         self.goal_handle = future.result()
         if not self.goal_handle.accepted:
             self.get_logger().warn('Goal was rejected')
             return
 
+        # start a cancel listener thread
         self.get_logger().info('Goal accepted, waiting for result...')
         self.get_logger().info('Press ENTER to cancel the goal')
-        cencel_thread = Thread(target=self._keyboard_cancel)
-        cencel_thread.start()
+        listener = keyboard.Listener(
+            on_press=self._keyboard_cancel
+        )
+        listener.start()
 
+        # wait till finish
         future_result = self.goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, future_result)
         result = future_result.result().result
         self.get_logger().info(f'Final result: success = {result.success}')
+        # stop the cancel listener thread
+        listener.stop()
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
         self.get_logger().info(f'Left Error: {feedback.left_error:.2f}; Right Error: {feedback.right_error:.2f}')
 
-    def _keyboard_cancel(self):
-        input('Press ENTER to cancel the goal...')
-        self.get_logger().info('Cancelling goal...')
-        if self.goal_handle is not None:
-            future_cancel = self.goal_handle.cancel_goal_async()
-            rclpy.spin_until_future_complete(self, future_cancel)
-            if future_cancel.result().accepted:
-                self.get_logger().info('Goal cancelled successfully')
-            else:
-                self.get_logger().warn('Goal cancellation was rejected')
-        else:
-            self.get_logger().warn('No goal to cancel')
+    def _keyboard_cancel(self, key):
+        print(key)
+        if key == keyboard.Key.enter:
+            if self.goal_handle is not None:
+                self.get_logger().info('Cancelling goal...')
+                self.goal_handle.cancel_goal_async()
 
 def input_pose():
     pose = Pose()
@@ -126,20 +128,26 @@ def main(args=None):
     rclpy.init(args=args)
     node = DualArmClient()
 
-    # Example poses
-    left_target = Pose()
-    right_target = Pose()
-    left_target.position.x = 0.5
-    left_target.position.y = 0.2
-    left_target.position.z = 0.1
-    right_target.position.x = 0.3
-    right_target.position.y = -0.2
-    right_target.position.z = 0.1
+    left_home = Pose()
+    left_home.position.x = 0.3
+    left_home.position.y = 0.2
+    left_home.position.z = 0.1
+    right_home = Pose()
+    right_home.position.x = 0.3
+    right_home.position.y = -0.2
+    right_home.position.z = 0.1
 
     try:
         while rclpy.ok():
-            left_pose = input_pose()
-            right_pose = input_pose()
+            choice = input('Do you want to use home position? (y/n): ').lower()
+            if choice == 'y':
+                left_pose = left_home
+                right_pose = right_home
+            else:
+                print('Left end-effector pose...')
+                left_pose = input_pose()
+                print('Right end-effector pose...')
+                right_pose = input_pose()
             node.send_goal(left_pose, right_pose)
 
             cont = input('Do you want to send another goal? (y/n): ').lower()
