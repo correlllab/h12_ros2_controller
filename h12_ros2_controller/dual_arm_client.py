@@ -82,7 +82,7 @@ class DualArmClient(Node):
 
         # start a cancel listener thread
         self.get_logger().info('Goal accepted, waiting for result...')
-        self.get_logger().info('Press ENTER to cancel the goal')
+        self.get_logger().info('Press BACKSPACE to cancel the goal')
         listener = keyboard.Listener(
             on_press=self._keyboard_cancel
         )
@@ -101,24 +101,37 @@ class DualArmClient(Node):
         self.get_logger().info(f'Left Error: {feedback.left_error:.2f}; Right Error: {feedback.right_error:.2f}')
 
     def _keyboard_cancel(self, key):
-        if key == keyboard.Key.enter:
+        if key == keyboard.Key.backspace:
             if self.goal_handle is not None:
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
 def input_pose():
+    while True:
+        input_pose = input("Enter x y z roll pitch yaw (separated by space): ")
+        parts = input_pose.strip().split()
+
+        if len(parts) != 6:
+            print("Invalid input. Please enter exactly 6 values.")
+            continue
+        try:
+            values = [float(val) for val in parts]
+            break
+        except ValueError:
+            print("Invalid input. Make sure all 6 values are numeric.")
+            continue
+
+    x, y, z, roll, pitch, yaw = values
     pose = Pose()
-    pose.position.x = float(input('Enter x position: '))
-    pose.position.y = float(input('Enter y position: '))
-    pose.position.z = float(input('Enter z position: '))
-    r = float(input('Enter roll (in degrees): '))
-    p = float(input('Enter pitch (in degrees): '))
-    y = float(input('Enter yaw (in degrees): '))
-    quat = R.from_euler('xyz', [r, p, y], degrees=True).as_quat()
+    pose.position.x = x
+    pose.position.y = y
+    pose.position.z = z
+    quat = R.from_euler('xyz', [roll, pitch, yaw], degrees=True).as_quat()
     pose.orientation.x = quat[0]
     pose.orientation.y = quat[1]
     pose.orientation.z = quat[2]
     pose.orientation.w = quat[3]
+
     return pose
 
 def main(args=None):
@@ -137,14 +150,14 @@ def main(args=None):
     try:
         while rclpy.ok():
             print('Left end-effector pose...')
-            choice = input('Do you want to use home position? (y/n): ').lower()
+            choice = input('Home position? (y/n): ').lower()
             if choice == 'y':
                 left_pose = left_home
             else:
                 left_pose = input_pose()
 
             print('Right end-effector pose...')
-            choice = input('Do you want to use home position? (y/n): ').lower()
+            choice = input('Home position? (y/n): ').lower()
             if choice == 'y':
                 right_pose = right_home
             else:
