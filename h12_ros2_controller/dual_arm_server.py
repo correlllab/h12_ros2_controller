@@ -173,7 +173,7 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer()
+    node = MoveDualArmServer(threshold=0.05)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

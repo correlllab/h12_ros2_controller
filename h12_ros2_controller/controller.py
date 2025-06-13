@@ -36,6 +36,7 @@ class ArmController:
 
         # initialize command publisher for upper body motors
         self.command_publisher = CommandPublisher()
+
         # gain for arms
         self.command_publisher.kp[13:16] = 180.0
         self.command_publisher.kd[13:16] = 3.0
@@ -51,8 +52,14 @@ class ArmController:
         self.command_publisher.kd[18:20] = 2.0
         self.command_publisher.kp[25:27] = 50.0
         self.command_publisher.kd[25:27] = 2.0
+        # enable upper body motors
         init_q = self.robot_model.q_reduced
         self.command_publisher.enable_motor(motor_ids, init_q)
+
+        # enable torso motor such that it's locked in pace
+        self.command_publisher.kp[12] = 100.0
+        self.command_publisher.kd[12] = 3.0
+        self.command_publisher.enable_motor([12], [self.robot_model.q[12]])
         self.command_publisher.start_publisher()
 
         # initialize IK tasks
