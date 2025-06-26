@@ -7,7 +7,7 @@ from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
 
 from custom_ros_messages.action import DualArm
-
+import cv2
 class DualArmClient(Node):
     def __init__(self):
         super().__init__('dual_arm_client')
@@ -147,28 +147,60 @@ def main(args=None):
     right_home.position.y = -0.2
     right_home.position.z = 0.1
 
+    # Slider range and defaults
+    slider_range = (-1000, 1000)  # Represents -1.0 to 1.0 with 0.001 resolution
+    scale = 0.001  # Convert integer slider value to float
+
+    # Pose parameter names
+    params = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
+
+    # Create a window
+    cv2.namedWindow("Pose Sliders", cv2.WINDOW_NORMAL)
+
+    # Helper function to create trackbars
+    def create_pose_sliders(prefix):
+        zero_slider_val = int((slider_range[1] - slider_range[0])/2)  # Default position for sliders
+        for param in params:
+            name = f"{prefix}_{param}"
+            cv2.createTrackbar(name, "Pose Sliders", 0, slider_range[1] - slider_range[0], lambda x: None)
+            if param == "x":
+                cv2.setTrackbarPos(name, "Pose Sliders", int(0.3 / scale) + zero_slider_val)
+            elif param == "y":
+                cv2.setTrackbarPos(name, "Pose Sliders", int(0.2 / scale) + zero_slider_val)
+            elif param == "z":
+                cv2.setTrackbarPos(name, "Pose Sliders", int(0.1 / scale)  + zero_slider_val)
+            if prefix == "right" and param == "y":
+                cv2.setTrackbarPos(name, "Pose Sliders", int(-0.2 / scale)  + zero_slider_val)
+    def pose_array_to_message(pose_array):
+        pose = Pose()
+        pose.position.x = pose_array[0]
+        pose.position.y = pose_array[1]
+        pose.position.z = pose_array[2]
+        quat = R.from_euler('xyz', pose_array[3:], degrees=True).as_quat()
+        pose.orientation.x = quat[0]
+        pose.orientation.y = quat[1]
+        pose.orientation.z = quat[2]
+        pose.orientation.w = quat[3]
+        return pose
+    # Create sliders for left and right poses
+    create_pose_sliders("left")
+    create_pose_sliders("right")
     try:
         while rclpy.ok():
-            print('Left end-effector pose...')
-            choice = input('Home position? (y/n): ').lower()
-            if choice == 'y':
-                left_pose = left_home
-            else:
-                left_pose = input_pose()
+            cv2.waitKey(0)
+            L_pose_arr = [
+                (cv2.getTrackbarPos(f"left_{param}", "Pose Sliders") + slider_range[0]) * scale
+                for param in params
+            ]
+            R_pose_arr = [
+                (cv2.getTrackbarPos(f"right_{param}", "Pose Sliders") + slider_range[0]) * scale
+                for param in params
+            ]
+            left_pose = pose_array_to_message(L_pose_arr)
 
-            print('Right end-effector pose...')
-            choice = input('Home position? (y/n): ').lower()
-            if choice == 'y':
-                right_pose = right_home
-            else:
-                right_pose = input_pose()
-
+            right_pose = pose_array_to_message(R_pose_arr)
             node.send_goal(left_pose, right_pose)
 
-            input('Press any key to continue...') # flush the input buffer
-            cont = input('Do you want to send another goal? (y/n): ').lower()
-            if cont != 'y':
-                break
     finally:
         node.destroy_node()
         rclpy.shutdown()
