@@ -9,16 +9,19 @@ import pinocchio as pin
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.utils.thread import RecurrentThread
 
-from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 from h12_ros2_controller.robot_model import RobotModel
 from h12_ros2_controller.channel_interface import CommandPublisher
+from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
+from h12_ros2_controller.utility.path_definition import URDF_SPHERE_PATH, SRDF_SPHERE_PATH, MODEL_H12_PATH
 
 class ArmController:
-    def __init__(self, filename, dt=0.01, vlim=1.0, visualize=False):
+    def __init__(self, filename,
+                 dt=0.02, vlim=1.0, wlim=3.0, visualize=False):
         # initialize robot model
         self.robot_model = RobotModel(filename)
         self.dt = dt
         self.vlim = vlim
+        self.wlim = wlim
         self.visualize = visualize
 
         # initialize channel
@@ -37,7 +40,7 @@ class ArmController:
         # initialize command publisher for upper body motors
         self.command_publisher = CommandPublisher()
 
-        # gain for arms
+        # gain for shoulder
         self.command_publisher.kp[13:16] = 180.0
         self.command_publisher.kd[13:16] = 3.0
         self.command_publisher.kp[20:23] = 180.0
@@ -65,6 +68,7 @@ class ArmController:
         # initialize IK tasks
         # left arm end effector task
         self.left_ee_name = 'left_wrist_yaw_link'
+        self.left_ee_id = self.robot_model.model.getFrameId(self.left_ee_name)
         self.left_ee_task = pink.FrameTask(
             self.left_ee_name,
             position_cost=50.0,
@@ -73,6 +77,7 @@ class ArmController:
         )
         # right arm end effector task
         self.right_ee_name = 'right_wrist_yaw_link'
+        self.right_ee_id = self.robot_model.model.getFrameId(self.right_ee_name)
         self.right_ee_task = pink.FrameTask(
             self.right_ee_name,
             position_cost=50.0,
@@ -92,18 +97,46 @@ class ArmController:
             cost=30.0
         )
 
-        # root_path = os.path.dirname(os.path.join(os.path.dirname(__file__), ".."))
-        # self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf('assets/h1_2/h1_2_sphere.urdf')
+        # # sphere self collision
+        # self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf(
+        #     filename=f'{root_path}/assets/h1_2/h1_2_sphere.urdf',
+        #     package_dirs=f'{root_path}/assets/h1_2',
+        # )
         # self.collision_data = pink.utils.process_collision_pairs(
         #     self.sphere_model,
         #     self.collision_model,
         #     f'{root_path}/assets/h1_2/h1_2_sphere_collision.srdf',
         # )
+        # # mesh self collision
         # self.collision_model = self.robot_model.collision_model
         # self.collision_data = pink.utils.process_collision_pairs(
         #     self.robot_model.model,
         #     self.robot_model.collision_model,
         #     f'{root_path}/assets/h1_2/h1_2_collision.srdf',
+        # )
+
+        # reduced sphere self collision
+        self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf(
+            filename=URDF_SPHERE_PATH,
+            package_dirs=MODEL_H12_PATH,
+        )
+        self.sphere_model_reduced, self.collision_model_reduced = pin.buildReducedModel(
+            self.sphere_model,
+            self.collision_model,
+            self.robot_model.frozen_ids,
+            self.robot_model.zero_q
+        )
+        self.collision_data_reduced = pink.utils.process_collision_pairs(
+            self.sphere_model_reduced,
+            self.collision_model_reduced,
+            SRDF_SPHERE_PATH,
+        )
+        # # reduced mesh self collision
+        # self.collision_model_reduced = self.robot_model.collision_model_reduced
+        # self.collision_data_reduced = pink.utils.process_collision_pairs(
+        #     self.robot_model.reduced_model,
+        #     self.robot_model.collision_model_reduced,
+        #     f'{root_path}/assets/h1_2/h1_2_collision.srdf'
         # )
 
         # configuration trakcing robot states
@@ -115,18 +148,27 @@ class ArmController:
             # collision_data=self.collision_data
         )
         self.reduced_configuration = pink.Configuration(
-            self.robot_model.reduced_model,
-            self.robot_model.reduced_data,
+            self.robot_model.model_reduced,
+            self.robot_model.data_reduced,
             self.robot_model.zero_q_reduced,
+            collision_model=self.collision_model_reduced,
+            collision_data=self.collision_data_reduced
         )
 
-        # # collision barriers
+        # # full collision barriers
         # self.collision_barrier = pink.barriers.SelfCollisionBarrier(
         #     n_collision_pairs=len(self.collision_model.collisionPairs),
         #     gain=20.0,
         #     safe_displacement_gain=1.0,
         #     d_min=0.05,
         # )
+        # reduced collision barriers
+        self.collision_barrier = pink.barriers.SelfCollisionBarrier(
+            n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
+            gain=20.0,
+            safe_displacement_gain=1.0,
+            d_min=0.05,
+        )
 
         # # spherical collision barriers
         # self.ee_barrier = pink.barriers.BodySphericalBarrier(
@@ -141,9 +183,9 @@ class ArmController:
         for task in self.tasks:
             task.set_target_from_configuration(self.configuration)
         # set collision barrier
-        self.barriers = []
+        # self.barriers = []
         # self.barriers = [self.ee_barrier]
-        # self.barriers = [self.collision_barrier]
+        self.barriers = [self.collision_barrier]
         # select solver
         self.solver = qpsolvers.available_solvers[0]
         if 'osqp' in qpsolvers.available_solvers:
@@ -151,6 +193,19 @@ class ArmController:
 
         if self.visualize:
             self.robot_model.init_visualizer()
+
+        # i control on dq
+        self.dq_i = np.zeros(self.robot_model.model.nv)
+        self.ki = np.zeros(self.robot_model.model.nv)
+        # gain for shoulder
+        self.ki[13:16] = 320.0
+        self.ki[32:35] = 320.0
+        # gain for elbow
+        self.ki[16:18] = 220.0
+        self.ki[35:37] = 220.0
+        # gain for wrist
+        self.ki[18:20] = 120.0
+        self.ki[37:39] = 120.0
 
     '''
     joint position for left and right arms
@@ -367,15 +422,21 @@ class ArmController:
         self.reduced_configuration.update(self.robot_model.q_reduced)
 
     def limit_joint_vel(self, vel):
-        # compute end effector velocity
-        v_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)[0:3]
-        v_right = self.robot_model.compute_frame_twist(self.right_ee_name, vel)[0:3]
-        # limit end effector velocity
-        scaler = np.min([0.3,
+        # get end effector twist
+        twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)
+        twist_right = self.robot_model.compute_frame_twist(self.right_ee_name, vel)
+        # compute end effector velocity and angular velocity
+        v_left, w_left = twist_left[:3], twist_left[3:]
+        v_right, w_right = twist_right[:3], twist_right[3:]
+        # limit end effector velocity and angular velocity
+        v_scaler = np.min([0.3,
                          self.vlim / (np.linalg.norm(v_left) + 1e-3),
                          self.vlim / (np.linalg.norm(v_right) + 1e-3)])
+        w_scaler = np.min([0.3,
+                           self.wlim / (np.linalg.norm(w_left) + 1e-3),
+                           self.wlim / (np.linalg.norm(w_right) + 1e-3)])
 
-        return scaler * vel
+        return np.min([v_scaler, w_scaler]) * vel
 
     def apply_joint_vel(self, vel):
         # solve dynamics
@@ -423,7 +484,7 @@ class ArmController:
             [self.joint_task],
             dt=self.dt,
             solver=self.solver,
-            barriers=self.barriers,
+            barriers=[],
             safety_break=False
         )
 
@@ -441,7 +502,7 @@ class ArmController:
             self.tasks,
             dt=self.dt,
             solver=self.solver,
-            barriers=self.barriers,
+            barriers=[],
             safety_break=False
         )
 
@@ -494,7 +555,7 @@ class ArmController:
         # print(f'Time: {time.time() - t:.4f}s')
 
     def sim_full_body_step(self):
-        # t = time.time()
+        t = time.time()
         # update robot model
         self.update_robot_model()
 
@@ -503,10 +564,10 @@ class ArmController:
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
 
-        # print(f'Time: {time.time() - t:.4f}s')
+        print(f'Time: {time.time() - t:.4f}s')
 
     def sim_dual_arm_step(self):
-        # t = time.time()
+        t = time.time()
         self.update_robot_model()
 
         # solve IK and apply the control
@@ -514,7 +575,109 @@ class ArmController:
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
 
-        # print(f'Time: {time.time() - t:.4f}s')
+        print(f'Time: {time.time() - t:.4f}s')
 
     def estop(self):
         self.command_publisher.estop()
+
+    def damp_mode(self, kd=3.0):
+        # zero out kp
+        self.command_publisher.kp.fill(0.0)
+        # gain on kd for damping
+        self.command_publisher.kd.fill(kd)
+        self.command_publisher.dq.fill(0.0)
+        print(f'Set kp to zero, kd to {kd} and dq to 0')
+
+    def gravity_compensation_step(self):
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
+
+        left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
+        right_wrench = self.robot_model.get_frame_wrench(self.right_ee_name)
+        left_force = np.linalg.norm(left_wrench[:3])
+        right_force = np.linalg.norm(right_wrench[:3])
+        left_torque = np.linalg.norm(left_wrench[3:])
+        right_torque = np.linalg.norm(right_wrench[3:])
+        # threshold for left shoulder joints
+        if left_force > 24.0:
+            self.dq_i[13:16] = 0.0
+        # threshold for left elbow joints
+        if left_force > 20.0:
+            self.dq_i[16:18] = 0.0
+        # threshold for left wrist joints
+        if left_force > 12.0:
+            self.dq_i[18:20] = 0.0
+        # threshold for right shoulder joints
+        if right_force > 24.0:
+            self.dq_i[32:35] = 0.0
+        # threshold for right elbow joints
+        if right_force > 20.0:
+            self.dq_i[35:37] = 0.0
+        # threshold for right wrist joints
+        if right_force > 12.0:
+            self.dq_i[37:39] = 0.0
+
+        # threshold for left shoulder yaw joints
+        if left_torque > 4.0:
+            self.dq_i[15] = 0.0
+        # threshold for left elbow roll joints
+        if left_torque > 2.0:
+            self.dq_i[17] = 0.0
+        # threshold for right shoulder yaw joints
+        if right_torque > 4.0:
+            self.dq_i[34] = 0.0
+        # threshold for right elbow roll joints
+        if right_torque > 2.0:
+            self.dq_i[36] = 0.0
+
+        # integral dq
+        self.dq_i += self.robot_model.dq * self.dt
+
+        # compute tau for gravity compensation
+        tau = pin.computeGeneralizedGravity(
+            self.robot_model.model,
+            self.robot_model.data,
+            self.robot_model.q
+        )
+
+        self.command_publisher.tau = (tau - self.ki * self.dq_i)[self.robot_model.body_q_ids]
+
+    def impedance_step(self, x_target):
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
+
+        # solve IK to get joint velocity
+        vel = self.solve_reduced_ik()
+
+        # get states in Cartesian space
+        x = self.left_ee_position
+        dx = self.robot_model.get_frame_twist(self.left_ee_name)[0:3]
+
+        # spring damper
+        kp = np.array([100.0, 100.0, 100.0])
+        kd = np.array([5.0, 5.0, 5.0])
+        x_target = self.left_ee_target_position
+        F = kp * (x_target - x) + kd * (-dx)
+
+        # inverse dynamics
+        J_left = self.robot_model.get_frame_jacobian(self.left_ee_name)
+        tau = J_left.T @ np.concatenate([F, np.zeros(3)])
+        tau_gravity = pin.computeGeneralizedGravity(
+            self.robot_model.model,
+            self.robot_model.data,
+            self.robot_model.q
+        )
+        tau_cmd = tau + tau_gravity
+
+        ## ! cursed code causing catastrophic failure
+        # q = self.robot_model.q
+        # q_target = self.robot_model.q + vel * self.dt
+        # dq = self.robot_model.dq
+        # # joint space control
+        # tau_positional = 100 * (q_target - q) - 5 * dq
+        ## ! cursed code causing catastrophic failure
+
+        # apply the control
+        self.command_publisher.tau = tau_cmd[self.robot_model.body_q_ids]
