@@ -132,10 +132,9 @@ class MoveDualArmServer(Node):
         self.controller.right_ee_target_transformation = self._pose_to_matrix(
             goal_handle.request.right_target
         )
-
-        while True:
+        start_time = time.time()
+        while time.time() - start_time < 20:
             time_start = time.time()
-
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -164,7 +163,6 @@ class MoveDualArmServer(Node):
         goal_handle.succeed()
         result = DualArm.Result()
         result.success = True
-
         return result
 
     def cancel_callback(self, goal_handle):
