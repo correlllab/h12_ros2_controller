@@ -13,7 +13,7 @@ from h12_ros2_controller.controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self, dt=0.01, vlim=1.0, threshold=0.1):
+    def __init__(self, dt=0.02, vlim=1.0, threshold=0.1):
         super().__init__('move_dual_arm_server')
         self.threshold = threshold
         self.controller = ArmController(URDF_PIN_PATH,
@@ -171,7 +171,7 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer(threshold=0.05)
+    node = MoveDualArmServer(dt=0.025, threshold=0.05)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
