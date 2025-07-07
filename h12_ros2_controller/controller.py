@@ -429,10 +429,10 @@ class ArmController:
         v_left, w_left = twist_left[:3], twist_left[3:]
         v_right, w_right = twist_right[:3], twist_right[3:]
         # limit end effector velocity and angular velocity
-        v_scaler = np.min([0.3,
-                         self.vlim / (np.linalg.norm(v_left) + 1e-3),
-                         self.vlim / (np.linalg.norm(v_right) + 1e-3)])
-        w_scaler = np.min([0.3,
+        v_scaler = np.min([1.0,
+                           self.vlim / (np.linalg.norm(v_left) + 1e-3),
+                           self.vlim / (np.linalg.norm(v_right) + 1e-3)])
+        w_scaler = np.min([1.0,
                            self.wlim / (np.linalg.norm(w_left) + 1e-3),
                            self.wlim / (np.linalg.norm(w_right) + 1e-3)])
 
@@ -526,6 +526,7 @@ class ArmController:
 
         vel_full = np.zeros(self.robot_model.model.nv)
         vel_full[self.robot_model.reduced_mask] = vel
+        print(f'raw vel: {vel}')
         vel_full = self.limit_joint_vel(vel_full)
 
         return vel_full
@@ -550,6 +551,7 @@ class ArmController:
 
         # solve IK and apply the control
         vel = self.solve_reduced_ik()
+        print(f'scaled vel: {vel}')
         self.apply_joint_vel(vel)
 
         # print(f'Time: {time.time() - t:.4f}s')
