@@ -10,13 +10,15 @@ from pyquaternion import Quaternion
 
 from custom_ros_messages.action import DualArm
 from h12_ros2_controller.core.controller import ArmController
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
+from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class MoveDualArmServer(Node):
     def __init__(self, dt=0.02, vlim=1.0, threshold=0.1):
         super().__init__('move_dual_arm_server')
         self.threshold = threshold
         self.controller = ArmController(URDF_PIN_PATH,
+                                        URDF_SPHERE_PATH,
+                                        SRDF_SPHERE_PATH,
                                         dt=dt,
                                         vlim=vlim,
                                         visualize=False)

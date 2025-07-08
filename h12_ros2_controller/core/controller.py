@@ -1,31 +1,28 @@
+import os
 import time
 import numpy as np
-import tkinter as tk
 
 import pink
 import qpsolvers
 import pinocchio as pin
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from unitree_sdk2py.utils.thread import RecurrentThread
-
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
-from h12_ros2_controller.utility.path_definition import URDF_SPHERE_PATH, SRDF_SPHERE_PATH, MODEL_H12_PATH
 
 class ArmController:
-    def __init__(self, filename,
-                 dt=0.02, vlim=1.0, wlim=3.0, visualize=False):
+    def __init__(self,
+                 urdf_path: str,
+                 urdf_sphere_path: str,
+                 srdf_sphere_path: str,
+                 dt=0.02, vlim=1.0, wlim=3.0, dmin=0.05, visualize=False):
         # initialize robot model
-        self.robot_model = RobotModel(filename)
+        self.robot_model = RobotModel(urdf_path)
         self.dt = dt
         self.vlim = vlim
         self.wlim = wlim
+        self.dmin = dmin
         self.visualize = visualize
-
-        # initialize channel
-        ChannelFactoryInitialize()
 
         # initialize subscriber in robot model
         self.robot_model.init_subscriber()
@@ -97,28 +94,10 @@ class ArmController:
             cost=30.0
         )
 
-        # # sphere self collision
-        # self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf(
-        #     filename=f'{root_path}/assets/h1_2/h1_2_sphere.urdf',
-        #     package_dirs=f'{root_path}/assets/h1_2',
-        # )
-        # self.collision_data = pink.utils.process_collision_pairs(
-        #     self.sphere_model,
-        #     self.collision_model,
-        #     f'{root_path}/assets/h1_2/h1_2_sphere_collision.srdf',
-        # )
-        # # mesh self collision
-        # self.collision_model = self.robot_model.collision_model
-        # self.collision_data = pink.utils.process_collision_pairs(
-        #     self.robot_model.model,
-        #     self.robot_model.collision_model,
-        #     f'{root_path}/assets/h1_2/h1_2_collision.srdf',
-        # )
-
         # reduced sphere self collision
         self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf(
-            filename=URDF_SPHERE_PATH,
-            package_dirs=MODEL_H12_PATH,
+            filename=urdf_sphere_path,
+            package_dirs=os.path.dirname(urdf_sphere_path),
         )
         self.sphere_model_reduced, self.collision_model_reduced = pin.buildReducedModel(
             self.sphere_model,
@@ -129,23 +108,14 @@ class ArmController:
         self.collision_data_reduced = pink.utils.process_collision_pairs(
             self.sphere_model_reduced,
             self.collision_model_reduced,
-            SRDF_SPHERE_PATH,
+            srdf_sphere_path,
         )
-        # # reduced mesh self collision
-        # self.collision_model_reduced = self.robot_model.collision_model_reduced
-        # self.collision_data_reduced = pink.utils.process_collision_pairs(
-        #     self.robot_model.reduced_model,
-        #     self.robot_model.collision_model_reduced,
-        #     f'{root_path}/assets/h1_2/h1_2_collision.srdf'
-        # )
 
         # configuration trakcing robot states
         self.configuration = pink.Configuration(
             self.robot_model.model,
             self.robot_model.data,
             self.robot_model.zero_q,
-            # collision_model=self.collision_model,
-            # collision_data=self.collision_data
         )
         self.reduced_configuration = pink.Configuration(
             self.robot_model.model_reduced,
@@ -155,28 +125,13 @@ class ArmController:
             collision_data=self.collision_data_reduced
         )
 
-        # # full collision barriers
-        # self.collision_barrier = pink.barriers.SelfCollisionBarrier(
-        #     n_collision_pairs=len(self.collision_model.collisionPairs),
-        #     gain=20.0,
-        #     safe_displacement_gain=1.0,
-        #     d_min=0.05,
-        # )
         # reduced collision barriers
         self.collision_barrier = pink.barriers.SelfCollisionBarrier(
             n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
             gain=20.0,
             safe_displacement_gain=1.0,
-            d_min=0.05,
+            d_min=self.dmin,
         )
-
-        # # spherical collision barriers
-        # self.ee_barrier = pink.barriers.BodySphericalBarrier(
-        #     ('left_wrist_yaw_link', 'right_wrist_yaw_link'),
-        #     d_min=0.2,
-        #     gain = 100.0,
-        #     safe_displacement_gain=1.0
-        # )
 
         # set initial target for all tasks
         self.tasks = [self.left_ee_task, self.right_ee_task, self.posture_task]

@@ -1,16 +1,13 @@
 import time
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber, ChannelPublisher
+from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelPublisher
 
-from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_, MotorStates_
-from unitree_sdk2py.idl.default import unitree_go_msg_dds__SportModeState_
 from unitree_sdk2py.utils.thread import RecurrentThread
 from unitree_sdk2py.utils.crc import CRC
 
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
-from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState_default
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_default
 
 TOPIC_LOWCMD = 'rt/lowcmd'

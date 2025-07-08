@@ -1,9 +1,8 @@
 import pinocchio as pin
-from path_definition import ASSETS_PATH, URDF_PIN_PATH
 
 # load model
-model, _, _ = pin.buildModelsFromUrdf(filename=URDF_PIN_PATH,
-                                      package_dirs=f'{ASSETS_PATH}/h1_2')
+model, _, _ = pin.buildModelsFromUrdf(filename='./assets/h1_2/h1_2.urdf',
+                                      package_dirs='./assets/h1_2')
 data  = model.createData()
 
 print(f'nq (configuration dim) = {model.nq}')
