@@ -8,6 +8,7 @@ from scipy.spatial.transform import Rotation as R
 
 from custom_ros_messages.action import DualArm
 import cv2
+
 class DualArmClient(Node):
     def __init__(self):
         super().__init__('dual_arm_client')

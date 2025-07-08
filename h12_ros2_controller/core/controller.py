@@ -9,8 +9,8 @@ import pinocchio as pin
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.utils.thread import RecurrentThread
 
-from h12_ros2_controller.robot_model import RobotModel
-from h12_ros2_controller.channel_interface import CommandPublisher
+from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.core.channel_interface import CommandPublisher
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 from h12_ros2_controller.utility.path_definition import URDF_SPHERE_PATH, SRDF_SPHERE_PATH, MODEL_H12_PATH
 

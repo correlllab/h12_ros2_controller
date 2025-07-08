@@ -10,7 +10,7 @@ import meshcat.geometry as geo
 import meshcat.transformations as tf
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-from h12_ros2_controller.channel_interface import StateSubscriber
+from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
 
 class RobotModel:
