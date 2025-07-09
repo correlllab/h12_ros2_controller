@@ -7,7 +7,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.controller import ArmController
+from h12_ros2_controller.core.arm_controller import ArmController
 
 def main():
     ChannelFactoryInitialize()
@@ -126,8 +126,8 @@ def main():
         ryaw = slider_ryaw.get()
         arm_controller.right_ee_target_pose = [rx, ry, rz, rr, rp, ryaw]
 
-        # arm_controller.control_dual_arm_step()
-        arm_controller.sim_dual_arm_step()
+        arm_controller.control_dual_arm_step()
+        # arm_controller.sim_dual_arm_step()
         time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
 
 if __name__ == '__main__':

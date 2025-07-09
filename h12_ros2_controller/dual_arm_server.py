@@ -9,7 +9,7 @@ import numpy as np
 from pyquaternion import Quaternion
 
 from custom_ros_messages.action import DualArm
-from h12_ros2_controller.core.controller import ArmController
+from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class MoveDualArmServer(Node):
