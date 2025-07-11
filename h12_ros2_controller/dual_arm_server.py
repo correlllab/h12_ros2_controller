@@ -8,6 +8,8 @@ import asyncio
 import numpy as np
 from pyquaternion import Quaternion
 
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+
 from custom_ros_messages.action import DualArm
 from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
@@ -15,6 +17,7 @@ from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHE
 class MoveDualArmServer(Node):
     def __init__(self, dt=0.02, vlim=1.0, threshold=0.1):
         super().__init__('move_dual_arm_server')
+        ChannelFactoryInitialize()
         self.threshold = threshold
         self.controller = ArmController(URDF_PIN_PATH,
                                         URDF_SPHERE_PATH,

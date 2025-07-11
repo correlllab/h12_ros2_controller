@@ -57,9 +57,9 @@ class ArmController:
         self.command_publisher.enable_motor(motor_ids, init_q)
 
         # enable torso motor such that it's locked in pace
-        self.command_publisher.kp[12] = 100.0
+        self.command_publisher.kp[12] = 150.0
         self.command_publisher.kd[12] = 3.0
-        self.command_publisher.enable_motor([12], [self.robot_model.q[12]])
+        self.command_publisher.enable_motor([12], [0.0])
         self.command_publisher.start_publisher()
 
         # initialize IK tasks
@@ -481,7 +481,7 @@ class ArmController:
 
         vel_full = np.zeros(self.robot_model.model.nv)
         vel_full[self.robot_model.reduced_mask] = vel
-        print(f'raw vel: {vel}')
+        # print(f'raw vel: {vel}')
         vel_full = self.limit_joint_vel(vel_full)
 
         return vel_full
@@ -506,7 +506,7 @@ class ArmController:
 
         # solve IK and apply the control
         vel = self.solve_reduced_ik()
-        print(f'scaled vel: {vel}')
+        # print(f'scaled vel: {vel}')
         self.apply_joint_vel(vel)
 
         # print(f'Time: {time.time() - t:.4f}s')
@@ -627,14 +627,6 @@ class ArmController:
             self.robot_model.q
         )
         tau_cmd = tau + tau_gravity
-
-        ## ! cursed code causing catastrophic failure
-        # q = self.robot_model.q
-        # q_target = self.robot_model.q + vel * self.dt
-        # dq = self.robot_model.dq
-        # # joint space control
-        # tau_positional = 100 * (q_target - q) - 5 * dq
-        ## ! cursed code causing catastrophic failure
 
         # apply the control
         self.command_publisher.tau = tau_cmd[self.robot_model.body_q_ids]

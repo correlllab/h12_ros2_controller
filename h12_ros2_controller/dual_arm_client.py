@@ -7,7 +7,6 @@ from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
 
 from custom_ros_messages.action import DualArm
-import cv2
 
 class DualArmClient(Node):
     def __init__(self):
@@ -107,21 +106,8 @@ class DualArmClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
-def input_pose():
-    while True:
-        input_pose = input("Enter x y z roll pitch yaw (separated by space): ")
-        parts = input_pose.strip().split()
-
-        if len(parts) != 6:
-            print("Invalid input. Please enter exactly 6 values.")
-            continue
-        try:
-            values = [float(val) for val in parts]
-            break
-        except ValueError:
-            print("Invalid input. Make sure all 6 values are numeric.")
-            continue
-
+def list_to_pose(values):
+    assert(len(values) == 6), 'Please enter a pose of 6 elements'
     x, y, z, roll, pitch, yaw = values
     pose = Pose()
     pose.position.x = x
@@ -134,6 +120,33 @@ def input_pose():
     pose.orientation.w = quat[3]
 
     return pose
+
+def input_pose(side):
+    home_pose = {
+        'left': [0.3, 0.2, 0.1, 0.0, 0.0, 0.0],  # x, y, z, roll, pitch, yaw
+        'right': [0.3, -0.2, 0.1, 0.0, 0.0, 0.0]  # x, y, z, roll, pitch, yaw
+    }
+
+    home = home_pose.get(side, None)
+    if home is not None:
+        print(f'{side.capitalize()} end-effector pose...')
+        choice = input(f'Home position {home}? (y/n): ').lower()
+        if choice == 'y':
+            return list_to_pose(home)
+
+    while True:
+        input_pose = input("Enter x y z roll pitch yaw (separated by space): ")
+        parts = input_pose.strip().split()
+
+        if len(parts) != 6:
+            print("Invalid input. Please enter exactly 6 values.")
+            continue
+        try:
+            values = [float(val) for val in parts]
+            return list_to_pose(values)
+        except ValueError:
+            print("Invalid input. Make sure all 6 values are numeric.")
+            continue
 
 def main(args=None):
     rclpy.init(args=args)
@@ -148,60 +161,17 @@ def main(args=None):
     right_home.position.y = -0.2
     right_home.position.z = 0.1
 
-    # Slider range and defaults
-    slider_range = (-1000, 1000)  # Represents -1.0 to 1.0 with 0.001 resolution
-    scale = 0.001  # Convert integer slider value to float
-
-    # Pose parameter names
-    params = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
-
-    # Create a window
-    cv2.namedWindow("Pose Sliders", cv2.WINDOW_NORMAL)
-
-    # Helper function to create trackbars
-    def create_pose_sliders(prefix):
-        zero_slider_val = int((slider_range[1] - slider_range[0])/2)  # Default position for sliders
-        for param in params:
-            name = f"{prefix}_{param}"
-            cv2.createTrackbar(name, "Pose Sliders", 0, slider_range[1] - slider_range[0], lambda x: None)
-            if param == "x":
-                cv2.setTrackbarPos(name, "Pose Sliders", int(0.3 / scale) + zero_slider_val)
-            elif param == "y":
-                cv2.setTrackbarPos(name, "Pose Sliders", int(0.2 / scale) + zero_slider_val)
-            elif param == "z":
-                cv2.setTrackbarPos(name, "Pose Sliders", int(0.1 / scale)  + zero_slider_val)
-            if prefix == "right" and param == "y":
-                cv2.setTrackbarPos(name, "Pose Sliders", int(-0.2 / scale)  + zero_slider_val)
-    def pose_array_to_message(pose_array):
-        pose = Pose()
-        pose.position.x = pose_array[0]
-        pose.position.y = pose_array[1]
-        pose.position.z = pose_array[2]
-        quat = R.from_euler('xyz', pose_array[3:], degrees=True).as_quat()
-        pose.orientation.x = quat[0]
-        pose.orientation.y = quat[1]
-        pose.orientation.z = quat[2]
-        pose.orientation.w = quat[3]
-        return pose
-    # Create sliders for left and right poses
-    create_pose_sliders("left")
-    create_pose_sliders("right")
     try:
         while rclpy.ok():
-            cv2.waitKey(0)
-            L_pose_arr = [
-                (cv2.getTrackbarPos(f"left_{param}", "Pose Sliders") + slider_range[0]) * scale
-                for param in params
-            ]
-            R_pose_arr = [
-                (cv2.getTrackbarPos(f"right_{param}", "Pose Sliders") + slider_range[0]) * scale
-                for param in params
-            ]
-            left_pose = pose_array_to_message(L_pose_arr)
+            left_pose = input_pose('left')
+            right_pose = input_pose('right')
 
-            right_pose = pose_array_to_message(R_pose_arr)
             node.send_goal(left_pose, right_pose)
 
+            input('Press any key to continue...') # flush the input buffer
+            cont = input('Do you want to send another goal? (y/n): ').lower()
+            if cont != 'y':
+                break
     finally:
         node.destroy_node()
         rclpy.shutdown()

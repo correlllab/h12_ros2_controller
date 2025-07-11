@@ -128,6 +128,11 @@ def main():
 
         # arm_controller.control_dual_arm_step()
         arm_controller.sim_dual_arm_step()
+
+        # print errors
+        left_error = np.linalg.norm(arm_controller.left_ee_error)
+        right_error = np.linalg.norm(arm_controller.right_ee_error)
+        print(f'Left Error: {left_error:.4f}, Right Error: {right_error:.4f}')
         time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
 
 if __name__ == '__main__':
