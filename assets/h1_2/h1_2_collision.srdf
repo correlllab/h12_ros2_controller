@@ -20,8 +20,8 @@
   <disable_collisions link1="pelvis" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="pelvis" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="pelvis" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="pelvis" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="pelvis" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="L_hand_base_link" reason="Never"/>
@@ -40,8 +40,8 @@
   <disable_collisions link1="pelvis" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="pelvis" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="pelvis" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="pelvis" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="pelvis" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="pelvis" link2="logo_link" reason="Never"/>
@@ -75,8 +75,8 @@
   <disable_collisions link1="imu_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="imu_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="imu_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="imu_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="imu_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="L_hand_base_link" reason="Never"/>
@@ -95,8 +95,8 @@
   <disable_collisions link1="imu_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="imu_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="imu_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="imu_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="imu_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="imu_link" link2="logo_link" reason="Never"/>
@@ -130,8 +130,8 @@
   <disable_collisions link1="left_hip_yaw_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_yaw_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_yaw_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_yaw_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_yaw_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="L_hand_base_link" reason="Never"/>
@@ -150,8 +150,8 @@
   <disable_collisions link1="left_hip_yaw_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_yaw_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_yaw_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_yaw_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_yaw_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_yaw_link" link2="logo_link" reason="Never"/>
@@ -185,8 +185,8 @@
   <disable_collisions link1="left_hip_pitch_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_pitch_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_pitch_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_pitch_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_pitch_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="L_hand_base_link" reason="Never"/>
@@ -205,8 +205,8 @@
   <disable_collisions link1="left_hip_pitch_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_pitch_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_pitch_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_pitch_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_pitch_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_pitch_link" link2="logo_link" reason="Never"/>
@@ -240,8 +240,8 @@
   <disable_collisions link1="left_hip_roll_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_roll_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_roll_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_roll_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_roll_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="L_hand_base_link" reason="Never"/>
@@ -260,8 +260,8 @@
   <disable_collisions link1="left_hip_roll_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_hip_roll_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_hip_roll_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_hip_roll_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_hip_roll_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_hip_roll_link" link2="logo_link" reason="Never"/>
@@ -295,8 +295,8 @@
   <disable_collisions link1="left_knee_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_knee_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_knee_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_knee_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_knee_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="L_hand_base_link" reason="Never"/>
@@ -315,8 +315,8 @@
   <disable_collisions link1="left_knee_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_knee_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_knee_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_knee_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_knee_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_knee_link" link2="logo_link" reason="Never"/>
@@ -350,8 +350,8 @@
   <disable_collisions link1="left_ankle_pitch_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_pitch_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_pitch_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_pitch_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_pitch_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="L_hand_base_link" reason="Never"/>
@@ -370,8 +370,8 @@
   <disable_collisions link1="left_ankle_pitch_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_pitch_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_pitch_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_pitch_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_pitch_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_ankle_pitch_link" link2="logo_link" reason="Never"/>
@@ -405,8 +405,8 @@
   <disable_collisions link1="left_ankle_roll_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_roll_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_roll_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_roll_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_roll_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="L_hand_base_link" reason="Never"/>
@@ -425,8 +425,8 @@
   <disable_collisions link1="left_ankle_roll_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_roll_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_ankle_roll_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_roll_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_ankle_roll_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_ankle_roll_link" link2="logo_link" reason="Never"/>
@@ -460,8 +460,8 @@
   <disable_collisions link1="right_hip_yaw_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_yaw_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_yaw_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_yaw_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_yaw_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="L_hand_base_link" reason="Never"/>
@@ -480,8 +480,8 @@
   <disable_collisions link1="right_hip_yaw_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_yaw_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_yaw_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_yaw_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_yaw_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_yaw_link" link2="logo_link" reason="Never"/>
@@ -515,8 +515,8 @@
   <disable_collisions link1="right_hip_pitch_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_pitch_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_pitch_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_pitch_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_pitch_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="L_hand_base_link" reason="Never"/>
@@ -535,8 +535,8 @@
   <disable_collisions link1="right_hip_pitch_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_pitch_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_pitch_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_pitch_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_pitch_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_pitch_link" link2="logo_link" reason="Never"/>
@@ -570,8 +570,8 @@
   <disable_collisions link1="right_hip_roll_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_roll_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_roll_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_roll_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_roll_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="L_hand_base_link" reason="Never"/>
@@ -590,8 +590,8 @@
   <disable_collisions link1="right_hip_roll_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_hip_roll_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_hip_roll_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_hip_roll_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_hip_roll_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_hip_roll_link" link2="logo_link" reason="Never"/>
@@ -625,8 +625,8 @@
   <disable_collisions link1="right_knee_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_knee_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_knee_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_knee_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_knee_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="L_hand_base_link" reason="Never"/>
@@ -645,8 +645,8 @@
   <disable_collisions link1="right_knee_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_knee_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_knee_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_knee_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_knee_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_knee_link" link2="logo_link" reason="Never"/>
@@ -680,8 +680,8 @@
   <disable_collisions link1="right_ankle_pitch_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_pitch_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_pitch_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_pitch_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_pitch_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="L_hand_base_link" reason="Never"/>
@@ -700,8 +700,8 @@
   <disable_collisions link1="right_ankle_pitch_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_pitch_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_pitch_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_pitch_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_pitch_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_ankle_pitch_link" link2="logo_link" reason="Never"/>
@@ -735,8 +735,8 @@
   <disable_collisions link1="right_ankle_roll_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_roll_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_roll_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_roll_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_roll_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="L_hand_base_link" reason="Never"/>
@@ -755,8 +755,8 @@
   <disable_collisions link1="right_ankle_roll_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_roll_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_ankle_roll_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_roll_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_ankle_roll_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="right_ankle_roll_link" link2="logo_link" reason="Never"/>
@@ -791,8 +791,8 @@
   <disable_collisions link1="L_hand_base_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_hand_base_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_hand_base_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_hand_base_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_hand_base_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="L_index_proximal" reason="Never"/>
@@ -810,8 +810,8 @@
   <disable_collisions link1="L_hand_base_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_hand_base_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_hand_base_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_hand_base_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_hand_base_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_hand_base_link" link2="logo_link" reason="Never"/>
@@ -846,8 +846,8 @@
   <disable_collisions link1="L_index_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_index_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_index_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_index_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_index_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -865,8 +865,8 @@
   <disable_collisions link1="L_index_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_index_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_index_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_index_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_index_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_index_proximal" link2="logo_link" reason="Never"/>
@@ -901,8 +901,8 @@
   <disable_collisions link1="L_index_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_index_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_index_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_index_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_index_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -920,8 +920,8 @@
   <disable_collisions link1="L_index_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_index_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_index_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_index_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_index_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_index_intermediate" link2="logo_link" reason="Never"/>
@@ -956,8 +956,8 @@
   <disable_collisions link1="L_middle_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_middle_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_middle_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_middle_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_middle_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -975,8 +975,8 @@
   <disable_collisions link1="L_middle_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_middle_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_middle_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_middle_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_middle_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_middle_proximal" link2="logo_link" reason="Never"/>
@@ -1011,8 +1011,8 @@
   <disable_collisions link1="L_middle_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_middle_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_middle_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_middle_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_middle_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1030,8 +1030,8 @@
   <disable_collisions link1="L_middle_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_middle_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_middle_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_middle_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_middle_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_middle_intermediate" link2="logo_link" reason="Never"/>
@@ -1066,8 +1066,8 @@
   <disable_collisions link1="L_pinky_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1085,8 +1085,8 @@
   <disable_collisions link1="L_pinky_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_pinky_proximal" link2="logo_link" reason="Never"/>
@@ -1121,8 +1121,8 @@
   <disable_collisions link1="L_pinky_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1140,8 +1140,8 @@
   <disable_collisions link1="L_pinky_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_pinky_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_pinky_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_pinky_intermediate" link2="logo_link" reason="Never"/>
@@ -1176,8 +1176,8 @@
   <disable_collisions link1="L_ring_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_ring_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_ring_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_ring_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_ring_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1195,8 +1195,8 @@
   <disable_collisions link1="L_ring_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_ring_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_ring_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_ring_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_ring_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_ring_proximal" link2="logo_link" reason="Never"/>
@@ -1231,8 +1231,8 @@
   <disable_collisions link1="L_ring_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_ring_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_ring_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_ring_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_ring_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1250,8 +1250,8 @@
   <disable_collisions link1="L_ring_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_ring_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_ring_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_ring_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_ring_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_ring_intermediate" link2="logo_link" reason="Never"/>
@@ -1286,8 +1286,8 @@
   <disable_collisions link1="L_thumb_proximal_base" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal_base" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal_base" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal_base" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal_base" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="L_hand_base_link" reason="Never"/>
@@ -1305,8 +1305,8 @@
   <disable_collisions link1="L_thumb_proximal_base" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal_base" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal_base" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal_base" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal_base" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal_base" link2="logo_link" reason="Never"/>
@@ -1341,8 +1341,8 @@
   <disable_collisions link1="L_thumb_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1360,8 +1360,8 @@
   <disable_collisions link1="L_thumb_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_proximal" link2="logo_link" reason="Never"/>
@@ -1396,8 +1396,8 @@
   <disable_collisions link1="L_thumb_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1415,8 +1415,8 @@
   <disable_collisions link1="L_thumb_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_intermediate" link2="logo_link" reason="Never"/>
@@ -1451,8 +1451,8 @@
   <disable_collisions link1="L_thumb_distal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_distal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_distal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_distal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_distal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="L_hand_base_link" reason="Never"/>
@@ -1470,8 +1470,8 @@
   <disable_collisions link1="L_thumb_distal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_distal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="L_thumb_distal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_distal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="L_thumb_distal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="L_thumb_distal" link2="logo_link" reason="Never"/>
@@ -1506,8 +1506,8 @@
   <disable_collisions link1="logo_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="logo_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="logo_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="logo_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="logo_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="L_hand_base_link" reason="Never"/>
@@ -1526,8 +1526,8 @@
   <disable_collisions link1="logo_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="logo_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="logo_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="logo_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="logo_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="logo_link" link2="R_hand_base_link" reason="Never"/>
@@ -1561,8 +1561,8 @@
   <disable_collisions link1="R_hand_base_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_hand_base_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_hand_base_link" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_hand_base_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_hand_base_link" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="L_hand_base_link" reason="Never"/>
@@ -1581,8 +1581,8 @@
   <disable_collisions link1="R_hand_base_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_hand_base_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_hand_base_link" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_hand_base_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_hand_base_link" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_hand_base_link" link2="logo_link" reason="Never"/>
@@ -1616,8 +1616,8 @@
   <disable_collisions link1="R_index_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_index_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_index_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_index_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_index_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1636,8 +1636,8 @@
   <disable_collisions link1="R_index_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_index_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_index_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_index_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_index_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_index_proximal" link2="logo_link" reason="Never"/>
@@ -1671,8 +1671,8 @@
   <disable_collisions link1="R_index_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_index_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_index_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_index_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_index_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1691,8 +1691,8 @@
   <disable_collisions link1="R_index_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_index_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_index_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_index_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_index_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_index_intermediate" link2="logo_link" reason="Never"/>
@@ -1726,8 +1726,8 @@
   <disable_collisions link1="R_middle_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_middle_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_middle_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_middle_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_middle_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1746,8 +1746,8 @@
   <disable_collisions link1="R_middle_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_middle_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_middle_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_middle_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_middle_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_middle_proximal" link2="logo_link" reason="Never"/>
@@ -1781,8 +1781,8 @@
   <disable_collisions link1="R_middle_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_middle_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_middle_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_middle_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_middle_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1801,8 +1801,8 @@
   <disable_collisions link1="R_middle_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_middle_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_middle_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_middle_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_middle_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_middle_intermediate" link2="logo_link" reason="Never"/>
@@ -1836,8 +1836,8 @@
   <disable_collisions link1="R_pinky_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1856,8 +1856,8 @@
   <disable_collisions link1="R_pinky_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_pinky_proximal" link2="logo_link" reason="Never"/>
@@ -1891,8 +1891,8 @@
   <disable_collisions link1="R_pinky_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -1911,8 +1911,8 @@
   <disable_collisions link1="R_pinky_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_pinky_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_pinky_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_pinky_intermediate" link2="logo_link" reason="Never"/>
@@ -1946,8 +1946,8 @@
   <disable_collisions link1="R_ring_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_ring_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_ring_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_ring_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_ring_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -1966,8 +1966,8 @@
   <disable_collisions link1="R_ring_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_ring_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_ring_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_ring_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_ring_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_ring_proximal" link2="logo_link" reason="Never"/>
@@ -2001,8 +2001,8 @@
   <disable_collisions link1="R_ring_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_ring_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_ring_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_ring_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_ring_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -2021,8 +2021,8 @@
   <disable_collisions link1="R_ring_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_ring_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_ring_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_ring_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_ring_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_ring_intermediate" link2="logo_link" reason="Never"/>
@@ -2056,8 +2056,8 @@
   <disable_collisions link1="R_thumb_proximal_base" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal_base" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal_base" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal_base" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal_base" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="L_hand_base_link" reason="Never"/>
@@ -2076,8 +2076,8 @@
   <disable_collisions link1="R_thumb_proximal_base" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal_base" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal_base" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal_base" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal_base" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal_base" link2="logo_link" reason="Never"/>
@@ -2111,8 +2111,8 @@
   <disable_collisions link1="R_thumb_proximal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="L_hand_base_link" reason="Never"/>
@@ -2131,8 +2131,8 @@
   <disable_collisions link1="R_thumb_proximal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_proximal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_proximal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_proximal" link2="logo_link" reason="Never"/>
@@ -2166,8 +2166,8 @@
   <disable_collisions link1="R_thumb_intermediate" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_intermediate" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_intermediate" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_intermediate" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_intermediate" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="L_hand_base_link" reason="Never"/>
@@ -2186,8 +2186,8 @@
   <disable_collisions link1="R_thumb_intermediate" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_intermediate" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_intermediate" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_intermediate" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_intermediate" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_intermediate" link2="logo_link" reason="Never"/>
@@ -2221,8 +2221,8 @@
   <disable_collisions link1="R_thumb_distal" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_distal" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_distal" link2="left_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_distal" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_distal" link2="left_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="L_hand_base_link" reason="Never"/>
@@ -2241,8 +2241,8 @@
   <disable_collisions link1="R_thumb_distal" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_distal" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="R_thumb_distal" link2="right_elbow_roll_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_distal" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="R_thumb_distal" link2="right_wrist_roll_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="right_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="R_thumb_distal" link2="logo_link" reason="Never"/>
@@ -2261,17 +2261,17 @@
   <disable_collisions link1="torso_link" link2="left_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="left_shoulder_pitch_link" link2="left_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="left_shoulder_roll_link" link2="left_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="left_shoulder_yaw_link" link2="left_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="left_elbow_pitch_link" link2="left_elbow_roll_link" reason="Never"/>
-  <disable_collisions link1="left_elbow_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
+  <disable_collisions link1="left_shoulder_yaw_link" link2="left_elbow_link" reason="Never"/>
+  <disable_collisions link1="left_elbow_link" link2="left_wrist_roll_link" reason="Never"/>
+  <disable_collisions link1="left_wrist_roll_link" link2="left_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="left_wrist_pitch_link" link2="left_wrist_yaw_link" reason="Never"/>
   <disable_collisions link1="left_wrist_yaw_link" link2="torso_link" reason="Never"/>
   <disable_collisions link1="torso_link" link2="right_shoulder_pitch_link" reason="Never"/>
   <disable_collisions link1="right_shoulder_pitch_link" link2="right_shoulder_roll_link" reason="Never"/>
   <disable_collisions link1="right_shoulder_roll_link" link2="right_shoulder_yaw_link" reason="Never"/>
-  <disable_collisions link1="right_shoulder_yaw_link" link2="right_elbow_pitch_link" reason="Never"/>
-  <disable_collisions link1="right_elbow_pitch_link" link2="right_elbow_roll_link" reason="Never"/>
-  <disable_collisions link1="right_elbow_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
+  <disable_collisions link1="right_shoulder_yaw_link" link2="right_elbow_link" reason="Never"/>
+  <disable_collisions link1="right_elbow_link" link2="right_wrist_roll_link" reason="Never"/>
+  <disable_collisions link1="right_wrist_roll_link" link2="right_wrist_pitch_link" reason="Never"/>
   <disable_collisions link1="right_wrist_pitch_link" link2="right_wrist_yaw_link" reason="Never"/>
 
 </robot>
