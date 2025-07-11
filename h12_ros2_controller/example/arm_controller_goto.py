@@ -67,13 +67,7 @@ def main():
             left_error = np.linalg.norm(arm_controller.left_ee_error)
             right_error = np.linalg.norm(arm_controller.right_ee_error)
 
-            arm_controller.update_robot_model()
             print(f'Left Error: {left_error:.4f}, Right Error: {right_error:.4f}')
-            print(f'Left norm: {np.linalg.norm(arm_controller.left_ee_position - arm_controller.left_ee_target_position):.4f}, Right norm: {np.linalg.norm(arm_controller.right_ee_position - arm_controller.right_ee_target_position):.4f}')
-            left_T = arm_controller.robot_model.get_frame_transformation(arm_controller.left_ee_name)
-            left_SE3 = pin.SE3(left_T)
-            left_error_world = left_SE3.act(pin.Motion(arm_controller.left_ee_error))
-            print(left_error_world.vector)
 
             # early break
             if left_error < 1e-4 and right_error < 1e-4:

@@ -51,8 +51,10 @@ class RobotModel:
             self.joint_q_ids[joint_name] = self.model.joints[joint_id].idx_q
         # create mask for main body joints
         self.body_q_ids = [self.joint_q_ids[joint_name] for joint_name in BODY_JOINTS]
+        self.reduced = False
 
     def init_reduced_model(self, enabled_joints):
+        self.reduced = True
         frozen_joints = set(ALL_JOINTS) - set(enabled_joints)
         frozen_ids = [self.joint_ids[joint_name] for joint_name in frozen_joints]
         frozen_q_ids = [self.joint_q_ids[joint_name] for joint_name in frozen_joints]
@@ -190,6 +192,9 @@ class RobotModel:
         # udpate data with the current joint positions
         pin.forwardKinematics(self.model, self.data, self.q, self.dq)
         pin.updateFramePlacements(self.model, self.data)
+        if self.reduced:
+            pin.forwardKinematics(self.model_reduced, self.data_reduced, self.q_reduced, self.dq_reduced)
+            pin.updateFramePlacements(self.model_reduced, self.data_reduced)
 
     def update_visualizer(self):
         self.viz.display()
