@@ -214,6 +214,24 @@ class RobotModel:
         transformation = self.data.oMf[frame_id]
         return transformation.rotation
 
+    def get_frame_transformation_reduced(self, frame_name: str):
+        assert(self.reduced), 'Reduced model is not initialized.'
+        frame_id = self.model_reduced.getFrameId(frame_name)
+        transformation = self.data_reduced.oMf[frame_id]
+        return transformation.np
+
+    def get_frame_position_reduced(self, frame_name: str):
+        assert(self.reduced), 'Reduced model is not initialized.'
+        frame_id = self.model_reduced.getFrameId(frame_name)
+        transformation = self.data_reduced.oMf[frame_id]
+        return transformation.translation
+
+    def get_frame_rotation_reduced(self, frame_name: str):
+        assert(self.reduced), 'Reduced model is not initialized.'
+        frame_id = self.model_reduced.getFrameId(frame_name)
+        transformation = self.data_reduced.oMf[frame_id]
+        return transformation.rotation
+
     def get_frame_jacobian(self, frame_name: str):
         '''
         Get the frame jacobian in the world frame
