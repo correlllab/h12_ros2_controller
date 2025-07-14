@@ -127,3 +127,6 @@ ENABLED_JOINTS = [
     'right_wrist_pitch_joint',
     'right_wrist_yaw_joint'
 ]
+
+LEFT_ARM_INDEX = [i for i in range(13, 20)]
+RIGHT_ARM_INDEX = [i for i in range(32, 39)]

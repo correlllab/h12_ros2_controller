@@ -8,7 +8,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
-from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
+from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class ArmController:
     def __init__(self,
@@ -167,11 +167,11 @@ class ArmController:
     '''
     @property
     def left_arm_q(self):
-        return np.copy(self.robot_model.q[13:20])
+        return np.copy(self.robot_model.q[LEFT_ARM_INDEX])
 
     @property
     def right_arm_q(self):
-        return np.copy(self.robot_model.q[32:39])
+        return np.copy(self.robot_model.q[RIGHT_ARM_INDEX])
 
     '''
     joint action for left and right arms
@@ -383,15 +383,24 @@ class ArmController:
         # compute end effector velocity and angular velocity
         v_left, w_left = twist_left[:3], twist_left[3:]
         v_right, w_right = twist_right[:3], twist_right[3:]
-        # limit end effector velocity and angular velocity
-        v_scaler = np.min([1.0,
-                           self.vlim / (np.linalg.norm(v_left) + 1e-3),
-                           self.vlim / (np.linalg.norm(v_right) + 1e-3)])
-        w_scaler = np.min([1.0,
-                           self.wlim / (np.linalg.norm(w_left) + 1e-3),
-                           self.wlim / (np.linalg.norm(w_right) + 1e-3)])
 
-        return np.min([v_scaler, w_scaler]) * vel
+        # scale left and right end effectors
+        left_scaler = np.min([
+            1.0,
+            self.vlim / (np.linalg.norm(v_left) + 1e-6),
+            self.wlim / (np.linalg.norm(w_left) + 1e-6)
+        ])
+        right_scaler = np.min([
+            1.0,
+            self.vlim / (np.linalg.norm(v_right) + 1e-6),
+            self.wlim / (np.linalg.norm(w_right) + 1e-6)
+        ])
+
+        vel_scaled = np.zeros_like(vel)
+        vel_scaled[LEFT_ARM_INDEX] = left_scaler * vel[LEFT_ARM_INDEX]
+        vel_scaled[RIGHT_ARM_INDEX] = right_scaler * vel[RIGHT_ARM_INDEX]
+
+        return vel_scaled
 
     def apply_joint_vel(self, vel):
         # solve dynamics
@@ -402,8 +411,8 @@ class ArmController:
                        np.zeros(self.robot_model.model.nv))
 
         # update joint action
-        self._left_arm_action = vel[13:20] * self.dt
-        self._right_arm_action = vel[32:39] * self.dt
+        self._left_arm_action = vel[LEFT_ARM_INDEX] * self.dt
+        self._right_arm_action = vel[RIGHT_ARM_INDEX] * self.dt
 
         # send the velocity command to the robot
         self.command_publisher.q = (self.robot_model.q + vel * self.dt)[self.robot_model.body_q_ids]
