@@ -9,7 +9,10 @@ from h12_ros2_controller.core.arm_controller import ArmController
 
 def main():
     print('Initializing ArmController...')
+    ChannelFactoryInitialize()
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
+                                   'assets/h1_2/h1_2_sphere.urdf',
+                                   'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.01,
                                    vlim=1.0,
                                    visualize=False)
