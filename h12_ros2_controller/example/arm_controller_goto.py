@@ -64,13 +64,19 @@ def main():
             arm_controller.control_dual_arm_step()
 
             # print errors
-            left_error = np.linalg.norm(arm_controller.left_ee_error)
-            right_error = np.linalg.norm(arm_controller.right_ee_error)
+            left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+            left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+            right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+            right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
 
-            print(f'Left Error: {left_error:.4f}, Right Error: {right_error:.4f}')
+            print(f'Left Linear Error: {left_error_linear:.4f}, '
+                  f'Left Angular Error: {left_error_angular:.4f}, '
+                  f'Right Linear Error: {right_error_linear:.4f}, '
+                  f'Right Angular Error: {right_error_angular:.4f}')
 
             # early break
-            if left_error < 1e-4 and right_error < 1e-4:
+            if (left_error_linear < 5e-4 and right_error_linear < 5e-4 and
+                left_error_angular < 2e-2 and right_error_angular < 2e-2):
                 print('Target reached!')
                 break
 

@@ -98,7 +98,10 @@ class DualArmClient(Node):
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
-        self.get_logger().info(f'Left Error: {feedback.left_error:.2f}; Right Error: {feedback.right_error:.2f}')
+        self.get_logger().info(f'Left Linear Error: {feedback.left_linear_error:.4f}',
+                               f'Left Angular Error: {feedback.left_angular_error:.4f}, '
+                               f'Right Linear Error: {feedback.right_linear_error:.4f}, '
+                               f'Right Angular Error: {feedback.right_angular_error:.4f}')
 
     def _keyboard_cancel(self, key):
         if key == keyboard.Key.backspace:

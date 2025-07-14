@@ -15,10 +15,13 @@ from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self, dt=0.02, vlim=1.0, threshold=0.1):
+    def __init__(self, dt=0.02, vlim=1.0,
+                 threshold_linear=5e-4,
+                 threshold_angular=2e-2):
         super().__init__('move_dual_arm_server')
+        self.threshold_linear = threshold_linear
+        self.threshold_angular = threshold_angular
         ChannelFactoryInitialize()
-        self.threshold = threshold
         self.controller = ArmController(URDF_PIN_PATH,
                                         URDF_SPHERE_PATH,
                                         SRDF_SPHERE_PATH,
@@ -147,15 +150,21 @@ class MoveDualArmServer(Node):
                 result.success = False
                 return result
 
-            # check the error
-            left_error = np.linalg.norm(self.controller.left_ee_error)
-            right_error = np.linalg.norm(self.controller.right_ee_error)
-            # publish feedback errors
-            feedback_msg.left_error = left_error
-            feedback_msg.right_error = right_error
+            # compute errors
+            left_error_linear = np.linalg.norm(self.controller.left_ee_error[:3])
+            left_error_angular = np.linalg.norm(self.controller.left_ee_error[3:])
+            right_error_linear = np.linalg.norm(self.controller.right_ee_error[:3])
+            right_error_angular = np.linalg.norm(self.controller.right_ee_error[3:])
+            # write feedback
+            feedback_msg.left_error_linear = left_error_linear
+            feedback_msg.left_error_angular = left_error_angular
+            feedback_msg.right_error_linear = right_error_linear
+            feedback_msg.right_error_angular = right_error_angular
             goal_handle.publish_feedback(feedback_msg)
+
             # check if the goal is reached
-            if left_error < self.threshold and right_error < self.threshold:
+            if (left_error_linear < self.threshold_linear and right_error_linear < self.threshold_linear and
+                left_error_angular < self.threshold_angular and right_error_angular < self.threshold_angular):
                 self.get_logger().info('Goal reached')
                 break
             # control one step
@@ -176,7 +185,9 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer(dt=0.025, threshold=0.05)
+    node = MoveDualArmServer(dt=0.025,
+                             threshold_linear=5e-4,
+                             threshold_angular=2e-2)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
