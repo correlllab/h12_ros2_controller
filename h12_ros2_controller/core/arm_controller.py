@@ -518,6 +518,9 @@ class ArmController:
         # print(f'scaled vel: {vel}')
         self.apply_joint_vel(vel)
 
+        # enforce torso neutral position
+        self.command_publisher.q[12] = 0
+
         # print(f'Time: {time.time() - t:.4f}s')
 
     def sim_full_body_step(self):

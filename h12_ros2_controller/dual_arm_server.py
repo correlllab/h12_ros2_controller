@@ -16,7 +16,7 @@ from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHE
 
 class MoveDualArmServer(Node):
     def __init__(self, dt=0.02, vlim=1.0,
-                 threshold_linear=5e-4,
+                 threshold_linear=5e-3,
                  threshold_angular=2e-2):
         super().__init__('move_dual_arm_server')
         self.threshold_linear = threshold_linear

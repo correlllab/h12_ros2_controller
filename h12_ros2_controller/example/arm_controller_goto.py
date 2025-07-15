@@ -75,7 +75,7 @@ def main():
                   f'Right Angular Error: {right_error_angular:.4f}')
 
             # early break
-            if (left_error_linear < 5e-4 and right_error_linear < 5e-4 and
+            if (left_error_linear < 5e-3 and right_error_linear < 5e-3 and
                 left_error_angular < 2e-2 and right_error_angular < 2e-2):
                 print('Target reached!')
                 break
