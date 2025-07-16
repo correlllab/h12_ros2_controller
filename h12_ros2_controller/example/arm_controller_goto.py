@@ -31,6 +31,8 @@ def input_pose(side):
             continue
         try:
             values = [float(val) for val in parts]
+            # degrees to radian
+            values[3:] = np.deg2rad(values[3:])
             return values
         except ValueError:
             print('Invalid input. Make sure all 6 values are numeric.')
