@@ -18,9 +18,11 @@ TOPIC_LOWSTATE = 'rt/lowstate'
 TOPIC_HIGHSTATE = 'rt/sportmodestate'
 TOPIC_HANDSTATE = 'rt/inspire/state'
 TOPIC_HANDCMD = 'rt/inspire/cmd'
+TOPIC_ARM_SDK = 'rt/arm_sdk'
 
 NUM_MOTOR = 27
 NUM_HAND_DOF = 12
+NUM_ARM_DOF = 15
 
 class StateSubscriber:
     def __init__(self):
@@ -165,3 +167,53 @@ class HandPublisher:
             self.hand_cmd.cmds[i].q = self.q[i]
         # write to publisher
         self.hand_cmd_publisher.Write(self.hand_cmd)
+
+class ArmSDKPublisher:
+    def __init__(self):
+        # variables saving states
+        self.mode = np.zeros(NUM_ARM_DOF, dtype=np.int32)
+        self.q = np.zeros(NUM_ARM_DOF)
+        self.dq = np.zeros(NUM_ARM_DOF)
+        self.tau = np.zeros(NUM_ARM_DOF)
+        self.kp = np.zeros(NUM_ARM_DOF)
+        self.kd = np.zeros(NUM_ARM_DOF)
+
+        # publish arm sdk command
+        self.arm_sdk_publisher = ChannelPublisher(TOPIC_ARM_SDK, MotorCmds_)
+        self.arm_sdk_publisher.Init()
+
+        # initialize arm sdk command
+        self.arm_sdk_cmd = MotorCmds_()
+        self.arm_sdk_cmd.cmds = [MotorCmd_default() for _ in range(NUM_ARM_DOF)]
+
+        # start publisher thread
+        self.arm_sdk_thread = RecurrentThread(
+            interval=0.005,
+            target=self.publish_arm_sdk_cmd,
+            name='arm_sdk_thread'
+        )
+
+        print('ArmSDKPublisher initialized.')
+        print('All arm joints are locked in the initial position.')
+
+    def publish_arm_sdk_cmd(self):
+        for i in range(NUM_ARM_DOF):
+            self.arm_sdk_cmd.cmds[i].mode = self.mode[i]
+            self.arm_sdk_cmd.cmds[i].q = self.q[i]
+            self.arm_sdk_cmd.cmds[i].dq = self.dq[i]
+            self.arm_sdk_cmd.cmds[i].tau = self.tau[i]
+            self.arm_sdk_cmd.cmds[i].kp = self.kp[i]
+            self.arm_sdk_cmd.cmds[i].kd = self.kd[i]
+        # write to publisher
+        self.arm_sdk_publisher.Write(self.arm_sdk_cmd)
+
+    def enable_motor(self, motor_ids, init_q):
+        motor_ids, init_q = np.array(motor_ids), np.array(init_q)
+        assert len(motor_ids) == len(init_q), 'Motor IDs and initial positions must have the same length.'
+        assert np.all(motor_ids < NUM_ARM_DOF) and np.all(motor_ids >= 0), f'Motor IDs must be within [0, {NUM_ARM_DOF}).'
+
+        self.mode[motor_ids] = 1
+        self.q[motor_ids] = init_q
+
+    def start_publisher(self):
+        self.arm_sdk_thread.Start()
