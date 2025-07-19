@@ -131,12 +131,12 @@ class HandSubscriber:
         return np.copy(self._q)
 
     @property
-    def q_left(self):
-        return np.copy(self._q[6:12])
-
-    @property
     def q_right(self):
         return np.copy(self._q[0:6])
+
+    @property
+    def q_left(self):
+        return np.copy(self._q[6:12])
 
 class HandPublisher:
     def __init__(self, dt=0.005):

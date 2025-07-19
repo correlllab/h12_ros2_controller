@@ -188,6 +188,9 @@ def main(args=None):
     node = MoveDualArmServer(dt=0.025,
                              threshold_linear=5e-4,
                              threshold_angular=2e-2)
-    rclpy.spin(node)
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     node.destroy_node()
     rclpy.shutdown()

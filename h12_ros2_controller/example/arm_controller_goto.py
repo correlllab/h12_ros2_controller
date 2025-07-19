@@ -61,7 +61,7 @@ def main():
         arm_controller.right_ee_target_pose = right_pose
 
         start_time = time.time()
-        while time.time() - start_time < 10.0:
+        while time.time() - start_time < 30.0:
             frame_start_time = time.time()
             arm_controller.control_dual_arm_step()
 

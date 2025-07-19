@@ -29,4 +29,10 @@ def generate_launch_description():
             name='dual_arm_server',
             output='screen'
         ),
+        Node(
+            package=package_name,
+            executable='hand_controller_node',
+            name='hand_controller_node',
+            output='screen'
+        )
     ])

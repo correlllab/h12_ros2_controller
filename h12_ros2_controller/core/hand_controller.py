@@ -1,7 +1,3 @@
-import time
-import numpy as np
-import tkinter as tk
-
 from h12_ros2_controller.core.channel_interface import HandSubscriber, HandPublisher
 
 class HandController:
@@ -51,7 +47,7 @@ class HandController:
         #index 5:thumb angle
         '''
         assert(len(right_arr) == 6), 'Right angles must be of length 6.'
-        self.hand_publisher.q[:6] = right_arr
+        self.hand_publisher.q[0:6] = right_arr
 
     def ctrl_left(self, left_arr):
         '''
@@ -65,7 +61,7 @@ class HandController:
         #index 5:thumb angle
         '''
         assert(len(left_arr) == 6), 'Left angles must be of length 6.'
-        self.hand_publisher.q[6:] = left_arr
+        self.hand_publisher.q[6:12] = left_arr
 
     def ctrl(self, right_arr, left_arr):
         '''
