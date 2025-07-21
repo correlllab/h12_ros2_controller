@@ -149,6 +149,8 @@ class ArmController:
             self.solver = 'daqp'
         elif 'quadprog' in qpsolvers.available_solvers:
             self.solver = 'quadprog'
+        elif 'osqp' in qpsolvers.available_solvers:
+            self.solver = 'osdp'
 
         if self.visualize:
             self.robot_model.init_visualizer()
