@@ -143,8 +143,12 @@ class ArmController:
         self.barriers = [self.collision_barrier]
         # select solver
         self.solver = qpsolvers.available_solvers[0]
-        if 'osqp' in qpsolvers.available_solvers:
-            self.solver = 'osqp'
+        if 'proxqp' in qpsolvers.available_solvers:
+            self.solver = 'proxqp'
+        elif 'daqp' in qpsolvers.available_solvers:
+            self.solver = 'daqp'
+        elif 'quadprog' in qpsolvers.available_solvers:
+            self.solver = 'quadprog'
 
         if self.visualize:
             self.robot_model.init_visualizer()
