@@ -39,7 +39,7 @@ def input_pose(side):
             continue
 
 
-def main():
+def main(timeout=10.0):
     ChannelFactoryInitialize()
 
     # Initialize arm controller
@@ -49,7 +49,7 @@ def main():
                                    dt=0.02,
                                    vlim=1.0,
                                    wlim=2.0,
-                                   dmin=0.01,
+                                   dmin=0.05,
                                    visualize=False)
 
     while True:
@@ -61,7 +61,7 @@ def main():
         arm_controller.right_ee_target_pose = right_pose
 
         start_time = time.time()
-        while time.time() - start_time < 30.0:
+        while time.time() - start_time < timeout:
             frame_start_time = time.time()
             arm_controller.control_dual_arm_step()
 
@@ -91,4 +91,4 @@ def main():
             break
 
 if __name__ == '__main__':
-    main()
+    main(timeout=10.0)
