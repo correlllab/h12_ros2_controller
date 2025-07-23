@@ -50,4 +50,4 @@ def plot_benchmark(solver):
 if __name__ == '__main__':
     ChannelFactoryInitialize()
     for solver in ['osqp', 'proxqp', 'daqp', 'quadprog']:
-        run_benchmark(solver, 'data/compare_solver_mj', mode='real')
+        run_benchmark(solver, 'data/compare_solver_real', mode='real')
