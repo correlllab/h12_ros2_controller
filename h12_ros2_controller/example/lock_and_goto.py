@@ -26,6 +26,8 @@ def lock():
     ChannelFactoryInitialize()
     print('Initializing ArmController...')
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
+                                   'assets/h1_2/h1_2_sphere.urdf',
+                                   'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.01,
                                    vlim=1.0,
                                    visualize=True)
@@ -42,6 +44,8 @@ def goto():
     ChannelFactoryInitialize()
     print('Initializing ArmController...')
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
+                                   'assets/h1_2/h1_2_sphere.urdf',
+                                   'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.01,
                                    vlim=1.0,
                                    visualize=True)

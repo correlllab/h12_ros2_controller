@@ -462,6 +462,28 @@ class ArmController:
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
 
+    def goto_reduced_configuration(self, q_reduced):
+        # sync and update robot model
+        self.sync_robot_model()
+        self.update_robot_model()
+
+        # use the joint task to solve joint velocity update
+        self.joint_task.set_target(q_reduced)
+        vel = pink.solve_ik(
+            self.reduced_configuration,
+            [self.joint_task],
+            dt=self.dt,
+            solver=self.solver,
+            barriers=self.barriers,
+            safety_break=False
+        )
+
+        # apply the control
+        vel_full = np.zeros(self.robot_model.model.nv)
+        vel_full[self.robot_model.reduced_mask] = vel
+        vel_full = self.limit_joint_vel(vel_full)
+        self.apply_joint_vel(vel_full)
+
     def solve_ik(self):
         # update posture task
         self.posture_task.set_target_from_configuration(self.configuration)

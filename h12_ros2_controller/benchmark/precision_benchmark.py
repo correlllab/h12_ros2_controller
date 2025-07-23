@@ -13,6 +13,7 @@ class PrecisionBenchmark:
         self.arm_controller = arm_controller
         self.target_poses = target_poses
         self.neutral_pose = arm_controller.robot_model.zero_q
+        self.neutral_pose_reduced = arm_controller.robot_model.zero_q_reduced
 
         self.traj_log = []
         self.linear_error_log = []
@@ -26,7 +27,8 @@ class PrecisionBenchmark:
     def reset_to_neutral_real(self):
         '''Reset arm to the neutral pose for Mujoco'''
         for _ in tqdm(range(300)):
-            self.arm_controller.goto_configuration(self.neutral_pose)
+            # self.arm_controller.goto_configuration(self.neutral_pose)
+            self.arm_controller.goto_reduced_configuration(self.neutral_pose_reduced)
             time.sleep(0.02)
 
     def run_benchmark(self, mode):
