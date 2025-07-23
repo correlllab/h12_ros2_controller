@@ -9,7 +9,7 @@ from h12_ros2_controller.benchmark.precision_benchmark import PrecisionBenchmark
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-def run_benchmark(solver):
+def run_benchmark(solver, filepath, mode):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
@@ -17,7 +17,7 @@ def run_benchmark(solver):
                                    vlim=1.0,
                                    wlim=2.0,
                                    dmin=0.01,
-                                   visualize=True)
+                                   visualize=False)
     arm_controller.solver = solver
 
     target_poses = [
@@ -34,8 +34,10 @@ def run_benchmark(solver):
     ]
 
     benchmark = PrecisionBenchmark(arm_controller, target_poses)
-    benchmark.run_benchmark()
-    benchmark.save_results(f'data/compare_solver/{solver}.npz')
+    benchmark.run_benchmark(mode)
+    benchmark.save_results(f'{filepath}/{solver}.npz')
+
+    arm_controller.shutdown()
 
 def plot_benchmark(solver):
     data = np.load(f'data/compare_solver/{solver}.npz')
@@ -48,4 +50,4 @@ def plot_benchmark(solver):
 if __name__ == '__main__':
     ChannelFactoryInitialize()
     for solver in ['osqp', 'proxqp', 'daqp', 'quadprog']:
-        run_benchmark(solver)
+        run_benchmark(solver, 'data/compare_solver_mj', mode='real')

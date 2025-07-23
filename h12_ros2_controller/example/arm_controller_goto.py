@@ -87,6 +87,7 @@ def main():
         input('Press any key to continue...') # flush the input buffer
         cont = input('Do you want to send another goal? (y/n): ').lower()
         if cont != 'y':
+            arm_controller.shutdown()
             break
 
 if __name__ == '__main__':

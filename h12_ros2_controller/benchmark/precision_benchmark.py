@@ -18,21 +18,30 @@ class PrecisionBenchmark:
         self.linear_error_log = []
         self.angular_error_log = []
 
-    def reset_to_neutral(self):
+    def reset_to_neutral_pin(self):
         '''Reset arm to the neutral pose'''
         self.arm_controller.robot_model._q = self.neutral_pose
         self.arm_controller.robot_model.update_kinematics()
 
-    def run_benchmark(self):
+    def reset_to_neutral_real(self):
+        '''Reset arm to the neutral pose for Mujoco'''
+        for _ in tqdm(range(300)):
+            self.arm_controller.goto_configuration(self.neutral_pose)
+            time.sleep(0.02)
+
+    def run_benchmark(self, mode):
         '''Run the benchmark sequence'''
         for target_pose in tqdm(self.target_poses):
-            self.reset_to_neutral()
-            traj_arr, linear_error_arr, angular_error_arr = self.track_trajectory(target_pose)
+            if mode == 'pin':
+                self.reset_to_neutral_pin()
+            elif mode == 'real':
+                self.reset_to_neutral_real()
+            traj_arr, linear_error_arr, angular_error_arr = self.track_trajectory(target_pose, mode)
             self.traj_log.append(traj_arr)
             self.linear_error_log.append(linear_error_arr)
             self.angular_error_log.append(angular_error_arr)
 
-    def track_trajectory(self, target_pose):
+    def track_trajectory(self, target_pose, mode):
         '''
         Track while moving to target_pose.
         Returns trajectory and errors.
@@ -48,7 +57,10 @@ class PrecisionBenchmark:
         step = int(self.time / self.arm_controller.dt)
         for _ in tqdm(range(step)):
             frame_start_time = time.time()
-            self.arm_controller.sim_dual_arm_step()
+            if mode == 'pin':
+                self.arm_controller.sim_dual_arm_step()
+            elif mode == 'real':
+                self.arm_controller.control_dual_arm_step()
 
             # get current pose
             current_pose = self.arm_controller.left_ee_pose

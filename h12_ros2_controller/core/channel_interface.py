@@ -54,6 +54,10 @@ class StateSubscriber:
     def tau(self):
         return np.copy(self._tau)
 
+    def shutdown(self):
+        self.low_state_subscriber.Close()
+        print('StateSubscriber shutdown.')
+
 class CommandPublisher:
     def __init__(self):
         # variables saving states
@@ -112,6 +116,11 @@ class CommandPublisher:
 
     def estop(self):
         self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
+
+    def shutdown(self):
+        self.low_cmd_thread.Wait(0)
+        self.low_cmd_publisher.Close()
+        print('CommandPublisher shutdown.')
 
 class HandSubscriber:
     def __init__(self):

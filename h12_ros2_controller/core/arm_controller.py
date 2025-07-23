@@ -555,6 +555,10 @@ class ArmController:
     def estop(self):
         self.command_publisher.estop()
 
+    def shutdown(self):
+        self.robot_model.shutdown()
+        self.command_publisher.shutdown()
+
     def damp_mode(self, kd=3.0):
         # zero out kp
         self.command_publisher.kp.fill(0.0)

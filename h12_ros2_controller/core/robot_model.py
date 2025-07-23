@@ -31,6 +31,10 @@ class RobotModel:
         # intiialize data for the model
         self.data = self.model.createData()
 
+        # placeholder for visualizer and state subscriber
+        self.viz = None
+        self.state_subscriber = None
+
         # field variabels tracking joint states
         self._q = np.zeros(self.model.nq)
         self._dq = np.zeros(self.model.nv)
@@ -103,6 +107,15 @@ class RobotModel:
     @property
     def zero_q_reduced(self):
         return np.copy(self.zero_q[self.reduced_mask])
+
+    def shutdown(self):
+        if self.viz is not None:
+            self.viz.viewer.close()
+            self.viz = None
+        if self.state_subscriber is not None:
+            self.state_subscriber.shutdown()
+            self.state_subscriber = None
+        print('RobotModel shutdown.')
 
     def init_visualizer(self):
         try:
@@ -183,10 +196,11 @@ class RobotModel:
         self.state_subscriber = StateSubscriber()
 
     def sync_subscriber(self):
-        # update the q, dq, tau
-        self._q[self.body_q_ids] = self.state_subscriber.q
-        self._dq[self.body_q_ids] = self.state_subscriber.dq
-        self._tau[self.body_q_ids] = self.state_subscriber.tau
+        if self.state_subscriber is not None:
+            # update the q, dq, tau
+            self._q[self.body_q_ids] = self.state_subscriber.q
+            self._dq[self.body_q_ids] = self.state_subscriber.dq
+            self._tau[self.body_q_ids] = self.state_subscriber.tau
 
     def update_kinematics(self):
         # udpate data with the current joint positions
