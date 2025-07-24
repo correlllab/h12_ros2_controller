@@ -88,7 +88,7 @@ def main():
         # control the hand
         hand_controller.ctrl(right_arr, left_arr)
 
-        time.sleep(max(0, hand_controller.dt - (time.time() - start_time)))
+        time.sleep(max(0.0, hand_controller.dt - (time.time() - start_time)))
 
 if __name__ == '__main__':
     main()

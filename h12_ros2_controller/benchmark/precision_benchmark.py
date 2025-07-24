@@ -4,16 +4,26 @@ import numpy as np
 from tqdm import tqdm
 
 class PrecisionBenchmark:
-    def __init__(self, arm_controller, target_poses, time=5.0):
+    def __init__(self, arm_controller, target_poses,
+                 timeout=5.0,
+                 threshold_linear=5e-3,
+                 threshold_angular=2e-2):
         '''
         @param arm_controller: your ArmController instance
         @param target_poses: list of np.array (each pose is a vector of joint angles or end-effector pose)
+        @param timeout: time to wait for each target pose
+        @param threshold_linear: linear error threshold to consider target reached
+        @param threshold_angular: angular error threshold to consider target reached
         '''
-        self.time = time
         self.arm_controller = arm_controller
         self.target_poses = target_poses
         self.neutral_pose = arm_controller.robot_model.zero_q
         self.neutral_pose_reduced = arm_controller.robot_model.zero_q_reduced
+
+        # parameters
+        self.timeout = timeout
+        self.threshold_linear = threshold_linear
+        self.threshold_angular = threshold_angular
 
         self.traj_log = []
         self.linear_error_log = []
@@ -26,10 +36,15 @@ class PrecisionBenchmark:
 
     def reset_to_neutral_real(self):
         '''Reset arm to the neutral pose for Mujoco'''
-        for _ in tqdm(range(300)):
+        start_time = time.time()
+        while time.time() - start_time < self.timeout:
+            frame_start_time = time.time()
             # self.arm_controller.goto_configuration(self.neutral_pose)
             self.arm_controller.goto_reduced_configuration(self.neutral_pose_reduced)
-            time.sleep(0.02)
+            if np.linalg.norm(self.arm_controller.joint_error_reduced) < 1e-2:
+                print('Arm reset to neutral position.')
+                break
+            time.sleep(max(0.0, self.arm_controller.dt - (time.time() - frame_start_time)))
 
     def run_benchmark(self, mode):
         '''Run the benchmark sequence'''
@@ -56,9 +71,9 @@ class PrecisionBenchmark:
         target_pose[3:] = np.deg2rad(target_pose[3:])
         self.arm_controller.left_ee_target_pose = target_pose
 
-        step = int(self.time / self.arm_controller.dt)
-        for _ in tqdm(range(step)):
-            frame_start_time = time.time()
+        step = int(self.timeout / self.arm_controller.dt)
+        for i in tqdm(range(step)):
+            start_time = time.time()
             if mode == 'pin':
                 self.arm_controller.sim_dual_arm_step()
             elif mode == 'real':
@@ -74,7 +89,17 @@ class PrecisionBenchmark:
             linear_error_arr.append(linear_error)
             angular_error_arr.append(angular_error)
 
-            time.sleep(max(self.arm_controller.dt - (time.time() - frame_start_time), 0.0))
+            # early break if target is reached
+            if linear_error < self.threshold_linear and angular_error < self.threshold_angular:
+                # populate the remaining steps with the current pose
+                for _ in range(i + 1, step):
+                    traj_arr.append(current_pose)
+                    linear_error_arr.append(linear_error)
+                    angular_error_arr.append(angular_error)
+                print(f'Target pose reached')
+                break
+
+            time.sleep(max(0.0, self.arm_controller.dt - (time.time() - start_time)))
 
         return np.array(traj_arr), np.array(linear_error_arr), np.array(angular_error_arr)
 

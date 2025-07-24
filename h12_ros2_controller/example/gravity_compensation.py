@@ -22,7 +22,7 @@ def main():
     while True:
         start_time = time.time()
         arm_controller.gravity_compensation_step()
-        time.sleep(max(0, arm_controller.dt - (time.time() - start_time)))
+        time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
 
 if __name__ == '__main__':
     main()

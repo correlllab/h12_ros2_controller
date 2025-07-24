@@ -39,7 +39,9 @@ def input_pose(side):
             continue
 
 
-def main(timeout=10.0):
+def main(timeout=10.0,
+         threshold_linear=5e-3,
+         threshold_angular=2e-2):
     ChannelFactoryInitialize()
 
     # Initialize arm controller
@@ -77,8 +79,8 @@ def main(timeout=10.0):
                   f'Right Error Angular: {right_error_angular:.4f}')
 
             # early break
-            if (left_error_linear < 5e-3 and right_error_linear < 5e-3 and
-                left_error_angular < 2e-2 and right_error_angular < 2e-2):
+            if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
+                left_error_angular < threshold_angular and right_error_angular < threshold_angular):
                 print('Target reached!')
                 break
 

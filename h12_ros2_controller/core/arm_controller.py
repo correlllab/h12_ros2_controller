@@ -368,6 +368,14 @@ class ArmController:
     def right_ee_error(self):
         return self.right_ee_task.compute_error(self.reduced_configuration)
 
+    @property
+    def joint_error(self):
+        return self.joint_task.compute_error(self.configuration)
+
+    @property
+    def joint_error_reduced(self):
+        return  self.joint_task.compute_error(self.reduced_configuration)
+
     def sync_robot_model(self):
         # sync robot model and compute forward kinematics
         self.robot_model.sync_subscriber()

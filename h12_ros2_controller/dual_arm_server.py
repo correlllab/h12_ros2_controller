@@ -16,9 +16,11 @@ from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHE
 
 class MoveDualArmServer(Node):
     def __init__(self, dt=0.02, vlim=1.0,
+                 timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
         super().__init__('move_dual_arm_server')
+        self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
         ChannelFactoryInitialize()
@@ -141,8 +143,8 @@ class MoveDualArmServer(Node):
             goal_handle.request.right_target
         )
         start_time = time.time()
-        while time.time() - start_time < 20:
-            time_start = time.time()
+        while time.time() - start_time < self.timeout:
+            frame_start_time = time.time()
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -171,7 +173,7 @@ class MoveDualArmServer(Node):
             # self.controller.sim_dual_arm_step()
             self.controller.control_dual_arm_step()
 
-            time.sleep(max(0, self.controller.dt - (time.time() - time_start)))
+            time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
             await asyncio.sleep(0)
 
         goal_handle.succeed()
@@ -186,7 +188,8 @@ class MoveDualArmServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = MoveDualArmServer(dt=0.025,
-                             threshold_linear=5e-4,
+                             timeout=10.0,
+                             threshold_linear=5e-3,
                              threshold_angular=2e-2)
     try:
         rclpy.spin(node)

@@ -37,6 +37,8 @@ def run_benchmark(solver, filepath, mode):
     benchmark.run_benchmark(mode)
     benchmark.save_results(f'{filepath}/{solver}.npz')
 
+    # reset to neutral position before shutdown
+    benchmark.reset_to_neutral_real()
     arm_controller.shutdown()
 
 def plot_benchmark(solver):
