@@ -110,6 +110,16 @@ class ArmController:
             self.collision_model_reduced,
             srdf_sphere_path,
         )
+        # reduced collision barriers
+        self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
+            n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
+            gain=20.0,
+            safe_displacement_gain=1.0,
+            d_min=self.dmin,
+        )
+        # set collision barrier
+        self.barriers = []
+        self.barriers_reduced = [self.collision_barrier_reduced]
 
         # configuration trakcing robot states
         self.configuration = pink.Configuration(
@@ -125,22 +135,20 @@ class ArmController:
             collision_data=self.collision_data_reduced
         )
 
-        # reduced collision barriers
-        self.collision_barrier = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
-            gain=20.0,
-            safe_displacement_gain=1.0,
-            d_min=self.dmin,
-        )
+        # limits
+        self.limits = [
+            pink.limits.ConfigurationLimit(self.robot_model.model),
+            pink.limits.VelocityLimit(self.robot_model.model)
+        ]
+        self.limits_reduced = [
+            pink.limits.ConfigurationLimit(self.robot_model.model_reduced),
+            pink.limits.VelocityLimit(self.robot_model.model_reduced)
+        ]
 
         # set initial target for all tasks
         self.tasks = [self.left_ee_task, self.right_ee_task, self.posture_task]
         for task in self.tasks:
             task.set_target_from_configuration(self.configuration)
-        # set collision barrier
-        # self.barriers = []
-        # self.barriers = [self.ee_barrier]
-        self.barriers = [self.collision_barrier]
         # select solver
         self.solver = qpsolvers.available_solvers[0]
         if 'proxqp' in qpsolvers.available_solvers:
@@ -482,7 +490,8 @@ class ArmController:
             [self.joint_task],
             dt=self.dt,
             solver=self.solver,
-            barriers=self.barriers,
+            limits=self.limits_reduced,
+            barriers=self.barriers_reduced,
             safety_break=False
         )
 
@@ -502,7 +511,8 @@ class ArmController:
             self.tasks,
             dt=self.dt,
             solver=self.solver,
-            barriers=[],
+            limits=self.limits,
+            barriers=self.barriers,
             safety_break=False
         )
 
@@ -510,7 +520,7 @@ class ArmController:
 
         return vel
 
-    def solve_reduced_ik(self):
+    def solve_ik_reduced(self):
         # update posture task
         self.posture_task.set_target_from_configuration(self.reduced_configuration)
 
@@ -520,7 +530,8 @@ class ArmController:
             self.tasks,
             dt=self.dt,
             solver=self.solver,
-            barriers=self.barriers,
+            limits=self.limits_reduced,
+            barriers=self.barriers_reduced,
             safety_break=False
         )
 
@@ -550,7 +561,7 @@ class ArmController:
         self.update_robot_model()
 
         # solve IK and apply the control
-        vel = self.solve_reduced_ik()
+        vel = self.solve_ik_reduced()
         # print(f'scaled vel: {vel}')
         self.apply_joint_vel(vel)
 
@@ -576,7 +587,7 @@ class ArmController:
         self.update_robot_model()
 
         # solve IK and apply the control
-        vel = self.solve_reduced_ik()
+        vel = self.solve_ik_reduced()
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
 
@@ -658,7 +669,7 @@ class ArmController:
         self.update_robot_model()
 
         # solve IK to get joint velocity
-        vel = self.solve_reduced_ik()
+        vel = self.solve_ik_reduced()
 
         # get states in Cartesian space
         x = self.left_ee_position

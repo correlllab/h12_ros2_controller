@@ -27,3 +27,12 @@ for j_idx, joint in enumerate(model.joints):
     print(f'''Joint {j_idx}: {model.names[j_idx]}
           idx_q: {joint.idx_q}, idx_v: {joint.idx_v}
           ''')
+
+print('H1_2 Joint Limits')
+print('=================')
+print('Upper Position Limit:', model.upperPositionLimit)
+print('Lower Position Limit:', model.lowerPositionLimit)
+
+print('H1_2 Velocity Limits')
+print('====================')
+print('Velocity Limit:', model.velocityLimit)
