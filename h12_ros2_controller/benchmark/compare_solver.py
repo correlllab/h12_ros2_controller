@@ -21,12 +21,15 @@ def run_benchmark(solver, filepath, mode):
     arm_controller.solver = solver
 
     target_poses = [
-        np.array([0.3, 0.2, 0.1, 0, 0, 0]),
         np.array([0.3, 0.2, 0.2, 0, 0, 0]),
         np.array([0.3, 0.2, 0.3, 0, 0, 0]),
-        np.array([0.3, 0.3, 0.1, 0, 0, 0]),
+        np.array([0.3, 0.2, 0.4, 0, 0, 0]),
         np.array([0.3, 0.3, 0.2, 0, 0, 0]),
         np.array([0.3, 0.3, 0.3, 0, 0, 0]),
+        np.array([0.3, 0.3, 0.4, 0, 0, 0]),
+        np.array([0.3, 0.4, 0.2, 0, 0, 0]),
+        np.array([0.3, 0.4, 0.3, 0, 0, 0]),
+        np.array([0.3, 0.4, 0.4, 0, 0, 0]),
         np.array([0.4, 0.4, 0.4, 0, 0, 0]),
         np.array([0.4, 0.4, 0.4, 0, 45, 0]),
         np.array([0.4, 0.4, 0.4, 0, 60, 0]),
@@ -38,7 +41,10 @@ def run_benchmark(solver, filepath, mode):
     benchmark.save_results(f'{filepath}/{solver}.npz')
 
     # reset to neutral position before shutdown
-    benchmark.reset_to_neutral_real()
+    if mode == 'pin':
+        benchmark.reset_to_neutral_pin()
+    elif mode == 'real':
+        benchmark.reset_to_neutral_real()
     arm_controller.shutdown()
 
 def plot_benchmark(solver):

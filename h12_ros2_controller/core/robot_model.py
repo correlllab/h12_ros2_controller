@@ -109,9 +109,6 @@ class RobotModel:
         return np.copy(self.zero_q[self.reduced_mask])
 
     def shutdown(self):
-        if self.viz is not None:
-            self.viz.viewer.close()
-            self.viz = None
         if self.state_subscriber is not None:
             self.state_subscriber.shutdown()
             self.state_subscriber = None
