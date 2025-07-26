@@ -19,7 +19,7 @@ class MoveDualArmServer(Node):
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
-        super().__init__('move_dual_arm_server')
+        super().__init__('dual_arm_server')
         self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
@@ -102,7 +102,6 @@ class MoveDualArmServer(Node):
     def publish_left_ee_pose(self):
         # sync and update robot model
         self.controller.sync_robot_model()
-        self.controller.update_robot_model()
         # transform and publish the pose
         left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
@@ -110,7 +109,6 @@ class MoveDualArmServer(Node):
     def publish_right_ee_pose(self):
         # sync and update robot model
         self.controller.sync_robot_model()
-        self.controller.update_robot_model()
         # transform and publish the pose
         right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
@@ -118,7 +116,6 @@ class MoveDualArmServer(Node):
     def publish_left_ee_target(self):
         # sync and update robot model
         self.controller.sync_robot_model()
-        self.controller.update_robot_model()
         # transform and publish the pose
         left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
@@ -126,7 +123,6 @@ class MoveDualArmServer(Node):
     def publish_right_ee_target(self):
         # sync and update robot model
         self.controller.sync_robot_model()
-        self.controller.update_robot_model()
         # transform and publish the pose
         right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))

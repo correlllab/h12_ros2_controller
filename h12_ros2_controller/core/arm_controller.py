@@ -1,11 +1,9 @@
 import os
 import time
 import numpy as np
-
-import pink
-import qpsolvers
 import pinocchio as pin
 
+from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
@@ -62,103 +60,30 @@ class ArmController:
         self.command_publisher.enable_motor([12], [0.0])
         self.command_publisher.start_publisher()
 
-        # initialize IK tasks
-        # left arm end effector task
+        # initialize IK solver
+        self.ik_solver = IKSolver(
+            robot_model=self.robot_model,
+            urdf_sphere_path=urdf_sphere_path,
+            srdf_sphere_path=srdf_sphere_path,
+            dt=self.dt,
+            dmin=self.dmin
+        )
+
+        # end effector frame names
         self.left_ee_name = 'left_wrist_yaw_link'
-        self.left_ee_id = self.robot_model.model.getFrameId(self.left_ee_name)
-        self.left_ee_task = pink.FrameTask(
-            self.left_ee_name,
-            position_cost=50.0,
-            orientation_cost=30.0,
-            lm_damping=1.0
-        )
-        # right arm end effector task
         self.right_ee_name = 'right_wrist_yaw_link'
-        self.right_ee_id = self.robot_model.model.getFrameId(self.right_ee_name)
-        self.right_ee_task = pink.FrameTask(
-            self.right_ee_name,
-            position_cost=50.0,
-            orientation_cost=30.0,
-            lm_damping=1.0
-        )
-        # posture task as regularization
-        self.posture_task = pink.PostureTask(
-            cost=1e-3
-        )
+
+        # add frame tasks to IK solver
+        self.ik_solver.add_frame_task('left_ee', self.left_ee_name)
+        self.ik_solver.add_frame_task('right_ee', self.right_ee_name)
+
+        # set initial targets for IK solver from current configuration
+        self.ik_solver.update_configurations()
+        self.ik_solver.set_initial_targets()
+
         # variable for easier access
         self._left_arm_action = np.zeros(7)
         self._right_arm_action = np.zeros(7)
-
-        # joint level task for joint-level control (goto_configuration)
-        self.joint_task = pink.PostureTask(
-            cost=30.0
-        )
-
-        # reduced sphere self collision
-        self.sphere_model, _, self.collision_model = pin.buildModelsFromUrdf(
-            filename=urdf_sphere_path,
-            package_dirs=os.path.dirname(urdf_sphere_path),
-        )
-        self.sphere_model_reduced, self.collision_model_reduced = pin.buildReducedModel(
-            self.sphere_model,
-            self.collision_model,
-            self.robot_model.frozen_ids,
-            self.robot_model.zero_q
-        )
-        self.collision_data_reduced = pink.utils.process_collision_pairs(
-            self.sphere_model_reduced,
-            self.collision_model_reduced,
-            srdf_sphere_path,
-        )
-        # reduced collision barriers
-        self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
-            gain=20.0,
-            safe_displacement_gain=1.0,
-            d_min=self.dmin,
-        )
-        # set collision barrier
-        self.barriers = []
-        self.barriers_reduced = [self.collision_barrier_reduced]
-
-        # configuration trakcing robot states
-        self.configuration = pink.Configuration(
-            self.robot_model.model,
-            self.robot_model.data,
-            self.robot_model.zero_q,
-        )
-        self.reduced_configuration = pink.Configuration(
-            self.robot_model.model_reduced,
-            self.robot_model.data_reduced,
-            self.robot_model.zero_q_reduced,
-            collision_model=self.collision_model_reduced,
-            collision_data=self.collision_data_reduced
-        )
-
-        # limits
-        self.limits = [
-            pink.limits.ConfigurationLimit(self.robot_model.model),
-            pink.limits.VelocityLimit(self.robot_model.model)
-        ]
-        self.limits_reduced = [
-            pink.limits.ConfigurationLimit(self.robot_model.model_reduced),
-            pink.limits.VelocityLimit(self.robot_model.model_reduced)
-        ]
-
-        # set initial target for all tasks
-        self.tasks = [self.left_ee_task, self.right_ee_task, self.posture_task]
-        for task in self.tasks:
-            task.set_target_from_configuration(self.configuration)
-        # select solver
-        self.solver = qpsolvers.available_solvers[0]
-        if 'proxqp' in qpsolvers.available_solvers:
-            self.solver = 'proxqp'
-        elif 'daqp' in qpsolvers.available_solvers:
-            self.solver = 'daqp'
-        elif 'quadprog' in qpsolvers.available_solvers:
-            self.solver = 'quadprog'
-        elif 'osqp' in qpsolvers.available_solvers:
-            self.solver = 'osdp'
 
         if self.visualize:
             self.robot_model.init_visualizer()
@@ -224,16 +149,15 @@ class ArmController:
 
     @property
     def left_ee_pose(self):
-        return np.concatenate([self.left_ee_position,
-                               self.left_ee_rpy])
+        return np.concatenate([self.left_ee_position, self.left_ee_rpy])
 
     '''
-    left end effector properties
-    left_ee_transformation: transformation matrix of the left end effector
-    left_ee_position: position of the left end effector
-    left_ee_rotation: rotation matrix of the left end effector
-    left_ee_rpy: roll, pitch, yaw of the left end effector
-    left_ee_pose: pose of the left end effector (x, y, z, roll, pitch, yaw)
+    right end effector properties
+    right_ee_transformation: transformation matrix of the right end effector
+    right_ee_position: position of the right end effector
+    right_ee_rotation: rotation matrix of the right end effector
+    right_ee_rpy: roll, pitch, yaw of the right end effector
+    right_ee_pose: pose of the right end effector (x, y, z, roll, pitch, yaw)
     '''
     @property
     def right_ee_transformation(self):
@@ -253,8 +177,7 @@ class ArmController:
 
     @property
     def right_ee_pose(self):
-        return np.concatenate([self.right_ee_position,
-                               self.right_ee_rpy])
+        return np.concatenate([self.right_ee_position, self.right_ee_rpy])
 
     '''
     left end effector target properties
@@ -267,30 +190,36 @@ class ArmController:
     '''
     @property
     def left_ee_target_transformation(self):
-        return self.left_ee_task.transform_target_to_world.np
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        return np.copy(task.transform_target_to_world.np)
 
     @left_ee_target_transformation.setter
     def left_ee_target_transformation(self, transformation):
         assert(transformation.shape == (4, 4)), 'Transformation should be a 4x4 matrix.'
-        self.left_ee_task.transform_target_to_world = pin.SE3(transformation)
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        task.transform_target_to_world = pin.SE3(transformation)
 
     @property
     def left_ee_target_position(self):
-        return self.left_ee_task.transform_target_to_world.translation
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        return np.copy(task.transform_target_to_world.translation)
 
     @left_ee_target_position.setter
     def left_ee_target_position(self, position):
         assert(len(position) == 3), 'Position should be a list of 3 elements (x, y, z).'
-        self.left_ee_task.transform_target_to_world.translation = np.array(position)
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        task.transform_target_to_world.translation = np.array(position)
 
     @property
     def left_ee_target_rotation(self):
-        return self.left_ee_task.transform_target_to_world.rotation
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        return np.copy(task.transform_target_to_world.rotation)
 
     @left_ee_target_rotation.setter
     def left_ee_target_rotation(self, rotation):
         assert(rotation.shape == (3, 3)), 'Rotation should be a 3x3 matrix.'
-        self.left_ee_task.transform_target_to_world.rotation = rotation
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        task.transform_target_to_world.rotation = np.array(rotation)
 
     @property
     def left_ee_target_rpy(self):
@@ -303,8 +232,9 @@ class ArmController:
 
     @property
     def left_ee_target_pose(self):
-        return np.concatenate([self.left_ee_target_position,
-                               self.left_ee_target_rpy])
+        position = self.left_ee_target_position
+        rpy = self.left_ee_target_rpy
+        return np.concatenate([position, rpy])
 
     @left_ee_target_pose.setter
     def left_ee_target_pose(self, pose):
@@ -314,7 +244,8 @@ class ArmController:
 
     @property
     def left_ee_error(self):
-        return self.left_ee_task.compute_error(self.reduced_configuration)
+        task = self.ik_solver.frame_tasks.get('left_ee')
+        return task.compute_error(self.ik_solver.reduced_configuration)
 
     '''
     right end effector target properties
@@ -327,30 +258,36 @@ class ArmController:
     '''
     @property
     def right_ee_target_transformation(self):
-        return self.right_ee_task.transform_target_to_world.np
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        return np.copy(task.transform_target_to_world.np)
 
     @right_ee_target_transformation.setter
     def right_ee_target_transformation(self, transformation):
         assert(transformation.shape == (4, 4)), 'Transformation should be a 4x4 matrix.'
-        self.right_ee_task.transform_target_to_world = pin.SE3(transformation)
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        task.transform_target_to_world = pin.SE3(transformation)
 
     @property
     def right_ee_target_position(self):
-        return self.right_ee_task.transform_target_to_world.translation
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        return np.copy(task.transform_target_to_world.translation)
 
     @right_ee_target_position.setter
     def right_ee_target_position(self, position):
         assert(len(position) == 3), 'Position should be a list of 3 elements (x, y, z).'
-        self.right_ee_task.transform_target_to_world.translation = np.array(position)
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        task.transform_target_to_world.translation = np.array(position)
 
     @property
     def right_ee_target_rotation(self):
-        return self.right_ee_task.transform_target_to_world.rotation
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        return np.copy(task.transform_target_to_world.rotation)
 
     @right_ee_target_rotation.setter
     def right_ee_target_rotation(self, rotation):
         assert(rotation.shape == (3, 3)), 'Rotation should be a 3x3 matrix.'
-        self.right_ee_task.transform_target_to_world.rotation = rotation
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        task.transform_target_to_world.rotation = np.array(rotation)
 
     @property
     def right_ee_target_rpy(self):
@@ -363,8 +300,9 @@ class ArmController:
 
     @property
     def right_ee_target_pose(self):
-        return np.concatenate([self.right_ee_target_position,
-                               self.right_ee_target_rpy])
+        position = self.right_ee_target_position
+        rpy = self.right_ee_target_rpy
+        return np.concatenate([position, rpy])
 
     @right_ee_target_pose.setter
     def right_ee_target_pose(self, pose):
@@ -374,29 +312,25 @@ class ArmController:
 
     @property
     def right_ee_error(self):
-        return self.right_ee_task.compute_error(self.reduced_configuration)
+        task = self.ik_solver.frame_tasks.get('right_ee')
+        return task.compute_error(self.ik_solver.reduced_configuration)
 
     @property
     def joint_error(self):
-        return self.joint_task.compute_error(self.configuration)
+        return self.ik_solver.joint_task.compute_error(self.ik_solver.configuration)
 
     @property
     def joint_error_reduced(self):
-        return  self.joint_task.compute_error(self.reduced_configuration)
+        return self.ik_solver.joint_task.compute_error(self.ik_solver.reduced_configuration)
 
     def sync_robot_model(self):
         # sync robot model and compute forward kinematics
         self.robot_model.sync_subscriber()
         self.robot_model.update_kinematics()
-
-    def update_robot_model(self):
         # update visualizer if needed
         if self.visualize:
             self.robot_model.update_visualizer()
             self.robot_model.visualize_wrench(self.left_ee_name)
-        # update configuration
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
 
     def limit_joint_vel(self, vel):
         # get end effector twist
@@ -442,10 +376,8 @@ class ArmController:
         self.command_publisher.tau = tau[self.robot_model.body_q_ids]
 
     def lock_configuration(self, q):
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
-
         # compute tau and enforce same q
         tau = pin.rnea(self.robot_model.model,
                        self.robot_model.data,
@@ -459,124 +391,48 @@ class ArmController:
         self.command_publisher.tau = tau
 
     def goto_configuration(self, q):
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
-
-        # use the joint task to solve joint velocity update
-        self.joint_task.set_target(q)
-        vel = pink.solve_ik(
-            self.configuration,
-            [self.joint_task],
-            dt=self.dt,
-            solver=self.solver,
-            barriers=[],
-            safety_break=False
-        )
-
-        # apply the control
+        # use the IK solver to solve joint velocity update
+        vel = self.ik_solver.goto_configuration(q)
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
 
     def goto_reduced_configuration(self, q_reduced):
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
-
-        # use the joint task to solve joint velocity update
-        self.joint_task.set_target(q_reduced)
-        vel = pink.solve_ik(
-            self.reduced_configuration,
-            [self.joint_task],
-            dt=self.dt,
-            solver=self.solver,
-            limits=self.limits_reduced,
-            barriers=self.barriers_reduced,
-            safety_break=False
-        )
-
-        # apply the control
-        vel_full = np.zeros(self.robot_model.model.nv)
-        vel_full[self.robot_model.reduced_mask] = vel
-        vel_full = self.limit_joint_vel(vel_full)
-        self.apply_joint_vel(vel_full)
-
-    def solve_ik(self):
-        # update posture task
-        self.posture_task.set_target_from_configuration(self.configuration)
-
-        # solve IK
-        vel = pink.solve_ik(
-            self.configuration,
-            self.tasks,
-            dt=self.dt,
-            solver=self.solver,
-            limits=self.limits,
-            barriers=self.barriers,
-            safety_break=False
-        )
-
+        # use the IK solver to solve joint velocity update
+        vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self.limit_joint_vel(vel)
-
-        return vel
-
-    def solve_ik_reduced(self):
-        # update posture task
-        self.posture_task.set_target_from_configuration(self.reduced_configuration)
-
-        # solve IK
-        vel = pink.solve_ik(
-            self.reduced_configuration,
-            self.tasks,
-            dt=self.dt,
-            solver=self.solver,
-            limits=self.limits_reduced,
-            barriers=self.barriers_reduced,
-            safety_break=False
-        )
-
-        vel_full = np.zeros(self.robot_model.model.nv)
-        vel_full[self.robot_model.reduced_mask] = vel
-        # print(f'raw vel: {vel}')
-        vel_full = self.limit_joint_vel(vel_full)
-
-        return vel_full
-
-    def control_full_body_step(self):
-        # t = time.time()
-        # sync and update robot model
-        self.sync_robot_model()
-        self.update_robot_model()
-
-        # solve IK and apply the control
-        vel = self.solve_ik()
         self.apply_joint_vel(vel)
 
-        # print(f'Time: {time.time() - t:.4f}s')
+    def control_full_body_step(self):
+        # sync robot model
+        self.sync_robot_model()
+        # solve IK and apply the control
+        vel = self.solve_ik()
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
 
     def control_dual_arm_step(self):
-        # t = time.time()
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
-
         # solve IK and apply the control
         vel = self.solve_ik_reduced()
-        # print(f'scaled vel: {vel}')
+        vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
 
         # enforce torso neutral position
         self.command_publisher.q[12] = 0
 
-        # print(f'Time: {time.time() - t:.4f}s')
-
     def sim_full_body_step(self):
         t = time.time()
-        # update robot model
-        self.update_robot_model()
 
+        # sync robot model
+        self.sync_robot_model()
         # solve IK and apply the control
         vel = self.solve_ik()
+        vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
 
@@ -584,10 +440,10 @@ class ArmController:
 
     def sim_dual_arm_step(self):
         t = time.time()
-        self.update_robot_model()
 
         # solve IK and apply the control
         vel = self.solve_ik_reduced()
+        vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
 
@@ -609,9 +465,8 @@ class ArmController:
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
     def gravity_compensation_step(self):
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
 
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
         right_wrench = self.robot_model.get_frame_wrench(self.right_ee_name)
@@ -664,9 +519,8 @@ class ArmController:
         self.command_publisher.tau = (tau - self.ki * self.dq_i)[self.robot_model.body_q_ids]
 
     def impedance_step(self, x_target):
-        # sync and update robot model
+        # sync robot model
         self.sync_robot_model()
-        self.update_robot_model()
 
         # solve IK to get joint velocity
         vel = self.solve_ik_reduced()
