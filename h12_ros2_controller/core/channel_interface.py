@@ -188,12 +188,11 @@ class ArmSDKPublisher:
         self.kd = np.zeros(NUM_ARM_DOF)
 
         # publish arm sdk command
-        self.arm_sdk_publisher = ChannelPublisher(TOPIC_ARM_SDK, MotorCmds_)
+        self.arm_sdk_publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
         self.arm_sdk_publisher.Init()
 
         # initialize arm sdk command
-        self.arm_sdk_cmd = MotorCmds_()
-        self.arm_sdk_cmd.cmds = [MotorCmd_default() for _ in range(NUM_ARM_DOF)]
+        self.arm_sdk_cmd = LowCmd_default()
 
         # start publisher thread
         self.arm_sdk_thread = RecurrentThread(
@@ -207,12 +206,12 @@ class ArmSDKPublisher:
 
     def publish_arm_sdk_cmd(self):
         for i in range(NUM_ARM_DOF):
-            self.arm_sdk_cmd.cmds[i].mode = self.mode[i]
-            self.arm_sdk_cmd.cmds[i].q = self.q[i]
-            self.arm_sdk_cmd.cmds[i].dq = self.dq[i]
-            self.arm_sdk_cmd.cmds[i].tau = self.tau[i]
-            self.arm_sdk_cmd.cmds[i].kp = self.kp[i]
-            self.arm_sdk_cmd.cmds[i].kd = self.kd[i]
+            self.arm_sdk_cmd.motor_cmd[i].mode = self.mode[i]
+            self.arm_sdk_cmd.motor_cmd[i].q = self.q[i]
+            self.arm_sdk_cmd.motor_cmd[i].dq = self.dq[i]
+            self.arm_sdk_cmd.motor_cmd[i].tau = self.tau[i]
+            self.arm_sdk_cmd.motor_cmd[i].kp = self.kp[i]
+            self.arm_sdk_cmd.motor_cmd[i].kd = self.kd[i]
         # write to publisher
         self.arm_sdk_publisher.Write(self.arm_sdk_cmd)
 
