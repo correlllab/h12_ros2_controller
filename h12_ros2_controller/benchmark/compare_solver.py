@@ -1,5 +1,7 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 import os
 import sys
@@ -38,7 +40,7 @@ def run_benchmark(solver, filepath, mode):
 
     benchmark = PrecisionBenchmark(arm_controller, target_poses)
     benchmark.run_benchmark(mode)
-    benchmark.save_results(f'{filepath}/{solver}.npz')
+    benchmark.save_results(f'data/{filepath}/{solver}.npz')
 
     # reset to neutral position before shutdown
     if mode == 'pin':
@@ -47,15 +49,54 @@ def run_benchmark(solver, filepath, mode):
         benchmark.reset_to_neutral_real()
     arm_controller.shutdown()
 
-def plot_benchmark(solver):
-    data = np.load(f'data/compare_solver/{solver}.npz')
-    traj_log = data['traj_log']
-    linear_error_log = data['linear_error_log']
-    angular_error_log = data['angular_error_log']
+def plot_benchmark(solver, filepath):
+    data = np.load(f'data/{filepath}/{solver}.npz')
+    linear_error_log = data['linear_error_log']  # shape: (N, T)
+    angular_error_log = data['angular_error_log']  # shape: (N, T)
 
-    # TODO plot error and trajectory
+    # make dir
+    os.makedirs(f'figures/{filepath}', exist_ok=True)
+
+    # plot linear error
+    plt.figure()
+    for i in range(linear_error_log.shape[0]):
+        plt.plot(linear_error_log[i], label=f'Target {i+1}')
+    plt.title(f'Linear Error - {solver}')
+    plt.xlabel('Time Step')
+    plt.ylabel('Linear Error')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f'figures/{filepath}/{solver}_linear_error.png')
+    plt.close()
+
+    # plot angular error
+    plt.figure()
+    for i in range(angular_error_log.shape[0]):
+        plt.plot(angular_error_log[i], label=f'Target {i+1}')
+    plt.title(f'Angular Error - {solver}')
+    plt.xlabel('Time Step')
+    plt.ylabel('Angular Error')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f'figures/{filepath}/{solver}_angular_error.png')
+    plt.close()
 
 if __name__ == '__main__':
-    ChannelFactoryInitialize()
-    for solver in ['osqp', 'proxqp', 'daqp', 'quadprog']:
-        run_benchmark(solver, 'data/compare_solver_real', mode='real')
+    parser = argparse.ArgumentParser(description='Compare solvers for arm controller.')
+    parser.add_argument('--run', action='store_true', help='Run benchmark')
+    parser.add_argument('--plot', action='store_true', help='Plot benchmark results')
+    args = parser.parse_args()
+
+    solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
+    filepath = 'compare_solver_real'
+    mode = 'real'
+
+    if args.run:
+        ChannelFactoryInitialize()
+        for solver in solvers:
+            run_benchmark(solver, filepath, mode)
+    if args.plot:
+        for solver in solvers:
+            plot_benchmark(solver, filepath)
