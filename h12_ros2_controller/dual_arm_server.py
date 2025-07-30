@@ -141,6 +141,10 @@ class MoveDualArmServer(Node):
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             frame_start_time = time.time()
+            # control one step
+            # self.controller.sim_dual_arm_step()
+            self.controller.control_dual_arm_step()
+
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -165,9 +169,6 @@ class MoveDualArmServer(Node):
                 left_error_angular < self.threshold_angular and right_error_angular < self.threshold_angular):
                 self.get_logger().info('Goal reached')
                 break
-            # control one step
-            # self.controller.sim_dual_arm_step()
-            self.controller.control_dual_arm_step()
 
             time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
             await asyncio.sleep(0)
