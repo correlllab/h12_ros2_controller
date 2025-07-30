@@ -184,7 +184,7 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer(dt=0.025,
+    node = MoveDualArmServer(dt=0.02,
                              timeout=10.0,
                              threshold_linear=5e-3,
                              threshold_angular=2e-2)
