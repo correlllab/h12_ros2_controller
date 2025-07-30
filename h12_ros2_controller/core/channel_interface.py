@@ -192,6 +192,7 @@ class ArmSDKPublisher:
         self.arm_sdk_publisher.Init()
 
         # initialize arm sdk command
+        self.crc = CRC()
         self.arm_sdk_cmd = LowCmd_default()
 
         # start publisher thread
@@ -212,6 +213,8 @@ class ArmSDKPublisher:
             self.arm_sdk_cmd.motor_cmd[i].tau = self.tau[i]
             self.arm_sdk_cmd.motor_cmd[i].kp = self.kp[i]
             self.arm_sdk_cmd.motor_cmd[i].kd = self.kd[i]
+        # set CRC
+        self.arm_sdk_cmd.crc = self.crc.Crc(self.arm_sdk_cmd)
         # write to publisher
         self.arm_sdk_publisher.Write(self.arm_sdk_cmd)
 
