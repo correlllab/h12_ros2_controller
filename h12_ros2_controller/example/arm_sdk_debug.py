@@ -22,7 +22,9 @@ def main():
 
     arm_sdk_publisher.kp[:] = 0.0
     arm_sdk_publisher.kd[:] = 3.0
-    arm_sdk_publisher.kd[4] = 0.0
+
+    i_enabled = 4
+    arm_sdk_publisher.kp[i_enabled] = 30.0
 
     init_q = np.zeros(15)
     init_q[0:7] = robot_model.q[13:20]
@@ -36,12 +38,12 @@ def main():
                       from_=-2.0, to=2.0,
                       resolution=0.01, orient=tk.HORIZONTAL, length=400)
     slider.pack()
-    slider.set(0.0)
+    slider.set(init_q[i_enabled])
     root.update()
 
     while True:
         root.update()
-        arm_sdk_publisher.q[4] = slider.get()
+        arm_sdk_publisher.q[i_enabled] = slider.get()
         time.sleep(0.01)
 
 if __name__ == '__main__':
