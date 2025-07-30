@@ -23,6 +23,7 @@ TOPIC_ARM_SDK = 'rt/arm_sdk'
 NUM_MOTOR = 27
 NUM_HAND_DOF = 12
 NUM_ARM_DOF = 15
+K_NOT_USED = NUM_MOTOR
 
 class StateSubscriber:
     def __init__(self):
@@ -180,7 +181,6 @@ class HandPublisher:
 class ArmSDKPublisher:
     def __init__(self):
         # variables saving states
-        self.mode = np.zeros(NUM_ARM_DOF, dtype=np.int32)
         self.q = np.zeros(NUM_ARM_DOF)
         self.dq = np.zeros(NUM_ARM_DOF)
         self.tau = np.zeros(NUM_ARM_DOF)
@@ -207,7 +207,6 @@ class ArmSDKPublisher:
 
     def publish_arm_sdk_cmd(self):
         for i in range(NUM_ARM_DOF):
-            self.arm_sdk_cmd.motor_cmd[i].mode = self.mode[i]
             self.arm_sdk_cmd.motor_cmd[i].q = self.q[i]
             self.arm_sdk_cmd.motor_cmd[i].dq = self.dq[i]
             self.arm_sdk_cmd.motor_cmd[i].tau = self.tau[i]
@@ -223,7 +222,8 @@ class ArmSDKPublisher:
         assert len(motor_ids) == len(init_q), 'Motor IDs and initial positions must have the same length.'
         assert np.all(motor_ids < NUM_ARM_DOF) and np.all(motor_ids >= 0), f'Motor IDs must be within [0, {NUM_ARM_DOF}).'
 
-        self.mode[motor_ids] = 1
+        # enable arm sdk
+        self.arm_sdk_cmd.motor_cmd[K_NOT_USED].q = 1.0
         self.q[motor_ids] = init_q
 
     def start_publisher(self):

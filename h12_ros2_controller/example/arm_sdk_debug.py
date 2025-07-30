@@ -7,16 +7,27 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
+from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import ArmSDKPublisher
 
 def main():
     ChannelFactoryInitialize()
+    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    robot_model.init_subscriber()
+    time.sleep(1.0)
+    robot_model.sync_subscriber()
+    robot_model.update_kinematics()
+
     arm_sdk_publisher = ArmSDKPublisher()
 
-    arm_sdk_publisher.kp[4] = 10.0
-    arm_sdk_publisher.kd[4] = 2.0
-    arm_sdk_publisher.enable_motor([4], [0.0])
+    arm_sdk_publisher.kp[:] = 0.0
+    arm_sdk_publisher.kd[:] = 3.0
+    arm_sdk_publisher.kd[4] = 0.0
 
+    init_q = np.zeros(15)
+    init_q[0:7] = robot_model.q[13:20]
+    init_q[7:12] = robot_model.q[32:29]
+    arm_sdk_publisher.enable_motor([i for i in range(0, 15)], init_q)
     arm_sdk_publisher.start_publisher()
 
     root = tk.Tk()
