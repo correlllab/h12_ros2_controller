@@ -28,7 +28,7 @@ def main():
 
     init_q = np.zeros(15)
     init_q[0:7] = robot_model.q[13:20]
-    init_q[7:12] = robot_model.q[32:29]
+    init_q[7:14] = robot_model.q[32:39]
     arm_sdk_publisher.enable_motor([i for i in range(0, 15)], init_q)
     arm_sdk_publisher.start_publisher()
 
