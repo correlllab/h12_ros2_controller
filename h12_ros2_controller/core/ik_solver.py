@@ -109,10 +109,17 @@ class IKSolver:
         self.configuration.update(self.robot_model.q)
         self.reduced_configuration.update(self.robot_model.q_reduced)
 
-    def set_initial_targets(self):
+    def set_from_configuration(self):
         '''Set initial targets for all tasks from current configuration.'''
+        self.update_configurations()
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.configuration)
+
+    def set_from_reduced_configuration(self):
+        '''Set initial targets for all tasks from reduced configuration.'''
+        self.update_configurations()
+        for task in self.frame_tasks.values():
+            task.set_target_from_configuration(self.reduced_configuration)
 
     def solve_ik(self):
         '''Solve IK for all tasks and return joint velocities.'''

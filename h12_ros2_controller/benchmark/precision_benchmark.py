@@ -45,6 +45,7 @@ class PrecisionBenchmark:
                 print('Arm reset to neutral position.')
                 break
             time.sleep(max(0.0, self.arm_controller.dt - (time.time() - frame_start_time)))
+        self.arm_controller.ik_solver.set_from_reduced_configuration()
 
     def run_benchmark(self, mode):
         '''Run the benchmark sequence'''

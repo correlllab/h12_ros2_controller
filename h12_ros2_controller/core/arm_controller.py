@@ -79,7 +79,7 @@ class ArmController:
 
         # set initial targets for IK solver from current configuration
         self.ik_solver.update_configurations()
-        self.ik_solver.set_initial_targets()
+        self.ik_solver.set_from_configuration()
 
         # variable for easier access
         self._left_arm_action = np.zeros(7)
