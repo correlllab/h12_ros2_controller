@@ -150,6 +150,7 @@ class IKSolver:
 
     def goto_configuration(self, q: np.ndarray):
         '''Solve IK to reach a target joint configuration.'''
+        self.update_configurations()
         self.joint_task.set_target(q)
         return pink.solve_ik(
             self.configuration,
@@ -163,6 +164,7 @@ class IKSolver:
 
     def goto_reduced_configuration(self, q_reduced: np.ndarray):
         '''Solve IK to reach a target reduced joint configuration.'''
+        self.update_configurations()
         self.joint_task.set_target(q_reduced)
         vel = pink.solve_ik(
             self.reduced_configuration,
