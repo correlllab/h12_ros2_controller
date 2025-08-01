@@ -15,10 +15,10 @@ def run_benchmark(solver, filepath, mode):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.02,
-                                   vlim=1.0,
-                                   wlim=2.0,
-                                   dmin=0.01,
+                                   dt=0.04,
+                                   vlim=0.8,
+                                   wlim=1.5,
+                                   dmin=0.05,
                                    visualize=False)
     arm_controller.solver = solver
 
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
-    filepath = 'compare_solver_real'
+    filepath = 'compare_solver_onrobot'
     mode = 'real'
 
     if args.run:
