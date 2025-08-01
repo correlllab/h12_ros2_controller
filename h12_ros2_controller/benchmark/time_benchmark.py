@@ -133,6 +133,6 @@ if __name__ == '__main__':
         np.array([0.4, 0.4, 0.4, 0, 90, 0]),
     ]
 
-    time_benchmark = TimeBenchmark(arm_controller, target_poses, iter=300)
+    time_benchmark = TimeBenchmark(arm_controller, target_poses, iter=30)
     time_benchmark.run_benchmark()
     time_benchmark.print_summary()
