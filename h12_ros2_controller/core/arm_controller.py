@@ -426,28 +426,24 @@ class ArmController:
         self.command_publisher.q[12] = 0
 
     def sim_full_body_step(self):
-        t = time.time()
-
-        # sync robot model
-        self.sync_robot_model()
         # solve IK and apply the control
         vel = self.ik_solver.solve_ik()
         vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
-
-        print(f'Time: {time.time() - t:.4f}s')
+        # update visualizer
+        if self.visualize:
+            self.robot_model.update_visualizer()
 
     def sim_dual_arm_step(self):
-        t = time.time()
-
         # solve IK and apply the control
         vel = self.ik_solver.solve_ik_reduced()
         vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
-
-        print(f'Time: {time.time() - t:.4f}s')
+        # update visualizer
+        if self.visualize:
+            self.robot_model.update_visualizer()
 
     def estop(self):
         self.command_publisher.estop()
