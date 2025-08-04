@@ -14,7 +14,6 @@ def main():
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.01,
-                                   vlim=1.0,
                                    visualize=False)
     # set gain for damp mode
     arm_controller.damp_mode(6.0)

@@ -16,9 +16,10 @@ def run_benchmark(solver, filepath, mode):
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.04,
-                                   vlim=0.8,
-                                   wlim=1.5,
-                                   dmin=0.05,
+                                   v_lim=1.0,
+                                   w_lim=1.5,
+                                   dq_lim=1.5,
+                                   d_min=0.02,
                                    visualize=False)
     arm_controller.solver = solver
 

@@ -15,7 +15,7 @@ from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self, dt=0.02, vlim=1.0,
+    def __init__(self, dt=0.02,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
@@ -28,7 +28,10 @@ class MoveDualArmServer(Node):
                                         URDF_SPHERE_PATH,
                                         SRDF_SPHERE_PATH,
                                         dt=dt,
-                                        vlim=vlim,
+                                        v_lim=1.0,
+                                        w_lim=1.5,
+                                        dq_lim=1.5,
+                                        d_min=0.02,
                                         visualize=False)
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(

@@ -48,10 +48,11 @@ def main(timeout=10.0,
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.04,
-                                   vlim=0.8,
-                                   wlim=2.0,
-                                   dmin=0.05,
+                                   dt=0.02,
+                                   v_lim=1.0,
+                                   w_lim=1.5,
+                                   dq_lim=1.5,
+                                   d_min=0.02,
                                    visualize=False)
 
     while True:

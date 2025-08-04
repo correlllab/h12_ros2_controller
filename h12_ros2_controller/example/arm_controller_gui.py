@@ -16,9 +16,10 @@ def main():
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
-                                   vlim=1.0,
-                                   wlim=2.0,
-                                   dmin=0.01,
+                                   v_lim=1.0,
+                                   w_lim=1.5,
+                                   dq_lim=1.5,
+                                   d_min=0.02,
                                    visualize=True)
 
     root = tk.Tk()

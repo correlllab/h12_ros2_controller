@@ -13,13 +13,14 @@ class ArmController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, vlim=1.0, wlim=3.0, dmin=0.05, visualize=False):
+                 dt=0.02, v_lim=1.0, w_lim=1.5, dq_lim=1.5, d_min=0.02, visualize=False):
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
-        self.vlim = vlim
-        self.wlim = wlim
-        self.dmin = dmin
+        self.vlim = v_lim
+        self.wlim = w_lim
+        self.dq_lim = dq_lim
+        self.dmin = d_min
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -341,19 +342,19 @@ class ArmController:
         v_right, w_right = twist_right[:3], twist_right[3:]
 
         # joint-level limit
-        left_joint_scaler = np.min(1.5 / (np.abs(vel[LEFT_ARM_INDEX]) + 1e-6))
-        right_joint_scaler = np.min(1.5 / (np.abs(vel[RIGHT_ARM_INDEX]) + 1e-6))
+        left_dq_scaler = np.min(self.dq_lim / (np.abs(vel[LEFT_ARM_INDEX]) + 1e-6))
+        right_dq_scaler = np.min(self.dq_lim / (np.abs(vel[RIGHT_ARM_INDEX]) + 1e-6))
 
         # scale left and right end effectors
         left_scaler = np.min([
             1.0,
-            left_joint_scaler,
+            left_dq_scaler,
             self.vlim / (np.linalg.norm(v_left) + 1e-6),
             self.wlim / (np.linalg.norm(w_left) + 1e-6)
         ])
         right_scaler = np.min([
             1.0,
-            right_joint_scaler,
+            right_dq_scaler,
             self.vlim / (np.linalg.norm(v_right) + 1e-6),
             self.wlim / (np.linalg.norm(w_right) + 1e-6)
         ])
