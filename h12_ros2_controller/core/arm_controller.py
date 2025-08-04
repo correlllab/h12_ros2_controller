@@ -340,14 +340,20 @@ class ArmController:
         v_left, w_left = twist_left[:3], twist_left[3:]
         v_right, w_right = twist_right[:3], twist_right[3:]
 
+        # joint-level limit
+        left_joint_scaler = np.min(1.5 / (np.abs(vel[LEFT_ARM_INDEX]) + 1e-6))
+        right_joint_scaler = np.min(1.5 / (np.abs(vel[RIGHT_ARM_INDEX]) + 1e-6))
+
         # scale left and right end effectors
         left_scaler = np.min([
             1.0,
+            left_joint_scaler,
             self.vlim / (np.linalg.norm(v_left) + 1e-6),
             self.wlim / (np.linalg.norm(w_left) + 1e-6)
         ])
         right_scaler = np.min([
             1.0,
+            right_joint_scaler,
             self.vlim / (np.linalg.norm(v_right) + 1e-6),
             self.wlim / (np.linalg.norm(w_right) + 1e-6)
         ])
