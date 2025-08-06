@@ -9,6 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import ArmSDKPublisher
+from h12_ros2_controller.utility.joint_definition import LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 def main():
     ChannelFactoryInitialize()
@@ -23,13 +24,12 @@ def main():
     arm_sdk_publisher.kp[:] = 0.0
     arm_sdk_publisher.kd[:] = 3.0
 
-    i_enabled = 4
+    i_enabled = LEFT_ARM_INDEX[4]
     arm_sdk_publisher.kp[i_enabled] = 30.0
 
-    init_q = np.zeros(15)
-    init_q[0:7] = robot_model.q[13:20]
-    init_q[7:14] = robot_model.q[32:39]
-    arm_sdk_publisher.enable_motor([i for i in range(0, 15)], init_q)
+    motor_ids = [i for i in range(13, 27)]
+    init_q = robot_model.q[LEFT_ARM_INDEX + RIGHT_ARM_INDEX]
+    arm_sdk_publisher.enable_motor(motor_ids, init_q)
     arm_sdk_publisher.start_publisher()
 
     root = tk.Tk()
@@ -38,7 +38,7 @@ def main():
                       from_=-2.0, to=2.0,
                       resolution=0.01, orient=tk.HORIZONTAL, length=400)
     slider.pack()
-    slider.set(init_q[i_enabled])
+    slider.set(robot_model.q[i_enabled])
     root.update()
 
     while True:

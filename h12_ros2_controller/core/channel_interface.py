@@ -22,8 +22,7 @@ TOPIC_ARM_SDK = 'rt/arm_sdk'
 
 NUM_MOTOR = 27
 NUM_HAND_DOF = 12
-NUM_ARM_DOF = 15
-K_NOT_USED = NUM_MOTOR
+INDEX_NOT_USED = NUM_MOTOR
 
 class StateSubscriber:
     def __init__(self):
@@ -181,11 +180,11 @@ class HandPublisher:
 class ArmSDKPublisher:
     def __init__(self):
         # variables saving states
-        self.q = np.zeros(NUM_ARM_DOF)
-        self.dq = np.zeros(NUM_ARM_DOF)
-        self.tau = np.zeros(NUM_ARM_DOF)
-        self.kp = np.zeros(NUM_ARM_DOF)
-        self.kd = np.zeros(NUM_ARM_DOF)
+        self.q = np.zeros(NUM_MOTOR)
+        self.dq = np.zeros(NUM_MOTOR)
+        self.tau = np.zeros(NUM_MOTOR)
+        self.kp = np.zeros(NUM_MOTOR)
+        self.kd = np.zeros(NUM_MOTOR)
 
         # publish arm sdk command
         self.arm_sdk_publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
@@ -206,7 +205,7 @@ class ArmSDKPublisher:
         print('All arm joints are locked in the initial position.')
 
     def publish_arm_sdk_cmd(self):
-        for i in range(NUM_ARM_DOF):
+        for i in range(NUM_MOTOR):
             self.arm_sdk_cmd.motor_cmd[i].q = self.q[i]
             self.arm_sdk_cmd.motor_cmd[i].dq = self.dq[i]
             self.arm_sdk_cmd.motor_cmd[i].tau = self.tau[i]
@@ -220,10 +219,10 @@ class ArmSDKPublisher:
     def enable_motor(self, motor_ids, init_q):
         motor_ids, init_q = np.array(motor_ids), np.array(init_q)
         assert len(motor_ids) == len(init_q), 'Motor IDs and initial positions must have the same length.'
-        assert np.all(motor_ids < NUM_ARM_DOF) and np.all(motor_ids >= 0), f'Motor IDs must be within [0, {NUM_ARM_DOF}).'
+        assert np.all(motor_ids < NUM_MOTOR) and np.all(motor_ids >= 0), f'Motor IDs must be within [0, {NUM_MOTOR}).'
 
         # enable arm sdk
-        self.arm_sdk_cmd.motor_cmd[K_NOT_USED].q = 1.0
+        self.arm_sdk_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
         self.q[motor_ids] = init_q
 
     def start_publisher(self):
