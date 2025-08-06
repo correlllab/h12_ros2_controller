@@ -227,3 +227,12 @@ class ArmSDKPublisher:
 
     def start_publisher(self):
         self.arm_sdk_thread.Start()
+
+    def estop(self):
+        self.kp.fill(0.0)
+        self.kd.fill(3.0)
+
+    def shutdown(self):
+        self.arm_sdk_thread.Wait(0)
+        self.arm_sdk_publisher.Close()
+        print('ArmSDKPublisher shutdown.')

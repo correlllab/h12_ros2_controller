@@ -5,7 +5,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class ArmController:
@@ -13,7 +13,9 @@ class ArmController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=1.5, dq_lim=1.5, d_min=0.02, visualize=False):
+                 dt=0.02, v_lim=1.0, w_lim=1.5, dq_lim=1.5, d_min=0.02,
+                 visualize=False,
+                 use_sport_mode=False):
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
@@ -34,7 +36,10 @@ class ArmController:
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
 
         # initialize command publisher for upper body motors
-        self.command_publisher = CommandPublisher()
+        if use_sport_mode:
+            self.command_publisher = ArmSDKPublisher()
+        else:
+            self.command_publisher = CommandPublisher()
 
         # gain for shoulder
         self.command_publisher.kp[13:16] = 180.0

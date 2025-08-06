@@ -1,4 +1,5 @@
 import time
+import argparse
 import numpy as np
 import tkinter as tk
 import pinocchio as pin
@@ -41,10 +42,10 @@ def input_pose(side):
 
 def main(timeout=10.0,
          threshold_linear=5e-3,
-         threshold_angular=2e-2):
+         threshold_angular=2e-2,
+         use_sport_mode=False):
     ChannelFactoryInitialize()
-
-    # Initialize arm controller
+    # initialize arm controller
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
@@ -53,7 +54,8 @@ def main(timeout=10.0,
                                    w_lim=1.5,
                                    dq_lim=1.5,
                                    d_min=0.02,
-                                   visualize=False)
+                                   visualize=False,
+                                   use_sport_mode=use_sport_mode)
 
     while True:
         # get target poses
@@ -90,8 +92,20 @@ def main(timeout=10.0,
         input('Press any key to continue...') # flush the input buffer
         cont = input('Do you want to send another goal? (y/n): ').lower()
         if cont != 'y':
+            print('Shutting down...')
             arm_controller.shutdown()
             break
 
 if __name__ == '__main__':
-    main(timeout=10.0)
+    parser = argparse.ArgumentParser(description='Arm Controller Goto')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
+    group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')
+    args = parser.parse_args()
+
+    if args.sport:
+        main(timeout=10.0, use_sport_mode=True)
+    elif args.debug:
+        main(timeout=10.0, use_sport_mode=False)
+    else:
+        print('Invalid argument! Use --debug or --sport')

@@ -24,8 +24,21 @@ def main():
     arm_sdk_publisher.kp[:] = 0.0
     arm_sdk_publisher.kd[:] = 3.0
 
-    i_enabled = LEFT_ARM_INDEX[4]
-    arm_sdk_publisher.kp[i_enabled] = 30.0
+    # gain for shoulder
+    arm_sdk_publisher.kp[13:16] = 180.0
+    arm_sdk_publisher.kd[13:16] = 3.0
+    arm_sdk_publisher.kp[20:23] = 180.0
+    arm_sdk_publisher.kd[20:23] = 3.0
+    # gain for elbow
+    arm_sdk_publisher.kp[16:18] = 150.0
+    arm_sdk_publisher.kd[16:18] = 3.0
+    arm_sdk_publisher.kp[23:25] = 150.0
+    arm_sdk_publisher.kd[23:25] = 3.0
+    # gain for wrist
+    arm_sdk_publisher.kp[18:20] = 50.0
+    arm_sdk_publisher.kd[18:20] = 2.0
+    arm_sdk_publisher.kp[25:27] = 50.0
+    arm_sdk_publisher.kd[25:27] = 2.0
 
     motor_ids = [i for i in range(13, 27)]
     init_q = robot_model.q[LEFT_ARM_INDEX + RIGHT_ARM_INDEX]
@@ -38,12 +51,12 @@ def main():
                       from_=-2.0, to=2.0,
                       resolution=0.01, orient=tk.HORIZONTAL, length=400)
     slider.pack()
-    slider.set(robot_model.q[i_enabled])
+    slider.set(robot_model.q[17])
     root.update()
 
     while True:
         root.update()
-        arm_sdk_publisher.q[i_enabled] = slider.get()
+        arm_sdk_publisher.q[17] = slider.get()
         time.sleep(0.01)
 
 if __name__ == '__main__':

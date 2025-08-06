@@ -1,4 +1,5 @@
 import time
+import argparse
 import numpy as np
 import tkinter as tk
 
@@ -9,7 +10,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.arm_controller import ArmController
 
-def main():
+def main(use_sport_mode=False):
     ChannelFactoryInitialize()
     # example usage
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
@@ -20,7 +21,8 @@ def main():
                                    w_lim=1.5,
                                    dq_lim=1.5,
                                    d_min=0.02,
-                                   visualize=True)
+                                   visualize=True,
+                                   use_sport_mode=use_sport_mode)
 
     root = tk.Tk()
     root.title('Arm Controller')
@@ -107,41 +109,60 @@ def main():
     root.update()
 
     while True:
-        start_time = time.time()
-        root.update()
-        # update left hand target
-        lx = slider_lx.get()
-        ly = slider_ly.get()
-        lz = slider_lz.get()
-        lr = slider_lr.get()
-        lp = slider_lp.get()
-        lyaw = slider_lyaw.get()
-        arm_controller.left_ee_target_pose = [lx, ly, lz, lr, lp, lyaw]
+        try:
+            start_time = time.time()
+            root.update()
+            # update left hand target
+            lx = slider_lx.get()
+            ly = slider_ly.get()
+            lz = slider_lz.get()
+            lr = slider_lr.get()
+            lp = slider_lp.get()
+            lyaw = slider_lyaw.get()
+            arm_controller.left_ee_target_pose = [lx, ly, lz, lr, lp, lyaw]
 
-        # update right hand target
-        rx = slider_rx.get()
-        ry = slider_ry.get()
-        rz = slider_rz.get()
-        rr = slider_rr.get()
-        rp = slider_rp.get()
-        ryaw = slider_ryaw.get()
-        arm_controller.right_ee_target_pose = [rx, ry, rz, rr, rp, ryaw]
+            # update right hand target
+            rx = slider_rx.get()
+            ry = slider_ry.get()
+            rz = slider_rz.get()
+            rr = slider_rr.get()
+            rp = slider_rp.get()
+            ryaw = slider_ryaw.get()
+            arm_controller.right_ee_target_pose = [rx, ry, rz, rr, rp, ryaw]
 
-        arm_controller.control_dual_arm_step()
-        # arm_controller.sim_dual_arm_step()
+            arm_controller.control_dual_arm_step()
+            # arm_controller.sim_dual_arm_step()
 
-        # print errors
-        left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
-        left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
-        right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
-        right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+            # print errors
+            left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+            left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+            right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+            right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
 
-        print(f'Left Error Linear: {left_error_linear:.4f}, '
-                f'Left Error Angular: {left_error_angular:.4f}, '
-                f'Right Error Linear: {right_error_linear:.4f}, '
-                f'Right Error Angular: {right_error_angular:.4f}')
+            print(f'Left Error Linear: {left_error_linear:.4f}, '
+                  f'Left Error Angular: {left_error_angular:.4f}, '
+                  f'Right Error Linear: {right_error_linear:.4f}, '
+                  f'Right Error Angular: {right_error_angular:.4f}')
 
-        time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
+            time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
+        except Exception as e:
+            print(f'Exception occurred: {e}')
+        finally:
+            print('Shutting down...')
+            arm_controller.shutdown()
+            break
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Arm Controller Goto')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
+    group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')
+    args = parser.parse_args()
+
+    if args.sport:
+        main(use_sport_mode=True)
+    elif args.debug:
+        main(use_sport_mode=False)
+    else:
+        print('Invalid argument! Use --debug or --sport')
+
