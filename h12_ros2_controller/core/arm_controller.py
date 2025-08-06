@@ -13,7 +13,7 @@ class ArmController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=1.5, dq_lim=1.5, d_min=0.02,
+                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
                  visualize=False,
                  use_sport_mode=False):
         # initialize robot model
@@ -42,20 +42,25 @@ class ArmController:
             self.command_publisher = CommandPublisher()
 
         # gain for shoulder
-        self.command_publisher.kp[13:16] = 180.0
-        self.command_publisher.kd[13:16] = 3.0
-        self.command_publisher.kp[20:23] = 180.0
-        self.command_publisher.kd[20:23] = 3.0
+        self.command_publisher.kp[13:15] = 180.0
+        self.command_publisher.kd[13:15] = 5.0
+        self.command_publisher.kp[20:22] = 180.0
+        self.command_publisher.kd[20:22] = 5.0
+        # gain for shoulder yaw
+        self.command_publisher.kp[15] = 150.0
+        self.command_publisher.kd[15] = 4.0
+        self.command_publisher.kp[22] = 150.0
+        self.command_publisher.kd[22] = 4.0
         # gain for elbow
-        self.command_publisher.kp[16:18] = 150.0
-        self.command_publisher.kd[16:18] = 3.0
-        self.command_publisher.kp[23:25] = 150.0
-        self.command_publisher.kd[23:25] = 3.0
+        self.command_publisher.kp[16] = 150.0
+        self.command_publisher.kd[16] = 4.0
+        self.command_publisher.kp[23] = 150.0
+        self.command_publisher.kd[23] = 4.0
         # gain for wrist
-        self.command_publisher.kp[18:20] = 50.0
-        self.command_publisher.kd[18:20] = 2.0
-        self.command_publisher.kp[25:27] = 50.0
-        self.command_publisher.kd[25:27] = 2.0
+        self.command_publisher.kp[17:20] = 50.0
+        self.command_publisher.kd[17:20] = 3.0
+        self.command_publisher.kp[24:27] = 50.0
+        self.command_publisher.kd[24:27] = 3.0
         # enable upper body motors
         init_q = self.robot_model.q_reduced
         self.command_publisher.enable_motor(motor_ids, init_q)

@@ -56,7 +56,7 @@ class StateSubscriber:
 
     def shutdown(self):
         self.low_state_subscriber.Close()
-        print('StateSubscriber shutdown.')
+        print('StateSubscriber shutdown')
 
 class CommandPublisher:
     def __init__(self):
@@ -115,9 +115,10 @@ class CommandPublisher:
         self.low_cmd_thread.Start()
 
     def estop(self):
-        self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
+        self.mode.fill(0)
 
     def shutdown(self):
+        self.estop()
         self.low_cmd_thread.Wait(0)
         self.low_cmd_publisher.Close()
         print('CommandPublisher shutdown.')
@@ -187,8 +188,8 @@ class ArmSDKPublisher:
         self.kd = np.zeros(NUM_MOTOR)
 
         # publish arm sdk command
-        self.arm_sdk_publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
-        self.arm_sdk_publisher.Init()
+        self.arm_cmd_publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
+        self.arm_cmd_publisher.Init()
 
         # initialize arm sdk command
         self.crc = CRC()
@@ -214,7 +215,7 @@ class ArmSDKPublisher:
         # set CRC
         self.arm_sdk_cmd.crc = self.crc.Crc(self.arm_sdk_cmd)
         # write to publisher
-        self.arm_sdk_publisher.Write(self.arm_sdk_cmd)
+        self.arm_cmd_publisher.Write(self.arm_sdk_cmd)
 
     def enable_motor(self, motor_ids, init_q):
         motor_ids, init_q = np.array(motor_ids), np.array(init_q)
@@ -229,10 +230,14 @@ class ArmSDKPublisher:
         self.arm_sdk_thread.Start()
 
     def estop(self):
+        self.dq.fill(0.0)
+        self.tau.fill(0.0)
         self.kp.fill(0.0)
-        self.kd.fill(3.0)
+        self.kd.fill(8.0)
+        self.publish_arm_sdk_cmd()
 
     def shutdown(self):
+        self.estop()
         self.arm_sdk_thread.Wait(0)
-        self.arm_sdk_publisher.Close()
-        print('ArmSDKPublisher shutdown.')
+        self.arm_cmd_publisher.Close()
+        print('ArmSDKPublisher shutdown')

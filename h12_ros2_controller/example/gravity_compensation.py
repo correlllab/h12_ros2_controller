@@ -20,17 +20,17 @@ def main(use_sport_mode=False):
     # set gain for damp mode
     arm_controller.damp_mode(6.0)
 
-    while True:
-        try:
+
+    try:
+        while True:
             start_time = time.time()
             arm_controller.gravity_compensation_step()
             time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
-        except Exception as e:
-            print(f'Exception occurred: {e}')
-        finally:
-            print('Shutting down...')
-            arm_controller.shutdown()
-            break
+    except Exception as e:
+        print(f'Exception occurred: {e}')
+    finally:
+        print('Shutting down...')
+        arm_controller.shutdown()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')

@@ -18,11 +18,13 @@ def main(use_sport_mode=False):
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
                                    v_lim=1.0,
-                                   w_lim=1.5,
+                                   w_lim=2.0,
                                    dq_lim=1.5,
                                    d_min=0.02,
                                    visualize=True,
                                    use_sport_mode=use_sport_mode)
+    arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]
+    arm_controller.right_ee_target_pose = [0.3, -0.2, 0.1, 0.0, 0.0, 0.0]
 
     root = tk.Tk()
     root.title('Arm Controller')
@@ -108,8 +110,8 @@ def main(use_sport_mode=False):
 
     root.update()
 
-    while True:
-        try:
+    try:
+        while True:
             start_time = time.time()
             root.update()
             # update left hand target
@@ -145,12 +147,11 @@ def main(use_sport_mode=False):
                   f'Right Error Angular: {right_error_angular:.4f}')
 
             time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
-        except Exception as e:
-            print(f'Exception occurred: {e}')
-        finally:
-            print('Shutting down...')
-            arm_controller.shutdown()
-            break
+    except Exception as e:
+        print(f'Exception occurred: {e}')
+    finally:
+        print('Shutting down...')
+        arm_controller.shutdown()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
@@ -165,4 +166,3 @@ if __name__ == '__main__':
         main(use_sport_mode=False)
     else:
         print('Invalid argument! Use --debug or --sport')
-

@@ -51,50 +51,54 @@ def main(timeout=10.0,
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
                                    v_lim=1.0,
-                                   w_lim=1.5,
-                                   dq_lim=1.5,
+                                   w_lim=2.0,
+                                   dq_lim=2.0,
                                    d_min=0.02,
                                    visualize=False,
                                    use_sport_mode=use_sport_mode)
 
-    while True:
-        # get target poses
-        left_pose = input_pose('left')
-        right_pose = input_pose('right')
-        # set target poses
-        arm_controller.left_ee_target_pose = left_pose
-        arm_controller.right_ee_target_pose = right_pose
+    try:
+        while True:
+            # get target poses
+            left_pose = input_pose('left')
+            right_pose = input_pose('right')
+            # set target poses
+            arm_controller.left_ee_target_pose = left_pose
+            arm_controller.right_ee_target_pose = right_pose
 
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            frame_start_time = time.time()
-            arm_controller.control_dual_arm_step()
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                frame_start_time = time.time()
+                arm_controller.control_dual_arm_step()
 
-            # print errors
-            left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
-            left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
-            right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
-            right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+                # print errors
+                left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+                left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+                right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+                right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
 
-            print(f'Left Error Linear: {left_error_linear:.4f}, '
-                  f'Left Error Angular: {left_error_angular:.4f}, '
-                  f'Right Error Linear: {right_error_linear:.4f}, '
-                  f'Right Error Angular: {right_error_angular:.4f}')
+                print(f'Left Error Linear: {left_error_linear:.4f}, '
+                    f'Left Error Angular: {left_error_angular:.4f}, '
+                    f'Right Error Linear: {right_error_linear:.4f}, '
+                    f'Right Error Angular: {right_error_angular:.4f}')
 
-            # early break
-            if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
-                left_error_angular < threshold_angular and right_error_angular < threshold_angular):
-                print('Target reached!')
+                # early break
+                if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
+                    left_error_angular < threshold_angular and right_error_angular < threshold_angular):
+                    print('Target reached!')
+                    break
+
+                time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
+
+            input('Press any key to continue...') # flush the input buffer
+            cont = input('Do you want to send another goal? (y/n): ').lower()
+            if cont != 'y':
                 break
-
-            time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
-
-        input('Press any key to continue...') # flush the input buffer
-        cont = input('Do you want to send another goal? (y/n): ').lower()
-        if cont != 'y':
-            print('Shutting down...')
-            arm_controller.shutdown()
-            break
+    except Exception as e:
+        print(f'Exception occurred: {e}')
+    finally:
+        print('Shutting down...')
+        arm_controller.shutdown()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')

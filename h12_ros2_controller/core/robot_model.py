@@ -112,7 +112,7 @@ class RobotModel:
         if self.state_subscriber is not None:
             self.state_subscriber.shutdown()
             self.state_subscriber = None
-        print('RobotModel shutdown.')
+        print('RobotModel shutdown')
 
     def init_visualizer(self):
         try:

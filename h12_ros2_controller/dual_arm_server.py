@@ -29,8 +29,8 @@ class MoveDualArmServer(Node):
                                         SRDF_SPHERE_PATH,
                                         dt=dt,
                                         v_lim=1.0,
-                                        w_lim=1.5,
-                                        dq_lim=1.5,
+                                        w_lim=2.0,
+                                        dq_lim=2.0,
                                         d_min=0.02,
                                         visualize=False)
         # publisher of left and right end-effector poses

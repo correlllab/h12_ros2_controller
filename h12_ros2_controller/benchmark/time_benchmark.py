@@ -113,8 +113,8 @@ if __name__ == '__main__':
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
                                    v_lim=1.0,
-                                   w_lim=1.5,
-                                   dq_lim=1.5,
+                                   w_lim=2.0,
+                                   dq_lim=2.0,
                                    d_min=0.02,
                                    visualize=True)
 
