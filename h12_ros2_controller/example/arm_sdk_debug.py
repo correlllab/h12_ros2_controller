@@ -21,14 +21,16 @@ def main():
 
     arm_sdk_publisher = ArmSDKPublisher()
 
-    arm_sdk_publisher.kp[:] = 0.0
-    arm_sdk_publisher.kd[:] = 3.0
-
     # gain for shoulder
-    arm_sdk_publisher.kp[13:16] = 150.0
-    arm_sdk_publisher.kd[13:16] = 5.0
-    arm_sdk_publisher.kp[20:23] = 150.0
-    arm_sdk_publisher.kd[20:23] = 5.0
+    arm_sdk_publisher.kp[13:15] = 180.0
+    arm_sdk_publisher.kd[13:15] = 5.0
+    arm_sdk_publisher.kp[20:22] = 180.0
+    arm_sdk_publisher.kd[20:22] = 5.0
+    # gain for shoulder yaw
+    arm_sdk_publisher.kp[15] = 150.0
+    arm_sdk_publisher.kd[15] = 4.0
+    arm_sdk_publisher.kp[22] = 150.0
+    arm_sdk_publisher.kd[22] = 4.0
     # gain for elbow
     arm_sdk_publisher.kp[16] = 120.0
     arm_sdk_publisher.kd[16] = 4.0
