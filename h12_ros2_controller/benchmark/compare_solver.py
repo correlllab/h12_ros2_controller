@@ -15,7 +15,7 @@ def run_benchmark(solver, filepath, mode):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.04,
+                                   dt=0.03,
                                    v_lim=1.0,
                                    w_lim=2.0,
                                    dq_lim=2.0,
