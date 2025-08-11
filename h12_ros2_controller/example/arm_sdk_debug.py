@@ -60,7 +60,10 @@ def main():
     try:
         while True:
             root.update()
+            robot_model.sync_subscriber()
+            robot_model.update_kinematics()
             arm_sdk_publisher.q[control_idx] = slider.get()
+            print(f'Error: {arm_sdk_publisher.q[control_idx] - robot_model.q[control_idx]:.4f}')
             time.sleep(0.01)
     except Exception as e:
         print(f'Exception occurred: {e}')
