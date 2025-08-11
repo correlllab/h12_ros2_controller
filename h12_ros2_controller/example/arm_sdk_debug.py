@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import tkinter as tk
+import pinocchio as pin
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -22,19 +23,19 @@ def main():
     arm_sdk_publisher = ArmSDKPublisher()
 
     # gain for shoulder
-    arm_sdk_publisher.kp[13:15] = 180.0
-    arm_sdk_publisher.kd[13:15] = 5.0
-    arm_sdk_publisher.kp[20:22] = 180.0
-    arm_sdk_publisher.kd[20:22] = 5.0
+    arm_sdk_publisher.kp[13:15] = 200.0
+    arm_sdk_publisher.kd[13:15] = 6.0
+    arm_sdk_publisher.kp[20:22] = 200.0
+    arm_sdk_publisher.kd[20:22] = 6.0
     # gain for shoulder yaw
     arm_sdk_publisher.kp[15] = 150.0
     arm_sdk_publisher.kd[15] = 4.0
     arm_sdk_publisher.kp[22] = 150.0
     arm_sdk_publisher.kd[22] = 4.0
     # gain for elbow
-    arm_sdk_publisher.kp[16] = 120.0
+    arm_sdk_publisher.kp[16] = 150.0
     arm_sdk_publisher.kd[16] = 4.0
-    arm_sdk_publisher.kp[23] = 120.0
+    arm_sdk_publisher.kp[23] = 150.0
     arm_sdk_publisher.kd[23] = 4.0
     # gain for wrist
     arm_sdk_publisher.kp[17:20] = 50.0
@@ -47,7 +48,7 @@ def main():
     arm_sdk_publisher.enable_motor(motor_ids, init_q)
     arm_sdk_publisher.start_publisher()
 
-    control_idx = 17
+    control_idx = 14
     root = tk.Tk()
     root.title(f'Arm Joint {control_idx} Control')
     slider = tk.Scale(root, label=f'Joint {control_idx} Position',
@@ -62,7 +63,21 @@ def main():
             root.update()
             robot_model.sync_subscriber()
             robot_model.update_kinematics()
-            arm_sdk_publisher.q[control_idx] = slider.get()
+
+            target_q = robot_model.q
+            target_q[control_idx] = slider.get()
+            q_diff = target_q - robot_model.q
+
+            tau = pin.rnea(robot_model.model,
+                           robot_model.data,
+                           target_q,
+                           robot_model.dq,
+                           np.zeros(robot_model.model.nv))
+
+            arm_sdk_publisher.q[control_idx] = target_q[control_idx]
+            arm_sdk_publisher.dq[control_idx] = q_diff[control_idx]
+            arm_sdk_publisher.tau[control_idx] = tau[control_idx]
+
             print(f'Error: {arm_sdk_publisher.q[control_idx] - robot_model.q[control_idx]:.4f}')
             time.sleep(0.01)
     except Exception as e:

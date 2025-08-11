@@ -42,10 +42,10 @@ class ArmController:
             self.command_publisher = CommandPublisher()
 
         # gain for shoulder
-        self.command_publisher.kp[13:15] = 180.0
-        self.command_publisher.kd[13:15] = 5.0
-        self.command_publisher.kp[20:22] = 180.0
-        self.command_publisher.kd[20:22] = 5.0
+        self.command_publisher.kp[13:15] = 200.0
+        self.command_publisher.kd[13:15] = 6.0
+        self.command_publisher.kp[20:22] = 200.0
+        self.command_publisher.kd[20:22] = 6.0
         # gain for shoulder yaw
         self.command_publisher.kp[15] = 150.0
         self.command_publisher.kd[15] = 4.0
