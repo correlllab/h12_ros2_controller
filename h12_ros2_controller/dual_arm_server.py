@@ -15,7 +15,7 @@ from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class MoveDualArmServer(Node):
-    def __init__(self, dt=0.02,
+    def __init__(self, dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
@@ -187,7 +187,7 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer(dt=0.02,
+    node = MoveDualArmServer(dt=0.03,
                              timeout=10.0,
                              threshold_linear=5e-3,
                              threshold_angular=2e-2)
