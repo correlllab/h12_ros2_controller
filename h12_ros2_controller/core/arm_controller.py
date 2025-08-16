@@ -427,7 +427,7 @@ class ArmController:
         # sync robot model
         self.sync_robot_model()
         # solve IK and apply the control
-        vel = self.ik_solver.solve_ik()
+        vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
 
@@ -435,7 +435,7 @@ class ArmController:
         # sync robot model
         self.sync_robot_model()
         # solve IK and apply the control
-        vel = self.ik_solver.solve_ik_reduced()
+        vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
 
@@ -444,7 +444,7 @@ class ArmController:
 
     def sim_full_body_step(self):
         # solve IK and apply the control
-        vel = self.ik_solver.solve_ik()
+        vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
@@ -454,7 +454,7 @@ class ArmController:
 
     def sim_dual_arm_step(self):
         # solve IK and apply the control
-        vel = self.ik_solver.solve_ik_reduced()
+        vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
@@ -536,7 +536,7 @@ class ArmController:
         self.sync_robot_model()
 
         # solve IK to get joint velocity
-        vel = self.ik_solver.solve_ik_reduced()
+        vel = self.ik_solver.ik_step_reduced()
 
         # get states in Cartesian space
         x = self.left_ee_position

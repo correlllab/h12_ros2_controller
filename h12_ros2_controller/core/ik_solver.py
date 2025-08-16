@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 
 import pink
@@ -15,14 +16,13 @@ class IKSolver:
                  dt: float = 0.02,
                  dmin: float = 0.05):
         '''
-        Initialize the IK solver with robot model and collision parameters.
+        Initialize the IK solver with robot model and collision parameters
 
-        Args:
-            robot_model: The robot model instance
-            urdf_sphere_path: Path to the sphere collision URDF
-            srdf_sphere_path: Path to the sphere collision SRDF
-            dt: Time step for IK solving
-            dmin: Minimum distance for collision avoidance
+        @param robot_model: the robot model instance
+        @param urdf_sphere_path: path to the sphere collision URDF
+        @param srdf_sphere_path: path to the sphere collision SRDF
+        @param dt: time step for IK solving
+        @param dmin: minimum distance for collision avoidance
         '''
         self.robot_model = robot_model
         self.dt = dt
@@ -92,7 +92,7 @@ class IKSolver:
                        position_cost: float = 50.0,
                        orientation_cost: float = 30.0,
                        lm_damping: float = 1.0):
-        '''Add a frame task to the IK solver.'''
+        '''Add a frame task to the IK solver'''
         self.frame_tasks[task_name] = pink.FrameTask(
             frame_name,
             position_cost=position_cost,
@@ -101,28 +101,28 @@ class IKSolver:
         )
 
     def remove_frame_task(self, task_name: str):
-        '''Remove a frame task from the IK solver.'''
+        '''Remove a frame task from the IK solver'''
         self.frame_tasks.pop(task_name, None)
 
     def update_configurations(self):
-        '''Update Pink configurations with current robot state.'''
+        '''Update Pink configurations with current robot state'''
         self.configuration.update(self.robot_model.q)
         self.reduced_configuration.update(self.robot_model.q_reduced)
 
     def set_from_configuration(self):
-        '''Set initial targets for all tasks from current configuration.'''
+        '''Set initial targets for all tasks from current configuration'''
         self.update_configurations()
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.configuration)
 
     def set_from_reduced_configuration(self):
-        '''Set initial targets for all tasks from reduced configuration.'''
+        '''Set initial targets for all tasks from reduced configuration'''
         self.update_configurations()
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.reduced_configuration)
 
-    def solve_ik(self):
-        '''Solve IK for all tasks and return joint velocities.'''
+    def ik_step(self):
+        '''Solve one step of IK for all tasks and return joint velocity'''
         self.update_configurations()
         self.posture_task.set_target_from_configuration(self.configuration)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
@@ -136,8 +136,8 @@ class IKSolver:
             safety_break=False
         )
 
-    def solve_ik_reduced(self):
-        '''Solve IK for reduced model with collision avoidance.'''
+    def ik_step_reduced(self):
+        '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
         self.update_configurations()
         self.posture_task.set_target_from_configuration(self.reduced_configuration)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
@@ -155,8 +155,70 @@ class IKSolver:
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
+    def solve_ik(self, timeout=5, linear_threshold=5e-3, angular_threshold=2e-2):
+        # reset configuration to zero position
+        self.configuration.update(self.robot_model.zero_q)
+        # optimization loop
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            self.posture_task.set_target_from_configuration(self.configuration)
+            tasks = list(self.frame_tasks.values()) + [self.posture_task]
+            vel = pink.solve_ik(
+                self.configuration,
+                tasks,
+                dt=self.dt,
+                solver=self.solver,
+                limits=self.limits,
+                barriers=[],
+                safety_break=False
+            )
+            self.configuration.integrate_inplace(vel, self.dt)
+            # check convergence
+            linear_err = 0
+            angular_err = 0
+            for task in self.frame_tasks.values():
+                err = task.compute_error(self.configuration)
+                linear_err += np.linalg.norm(err[:3])
+                angular_err += np.linalg.norm(err[3:])
+            if linear_err < linear_threshold and angular_err < angular_threshold:
+                break
+
+        return np.copy(self.configuration.q)
+
+    def solve_ik_reduced(self, timeout=5, linear_threshold=5e-3, angular_threshold=2e-2):
+        # reset configuration to zero position
+        self.reduced_configuration.update(self.robot_model.zero_q_reduced)
+        # optimization loop
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            self.posture_task.set_target_from_configuration(self.reduced_configuration)
+            tasks = list(self.frame_tasks.values()) + [self.posture_task]
+            vel = pink.solve_ik(
+                self.reduced_configuration,
+                tasks,
+                dt=self.dt,
+                solver=self.solver,
+                limits=self.limits_reduced,
+                barriers=[self.collision_barrier_reduced],
+                safety_break=False
+            )
+            self.reduced_configuration.integrate_inplace(vel, self.dt)
+            # check convergence
+            linear_err = 0
+            angular_err = 0
+            for task in self.frame_tasks.values():
+                err = task.compute_error(self.reduced_configuration)
+                linear_err += np.linalg.norm(err[:3])
+                angular_err += np.linalg.norm(err[3:])
+            if linear_err < linear_threshold and angular_err < angular_threshold:
+                break
+
+        q_full = np.zeros(self.robot_model.model.nq)
+        q_full[self.robot_model.reduced_mask] = self.reduced_configuration.q
+        return q_full
+
     def goto_configuration(self, q: np.ndarray):
-        '''Solve IK to reach a target joint configuration.'''
+        '''Solve one step of IK to reach a target joint configuration.'''
         self.update_configurations()
         self.joint_task.set_target(q)
         return pink.solve_ik(
@@ -170,7 +232,7 @@ class IKSolver:
         )
 
     def goto_reduced_configuration(self, q_reduced: np.ndarray):
-        '''Solve IK to reach a target reduced joint configuration.'''
+        '''Solve one step of IK to reach a target reduced joint configuration.'''
         self.update_configurations()
         self.joint_task.set_target(q_reduced)
         vel = pink.solve_ik(
