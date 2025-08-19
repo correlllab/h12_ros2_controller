@@ -155,7 +155,8 @@ class IKSolver:
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
-    def solve_ik(self, timeout=5, linear_threshold=5e-3, angular_threshold=2e-2):
+    def solve_ik(self, alpha=0.1,
+                 timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
         # reset configuration to zero position
         self.configuration.update(self.robot_model.zero_q)
         # optimization loop
@@ -166,13 +167,13 @@ class IKSolver:
             vel = pink.solve_ik(
                 self.configuration,
                 tasks,
-                dt=self.dt,
+                dt=alpha,
                 solver=self.solver,
                 limits=self.limits,
                 barriers=[],
                 safety_break=False
             )
-            self.configuration.integrate_inplace(vel, self.dt)
+            self.configuration.integrate_inplace(vel, alpha)
             # check convergence
             linear_err = 0
             angular_err = 0
@@ -181,11 +182,18 @@ class IKSolver:
                 linear_err += np.linalg.norm(err[:3])
                 angular_err += np.linalg.norm(err[3:])
             if linear_err < linear_threshold and angular_err < angular_threshold:
-                break
+                return {
+                    'q': np.copy(self.configuration.q),
+                    'success': True
+                }
 
-        return np.copy(self.configuration.q)
+        return {
+            'q': np.copy(self.configuration.q),
+            'success': False
+        }
 
-    def solve_ik_reduced(self, timeout=5, linear_threshold=5e-3, angular_threshold=2e-2):
+    def solve_ik_reduced(self, alpha=0.1,
+                         timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
         # reset configuration to zero position
         self.reduced_configuration.update(self.robot_model.zero_q_reduced)
         # optimization loop
@@ -196,13 +204,13 @@ class IKSolver:
             vel = pink.solve_ik(
                 self.reduced_configuration,
                 tasks,
-                dt=self.dt,
+                dt=alpha,
                 solver=self.solver,
                 limits=self.limits_reduced,
                 barriers=[self.collision_barrier_reduced],
                 safety_break=False
             )
-            self.reduced_configuration.integrate_inplace(vel, self.dt)
+            self.reduced_configuration.integrate_inplace(vel, alpha)
             # check convergence
             linear_err = 0
             angular_err = 0
@@ -211,11 +219,19 @@ class IKSolver:
                 linear_err += np.linalg.norm(err[:3])
                 angular_err += np.linalg.norm(err[3:])
             if linear_err < linear_threshold and angular_err < angular_threshold:
-                break
+                q_full = np.zeros(self.robot_model.model.nq)
+                q_full[self.robot_model.reduced_mask] = self.reduced_configuration.q
+                return {
+                    'q': q_full,
+                    'success': True
+                }
 
         q_full = np.zeros(self.robot_model.model.nq)
         q_full[self.robot_model.reduced_mask] = self.reduced_configuration.q
-        return q_full
+        return {
+            'q': q_full,
+            'success': False
+        }
 
     def goto_configuration(self, q: np.ndarray):
         '''Solve one step of IK to reach a target joint configuration.'''
