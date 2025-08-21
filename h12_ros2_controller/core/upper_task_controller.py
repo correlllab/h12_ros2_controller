@@ -1,0 +1,87 @@
+import numpy as np
+import pinocchio as pin
+from h12_ros2_controller.core.upper_controller import UpperController
+
+class UpperTaskController(UpperController):
+    def __init__(self,
+                 urdf_path: str,
+                 urdf_sphere_path: str,
+                 srdf_sphere_path: str,
+                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
+                 visualize=False,
+                 use_sport_mode=False):
+        super().__init__(urdf_path, urdf_sphere_path, srdf_sphere_path,
+                         dt, v_lim, w_lim, dq_lim, d_min,
+                         visualize, use_sport_mode)
+
+    def add_frame_task(self, task_name: str, frame_name: str, pose: np.ndarray = None):
+        '''Add a frame task with optional pose'''
+        self.ik_solver.add_frame_task(task_name, frame_name)
+        if pose is not None:
+            self.set_frame_task_pose(task_name, pose)
+
+    def set_frame_task_pose(self, task_name: str, pose: np.ndarray):
+        '''Set pose for a frame task'''
+        assert len(pose) == 6, 'Pose must be [x, y, z, roll, pitch, yaw]'
+        task = self.ik_solver.frame_tasks.get(task_name)
+        if task is None:
+            raise ValueError(f'Task {task_name} not found')
+        position = np.array(pose[:3])
+        rpy = np.array(pose[3:])
+        rotation = pin.rpy.rpyToMatrix(rpy)
+        transform = pin.SE3(rotation, position)
+        task.transform_target_to_world = transform
+
+    def get_frame_task_error(self, task_name: str):
+        '''Get error for a frame task'''
+        task = self.ik_solver.frame_tasks.get(task_name)
+        if task is None:
+            raise ValueError(f'Task {task_name} not found')
+        return task.compute_error(self.ik_solver.reduced_configuration)
+
+    def remove_frame_task(self, task_name: str):
+        '''Remove a frame task'''
+        self.ik_solver.remove_frame_task(task_name)
+
+    def control_step(self):
+        '''Solve IK for all tasks'''
+        # sync robot model
+        self.sync_robot_model()
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step()
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+
+    def control_step_reduced(self):
+        '''Solve IK for all tasks with the reduced model'''
+        # sync robot model
+        self.sync_robot_model()
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step_reduced()
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+
+    def sim_step(self):
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step()
+        vel = self.limit_joint_vel(vel)
+        # directly update the robot model for visualization
+        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model.update_kinematics()
+        self.robot_model.update_visualizer()
+
+    def sim_step_reduced(self):
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step_reduced()
+        vel = self.limit_joint_vel(vel)
+        # directly update the robot model for visualization
+        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model.update_kinematics()
+        self.robot_model.update_visualizer()
+
+    def get_frame_pose(self, frame_name: str):
+        '''Get current pose of a frame'''
+        position = self.robot_model.get_frame_position(frame_name)
+        rotation = self.robot_model.get_frame_rotation(frame_name)
+        rpy = pin.rpy.matrixToRpy(rotation)
+        return np.concatenate([position, rpy])

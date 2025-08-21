@@ -305,21 +305,19 @@ class ArmController(UpperController):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
+        # directly update the robot model for visualization
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
-        # update visualizer
-        if self.visualize:
-            self.robot_model.update_visualizer()
+        self.robot_model.update_visualizer()
 
     def sim_dual_arm_step(self):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
+        # directly update the robot model for visualization
         self.robot_model._q = self.robot_model.q + vel * self.dt
         self.robot_model.update_kinematics()
-        # update visualizer
-        if self.visualize:
-            self.robot_model.update_visualizer()
+        self.robot_model.update_visualizer()
 
     def gravity_compensation_step(self):
         # sync robot model

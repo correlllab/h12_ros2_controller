@@ -208,7 +208,8 @@ class RobotModel:
             pin.updateFramePlacements(self.model_reduced, self.data_reduced)
 
     def update_visualizer(self):
-        self.viz.display()
+        if self.viz is not None:
+            self.viz.display()
 
     def get_frame_transformation(self, frame_name: str):
         frame_id = self.model.getFrameId(frame_name)
