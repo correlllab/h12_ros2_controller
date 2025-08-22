@@ -1,8 +1,6 @@
 import time
 import argparse
 import numpy as np
-import tkinter as tk
-import pinocchio as pin
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 

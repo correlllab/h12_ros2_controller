@@ -1,7 +1,6 @@
 import time
 import argparse
 import numpy as np
-import pinocchio as pin
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -29,7 +28,10 @@ def input_frame_task():
             print('Invalid input. Make sure all 6 values are numeric.')
             continue
 
-def main(timeout=10.0, threshold_linear=5e-3, threshold_angular=2e-2, use_sport_mode=False):
+def main(timeout=10.0,
+         threshold_linear=5e-3,
+         threshold_angular=2e-2,
+         use_sport_mode=False):
     ChannelFactoryInitialize()
     # initialize upper task controller
     upper_task_controller = UpperTaskController('assets/h1_2/h1_2.urdf',
@@ -47,16 +49,17 @@ def main(timeout=10.0, threshold_linear=5e-3, threshold_angular=2e-2, use_sport_
         while True:
             # get frame task input
             frame_name, pose = input_frame_task()
+            task_name = f'{frame_name}_task'
             # add frame task
-            upper_task_controller.add_frame_task(frame_name, frame_name, pose)
+            upper_task_controller.add_frame_task(task_name, frame_name, pose)
 
             start_time = time.time()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                upper_task_controller.sim_step()
+                upper_task_controller.sim_step_reduced()
 
                 # print error
-                error = upper_task_controller.get_frame_task_error(frame_name)
+                error = upper_task_controller.get_frame_task_error(task_name)
                 linear_error = np.linalg.norm(error[:3])
                 angular_error = np.linalg.norm(error[3:])
 

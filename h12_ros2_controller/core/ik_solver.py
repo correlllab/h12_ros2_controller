@@ -1,9 +1,9 @@
 import os
 import time
-import numpy as np
-
 import pink
 import qpsolvers
+import meshcat_shapes
+import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.robot_model import RobotModel
@@ -99,10 +99,30 @@ class IKSolver:
             orientation_cost=orientation_cost,
             lm_damping=lm_damping
         )
+        # add frame to visualizer
+        if self.robot_model.viz is not None:
+            viewer = self.robot_model.viz.viewer
+            meshcat_shapes.frame(viewer[task_name], opacity=1.0)
+            meshcat_shapes.frame(viewer[frame_name], opacity=1.0)
 
     def remove_frame_task(self, task_name: str):
         '''Remove a frame task from the IK solver'''
+        frame_name = self.frame_tasks[task_name].frame
         self.frame_tasks.pop(task_name, None)
+        # remove frame from visualizer
+        if self.robot_model.viz is not None:
+            viewer = self.robot_model.viz.viewer
+            viewer[task_name].delete()
+            viewer[frame_name].delete()
+
+    def update_visualizer(self):
+        if self.robot_model.viz is not None:
+            viewer = self.robot_model.viz.viewer
+            for task_name, task in self.frame_tasks.items():
+                viewer[task_name].set_transform(task.transform_target_to_world.np)
+                frame_name = self.frame_tasks[task_name].frame
+                frame_id = self.robot_model.model.getFrameId(frame_name)
+                viewer[frame_name].set_transform(self.robot_model.data.oMf[frame_id].np)
 
     def update_configurations(self):
         '''Update Pink configurations with current robot state'''

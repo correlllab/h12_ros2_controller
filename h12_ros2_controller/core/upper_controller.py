@@ -141,6 +141,7 @@ class UpperController:
         self.robot_model.update_kinematics()
         # update visualizer if needed
         if self.visualize:
+            self.ik_solver.update_visualizer()
             self.robot_model.update_visualizer()
 
     def apply_joint_vel(self, vel):
