@@ -3,79 +3,83 @@ N = 4
 
 # disable lower body links and hand links
 disabled_links = [
-    "pelvis", "imu_link",
-    "left_hip_yaw_link","left_hip_pitch_link","left_hip_roll_link",
-    "left_knee_link","left_ankle_pitch_link","left_ankle_roll_link",
-    "right_hip_yaw_link","right_hip_pitch_link","right_hip_roll_link",
-    "right_knee_link","right_ankle_pitch_link","right_ankle_roll_link",
-    "L_hand_base_link","L_index_proximal","L_index_intermediate",
-    "L_middle_proximal","L_middle_intermediate","L_pinky_proximal",
-    "L_pinky_intermediate","L_ring_proximal","L_ring_intermediate",
-    "L_thumb_proximal_base","L_thumb_proximal","L_thumb_intermediate",
-    "L_thumb_distal",
-    "logo_link",
-    "R_hand_base_link","R_index_proximal","R_index_intermediate",
-    "R_middle_proximal","R_middle_intermediate","R_pinky_proximal",
-    "R_pinky_intermediate","R_ring_proximal","R_ring_intermediate",
-    "R_thumb_proximal_base","R_thumb_proximal","R_thumb_intermediate",
-    "R_thumb_distal"
+    'pelvis', 'imu_link',
+    'left_hip_yaw_link','left_hip_pitch_link','left_hip_roll_link',
+    'left_knee_link','left_ankle_pitch_link','left_ankle_roll_link',
+    'right_hip_yaw_link','right_hip_pitch_link','right_hip_roll_link',
+    'right_knee_link','right_ankle_pitch_link','right_ankle_roll_link',
+    # 'L_hand_base_link',
+    'L_index_proximal','L_index_intermediate',
+    'L_middle_proximal','L_middle_intermediate','L_pinky_proximal',
+    'L_pinky_intermediate','L_ring_proximal','L_ring_intermediate',
+    'L_thumb_proximal_base','L_thumb_proximal','L_thumb_intermediate',
+    'L_thumb_distal',
+    'logo_link',
+    # 'R_hand_base_link',
+    'R_index_proximal','R_index_intermediate',
+    'R_middle_proximal','R_middle_intermediate','R_pinky_proximal',
+    'R_pinky_intermediate','R_ring_proximal','R_ring_intermediate',
+    'R_thumb_proximal_base','R_thumb_proximal','R_thumb_intermediate',
+    'R_thumb_distal'
 ]
 
-# append 10 copies with names "link_sphere1" to "link_sphere10" for disabled_links
+# append N copies with names 'link_sphere1' to 'link_sphereN' for disabled_links
 disabled_link_full = []
 for link in disabled_links:
     disabled_link_full.append(link)
     for i in range(1, N + 1):
-        disabled_link_full.append(f"{link}_sphere{i}")
+        disabled_link_full.append(f'{link}_sphere{i}')
 disabled_links = disabled_link_full
 
 # complete list of all links
 all_links = [
-    "pelvis", "imu_link",
-    "left_hip_yaw_link","left_hip_pitch_link","left_hip_roll_link",
-    "left_knee_link","left_ankle_pitch_link","left_ankle_roll_link",
-    "right_hip_yaw_link","right_hip_pitch_link","right_hip_roll_link",
-    "right_knee_link","right_ankle_pitch_link","right_ankle_roll_link",
-    "torso_link",
-    "left_shoulder_pitch_link","left_shoulder_roll_link","left_shoulder_yaw_link",
-    "left_elbow_pitch_link","left_elbow_roll_link",
-    "left_wrist_pitch_link","left_wrist_yaw_link",
-    "L_hand_base_link","L_index_proximal","L_index_intermediate",
-    "L_middle_proximal","L_middle_intermediate","L_pinky_proximal",
-    "L_pinky_intermediate","L_ring_proximal","L_ring_intermediate",
-    "L_thumb_proximal_base","L_thumb_proximal","L_thumb_intermediate","L_thumb_distal",
-    "right_shoulder_pitch_link","right_shoulder_roll_link","right_shoulder_yaw_link",
-    "right_elbow_pitch_link","right_elbow_roll_link",
-    "right_wrist_pitch_link","right_wrist_yaw_link",
-    "logo_link",
-    "R_hand_base_link","R_index_proximal","R_index_intermediate",
-    "R_middle_proximal","R_middle_intermediate","R_pinky_proximal",
-    "R_pinky_intermediate","R_ring_proximal","R_ring_intermediate",
-    "R_thumb_proximal_base","R_thumb_proximal","R_thumb_intermediate","R_thumb_distal"
+    'pelvis', 'imu_link',
+    'left_hip_yaw_link', 'left_hip_pitch_link', 'left_hip_roll_link',
+    'left_knee_link', 'left_ankle_pitch_link', 'left_ankle_roll_link',
+    'right_hip_yaw_link', 'right_hip_pitch_link', 'right_hip_roll_link',
+    'right_knee_link', 'right_ankle_pitch_link', 'right_ankle_roll_link',
+    'torso_link',
+    'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link',
+    'left_elbow_link',
+    'left_wrist_roll_link', 'left_wrist_pitch_link', 'left_wrist_yaw_link',
+    'L_hand_base_link', 'L_index_proximal', 'L_index_intermediate',
+    'L_middle_proximal', 'L_middle_intermediate', 'L_pinky_proximal',
+    'L_pinky_intermediate', 'L_ring_proximal', 'L_ring_intermediate',
+    'L_thumb_proximal_base', 'L_thumb_proximal', 'L_thumb_intermediate', 'L_thumb_distal',
+    'right_shoulder_pitch_link', 'right_shoulder_roll_link', 'right_shoulder_yaw_link',
+    'right_elbow_link',
+    'right_wrist_roll_link', 'right_wrist_pitch_link', 'right_wrist_yaw_link',
+    'logo_link',
+    'R_hand_base_link', 'R_index_proximal', 'R_index_intermediate',
+    'R_middle_proximal', 'R_middle_intermediate', 'R_pinky_proximal',
+    'R_pinky_intermediate', 'R_ring_proximal', 'R_ring_intermediate',
+    'R_thumb_proximal_base', 'R_thumb_proximal', 'R_thumb_intermediate', 'R_thumb_distal'
 ]
 
-# append 10 copies with names "link_sphere1" to "link_sphere10" for all_links
+# append N copies with names 'link_sphere1' to 'link_sphereN' for all_links
 all_links_full = []
 for link in all_links:
     all_links_full.append(link)
     for i in range(1, N + 1):
-        all_links_full.append(f"{link}_sphere{i}")
+        all_links_full.append(f'{link}_sphere{i}')
 all_links = all_links_full
 
 # enabled links
 left_arm_links = [
-    "left_shoulder_pitch_link","left_shoulder_roll_link","left_shoulder_yaw_link",
-    "left_elbow_pitch_link","left_elbow_roll_link",
-    "left_wrist_pitch_link","left_wrist_yaw_link",
+    'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link',
+    'left_elbow_link',
+    'left_wrist_roll_link', 'left_wrist_pitch_link', 'left_wrist_yaw_link',
+    'L_hand_base_link'
 ]
 
 right_arm_links = [
-    "right_shoulder_pitch_link","right_shoulder_roll_link","right_shoulder_yaw_link",
-    "right_elbow_pitch_link","right_elbow_roll_link",
-    "right_wrist_pitch_link","right_wrist_yaw_link"
+    'right_shoulder_pitch_link', 'right_shoulder_roll_link', 'right_shoulder_yaw_link',
+    'right_elbow_link',
+    'right_wrist_roll_link', 'right_wrist_pitch_link', 'right_wrist_yaw_link',
+    'R_hand_base_link'
 ]
 
-output_file = "./assets/h1_2/h1_2_sphere_collision.srdf"
+output_file = './assets/h1_2/h1_2_sphere_collision.srdf'
 
 with open(output_file, "w") as f:
     f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -155,4 +159,4 @@ with open(output_file, "w") as f:
 
     f.write('\n</robot>\n')
 
-print(f"SRDF file generated: {output_file}")
+print(f'SRDF file generated: {output_file}')

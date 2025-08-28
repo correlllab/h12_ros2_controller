@@ -35,7 +35,7 @@ class IKSolver:
         self.joint_task = pink.PostureTask(cost=30.0)
 
         # collision models
-        sphere_model, _, collision_model = pin.buildModelsFromUrdf(
+        sphere_model, collision_model, _ = pin.buildModelsFromUrdf(
             filename=urdf_sphere_path,
             package_dirs=os.path.dirname(urdf_sphere_path),
         )
@@ -171,7 +171,7 @@ class IKSolver:
             safety_break=False
         )
         # convert reduced vel to full vel
-        vel_full = np.zeros(self.robot_model.model.nv)
+        vel_full = self.robot_model.zero_q
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
@@ -239,14 +239,14 @@ class IKSolver:
                 linear_err += np.linalg.norm(err[:3])
                 angular_err += np.linalg.norm(err[3:])
             if linear_err < linear_threshold and angular_err < angular_threshold:
-                q_full = np.zeros(self.robot_model.model.nq)
+                q_full = self.robot_model.zero_q
                 q_full[self.robot_model.reduced_mask] = self.reduced_configuration.q
                 return {
                     'q': q_full,
                     'success': True
                 }
 
-        q_full = np.zeros(self.robot_model.model.nq)
+        q_full = self.robot_model.zero_q
         q_full[self.robot_model.reduced_mask] = self.reduced_configuration.q
         return {
             'q': q_full,
@@ -281,6 +281,6 @@ class IKSolver:
             safety_break=False
         )
         # convert reduced vel to full vel
-        vel_full = np.zeros(self.robot_model.model.nv)
+        vel_full = self.robot_model.zero_q
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
