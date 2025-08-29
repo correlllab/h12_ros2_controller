@@ -11,8 +11,6 @@ from h12_ros2_controller.core.robot_model import RobotModel
 class IKSolver:
     def __init__(self,
                  robot_model: RobotModel,
-                 urdf_sphere_path: str,
-                 srdf_sphere_path: str,
                  dt: float = 0.02,
                  dmin: float = 0.05):
         '''
@@ -34,24 +32,9 @@ class IKSolver:
         self.posture_task = pink.PostureTask(cost=1e-3)
         self.joint_task = pink.PostureTask(cost=30.0)
 
-        # collision models
-        sphere_model, collision_model, _ = pin.buildModelsFromUrdf(
-            filename=urdf_sphere_path,
-            package_dirs=os.path.dirname(urdf_sphere_path),
-        )
-        self.sphere_model_reduced, self.collision_model_reduced = pin.buildReducedModel(
-            sphere_model,
-            collision_model,
-            robot_model.frozen_ids,
-            robot_model.zero_q
-        )
-        self.collision_data_reduced = pink.utils.process_collision_pairs(
-            self.sphere_model_reduced,
-            self.collision_model_reduced,
-            srdf_sphere_path,
-        )
+        assert(self.robot_model.init_collision), 'Collision model is not initialized.'
         self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(self.collision_model_reduced.collisionPairs),
+            n_collision_pairs=len(self.robot_model.collision_model_reduced.collisionPairs),
             gain=20.0,
             safe_displacement_gain=1.0,
             d_min=dmin,
@@ -67,8 +50,8 @@ class IKSolver:
             robot_model.model_reduced,
             robot_model.data_reduced,
             robot_model.zero_q_reduced,
-            collision_model=self.collision_model_reduced,
-            collision_data=self.collision_data_reduced
+            collision_model=self.robot_model.collision_model_reduced,
+            collision_data=self.robot_model.collision_data_reduced
         )
 
         # limits

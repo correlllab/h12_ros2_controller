@@ -18,11 +18,11 @@ class RobotModel:
         dirs = os.path.dirname(filename)
         # check file extension, load the model
         if ext == '.xml':
-            self.model, self.collision_model, self.visual_model = pin.buildModelsFromMJCF(
+            self.model, _, self.visual_model = pin.buildModelsFromMJCF(
                 filename=filename
             )
         elif filename.endswith('.urdf'):
-            self.model, self.collision_model, self.visual_model = pin.buildModelsFromUrdf(
+            self.model, _, self.visual_model = pin.buildModelsFromUrdf(
                 filename=filename,
                 package_dirs=dirs
             )
@@ -55,17 +55,19 @@ class RobotModel:
             self.joint_q_ids[joint_name] = self.model.joints[joint_id].idx_q
         # create mask for main body joints
         self.body_q_ids = [self.joint_q_ids[joint_name] for joint_name in BODY_JOINTS]
-        self.reduced = False
+
+        # flags for additional initialization
+        self.init_reduced = False
+        self.init_collision = False
 
     def init_reduced_model(self, enabled_joints):
-        self.reduced = True
+        self.init_reduced = True
         frozen_joints = set(ALL_JOINTS) - set(enabled_joints)
         frozen_ids = [self.joint_ids[joint_name] for joint_name in frozen_joints]
         frozen_q_ids = [self.joint_q_ids[joint_name] for joint_name in frozen_joints]
         # create a reduced model
-        self.model_reduced, self.collision_model_reduced = pin.buildReducedModel(
+        self.model_reduced = pin.buildReducedModel(
             self.model,
-            self.collision_model,
             frozen_ids,
             self.zero_q
         )
@@ -75,6 +77,36 @@ class RobotModel:
         # update the reduced q ids
         self.reduced_q_ids = [self.joint_q_ids[joint_name] for joint_name in enabled_joints]
         self.frozen_ids = frozen_ids
+
+    def init_collision_model(self, urdf_path, srdf_path):
+        '''Initialize the collision model from another urdf'''
+        self.init_collision = True
+        model, collision_model, _ = pin.buildModelsFromUrdf(
+            filename=urdf_path,
+            package_dirs=os.path.dirname(urdf_path),
+        )
+        self.collision_model, self.collision_data = self._process_srdf(
+            model, collision_model, srdf_path
+        )
+
+        if self.init_reduced:
+            model_reduced, collision_model_reduced = pin.buildReducedModel(
+                model,
+                collision_model,
+                self.frozen_ids,
+                self.zero_q
+            )
+            self.collision_model_reduced, self.collision_data_reduced = RobotModel._process_srdf(
+                model_reduced, collision_model_reduced, srdf_path
+            )
+
+    @staticmethod
+    def _process_srdf(model, collision_model, srdf_path):
+        collision_model.addAllCollisionPairs()
+        pin.removeCollisionPairs(model, collision_model, srdf_path)
+        collision_data = pin.GeometryData(collision_model)
+        collision_data.enable_contact = True
+        return collision_model, collision_data
 
     @property
     def q(self):
@@ -116,7 +148,7 @@ class RobotModel:
 
     def init_visualizer(self):
         try:
-            self.viz = MeshcatVisualizer(self.model, self.collision_model, self.visual_model,
+            self.viz = MeshcatVisualizer(self.model, visual_model=self.visual_model,
                                          copy_models=False, data=self.data)
             self.viz.initViewer(open=True)
             self.viz.loadViewerModel('unitree_h1_2')
@@ -203,7 +235,7 @@ class RobotModel:
         # udpate data with the current joint positions
         pin.forwardKinematics(self.model, self.data, self.q, self.dq)
         pin.updateFramePlacements(self.model, self.data)
-        if self.reduced:
+        if self.init_reduced:
             pin.forwardKinematics(self.model_reduced, self.data_reduced, self.q_reduced, self.dq_reduced)
             pin.updateFramePlacements(self.model_reduced, self.data_reduced)
 
@@ -227,19 +259,19 @@ class RobotModel:
         return transformation.rotation
 
     def get_frame_transformation_reduced(self, frame_name: str):
-        assert(self.reduced), 'Reduced model is not initialized.'
+        assert(self.init_reduced), 'Reduced model is not initialized.'
         frame_id = self.model_reduced.getFrameId(frame_name)
         transformation = self.data_reduced.oMf[frame_id]
         return transformation.np
 
     def get_frame_position_reduced(self, frame_name: str):
-        assert(self.reduced), 'Reduced model is not initialized.'
+        assert(self.init_reduced), 'Reduced model is not initialized.'
         frame_id = self.model_reduced.getFrameId(frame_name)
         transformation = self.data_reduced.oMf[frame_id]
         return transformation.translation
 
     def get_frame_rotation_reduced(self, frame_name: str):
-        assert(self.reduced), 'Reduced model is not initialized.'
+        assert(self.init_reduced), 'Reduced model is not initialized.'
         frame_id = self.model_reduced.getFrameId(frame_name)
         transformation = self.data_reduced.oMf[frame_id]
         return transformation.rotation

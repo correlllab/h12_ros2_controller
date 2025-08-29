@@ -33,7 +33,9 @@ class UpperController:
 
         # define enabled ids and frozen ids
         motor_ids = np.array([i for i in range(13, 27)])
+        # init reduced model and collision model
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
+        self.robot_model.init_collision_model(urdf_sphere_path, srdf_sphere_path)
 
         # initialize command publisher for upper body motors
         if use_sport_mode:
@@ -74,8 +76,6 @@ class UpperController:
         # initialize IK solver
         self.ik_solver = IKSolver(
             robot_model=self.robot_model,
-            urdf_sphere_path=urdf_sphere_path,
-            srdf_sphere_path=srdf_sphere_path,
             dt=self.dt,
             dmin=self.dmin
         )
