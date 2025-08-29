@@ -327,3 +327,40 @@ class RobotModel:
                                np.zeros(self.model.nv))
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.tau - tau_gravity)
         return wrench
+
+    def check_valid(self, q):
+        '''Check if the given joint position is valid'''
+        return self.check_within_limits(q) and self.check_collision_free(q)
+
+    def check_within_limits(self, q):
+        '''Check if the given joint position violates joint limits'''
+        return (
+            np.all(q <= self.model.upperPositionLimit) and
+            np.all(q >= self.model.lowerPositionLimit)
+        )
+
+    def check_within_limits_reduced(self, q_reduced):
+        '''Check if the given joint position violates joint limits for the reduced model'''
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        return (
+            np.all(q_reduced <= self.model_reduced.upperPositionLimit) and
+            np.all(q_reduced >= self.model_reduced.lowerPositionLimit)
+        )
+
+    def check_collision_free(self, q):
+        '''Check if the given joint position violates collision constraints'''
+        assert(self.init_collision), 'Collision model is not initialized.'
+        return not pin.computeCollisions(
+            self.model, self.data,
+            self.collision_model, self.collision_data, q,
+            stop_at_first_collision=True
+        )
+
+    def check_collision_free_reduced(self, q_reduced):
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        assert(self.init_collision), 'Collision model is not initialized.'
+        return not pin.computeCollisions(
+            self.model_reduced, self.data_reduced,
+            self.collision_model, self.collision_data, q_reduced,
+            stop_at_first_collision=True
+        )
