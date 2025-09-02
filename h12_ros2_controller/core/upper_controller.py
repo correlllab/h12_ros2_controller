@@ -87,6 +87,16 @@ class UpperController:
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
 
+        # variables recording states
+        self.recording = False
+        self.q_arr = []
+        self.dq_arr = []
+        self.tau_arr = []
+        self.q_cmd_arr = []
+        self.dq_cmd_arr = []
+        self.tau_cmd_arr = []
+        self.torque_cmd_arr = []
+
     def limit_joint_vel(self, vel):
         # get end effector twist
         twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)
@@ -157,6 +167,27 @@ class UpperController:
         self.command_publisher.dq = vel[self.robot_model.body_q_ids]
         self.command_publisher.tau = tau[self.robot_model.body_q_ids]
 
+        if self.recording:
+            # get values for upper body joints only
+            q = self.robot_model.q[self.robot_model.body_q_ids][12:27]
+            dq = self.robot_model.dq[self.robot_model.body_q_ids][12:27]
+            tau = self.robot_model.tau[self.robot_model.body_q_ids][12:27]
+            q_cmd = self.command_publisher.q[12:27]
+            dq_cmd = self.command_publisher.dq[12:27]
+            tau_cmd = self.command_publisher.tau[12:27]
+            kp = self.command_publisher.kp[12:27]
+            kd = self.command_publisher.kd[12:27]
+            # record
+            self.q_arr.append(q)
+            self.dq_arr.append(dq)
+            self.tau_arr.append(tau)
+            self.q_cmd_arr.append(q_cmd)
+            self.dq_cmd_arr.append(dq_cmd)
+            self.tau_cmd_arr.append(tau_cmd)
+            self.torque_cmd_arr.append(
+                tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
+            )
+
     def lock_configuration(self, q):
         # sync robot model
         self.sync_robot_model()
@@ -186,3 +217,30 @@ class UpperController:
         self.command_publisher.kd.fill(kd)
         self.command_publisher.dq.fill(0.0)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
+
+    def start_recording(self):
+        self.recording = True
+
+    def stop_recording(self):
+        self.recording = False
+
+    def clear_recording(self):
+        self.q_arr = []
+        self.dq_arr = []
+        self.tau_arr = []
+        self.q_cmd_arr = []
+        self.dq_cmd_arr = []
+        self.tau_cmd_arr = []
+        self.torque_cmd_arr = []
+
+    def save_recording(self, filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        np.savez(filename,
+                 ids=np.array([i for i in range(12, 27)]),
+                 q=self.q_arr,
+                 dq=self.dq_arr,
+                 tau=self.tau_arr,
+                 q_cmd=self.q_cmd_arr,
+                 dq_cmd=self.dq_cmd_arr,
+                 tau_cmd=self.tau_cmd_arr,
+                 torque_cmd=self.torque_cmd_arr)

@@ -65,6 +65,7 @@ def main(timeout=10.0,
             arm_controller.right_ee_target_pose = right_pose
 
             start_time = time.time()
+            arm_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 arm_controller.control_dual_arm_step()
@@ -87,6 +88,7 @@ def main(timeout=10.0,
                     break
 
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
+            arm_controller.stop_recording()
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -96,6 +98,8 @@ def main(timeout=10.0,
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
+        arm_controller.stop_recording()
+        arm_controller.save_recording('data/control_record/record0.npz')
         arm_controller.shutdown()
 
 if __name__ == '__main__':
