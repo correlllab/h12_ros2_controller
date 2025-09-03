@@ -88,6 +88,11 @@ def main(timeout=10.0,
                     break
 
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
+
+            for _ in range(50):
+                frame_start_time = time.time()
+                arm_controller.control_dual_arm_step()
+                time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
             arm_controller.stop_recording()
 
             input('Press any key to continue...') # flush the input buffer
