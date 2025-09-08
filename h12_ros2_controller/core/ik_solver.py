@@ -29,8 +29,8 @@ class IKSolver:
         # task management
         self.frame_tasks = {}  # maps task_name -> FrameTask
         # basic tasks
-        self.posture_task = pink.PostureTask(cost=1e-3)
-        self.joint_task = pink.PostureTask(cost=30.0)
+        self.posture_task = pink.tasks.PostureTask(cost=1e-3)
+        self.config_task = pink.tasks.PostureTask(cost=30.0)
 
         assert(self.robot_model.init_collision), 'Collision model is not initialized.'
         self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
@@ -74,9 +74,9 @@ class IKSolver:
     def add_frame_task(self, task_name: str, frame_name: str,
                        position_cost: float = 50.0,
                        orientation_cost: float = 30.0,
-                       lm_damping: float = 1.0):
+                       lm_damping: float = 3.0):
         '''Add a frame task to the IK solver'''
-        self.frame_tasks[task_name] = pink.FrameTask(
+        self.frame_tasks[task_name] = pink.tasks.FrameTask(
             frame_name,
             position_cost=position_cost,
             orientation_cost=orientation_cost,
@@ -124,35 +124,43 @@ class IKSolver:
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.reduced_configuration)
 
-    def ik_step(self):
-        '''Solve one step of IK for all tasks and return joint velocity'''
-        self.update_configurations()
-        self.posture_task.set_target_from_configuration(self.configuration)
-        tasks = list(self.frame_tasks.values()) + [self.posture_task]
+    def _ik(self, tasks, dt):
+        '''Helper function solving IK for all tasks'''
         return pink.solve_ik(
             self.configuration,
             tasks,
-            dt=self.dt,
+            dt=dt,
             solver=self.solver,
             limits=self.limits,
             barriers=[],
             safety_break=False
         )
 
-    def ik_step_reduced(self):
-        '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
-        self.update_configurations()
-        self.posture_task.set_target_from_configuration(self.reduced_configuration)
-        tasks = list(self.frame_tasks.values()) + [self.posture_task]
-        vel = pink.solve_ik(
+    def _ik_reduced(self, tasks, dt):
+        '''Helper function solving IK on reduced model for all tasks'''
+        return pink.solve_ik(
             self.reduced_configuration,
             tasks,
-            dt=self.dt,
+            dt=dt,
             solver=self.solver,
             limits=self.limits_reduced,
             barriers=[self.collision_barrier_reduced],
             safety_break=False
         )
+
+    def ik_step(self):
+        '''Solve one step of IK for all tasks and return joint velocity'''
+        self.update_configurations()
+        self.posture_task.set_target_from_configuration(self.configuration)
+        tasks = list(self.frame_tasks.values()) + [self.posture_task]
+        return self._ik(tasks, self.dt)
+
+    def ik_step_reduced(self):
+        '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
+        self.update_configurations()
+        self.posture_task.set_target_from_configuration(self.reduced_configuration)
+        tasks = list(self.frame_tasks.values()) + [self.posture_task]
+        vel = self._ik_reduced(tasks, self.dt)
         # convert reduced vel to full vel
         vel_full = self.robot_model.zero_q
         vel_full[self.robot_model.reduced_mask] = vel
@@ -167,15 +175,7 @@ class IKSolver:
         while time.time() - start_time < timeout:
             self.posture_task.set_target_from_configuration(self.configuration)
             tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = pink.solve_ik(
-                self.configuration,
-                tasks,
-                dt=alpha,
-                solver=self.solver,
-                limits=self.limits,
-                barriers=[],
-                safety_break=False
-            )
+            vel = self._ik(tasks, alpha)
             self.configuration.integrate_inplace(vel, alpha)
             # check convergence
             linear_err = 0
@@ -204,15 +204,7 @@ class IKSolver:
         while time.time() - start_time < timeout:
             self.posture_task.set_target_from_configuration(self.reduced_configuration)
             tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = pink.solve_ik(
-                self.reduced_configuration,
-                tasks,
-                dt=alpha,
-                solver=self.solver,
-                limits=self.limits_reduced,
-                barriers=[self.collision_barrier_reduced],
-                safety_break=False
-            )
+            vel = self._ik_reduced(tasks, alpha)
             self.reduced_configuration.integrate_inplace(vel, alpha)
             # check convergence
             linear_err = 0
@@ -239,30 +231,14 @@ class IKSolver:
     def goto_configuration(self, q: np.ndarray):
         '''Solve one step of IK to reach a target joint configuration.'''
         self.update_configurations()
-        self.joint_task.set_target(q)
-        return pink.solve_ik(
-            self.configuration,
-            [self.joint_task],
-            dt=self.dt,
-            solver=self.solver,
-            limits=self.limits,
-            barriers=[],
-            safety_break=False
-        )
+        self.config_task.set_target(q)
+        return self._ik([self.config_task], self.dt)
 
     def goto_reduced_configuration(self, q_reduced: np.ndarray):
         '''Solve one step of IK to reach a target reduced joint configuration.'''
         self.update_configurations()
-        self.joint_task.set_target(q_reduced)
-        vel = pink.solve_ik(
-            self.reduced_configuration,
-            [self.joint_task],
-            dt=self.dt,
-            solver=self.solver,
-            limits=self.limits_reduced,
-            barriers=[self.collision_barrier_reduced],
-            safety_break=False
-        )
+        self.config_task.set_target(q_reduced)
+        vel = self._ik_reduced([self.config_task], self.dt)
         # convert reduced vel to full vel
         vel_full = self.robot_model.zero_q
         vel_full[self.robot_model.reduced_mask] = vel

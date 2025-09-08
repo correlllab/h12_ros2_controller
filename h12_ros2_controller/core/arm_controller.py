@@ -261,11 +261,11 @@ class ArmController(UpperController):
 
     @property
     def joint_error(self):
-        return self.ik_solver.joint_task.compute_error(self.ik_solver.configuration)
+        return self.ik_solver.config_task.compute_error(self.ik_solver.configuration)
 
     @property
     def joint_error_reduced(self):
-        return self.ik_solver.joint_task.compute_error(self.ik_solver.reduced_configuration)
+        return self.ik_solver.config_task.compute_error(self.ik_solver.reduced_configuration)
 
     def sync_robot_model(self):
         # call parent sync method
@@ -305,6 +305,7 @@ class ArmController(UpperController):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
         self.robot_model._q = self.robot_model.q + vel * self.dt
@@ -315,6 +316,7 @@ class ArmController(UpperController):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
         self.robot_model._q = self.robot_model.q + vel * self.dt

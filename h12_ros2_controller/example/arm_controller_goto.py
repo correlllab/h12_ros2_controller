@@ -52,7 +52,7 @@ def main(timeout=10.0,
                                    w_lim=2.0,
                                    dq_lim=2.0,
                                    d_min=0.02,
-                                   visualize=False,
+                                   visualize=True,
                                    use_sport_mode=use_sport_mode)
 
     try:
@@ -68,7 +68,8 @@ def main(timeout=10.0,
             arm_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                arm_controller.control_dual_arm_step()
+                # arm_controller.control_dual_arm_step()
+                arm_controller.sim_dual_arm_step()
 
                 # print errors
                 left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
@@ -77,9 +78,9 @@ def main(timeout=10.0,
                 right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
 
                 print(f'Left Error Linear: {left_error_linear:.4f}, '
-                    f'Left Error Angular: {left_error_angular:.4f}, '
-                    f'Right Error Linear: {right_error_linear:.4f}, '
-                    f'Right Error Angular: {right_error_angular:.4f}')
+                      f'Left Error Angular: {left_error_angular:.4f}, '
+                      f'Right Error Linear: {right_error_linear:.4f}, '
+                      f'Right Error Angular: {right_error_angular:.4f}')
 
                 # early break
                 if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
@@ -91,7 +92,8 @@ def main(timeout=10.0,
 
             for _ in range(50):
                 frame_start_time = time.time()
-                arm_controller.control_dual_arm_step()
+                # arm_controller.control_dual_arm_step()
+                arm_controller.sim_dual_arm_step()
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
             arm_controller.stop_recording()
 
@@ -104,7 +106,7 @@ def main(timeout=10.0,
     finally:
         print('Shutting down...')
         arm_controller.stop_recording()
-        arm_controller.save_recording('data/control_record/record_real.npz')
+        arm_controller.save_recording('data/control_record/record_pin.npz')
         arm_controller.shutdown()
 
 if __name__ == '__main__':
