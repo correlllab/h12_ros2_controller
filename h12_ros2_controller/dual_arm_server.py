@@ -12,9 +12,10 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from custom_ros_messages.action import DualArm
 from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
-class MoveDualArmServer(Node):
+class DualArmServer(Node):
     def __init__(self, dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
@@ -134,19 +135,36 @@ class MoveDualArmServer(Node):
         self.get_logger().info('Received goal')
         feedback_msg = DualArm.Feedback()
 
-        # set left and right target poses
-        self.controller.left_ee_target_transformation = self._pose_to_matrix(
-            goal_handle.request.left_target
-        )
-        self.controller.right_ee_target_transformation = self._pose_to_matrix(
-            goal_handle.request.right_target
-        )
+        # choose between end-effector pose control and named configuration control
+        if goal_handle.request.keyword in NAMED_CONFIGS:
+            q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
+            self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
+            # compute the target end-effector poses from q_reduced
+            self.controller.left_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
+                self.controller.left_ee_name, q_reduced
+            )
+            self.controller.right_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
+                self.controller.right_ee_name, q_reduced
+            )
+            # use goto as step function
+            step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
+        else:
+            self.get_logger().info('Going to target end-effector poses')
+            # set left and right target poses
+            self.controller.left_ee_target_transformation = self._pose_to_matrix(
+                goal_handle.request.left_target
+            )
+            self.controller.right_ee_target_transformation = self._pose_to_matrix(
+                goal_handle.request.right_target
+            )
+            # step_function = lambda: self.controller.sim_dual_arm_step()
+            step_function = lambda: self.controller.control_dual_arm_step()
+
         start_time = time.time()
         while time.time() - start_time < self.timeout:
             frame_start_time = time.time()
             # control one step
-            # self.controller.sim_dual_arm_step()
-            self.controller.control_dual_arm_step()
+            step_function()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
@@ -187,10 +205,10 @@ class MoveDualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveDualArmServer(dt=0.03,
-                             timeout=10.0,
-                             threshold_linear=5e-3,
-                             threshold_angular=2e-2)
+    node = DualArmServer(dt=0.03,
+                         timeout=10.0,
+                         threshold_linear=5e-3,
+                         threshold_angular=2e-2)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

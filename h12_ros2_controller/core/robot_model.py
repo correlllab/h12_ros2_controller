@@ -243,62 +243,91 @@ class RobotModel:
         if self.viz is not None:
             self.viz.display()
 
-    def get_frame_transformation(self, frame_name: str):
+    def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
-        transformation = self.data.oMf[frame_id]
-        return transformation.np
+        if q is not None:
+            data_temp = self.model.createData()
+            pin.forwardKinematics(self.model, data_temp, q)
+            pin.updateFramePlacements(self.model, data_temp)
+            transformation = data_temp.oMf[frame_id]
+        else:
+            self.update_kinematics()
+            transformation = self.data.oMf[frame_id]
+        return transformation
 
-    def get_frame_position(self, frame_name: str):
-        frame_id = self.model.getFrameId(frame_name)
-        transformation = self.data.oMf[frame_id]
-        return transformation.translation
+    def get_frame_transformation(self, frame_name: str, q: np.ndarray=None):
+        return self._get_frame_transformation(frame_name, q).np
 
-    def get_frame_rotation(self, frame_name: str):
-        frame_id = self.model.getFrameId(frame_name)
-        transformation = self.data.oMf[frame_id]
-        return transformation.rotation
+    def get_frame_position(self, frame_name: str, q: np.ndarray=None):
+        return self._get_frame_transformation(frame_name, q).translation
 
-    def get_frame_transformation_reduced(self, frame_name: str):
+    def get_frame_rotation(self, frame_name: str, q: np.ndarray = None):
+        return self._get_frame_transformation(frame_name, q).rotation
+
+    def _get_frame_transformation_reduced(self, frame_name, q_reduced: np.ndarray=None):
         assert(self.init_reduced), 'Reduced model is not initialized.'
         frame_id = self.model_reduced.getFrameId(frame_name)
-        transformation = self.data_reduced.oMf[frame_id]
-        return transformation.np
+        if q_reduced is not None:
+            data_reduced_temp = self.model_reduced.createData()
+            pin.forwardKinematics(self.model_reduced, data_reduced_temp, q_reduced)
+            pin.updateFramePlacements(self.model_reduced, data_reduced_temp)
+            transformation = data_reduced_temp.oMf[frame_id]
+        else:
+            self.update_kinematics()
+            transformation = self.data_reduced.oMf[frame_id]
+        return transformation
 
-    def get_frame_position_reduced(self, frame_name: str):
+    def get_frame_transformation_reduced(self, frame_name: str, q_reduced: np.ndarray=None):
         assert(self.init_reduced), 'Reduced model is not initialized.'
-        frame_id = self.model_reduced.getFrameId(frame_name)
-        transformation = self.data_reduced.oMf[frame_id]
-        return transformation.translation
+        return self._get_frame_transformation_reduced(frame_name, q_reduced).np
 
-    def get_frame_rotation_reduced(self, frame_name: str):
+    def get_frame_position_reduced(self, frame_name: str, q_reduced: np.ndarray=None):
         assert(self.init_reduced), 'Reduced model is not initialized.'
-        frame_id = self.model_reduced.getFrameId(frame_name)
-        transformation = self.data_reduced.oMf[frame_id]
-        return transformation.rotation
+        return self._get_frame_transformation_reduced(frame_name, q_reduced).translation
 
-    def get_frame_jacobian(self, frame_name: str):
+    def get_frame_rotation_reduced(self, frame_name: str, q_reduced: np.ndarray=None):
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        return self._get_frame_transformation_reduced(frame_name, q_reduced).rotation
+
+    def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None):
         '''
         Get the frame jacobian in the world frame
         '''
+        if q is not None:
+            data, q = self.model.createData(), q
+        else:
+            data, q = self.data, self.q
+        # update kinematics
+        pin.forwardKinematics(self.model, data, q)
+        pin.updateFramePlacements(self.model, data)
+        # compute jacobian
         frame_id = self.model.getFrameId(frame_name)
         jacobian = pin.computeFrameJacobian(
             self.model,
-            self.data,
-            self.q,
+            data,
+            q,
             frame_id,
             pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
         )
         return jacobian
 
-    def get_joint_jacobian(self, joint_name: str):
+    def get_joint_jacobian(self, joint_name: str, q: np.ndarray=None):
         '''
         Get the joint jacobian in the local frame of the joint
         '''
+        if q is not None:
+            data, q = self.model.createData(), q
+        else:
+            data, q = self.data, self.q
+        # update kinematics
+        pin.forwardKinematics(self.model, data, q)
+        pin.updateFramePlacements(self.model, data)
+        # compute jacobian
         joint_id = self.model.getJointId(joint_name)
         jacobian = pin.computeJointJacobian(
             self.model,
-            self.data,
-            self.q,
+            data,
+            q,
             joint_id
         )
         return jacobian
@@ -318,13 +347,14 @@ class RobotModel:
         twist = jac @ dq
         return twist
 
-    def get_frame_wrench(self, frame_name: str):
-        jac = self.get_frame_jacobian(frame_name)
+    def get_frame_wrench(self, frame_name: str, q: np.ndarray=None):
+        q = self.q if q is None else q
         tau_gravity = pin.rnea(self.model,
                                self.data,
-                               self.q,
+                               q,
                                np.zeros(self.model.nv),
                                np.zeros(self.model.nv))
+        jac = self.get_frame_jacobian(frame_name, q)
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.tau - tau_gravity)
         return wrench
 
