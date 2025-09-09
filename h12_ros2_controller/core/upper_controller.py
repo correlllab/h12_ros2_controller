@@ -97,6 +97,68 @@ class UpperController:
         self.tau_cmd_arr = []
         self.torque_cmd_arr = []
 
+    def sync_robot_model(self):
+        # sync robot model and compute forward kinematics
+        self.robot_model.sync_subscriber()
+        self.robot_model.update_kinematics()
+        # update visualizer if needed
+        if self.visualize:
+            self.ik_solver.update_visualizer()
+            self.robot_model.update_visualizer()
+
+    def goto_configuration(self, q):
+        # sync robot model
+        self.sync_robot_model()
+        # solve IK and apply control
+        vel = self.ik_solver.goto_configuration(q)
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+
+    def sim_goto_configuration(self, q):
+        # solve IK and apply control
+        vel = self.ik_solver.goto_configuration(q)
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+        # directly update the robot model for visualization
+        self.ik_solver.update_visualizer()
+        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model.update_kinematics()
+        self.robot_model.update_visualizer()
+
+    def goto_reduced_configuration(self, q_reduced):
+        # sync robot model
+        self.sync_robot_model()
+        # solve IK and apply control
+        vel = self.ik_solver.goto_reduced_configuration(q_reduced)
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+
+    def sim_goto_reduced_configuration(self, q_reduced):
+        # solve IK and apply control
+        vel = self.ik_solver.goto_reduced_configuration(q_reduced)
+        vel = self.limit_joint_vel(vel)
+        self.apply_joint_vel(vel)
+        # directly update the robot model for visualization
+        self.ik_solver.update_visualizer()
+        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model.update_kinematics()
+        self.robot_model.update_visualizer()
+
+    def lock_configuration(self, q):
+        # sync robot model
+        self.sync_robot_model()
+        # compute tau and enforce same q
+        tau = pin.rnea(self.robot_model.model,
+                       self.robot_model.data,
+                       q,
+                       np.zeros(self.robot_model.model.nv),
+                       np.zeros(self.robot_model.model.nv))
+
+        # send command to lock the robot in current configuration
+        self.command_publisher.q = q
+        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
+        self.command_publisher.tau = tau
+
     def limit_joint_vel(self, vel):
         # get end effector twist
         twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)
@@ -128,31 +190,6 @@ class UpperController:
         vel_scaled[RIGHT_ARM_INDEX] = right_scaler * vel[RIGHT_ARM_INDEX]
 
         return vel_scaled
-
-    def goto_configuration(self, q):
-        # sync robot model
-        self.sync_robot_model()
-        # use the IK solver to solve joint velocity update
-        vel = self.ik_solver.goto_configuration(q)
-        vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
-
-    def goto_reduced_configuration(self, q_reduced):
-        # sync robot model
-        self.sync_robot_model()
-        # use the IK solver to solve joint velocity update
-        vel = self.ik_solver.goto_reduced_configuration(q_reduced)
-        vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
-
-    def sync_robot_model(self):
-        # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
-        self.robot_model.update_kinematics()
-        # update visualizer if needed
-        if self.visualize:
-            self.ik_solver.update_visualizer()
-            self.robot_model.update_visualizer()
 
     def apply_joint_vel(self, vel):
         # solve dynamics
@@ -187,21 +224,6 @@ class UpperController:
             self.torque_cmd_arr.append(
                 tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
             )
-
-    def lock_configuration(self, q):
-        # sync robot model
-        self.sync_robot_model()
-        # compute tau and enforce same q
-        tau = pin.rnea(self.robot_model.model,
-                       self.robot_model.data,
-                       q,
-                       np.zeros(self.robot_model.model.nv),
-                       np.zeros(self.robot_model.model.nv))
-
-        # send command to lock the robot in current configuration
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
 
     def estop(self):
         self.command_publisher.estop()

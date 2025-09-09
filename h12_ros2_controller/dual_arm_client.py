@@ -61,10 +61,11 @@ class DualArmClient(Node):
     def subscribe_right_ee_target(self, msg):
         self.right_ee_target = msg.pose
 
-    def send_goal(self, left_target: Pose, right_target: Pose):
+    def send_goal(self, left_target: Pose=Pose(), right_target: Pose=Pose(), keyword: str=''):
         goal_msg = DualArm.Goal()
         goal_msg.left_target = left_target
         goal_msg.right_target = right_target
+        goal_msg.keyword = keyword
 
         self.action_client.wait_for_server()
 
@@ -124,52 +125,57 @@ def list_to_pose(values):
 
     return pose
 
-def input_pose(side):
-    home_pose = {
-        'left': [0.3, 0.2, 0.1, 0.0, 0.0, 0.0],  # x, y, z, roll, pitch, yaw
-        'right': [0.3, -0.2, 0.1, 0.0, 0.0, 0.0]  # x, y, z, roll, pitch, yaw
-    }
+def input_keyword_or_poses():
+    '''
+    Ask user for keyword command or manual pose input.
+    Returns (keyword, left_pose, right_pose) tuple.
+    If keyword is provided, poses will be None.
+    If no keyword, poses will be provided.
+    '''
+    print('Available keywords: "home"')
 
-    home = home_pose.get(side, None)
-    if home is not None:
-        print(f'{side.capitalize()} end-effector pose...')
-        choice = input(f'Home position {home}? (y/n): ').lower()
-        if choice == 'y':
-            return list_to_pose(home)
+    choice = input('Enter keyword (or press Enter for manual poses): ').strip()
+
+    if choice:
+        # user entered a keyword
+        return choice, None, None
+    else:
+        # user wants manual pose input
+        left_pose = input_pose('left')
+        right_pose = input_pose('right')
+        return '', left_pose, right_pose
+
+def input_pose(side):
+    print(f'{side.capitalize()} end-effector pose...')
 
     while True:
-        input_pose = input("Enter x y z roll pitch yaw (separated by space): ")
+        input_pose = input('Enter x y z roll pitch yaw (separated by space): ')
         parts = input_pose.strip().split()
 
         if len(parts) != 6:
-            print("Invalid input. Please enter exactly 6 values.")
+            print('Invalid input. Please enter exactly 6 values.')
             continue
         try:
             values = [float(val) for val in parts]
             return list_to_pose(values)
         except ValueError:
-            print("Invalid input. Make sure all 6 values are numeric.")
+            print('Invalid input. Make sure all 6 values are numeric.')
             continue
 
 def main(args=None):
     rclpy.init(args=args)
     node = DualArmClient()
 
-    left_home = Pose()
-    left_home.position.x = 0.3
-    left_home.position.y = 0.2
-    left_home.position.z = 0.1
-    right_home = Pose()
-    right_home.position.x = 0.3
-    right_home.position.y = -0.2
-    right_home.position.z = 0.1
-
     try:
         while rclpy.ok():
-            left_pose = input_pose('left')
-            right_pose = input_pose('right')
+            keyword, left_pose, right_pose = input_keyword_or_poses()
 
-            node.send_goal(left_pose, right_pose)
+            if keyword:
+                # send keyword command
+                node.send_goal(keyword=keyword)
+            else:
+                # send pose targets
+                node.send_goal(left_target=left_pose, right_target=right_pose)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

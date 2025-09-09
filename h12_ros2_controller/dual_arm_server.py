@@ -33,7 +33,7 @@ class DualArmServer(Node):
                                         w_lim=2.0,
                                         dq_lim=2.0,
                                         d_min=0.02,
-                                        visualize=False)
+                                        visualize=True)
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
             PoseStamped,
@@ -104,28 +104,24 @@ class DualArmServer(Node):
         return pose_stamped
 
     def publish_left_ee_pose(self):
-        # sync robot model
         self.controller.sync_robot_model()
         # transform and publish the pose
         left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
 
     def publish_right_ee_pose(self):
-        # sync robot model
         self.controller.sync_robot_model()
         # transform and publish the pose
         right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
 
     def publish_left_ee_target(self):
-        # sync robot model
         self.controller.sync_robot_model()
         # transform and publish the pose
         left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
 
     def publish_right_ee_target(self):
-        # sync robot model
         self.controller.sync_robot_model()
         # transform and publish the pose
         right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
@@ -135,7 +131,7 @@ class DualArmServer(Node):
         self.get_logger().info('Received goal')
         feedback_msg = DualArm.Feedback()
 
-        # choose between end-effector pose control and named configuration control
+        # goto named configuration
         if goal_handle.request.keyword in NAMED_CONFIGS:
             q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
             self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
@@ -147,7 +143,17 @@ class DualArmServer(Node):
                 self.controller.right_ee_name, q_reduced
             )
             # use goto as step function
+            # step_function = lambda: self.controller.sim_goto_reduced_configuration(q_reduced)
             step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
+        # unknown keyword, abort
+        elif goal_handle.request.keyword != '':
+            self.get_logger().warning(f'Unknown keyword: {goal_handle.request.keyword}')
+            self.get_logger().warning(f'Aborting the goal...')
+            goal_handle.abort()
+            result = DualArm.Result()
+            result.success = False
+            return result
+        # goto end-effector poses
         else:
             self.get_logger().info('Going to target end-effector poses')
             # set left and right target poses
@@ -186,8 +192,10 @@ class DualArmServer(Node):
             goal_handle.publish_feedback(feedback_msg)
 
             # check if the goal is reached
-            if (left_error_linear < self.threshold_linear and right_error_linear < self.threshold_linear and
-                left_error_angular < self.threshold_angular and right_error_angular < self.threshold_angular):
+            if (left_error_linear < self.threshold_linear and
+                right_error_linear < self.threshold_linear and
+                left_error_angular < self.threshold_angular and
+                right_error_angular < self.threshold_angular):
                 self.get_logger().info('Goal reached')
                 break
 
