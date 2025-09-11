@@ -127,10 +127,10 @@ def list_to_pose(values):
 
 def input_keyword_or_poses():
     '''
-    Ask user for keyword command or manual pose input.
-    Returns (keyword, left_pose, right_pose) tuple.
-    If keyword is provided, poses will be None.
-    If no keyword, poses will be provided.
+    Ask user for keyword command or manual pose input
+    Returns (keyword, left_pose, right_pose) tuple
+    If keyword is provided, poses will be None
+    If no keyword, poses will be provided
     '''
     print('Available keywords: "home"')
 

@@ -8,19 +8,31 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
+
+def input_keyword_or_poses():
+    '''
+    Ask user for keyword command or manual pose input
+    Returns (keyword, left_pose, right_pose) tuple
+    If keyword is provided, poses will be None
+    If no keyword, poses will be provided
+    '''
+    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
+
+    choice = input('Enter keyword (or press Enter for manual poses): ').strip()
+
+    if choice:
+        # user entered a keyword
+        return choice, None, None
+    else:
+        # user wants manual pose input
+        left_pose = input_pose('left')
+        right_pose = input_pose('right')
+        return '', left_pose, right_pose
 
 def input_pose(side):
-    home_pose = {
-        'left': [0.3, 0.2, 0.1, 0.0, 0.0, 0.0],  # x, y, z, roll, pitch, yaw
-        'right': [0.3, -0.2, 0.1, 0.0, 0.0, 0.0]  # x, y, z, roll, pitch, yaw
-    }
+    print(f'{side.capitalize()} end-effector pose...')
 
-    home = home_pose.get(side, None)
-    if home is not None:
-        print(f'{side.capitalize()} end-effector pose...')
-        choice = input(f'Home position {home}? (y/n): ').lower()
-        if choice == 'y':
-            return home
     while True:
         input_pose = input('Enter x y z roll pitch yaw (separated by space): ')
         parts = input_pose.strip().split()
@@ -57,19 +69,45 @@ def main(timeout=10.0,
 
     try:
         while True:
-            # get target poses
-            left_pose = input_pose('left')
-            right_pose = input_pose('right')
-            # set target poses
-            arm_controller.left_ee_target_pose = left_pose
-            arm_controller.right_ee_target_pose = right_pose
+            # get keyword or target poses
+            keyword, left_pose, right_pose = input_keyword_or_poses()
+
+            # handle keyword configuration
+            if keyword in NAMED_CONFIGS:
+                print(f'Going to named configuration: {keyword}')
+                q_reduced = NAMED_CONFIGS[keyword]
+                # compute target end-effector poses from q_reduced
+                arm_controller.left_ee_target_transformation = (
+                    arm_controller.robot_model.get_frame_transformation_reduced(
+                        arm_controller.left_ee_name, q_reduced
+                    )
+                )
+                arm_controller.right_ee_target_transformation = (
+                    arm_controller.robot_model.get_frame_transformation_reduced(
+                        arm_controller.right_ee_name, q_reduced
+                    )
+                )
+                # use goto as step function
+                # step_function = lambda: arm_controller.goto_reduced_configuration(q_reduced)
+                step_function = lambda: arm_controller.sim_goto_reduced_configuration(q_reduced)
+            elif keyword != '':
+                print(f'Unknown keyword: {keyword}')
+                continue
+            else:
+                # manual pose input
+                print('Going to target end-effector poses')
+                # set target poses
+                arm_controller.left_ee_target_pose = left_pose
+                arm_controller.right_ee_target_pose = right_pose
+                # step_function = lambda: arm_controller.control_dual_arm_step()
+                step_function = lambda: arm_controller.sim_dual_arm_step()
 
             start_time = time.time()
             arm_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # arm_controller.control_dual_arm_step()
-                arm_controller.sim_dual_arm_step()
+                # control one step
+                step_function()
 
                 # print errors
                 left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
@@ -92,8 +130,7 @@ def main(timeout=10.0,
 
             for _ in range(50):
                 frame_start_time = time.time()
-                # arm_controller.control_dual_arm_step()
-                arm_controller.sim_dual_arm_step()
+                step_function()
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
             arm_controller.stop_recording()
 
