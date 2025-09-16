@@ -42,6 +42,6 @@ def plot_recording(filename, savepath):
         plt.close()
 
 if __name__ == '__main__':
-    filename = 'data/control_record/record_pin.npz'
-    savepath = 'figures/control_record/record_pin'
+    filename = 'data/control_record/record_acc_limit.npz'
+    savepath = 'figures/control_record/record_acc_limit'
     plot_recording(filename, savepath)

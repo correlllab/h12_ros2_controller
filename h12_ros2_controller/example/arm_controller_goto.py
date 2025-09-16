@@ -64,7 +64,7 @@ def main(timeout=10.0,
                                    w_lim=2.0,
                                    dq_lim=2.0,
                                    d_min=0.02,
-                                   visualize=True,
+                                   visualize=False,
                                    use_sport_mode=use_sport_mode)
 
     try:
@@ -99,8 +99,8 @@ def main(timeout=10.0,
                 # set target poses
                 arm_controller.left_ee_target_pose = left_pose
                 arm_controller.right_ee_target_pose = right_pose
-                # step_function = lambda: arm_controller.control_dual_arm_step()
-                step_function = lambda: arm_controller.sim_dual_arm_step()
+                step_function = lambda: arm_controller.control_dual_arm_step()
+                # step_function = lambda: arm_controller.sim_dual_arm_step()
 
             start_time = time.time()
             arm_controller.start_recording()
@@ -143,7 +143,7 @@ def main(timeout=10.0,
     finally:
         print('Shutting down...')
         arm_controller.stop_recording()
-        arm_controller.save_recording('data/control_record/record_pin.npz')
+        arm_controller.save_recording('data/control_record/record_acc_limit.npz')
         arm_controller.shutdown()
 
 if __name__ == '__main__':
@@ -154,8 +154,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.sport:
-        main(timeout=10.0, use_sport_mode=True)
+        main(timeout=15.0, use_sport_mode=True)
     elif args.debug:
-        main(timeout=10.0, use_sport_mode=False)
+        main(timeout=15.0, use_sport_mode=False)
     else:
         print('Invalid argument! Use --debug or --sport')
