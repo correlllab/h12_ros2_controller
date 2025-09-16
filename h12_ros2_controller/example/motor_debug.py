@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
 
 class MotorDebugGUI:
     '''GUI interface for motor debugging'''
@@ -18,6 +18,7 @@ class MotorDebugGUI:
         self.robot_model = robot_model
         self.command_publisher = command_publisher
         self.control_idx = control_idx
+        self.q_idx = self.robot_model.body_q_ids[control_idx]
 
         self._setup_window()
         self._setup_controls(init_q)
@@ -25,13 +26,13 @@ class MotorDebugGUI:
         self._setup_buttons()
 
     def _setup_window(self):
-        '''create main window'''
+        '''Create main window'''
         self.root = tk.Tk()
         self.root.title(f'Motor Debug - Joint {self.control_idx} ({BODY_JOINTS[self.control_idx]})')
         self.root.geometry('600x300')
 
     def _setup_controls(self, init_q):
-        '''setup motor index and position controls'''
+        '''Setup motor index and position controls'''
         # motor index selection
         index_frame = tk.Frame(self.root)
         index_frame.pack(pady=10)
@@ -46,9 +47,9 @@ class MotorDebugGUI:
         slider_frame.pack(pady=10)
 
         self.slider = tk.Scale(slider_frame,
-                              label=f'Joint {self.control_idx} Position ({BODY_JOINTS[self.control_idx]})',
-                              from_=-3.0, to=3.0,
-                              resolution=0.01, orient=tk.HORIZONTAL, length=500)
+                               label=f'Joint {self.control_idx} {BODY_JOINTS[self.control_idx]}',
+                               from_=-3.0, to=3.0,
+                               resolution=0.01, orient=tk.HORIZONTAL, length=500)
         self.slider.pack()
         self.slider.set(init_q[self.control_idx])
 
@@ -56,7 +57,7 @@ class MotorDebugGUI:
         self.index_frame = index_frame
 
     def _setup_display(self):
-        '''setup information display labels'''
+        '''Setup information display labels'''
         info_frame = tk.Frame(self.root)
         info_frame.pack(pady=10)
 
@@ -70,7 +71,7 @@ class MotorDebugGUI:
         self.velocity_label.pack()
 
     def _setup_buttons(self):
-        '''setup control buttons'''
+        '''Setup control buttons'''
         # update button
         update_button = tk.Button(self.index_frame, text='Update', command=self.update_motor_index)
         update_button.pack(side=tk.LEFT, padx=5)
@@ -83,38 +84,39 @@ class MotorDebugGUI:
         estop_button.pack(pady=10)
 
     def update_motor_index(self):
-        '''callback to update the controlled motor index'''
+        '''Callback to update the controlled motor index'''
         try:
             new_idx = int(self.index_var.get())
             if 0 <= new_idx < 27:
                 self.control_idx = new_idx
-                self.root.title(f'Motor Debug - Joint {new_idx} ({BODY_JOINTS[new_idx]})')
-                self.slider.config(label=f'Joint {new_idx} Position ({BODY_JOINTS[new_idx]})')
-                self.slider.set(self.robot_model.q[new_idx])
+                self.q_idx = self.robot_model.body_q_ids[new_idx]
+                self.root.title(f'Motor Debug - Joint {new_idx} {BODY_JOINTS[new_idx]}')
+                self.slider.config(label=f'Joint {new_idx} {BODY_JOINTS[new_idx]}')
+                self.slider.set(self.robot_model.q[self.q_idx])
         except ValueError:
             pass
 
     def emergency_stop(self):
-        '''callback for emergency stop'''
+        '''Callback for emergency stop'''
         self.command_publisher.estop()
         print('EMERGENCY STOP ACTIVATED!')
 
     def update_display(self, position_error):
-        '''update the information display'''
-        self.position_label.config(text=f'Current Position: {self.robot_model.q[self.control_idx]:.3f}')
+        '''Update the information display'''
+        self.position_label.config(text=f'Current Position: {self.robot_model.q[self.q_idx]:.3f}')
         self.error_label.config(text=f'Position Error: {position_error:.3f}')
-        self.velocity_label.config(text=f'Current Velocity: {self.robot_model.dq[self.control_idx]:.3f}')
+        self.velocity_label.config(text=f'Current Velocity: {self.robot_model.dq[self.q_idx]:.3f}')
 
     def get_target_position(self):
-        '''get the target position from slider'''
+        '''Get the target position from slider'''
         return self.slider.get()
 
     def update(self):
-        '''update the GUI (call from main loop)'''
+        '''Update the GUI (call from main loop)'''
         self.root.update()
 
-    def destroy(self):
-        '''cleanup GUI'''
+    def shutdown(self):
+        '''Shutdown GUI'''
         try:
             self.root.destroy()
         except:
@@ -185,10 +187,9 @@ def main_loop(gui, robot_model, command_publisher):
             # update target position for the controlled motor
             target_position = gui.get_target_position()
             command_publisher.q[gui.control_idx] = target_position
-
             # calculate position error and set derivative command
-            position_error = target_position - robot_model.q[gui.control_idx]
-            command_publisher.dq[gui.control_idx] = position_error * 0.5
+            position_error = target_position - robot_model.q[robot_model.body_q_idx[gui.q_idx]]
+            command_publisher.dq[gui.control_idx] = position_error
 
             # update information display
             gui.update_display(position_error)
@@ -201,13 +202,6 @@ def main_loop(gui, robot_model, command_publisher):
         print('GUI window closed.')
     except Exception as e:
         print(f'Exception occurred: {e}')
-
-def cleanup(command_publisher, robot_model, gui):
-    '''cleanup resources and shutdown'''
-    print('Shutting down...')
-    command_publisher.shutdown()
-    robot_model.shutdown()
-    gui.destroy()
 
 def main():
     ChannelFactoryInitialize()
@@ -246,7 +240,10 @@ def main():
     # run the main control loop
     main_loop(gui, robot_model, command_publisher)
 
-    cleanup(command_publisher, robot_model, gui)
+    print('Shutting down...')
+    command_publisher.shutdown()
+    robot_model.shutdown()
+    gui.shutdown()
 
 if __name__ == '__main__':
     main()

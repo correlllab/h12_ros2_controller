@@ -22,8 +22,8 @@ def plot_recording(filename, savepath):
 
     # create graph for each motor
     for i in range(q.shape[1]):
-        motor_id = ids[i]
-        motor_name = BODY_JOINTS[motor_id]
+        joint_id = ids[i]
+        joint_name = BODY_JOINTS[joint_id]
 
         plt.figure()
         plt.plot(q[:, i], label='q')
@@ -33,12 +33,12 @@ def plot_recording(filename, savepath):
         plt.plot(dq_cmd[:, i], label='dq_cmd')
         plt.plot(tau_cmd[:, i], label='tau_cmd')
         plt.plot(torque_cmd[:, i], label='torque_cmd')
-        plt.title(motor_name)
+        plt.title(joint_name)
         plt.xlabel('Time')
         plt.ylabel('Value')
         plt.legend()
         plt.grid()
-        plt.savefig(f'{savepath}/{motor_name}.png')
+        plt.savefig(f'{savepath}/{joint_name}.png')
         plt.close()
 
 if __name__ == '__main__':
