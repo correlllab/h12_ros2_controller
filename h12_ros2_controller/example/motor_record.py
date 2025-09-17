@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
 from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
-from h12_ros2_controller.example.motor_debug import setup_gains
+from h12_ros2_controller.example.motor_debug_gui import setup_gains
 
 def record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps):
     # empty array for recording

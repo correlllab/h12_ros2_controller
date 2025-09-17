@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 
-def save_data():
+def save_data(filepath, steps=1000):
     ChannelFactoryInitialize()
     print('Initializing RobotModel...')
     robot_model = RobotModel('assets/h1_2/h1_2.urdf')
@@ -23,7 +23,7 @@ def save_data():
     left_ee_twist_arr = []
     right_ee_twist_arr = []
 
-    for _ in tqdm(range(3000)):
+    for _ in tqdm(range(steps)):
         # sync data
         robot_model.sync_subscriber()
         robot_model.update_kinematics()
@@ -39,14 +39,16 @@ def save_data():
     dq_arr = np.array(dq_arr)
     left_ee_twist_arr = np.array(left_ee_twist_arr)
     right_ee_twist_arr = np.array(right_ee_twist_arr)
-    np.save('./data/h1_2_dq.npy', dq_arr)
-    np.save('./data/h1_2_left_ee_twist.npy', left_ee_twist_arr)
-    np.save('./data/h1_2_right_ee_twist.npy', right_ee_twist_arr)
 
-def print_data():
-    dq_arr = np.load('./data/h1_2_dq.npy')
-    left_ee_twist_arr = np.load('./data/h1_2_left_ee_twist.npy')
-    right_ee_twist_arr = np.load('./data/h1_2_right_ee_twist.npy')
+    os.makedirs(f'{filepath}/data', exist_ok=True)
+    np.save(f'{filepath}/dq.npy', dq_arr)
+    np.save(f'{filepath}/left_ee_twist.npy', left_ee_twist_arr)
+    np.save(f'{filepath}/right_ee_twist.npy', right_ee_twist_arr)
+
+def print_data(filepath):
+    dq_arr = np.load(f'{filepath}/dq.npy')
+    left_ee_twist_arr = np.load(f'{filepath}/left_ee_twist.npy')
+    right_ee_twist_arr = np.load(f'{filepath}/right_ee_twist.npy')
 
     print('dq shape:', dq_arr.shape)
     print('left ee twist shape:', left_ee_twist_arr.shape)
@@ -82,7 +84,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    filepath = './data/velocity_record'
+
     if args.save:
-        save_data()
+        save_data(filepath, steps=1000)
     elif args.print:
-        print_data()
+        print_data(filepath)
