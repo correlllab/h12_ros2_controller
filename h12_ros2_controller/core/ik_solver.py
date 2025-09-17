@@ -59,13 +59,13 @@ class IKSolver:
             pink.limits.ConfigurationLimit(robot_model.model),
             pink.limits.VelocityLimit(robot_model.model),
             pink.limits.AccelerationLimit(robot_model.model,
-                                          15.0 * np.ones(robot_model.model.nv))
+                                          25.0 * np.ones(robot_model.model.nv))
         ]
         self.limits_reduced = [
             pink.limits.ConfigurationLimit(robot_model.model_reduced),
             pink.limits.VelocityLimit(robot_model.model_reduced),
             pink.limits.AccelerationLimit(robot_model.model_reduced,
-                                          15.0 * np.ones(robot_model.model_reduced.nv))
+                                          25.0 * np.ones(robot_model.model_reduced.nv))
         ]
 
         # solver selection
