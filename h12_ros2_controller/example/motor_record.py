@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import tkinter as tk
+import pinocchio as pin
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -34,8 +35,16 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
         command_publisher.q[BODY_JOINTS.index(joint_name)] = q_target
-        position_error = q_target - robot_model.q[ALL_JOINTS.index(joint_name)]
-        command_publisher.dq[BODY_JOINTS.index(joint_name)] = position_error
+        command_publisher.dq[BODY_JOINTS.index(joint_name)] = (q_end - q_start) / (steps * 0.01)
+
+        # q = robot_model.q.copy()
+        # q[robot_model.body_q_ids] = q_target
+        # tau = pin.rnea(robot_model.model,
+        #                robot_model.data,
+        #                q,
+        #                robot_model.dq,
+        #                np.zeros(robot_model.model.nv))
+        # command_publisher.tau[BODY_JOINTS.index(joint_name)] = tau[ALL_JOINTS.index(joint_name)]
 
         # sync robot state
         robot_model.sync_subscriber()
@@ -47,6 +56,21 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         q_cmd_arr.append(command_publisher.q[BODY_JOINTS.index(joint_name)])
         dq_cmd_arr.append(command_publisher.dq[BODY_JOINTS.index(joint_name)])
 
+        time.sleep(0.01)
+
+    # zero out publisher
+    command_publisher.q[BODY_JOINTS.index(joint_name)] = q_end
+    command_publisher.dq[BODY_JOINTS.index(joint_name)] = 0.0
+
+    # stationary sleep
+    for _ in range(50):
+        robot_model.sync_subscriber()
+        robot_model.update_kinematics()
+        q_arr.append(robot_model.q[ALL_JOINTS.index(joint_name)])
+        dq_arr.append(robot_model.dq[ALL_JOINTS.index(joint_name)])
+        tau_arr.append(robot_model.tau[ALL_JOINTS.index(joint_name)])
+        q_cmd_arr.append(command_publisher.q[BODY_JOINTS.index(joint_name)])
+        dq_cmd_arr.append(command_publisher.dq[BODY_JOINTS.index(joint_name)])
         time.sleep(0.01)
 
     return {
@@ -86,9 +110,18 @@ def main(joint_name, q_start, q_end, steps=100):
     # move to start position
     _ = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
     # record linear motion
-    data = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
+    data_go = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
     # go back to start
-    _ = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
+    data_back = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
+
+    data = {
+        'joint_name': data_go['joint_name'],
+        'q': np.concatenate([data_go['q'], data_back['q']]),
+        'dq': np.concatenate([data_go['dq'], data_back['dq']]),
+        'tau': np.concatenate([data_go['tau'], data_back['tau']]),
+        'q_cmd': np.concatenate([data_go['q_cmd'], data_back['q_cmd']]),
+        'dq_cmd': np.concatenate([data_go['dq_cmd'], data_back['dq_cmd']])
+    }
 
     # shutdown
     command_publisher.shutdown()
@@ -108,11 +141,32 @@ def save_results(data, filename):
 
 if __name__ == '__main__':
     path = './data/motor_record'
-    # joint_name = 'left_knee_joint'
-    joint_name = 'right_knee_joint'
-    q_start = 0.0
-    q_end = 1.0
-    steps = 200
+    joint_name_list = [
+        'left_hip_yaw_joint', 'right_hip_yaw_joint',
+        'left_hip_pitch_joint', 'right_hip_pitch_joint',
+        'left_hip_roll_joint', 'right_hip_roll_joint',
+        'left_knee_joint', 'right_knee_joint',
+        'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
+        'left_ankle_roll_joint', 'right_ankle_roll_joint'
+    ]
+    q_start_list = [
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0
+    ]
+    q_end_list = [
+        0.3, -0.3, # hip yaw
+        -0.5, -0.5, # hip pitch
+        0.5, -0.5, # hip roll
+        1.0, 1.0, # knee
+        -0.5, -0.5, # ankle pitch
+        0.25, -0.25 # ankle roll
+    ]
+    steps = 100
 
-    data = main(joint_name, q_start, q_end, steps)
-    save_results(data, f'{path}/{joint_name}.npz')
+    for joint_name, q_start, q_end in zip(joint_name_list, q_start_list, q_end_list):
+        data = main(f'{joint_name}', q_start, q_end, steps)
+        save_results(data, f'{path}/{joint_name}.npz')

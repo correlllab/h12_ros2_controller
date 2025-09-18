@@ -187,11 +187,9 @@ def main_loop(gui, robot_model, command_publisher):
             # update target position for the controlled motor
             target_position = gui.get_target_position()
             command_publisher.q[gui.control_idx] = target_position
-            # calculate position error and set derivative command
-            position_error = target_position - robot_model.q[robot_model.body_q_idx[gui.q_idx]]
-            command_publisher.dq[gui.control_idx] = position_error
 
             # update information display
+            position_error = target_position - robot_model.q[robot_model.body_q_ids[gui.q_idx]]
             gui.update_display(position_error)
 
             time.sleep(0.01)
