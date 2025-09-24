@@ -203,13 +203,6 @@ class RobotModel:
     def init_subscriber(self):
         self.state_subscriber = StateSubscriber()
 
-    def sync_subscriber(self):
-        if self.state_subscriber is not None:
-            # update the q, dq, tau
-            self._q = self.state_subscriber.state['q']
-            self._dq = self.state_subscriber.state['dq']
-            self._tau = self.state_subscriber.state['tau']
-
     def update_kinematics(self):
         # udpate data with the current joint positions
         pin.forwardKinematics(self.model, self.data, self.state['q'], self.state['dq'])

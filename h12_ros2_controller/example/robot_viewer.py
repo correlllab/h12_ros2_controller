@@ -17,7 +17,6 @@ def main():
 
     # main loop shadowing robot states
     while True:
-        robot_model.sync_subscriber()
         robot_model.update_kinematics()
         robot_model.update_visualizer()
         time.sleep(0.01)

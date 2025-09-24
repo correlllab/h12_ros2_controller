@@ -29,7 +29,6 @@ class UpperController:
         # initialize subscriber in robot model
         self.robot_model.init_subscriber()
         time.sleep(0.5)
-        self.robot_model.sync_subscriber()
         self.robot_model.update_kinematics()
 
         # init reduced model and collision model
@@ -99,7 +98,6 @@ class UpperController:
 
     def sync_robot_model(self):
         # sync robot model and compute forward kinematics
-        self.robot_model.sync_subscriber()
         self.robot_model.update_kinematics()
         # update visualizer if needed
         if self.visualize:

@@ -179,7 +179,6 @@ def main_loop(gui, robot_model, command_publisher):
             gui.update()
 
             # sync robot state
-            robot_model.sync_subscriber()
             robot_model.update_kinematics()
 
             # update target position for the controlled motor
@@ -209,7 +208,6 @@ def main():
 
     # wait for initial state sync
     time.sleep(1.0)
-    robot_model.sync_subscriber()
     robot_model.update_kinematics()
 
     # setup motor gains

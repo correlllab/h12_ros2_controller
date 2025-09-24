@@ -25,7 +25,6 @@ def save_data(filepath, steps=1000):
 
     for _ in tqdm(range(steps)):
         # sync data
-        robot_model.sync_subscriber()
         robot_model.update_kinematics()
         robot_model.update_visualizer()
 

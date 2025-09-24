@@ -24,13 +24,11 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
     dq_cmd_arr = []
 
     # sync initial state
-    robot_model.sync_subscriber()
     robot_model.update_kinematics()
     q_start = robot_model.state['q'][joint_idx]
 
     for step in range(steps):
         # sync robot state
-        robot_model.sync_subscriber()
         robot_model.update_kinematics()
 
         # linear interpolation
@@ -40,7 +38,6 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         command_publisher.dq[joint_idx] = (q_end - q_start) / (steps * 0.01)
 
         # sync robot state
-        robot_model.sync_subscriber()
         robot_model.update_kinematics()
         # record
         q_arr.append(robot_model.state['q'][joint_idx])
@@ -57,7 +54,6 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
 
     # stationary sleep
     for _ in range(50):
-        robot_model.sync_subscriber()
         robot_model.update_kinematics()
         q_arr.append(robot_model.state['q'][joint_idx])
         dq_arr.append(robot_model.state['dq'][joint_idx])
@@ -86,7 +82,6 @@ def main(joint_name, q_start, q_end, steps=100):
 
     # wait for initial state sync
     time.sleep(1.0)
-    robot_model.sync_subscriber()
     robot_model.update_kinematics()
 
     # setup motor gains

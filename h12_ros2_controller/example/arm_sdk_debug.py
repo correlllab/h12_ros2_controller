@@ -17,7 +17,6 @@ def main():
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
     time.sleep(1.0)
-    robot_model.sync_subscriber()
     robot_model.update_kinematics()
 
     arm_sdk_publisher = ArmSDKPublisher()
@@ -61,7 +60,6 @@ def main():
     try:
         while True:
             root.update()
-            robot_model.sync_subscriber()
             robot_model.update_kinematics()
 
             target_q = robot_model.state['q']

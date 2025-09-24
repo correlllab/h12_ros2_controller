@@ -16,7 +16,6 @@ def save():
     robot_model = RobotModel('assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
     time.sleep(3.0)
-    robot_model.sync_subscriber()
     robot_model.update_kinematics()
     print('Saving current configuration...')
     q = robot_model.state['q']

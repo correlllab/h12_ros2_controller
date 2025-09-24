@@ -24,10 +24,8 @@ class JointStatePublisher(Node):
         self.timer = self.create_timer(1.0 / 100, self.publish_joint_states)
 
     def publish_joint_states(self):
-        # sync robot model subscriber
-        self.robot_model.sync_subscriber()
+        # update robot model
         self.robot_model.update_kinematics()
-
         # create JointState message
         msg = JointState()
         msg.header = Header()
