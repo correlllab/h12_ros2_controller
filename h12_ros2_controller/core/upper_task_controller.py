@@ -43,6 +43,10 @@ class UpperTaskController(UpperController):
         '''Remove a frame task'''
         self.ik_solver.remove_frame_task(task_name)
 
+    def clear_frame_tasks(self):
+        '''Clear all frame tasks'''
+        self.ik_solver.clear_frame_tasks()
+
     def control_step(self):
         '''Solve IK for all tasks'''
         # sync robot model

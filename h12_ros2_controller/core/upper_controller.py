@@ -6,7 +6,7 @@ import pinocchio as pin
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
-from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
     def __init__(self,
@@ -31,11 +31,10 @@ class UpperController:
         self.robot_model.sync_subscriber()
         self.robot_model.update_kinematics()
 
-        # define enabled ids and frozen ids
-        motor_ids = np.array([i for i in range(13, 27)])
         # init reduced model and collision model
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(urdf_sphere_path, srdf_sphere_path)
+        self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
 
         # initialize command publisher for upper body motors
         if use_sport_mode:
@@ -65,7 +64,7 @@ class UpperController:
         self.command_publisher.kd[24:27] = 3.0
         # enable upper body motors
         init_q = self.robot_model.q_reduced
-        self.command_publisher.enable_motor(motor_ids, init_q)
+        self.command_publisher.enable_motor(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in pace
         self.command_publisher.kp[12] = 150.0
@@ -200,15 +199,15 @@ class UpperController:
                        np.zeros(self.robot_model.model.nv))
 
         # send the velocity command to the robot
-        self.command_publisher.q = (self.robot_model.q + vel * self.dt)[self.robot_model.body_q_ids]
-        self.command_publisher.dq = vel[self.robot_model.body_q_ids]
-        self.command_publisher.tau = tau[self.robot_model.body_q_ids]
+        self.command_publisher.q = self.robot_model.q + vel * self.dt
+        self.command_publisher.dq = vel
+        self.command_publisher.tau = tau
 
         if self.recording:
             # get values for upper body joints only
-            q = self.robot_model.q[self.robot_model.body_q_ids][12:27]
-            dq = self.robot_model.dq[self.robot_model.body_q_ids][12:27]
-            tau = self.robot_model.tau[self.robot_model.body_q_ids][12:27]
+            q = self.robot_model.q[12:27]
+            dq = self.robot_model.dq[12:27]
+            tau = self.robot_model.tau[12:27]
             q_cmd = self.command_publisher.q[12:27]
             dq_cmd = self.command_publisher.dq[12:27]
             tau_cmd = self.command_publisher.tau[12:27]

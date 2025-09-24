@@ -18,7 +18,6 @@ class MotorDebugGUI:
         self.robot_model = robot_model
         self.command_publisher = command_publisher
         self.control_idx = control_idx
-        self.q_idx = self.robot_model.body_q_ids[control_idx]
 
         self._setup_window()
         self._setup_controls(init_q)
@@ -89,10 +88,9 @@ class MotorDebugGUI:
             new_idx = int(self.index_var.get())
             if 0 <= new_idx < 27:
                 self.control_idx = new_idx
-                self.q_idx = self.robot_model.body_q_ids[new_idx]
                 self.root.title(f'Motor Debug - Joint {new_idx} {BODY_JOINTS[new_idx]}')
                 self.slider.config(label=f'Joint {new_idx} {BODY_JOINTS[new_idx]}')
-                self.slider.set(self.robot_model.q[self.q_idx])
+                self.slider.set(self.robot_model.q[self.control_idx])
         except ValueError:
             pass
 
@@ -103,9 +101,9 @@ class MotorDebugGUI:
 
     def update_display(self, position_error):
         '''Update the information display'''
-        self.position_label.config(text=f'Current Position: {self.robot_model.q[self.q_idx]:.3f}')
+        self.position_label.config(text=f'Current Position: {self.robot_model.q[self.control_idx]:.3f}')
         self.error_label.config(text=f'Position Error: {position_error:.3f}')
-        self.velocity_label.config(text=f'Current Velocity: {self.robot_model.dq[self.q_idx]:.3f}')
+        self.velocity_label.config(text=f'Current Velocity: {self.robot_model.dq[self.control_idx]:.3f}')
 
     def get_target_position(self):
         '''Get the target position from slider'''
@@ -189,7 +187,7 @@ def main_loop(gui, robot_model, command_publisher):
             command_publisher.q[gui.control_idx] = target_position
 
             # update information display
-            position_error = target_position - robot_model.q[robot_model.body_q_ids[gui.q_idx]]
+            position_error = target_position - robot_model.q[gui.control_idx]
             gui.update_display(position_error)
 
             time.sleep(0.01)
@@ -214,14 +212,12 @@ def main():
     robot_model.sync_subscriber()
     robot_model.update_kinematics()
 
-    # get initial joint positions
-    init_q = robot_model.q[robot_model.body_q_ids]
-
     # setup motor gains
     setup_gains(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
+    init_q = robot_model.q
     command_publisher.enable_motor(motor_ids, init_q)
     command_publisher.start_publisher()
 

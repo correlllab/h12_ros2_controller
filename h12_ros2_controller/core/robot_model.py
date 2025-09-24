@@ -13,22 +13,9 @@ from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
 
 class RobotModel:
     def __init__(self, filename: str):
-        # break file name
-        ext = os.path.splitext(filename)[1]
-        dirs = os.path.dirname(filename)
-        # check file extension, load the model
-        if ext == '.xml':
-            self.model, _, self.visual_model = pin.buildModelsFromMJCF(
-                filename=filename
-            )
-        elif filename.endswith('.urdf'):
-            self.model, _, self.visual_model = pin.buildModelsFromUrdf(
-                filename=filename,
-                package_dirs=dirs
-            )
-        else:
-            raise ValueError('Unsupported file format. Please provide a .xml or .urdf file.')
-        # intiialize data for the model
+        assert(os.path.splitext(filename)[1] == '.urdf'), 'Please provide a urdf file for the robot model.'
+        self.model, _, self.visual_model = self._load_urdf(filename)
+        # initialize data for the model
         self.data = self.model.createData()
 
         # placeholder for visualizer and state subscriber
@@ -44,61 +31,57 @@ class RobotModel:
         pin.forwardKinematics(self.model, self.data, self.q)
         pin.updateFramePlacements(self.model, self.data)
 
-        # placeholder mask for reduced model
-        self.reduced_mask = np.ones(self.model.nq, dtype=bool)
-        # create a map of joint names, joint ids, and q ids
-        self.joint_ids = {}
-        self.joint_q_ids = {}
-        for joint_id in range(self.model.njoints):
-            joint_name = self.model.names[joint_id]
-            self.joint_ids[joint_name] = joint_id
-            self.joint_q_ids[joint_name] = self.model.joints[joint_id].idx_q
-        # create mask for main body joints
-        self.body_q_ids = [self.joint_q_ids[joint_name] for joint_name in BODY_JOINTS]
-
         # flags for additional initialization
         self.init_reduced = False
         self.init_collision = False
+        # placeholder mask for reduced model
+        self.reduced_mask = np.ones(self.model.nq, dtype=bool)
 
     def init_reduced_model(self, enabled_joints):
         self.init_reduced = True
-        frozen_joints = set(ALL_JOINTS) - set(enabled_joints)
-        frozen_ids = [self.joint_ids[joint_name] for joint_name in frozen_joints]
-        frozen_q_ids = [self.joint_q_ids[joint_name] for joint_name in frozen_joints]
+        frozen_joints = set(BODY_JOINTS) - set(enabled_joints)
+        frozen_ids = [self.model.getJointId(joint_name) for joint_name in frozen_joints]
+        frozen_q_ids = [self.model.joints[joint_id].idx_q for joint_id in frozen_ids]
         # create a reduced model
         self.model_reduced = pin.buildReducedModel(
-            self.model,
-            frozen_ids,
-            self.zero_q
+            self.model, frozen_ids, self.zero_q
         )
         self.data_reduced = self.model_reduced.createData()
         # set the reduced mask
         self.reduced_mask[frozen_q_ids] = False
         # update the reduced q ids
-        self.reduced_q_ids = [self.joint_q_ids[joint_name] for joint_name in enabled_joints]
         self.frozen_ids = frozen_ids
 
     def init_collision_model(self, urdf_path, srdf_path):
         '''Initialize the collision model from another urdf'''
         self.init_collision = True
-        model, collision_model, _ = pin.buildModelsFromUrdf(
-            filename=urdf_path,
-            package_dirs=os.path.dirname(urdf_path),
-        )
+        model, collision_model, _ = self._load_urdf(urdf_path)
         self.collision_model, self.collision_data = self._process_srdf(
             model, collision_model, srdf_path
         )
 
         if self.init_reduced:
             model_reduced, collision_model_reduced = pin.buildReducedModel(
-                model,
-                collision_model,
-                self.frozen_ids,
-                self.zero_q
+                model, collision_model, self.frozen_ids, self.zero_q
             )
             self.collision_model_reduced, self.collision_data_reduced = RobotModel._process_srdf(
                 model_reduced, collision_model_reduced, srdf_path
             )
+
+    @staticmethod
+    def _load_urdf(urdf_path):
+        model, collision_model, visual_model = pin.buildModelsFromUrdf(
+            filename=urdf_path,
+            package_dirs=os.path.dirname(urdf_path),
+        )
+        # process to keep only the body joints
+        frozen_joints = set(ALL_JOINTS) - set(BODY_JOINTS)
+        frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
+        model, [collision_model, visual_model] = pin.buildReducedModel(
+            model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
+        )
+
+        return model, collision_model, visual_model
 
     @staticmethod
     def _process_srdf(model, collision_model, srdf_path):
@@ -182,13 +165,14 @@ class RobotModel:
         # print(f'force: {force}, force_magnitude: {force_magnitude}')
         # scale down for visualization
         force_magnitude *= 0.1
-        force_transform = self._get_arrow_transformation(origin, force_direction, force_magnitude)
+        force_transform = self._get_arrow_transformation(force_direction, force_magnitude)
         # add to viewer
-        self.viz.viewer[f'{link_name}/force_arrow'].set_object(
+        viewer = self.viz.viewer
+        viewer[f'{link_name}/force_arrow'].set_object(
             geo.Cylinder(height=force_magnitude, radius=0.01)
         )
-        self.viz.viewer[f'{link_name}/force_arrow'].set_transform(force_transform)
-        self.viz.viewer[f'{link_name}/force_arrow'].set_property('color', (1.0, 0.0, 0.0, 0.8))
+        viewer[f'{link_name}/force_arrow'].set_transform(force_transform)
+        viewer[f'{link_name}/force_arrow'].set_property('color', (1.0, 0.0, 0.0, 0.8))
 
         # create cyclinder to represent torque
         torque = wrench[3:6]
@@ -196,7 +180,7 @@ class RobotModel:
         torque_direction = torque / torque_magnitude
         # scale down for visualization
         torque_magnitude *= 0.1
-        torque_transform = self._get_arrow_transformation(origin, torque_direction, torque_magnitude)
+        torque_transform = self._get_arrow_transformation(torque_direction, torque_magnitude)
         # add to viewer
         self.viz.viewer[f'{link_name}/torque_arrow'].set_object(
             geo.Cylinder(height=torque_magnitude, radius=0.01)
@@ -204,7 +188,7 @@ class RobotModel:
         self.viz.viewer[f'{link_name}/torque_arrow'].set_transform(torque_transform)
         self.viz.viewer[f'{link_name}/torque_arrow'].set_property('color', (0.0, 0.0, 1.0, 0.8))
 
-    def _get_arrow_transformation(self, origin, direction, magnitude):
+    def _get_arrow_transformation(self, direction, magnitude):
         # create rotation matrix to align Y-axis with the direction vector
         y_axis = np.array([0, 1, 0])
         rotation_axis = np.cross(y_axis, direction)
@@ -217,7 +201,7 @@ class RobotModel:
 
         transform = np.eye(4)
         transform[:3, :3] = rotation_matrix
-        transform[:3, 3] = origin + rotation_matrix @ np.array([0, 1, 0]) * magnitude / 2
+        transform[:3, 3] = rotation_matrix @ np.array([0, 1, 0]) * magnitude / 2
 
         return transform
 
@@ -227,9 +211,9 @@ class RobotModel:
     def sync_subscriber(self):
         if self.state_subscriber is not None:
             # update the q, dq, tau
-            self._q[self.body_q_ids] = self.state_subscriber.q
-            self._dq[self.body_q_ids] = self.state_subscriber.dq
-            self._tau[self.body_q_ids] = self.state_subscriber.tau
+            self._q = self.state_subscriber.q
+            self._dq = self.state_subscriber.dq
+            self._tau = self.state_subscriber.tau
 
     def update_kinematics(self):
         # udpate data with the current joint positions

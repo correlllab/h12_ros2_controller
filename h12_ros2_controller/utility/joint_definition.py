@@ -129,4 +129,4 @@ ENABLED_JOINTS = [
 ]
 
 LEFT_ARM_INDEX = [i for i in range(13, 20)]
-RIGHT_ARM_INDEX = [i for i in range(32, 39)]
+RIGHT_ARM_INDEX = [i for i in range(20, 27)]

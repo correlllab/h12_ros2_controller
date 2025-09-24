@@ -73,8 +73,8 @@ def print_data(filepath):
     # 33-39 right arm joints
     print('left arm joint velocity mean:', np.mean(np.abs(dq_arr[:, 13:20]), axis=0))
     print('left arm joint velocity max:', np.max(np.abs(dq_arr[:, 13:20]), axis=0))
-    print('right arm joint velocity mean:', np.mean(np.abs(dq_arr[:, 32:39]), axis=0))
-    print('right arm joint velocity max:', np.max(np.abs(dq_arr[:, 32:39]), axis=0))
+    print('right arm joint velocity mean:', np.mean(np.abs(dq_arr[:, 20:27]), axis=0))
+    print('right arm joint velocity max:', np.max(np.abs(dq_arr[:, 20:27]), axis=0))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Command selector')

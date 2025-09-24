@@ -10,10 +10,12 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher
-from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 from h12_ros2_controller.example.motor_debug_gui import setup_gains
 
 def record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps):
+    # get joint index
+    joint_idx = BODY_JOINTS.index(joint_name)
     # empty array for recording
     q_arr = []
     dq_arr = []
@@ -24,7 +26,7 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
     # sync initial state
     robot_model.sync_subscriber()
     robot_model.update_kinematics()
-    q_start = robot_model.q[ALL_JOINTS.index(joint_name)]
+    q_start = robot_model.q[joint_idx]
 
     for step in range(steps):
         # sync robot state
@@ -34,43 +36,34 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         # linear interpolation
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
-        command_publisher.q[BODY_JOINTS.index(joint_name)] = q_target
-        command_publisher.dq[BODY_JOINTS.index(joint_name)] = (q_end - q_start) / (steps * 0.01)
-
-        # q = robot_model.q.copy()
-        # q[robot_model.body_q_ids] = q_target
-        # tau = pin.rnea(robot_model.model,
-        #                robot_model.data,
-        #                q,
-        #                robot_model.dq,
-        #                np.zeros(robot_model.model.nv))
-        # command_publisher.tau[BODY_JOINTS.index(joint_name)] = tau[ALL_JOINTS.index(joint_name)]
+        command_publisher.q[joint_idx] = q_target
+        command_publisher.dq[joint_idx] = (q_end - q_start) / (steps * 0.01)
 
         # sync robot state
         robot_model.sync_subscriber()
         robot_model.update_kinematics()
         # record
-        q_arr.append(robot_model.q[ALL_JOINTS.index(joint_name)])
-        dq_arr.append(robot_model.dq[ALL_JOINTS.index(joint_name)])
-        tau_arr.append(robot_model.tau[ALL_JOINTS.index(joint_name)])
-        q_cmd_arr.append(command_publisher.q[BODY_JOINTS.index(joint_name)])
-        dq_cmd_arr.append(command_publisher.dq[BODY_JOINTS.index(joint_name)])
+        q_arr.append(robot_model.q[joint_idx])
+        dq_arr.append(robot_model.dq[joint_idx])
+        tau_arr.append(robot_model.tau[joint_idx])
+        q_cmd_arr.append(command_publisher.q[joint_idx])
+        dq_cmd_arr.append(command_publisher.dq[joint_idx])
 
         time.sleep(0.01)
 
     # zero out publisher
-    command_publisher.q[BODY_JOINTS.index(joint_name)] = q_end
-    command_publisher.dq[BODY_JOINTS.index(joint_name)] = 0.0
+    command_publisher.q[joint_idx] = q_end
+    command_publisher.dq[joint_idx] = 0.0
 
     # stationary sleep
     for _ in range(50):
         robot_model.sync_subscriber()
         robot_model.update_kinematics()
-        q_arr.append(robot_model.q[ALL_JOINTS.index(joint_name)])
-        dq_arr.append(robot_model.dq[ALL_JOINTS.index(joint_name)])
-        tau_arr.append(robot_model.tau[ALL_JOINTS.index(joint_name)])
-        q_cmd_arr.append(command_publisher.q[BODY_JOINTS.index(joint_name)])
-        dq_cmd_arr.append(command_publisher.dq[BODY_JOINTS.index(joint_name)])
+        q_arr.append(robot_model.q[joint_idx])
+        dq_arr.append(robot_model.dq[joint_idx])
+        tau_arr.append(robot_model.tau[joint_idx])
+        q_cmd_arr.append(command_publisher.q[joint_idx])
+        dq_cmd_arr.append(command_publisher.dq[joint_idx])
         time.sleep(0.01)
 
     return {
@@ -96,14 +89,12 @@ def main(joint_name, q_start, q_end, steps=100):
     robot_model.sync_subscriber()
     robot_model.update_kinematics()
 
-    # get initial joint positions
-    init_q = robot_model.q[robot_model.body_q_ids]
-
     # setup motor gains
     setup_gains(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
+    init_q = robot_model.q
     command_publisher.enable_motor(motor_ids, init_q)
     command_publisher.start_publisher()
 

@@ -37,13 +37,13 @@ class ArmController(UpperController):
         self.ki = np.zeros(self.robot_model.model.nv)
         # gain for shoulder
         self.ki[13:16] = 320.0
-        self.ki[32:35] = 320.0
+        self.ki[20:23] = 320.0
         # gain for elbow
         self.ki[16:18] = 220.0
-        self.ki[35:37] = 220.0
+        self.ki[23:25] = 220.0
         # gain for wrist
         self.ki[18:20] = 120.0
-        self.ki[37:39] = 120.0
+        self.ki[25:27] = 120.0
 
     '''
     joint position for left and right arms
@@ -344,13 +344,13 @@ class ArmController(UpperController):
             self.dq_i[18:20] = 0.0
         # threshold for right shoulder joints
         if right_force > 24.0:
-            self.dq_i[32:35] = 0.0
+            self.dq_i[20:23] = 0.0
         # threshold for right elbow joints
         if right_force > 20.0:
-            self.dq_i[35:37] = 0.0
+            self.dq_i[23:25] = 0.0
         # threshold for right wrist joints
         if right_force > 12.0:
-            self.dq_i[37:39] = 0.0
+            self.dq_i[25:27] = 0.0
 
         # threshold for left shoulder yaw joints
         if left_torque > 4.0:
@@ -360,10 +360,10 @@ class ArmController(UpperController):
             self.dq_i[17] = 0.0
         # threshold for right shoulder yaw joints
         if right_torque > 4.0:
-            self.dq_i[34] = 0.0
+            self.dq_i[22] = 0.0
         # threshold for right elbow roll joints
         if right_torque > 2.0:
-            self.dq_i[36] = 0.0
+            self.dq_i[24] = 0.0
 
         # integral dq
         self.dq_i += self.robot_model.dq * self.dt
@@ -375,7 +375,7 @@ class ArmController(UpperController):
             self.robot_model.q
         )
 
-        self.command_publisher.tau = (tau - self.ki * self.dq_i)[self.robot_model.body_q_ids]
+        self.command_publisher.tau = tau - self.ki * self.dq_i
 
     def impedance_step(self, x_target):
         # sync robot model

@@ -102,6 +102,12 @@ class IKSolver:
             viewer[task_name].delete()
             viewer[frame_name].delete()
 
+    def clear_frame_tasks(self):
+        '''Clear all frame tasks'''
+        task_names = list(self.frame_tasks.keys())
+        for task_name in task_names:
+            self.remove_frame_task(task_name)
+
     def update_visualizer(self):
         if self.robot_model.viz is not None:
             viewer = self.robot_model.viz.viewer
