@@ -2,13 +2,13 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_benchmark(solver, filepath):
-    data = np.load(f'data/{filepath}/{solver}.npz')
+def plot_benchmark(solver, filepath, savepath):
+    data = np.load(filepath)
     linear_error_log = data['linear_error_log']  # shape: (N, T)
     angular_error_log = data['angular_error_log']  # shape: (N, T)
 
     # make dir
-    os.makedirs(f'figures/{filepath}', exist_ok=True)
+    os.makedirs(savepath, exist_ok=True)
 
     # plot linear error
     plt.figure()
@@ -20,7 +20,7 @@ def plot_benchmark(solver, filepath):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f'figures/{filepath}/{solver}_linear_error.png')
+    plt.savefig(f'{savepath}/{solver}_linear_error.png')
     plt.close()
 
     # plot angular error
@@ -33,12 +33,14 @@ def plot_benchmark(solver, filepath):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f'figures/{filepath}/{solver}_angular_error.png')
+    plt.savefig(f'{savepath}/{solver}_angular_error.png')
     plt.close()
 
 if __name__ == '__main__':
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
-    filepath = 'compare_solver_onrobot'
+    path = 'compare_solver_onrobot'
 
     for solver in solvers:
-        plot_benchmark(solver, filepath)
+        filepath = f'./data/{path}/{solver}.npz'
+        savepath = f'./figures/{path}'
+        plot_benchmark(solver, filepath, savepath)

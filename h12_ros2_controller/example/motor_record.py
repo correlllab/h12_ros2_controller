@@ -126,7 +126,7 @@ def save_results(data, filename):
              dq_cmd=data['dq_cmd'])
 
 if __name__ == '__main__':
-    path = './data/motor_record'
+    path = './data/motor_record_mj'
     joint_name_list = [
         'left_hip_yaw_joint', 'right_hip_yaw_joint',
         'left_hip_pitch_joint', 'right_hip_pitch_joint',

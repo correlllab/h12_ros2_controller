@@ -85,13 +85,14 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
 
 
 if __name__ == '__main__':
+    filepath = './motor_record_mj'
     joint_name_list = ['hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
                        'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint']
 
     for joint_name in joint_name_list:
-        left_filename = f'./data/motor_record/left_{joint_name}.npz'
-        right_filename = f'./data/motor_record/right_{joint_name}.npz'
-        savepath = f'./figures/motor_record'
+        left_filename = f'./data/{filepath}/left_{joint_name}.npz'
+        right_filename = f'./data/{filepath}/right_{joint_name}.npz'
+        savepath = f'./figures/{filepath}'
         plot_recording(left_filename, savepath)
         plot_recording(right_filename, savepath)
         plot_comparison(joint_name, left_filename, right_filename, savepath)
