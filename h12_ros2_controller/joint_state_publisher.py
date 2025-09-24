@@ -33,7 +33,7 @@ class JointStatePublisher(Node):
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.name = BODY_JOINTS
-        msg.position = self.robot_model.q.tolist()
+        msg.position = self.robot_model.state['q'].tolist()
 
         self.publisher.publish(msg)
 

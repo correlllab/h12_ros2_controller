@@ -44,7 +44,7 @@ def main():
     arm_sdk_publisher.kd[24:27] = 3.0
 
     motor_ids = [i for i in range(13, 27)]
-    init_q = robot_model.q[LEFT_ARM_INDEX + RIGHT_ARM_INDEX]
+    init_q = robot_model.state['q'][LEFT_ARM_INDEX + RIGHT_ARM_INDEX]
     arm_sdk_publisher.enable_motor(motor_ids, init_q)
     arm_sdk_publisher.start_publisher()
 
@@ -55,7 +55,7 @@ def main():
                       from_=-2.0, to=2.0,
                       resolution=0.01, orient=tk.HORIZONTAL, length=400)
     slider.pack()
-    slider.set(robot_model.q[control_idx])
+    slider.set(robot_model.state['q'][control_idx])
     root.update()
 
     try:
@@ -64,21 +64,21 @@ def main():
             robot_model.sync_subscriber()
             robot_model.update_kinematics()
 
-            target_q = robot_model.q
+            target_q = robot_model.state['q']
             target_q[control_idx] = slider.get()
-            q_diff = target_q - robot_model.q
+            q_diff = target_q - robot_model.state['q']
 
             tau = pin.rnea(robot_model.model,
                            robot_model.data,
                            target_q,
-                           robot_model.dq,
+                           robot_model.state['dq'],
                            np.zeros(robot_model.model.nv))
 
             arm_sdk_publisher.q[control_idx] = target_q[control_idx]
             arm_sdk_publisher.dq[control_idx] = q_diff[control_idx]
             arm_sdk_publisher.tau[control_idx] = tau[control_idx]
 
-            print(f'Error: {arm_sdk_publisher.q[control_idx] - robot_model.q[control_idx]:.4f}')
+            print(f'Error: {arm_sdk_publisher.q[control_idx] - robot_model.state["q"][control_idx]:.4f}')
             time.sleep(0.01)
     except Exception as e:
         print(f'Exception occurred: {e}')

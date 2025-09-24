@@ -19,7 +19,7 @@ def save():
     robot_model.sync_subscriber()
     robot_model.update_kinematics()
     print('Saving current configuration...')
-    q = robot_model.q
+    q = robot_model.state['q']
     np.save('./data/h1_2_configuration.npy', q)
 
 def lock():
@@ -32,7 +32,7 @@ def lock():
                                    visualize=True)
 
     print('Lock robot in current configuration')
-    q = arm_controller.robot_model.q
+    q = arm_controller.robot_model.state['q']
     np.save('./data/h1_2_configuration.npy', q)
 
     while True:

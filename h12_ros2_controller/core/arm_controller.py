@@ -50,11 +50,11 @@ class ArmController(UpperController):
     '''
     @property
     def left_arm_q(self):
-        return np.copy(self.robot_model.q[LEFT_ARM_INDEX])
+        return np.copy(self.robot_model.state['q'][LEFT_ARM_INDEX])
 
     @property
     def right_arm_q(self):
-        return np.copy(self.robot_model.q[RIGHT_ARM_INDEX])
+        return np.copy(self.robot_model.state['q'][RIGHT_ARM_INDEX])
 
     '''
     joint action for left and right arms
@@ -308,7 +308,7 @@ class ArmController(UpperController):
         self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
@@ -319,7 +319,7 @@ class ArmController(UpperController):
         self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
@@ -366,13 +366,13 @@ class ArmController(UpperController):
             self.dq_i[24] = 0.0
 
         # integral dq
-        self.dq_i += self.robot_model.dq * self.dt
+        self.dq_i += self.robot_model.state['dq'] * self.dt
 
         # compute tau for gravity compensation
         tau = pin.computeGeneralizedGravity(
             self.robot_model.model,
             self.robot_model.data,
-            self.robot_model.q
+            self.robot_model.state['q']
         )
 
         self.command_publisher.tau = tau - self.ki * self.dq_i
@@ -400,7 +400,7 @@ class ArmController(UpperController):
         tau_gravity = pin.computeGeneralizedGravity(
             self.robot_model.model,
             self.robot_model.data,
-            self.robot_model.q
+            self.robot_model.state['q']
         )
         tau_cmd = tau + tau_gravity
 

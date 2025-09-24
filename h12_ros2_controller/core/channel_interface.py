@@ -27,9 +27,15 @@ INDEX_NOT_USED = NUM_MOTOR
 class StateSubscriber:
     def __init__(self):
         # variable tracking states
-        self._q = np.zeros(NUM_MOTOR)
-        self._dq = np.zeros(NUM_MOTOR)
-        self._tau = np.zeros(NUM_MOTOR)
+        self._mode = np.zeros(NUM_MOTOR, dtype=np.uint8)
+        self._q = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self._dq = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self._ddq = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self._tau = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self._temperature = np.zeros((NUM_MOTOR, 2), dtype=np.int16)
+        self._vol = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self._sensor = np.zeros((NUM_MOTOR, 2), dtype=np.uint32)
+        self._motor_state = np.zeros(NUM_MOTOR, dtype=np.uint32)
 
         # subscribe low state
         self.low_state_subscriber = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
@@ -38,21 +44,30 @@ class StateSubscriber:
     def subscribe_low_state(self, msg: LowState_):
         self.last_time = time.time()
         for i in range(NUM_MOTOR):
+            self._mode[i] = msg.motor_state[i].mode
             self._q[i] = msg.motor_state[i].q
             self._dq[i] = msg.motor_state[i].dq
+            self._ddq[i] = msg.motor_state[i].ddq
             self._tau[i] = msg.motor_state[i].tau_est
+            self._temperature[i] = msg.motor_state[i].temperature
+            self._vol[i] = msg.motor_state[i].vol
+            self._sensor[i] = msg.motor_state[i].sensor
+            self._motor_state[i] = msg.motor_state[i].motorstate
+
 
     @property
-    def q(self):
-        return np.copy(self._q)
-
-    @property
-    def dq(self):
-        return np.copy(self._dq)
-
-    @property
-    def tau(self):
-        return np.copy(self._tau)
+    def state(self):
+        return {
+            'mode': np.copy(self._mode),
+            'q': np.copy(self._q),
+            'dq': np.copy(self._dq),
+            'ddq': np.copy(self._ddq),
+            'tau': np.copy(self._tau),
+            'temperature': np.copy(self._temperature),
+            'vol': np.copy(self._vol),
+            'sensor': np.copy(self._sensor),
+            'motor_state': np.copy(self._motor_state),
+        }
 
     def shutdown(self):
         self.low_state_subscriber.Close()
@@ -62,11 +77,11 @@ class CommandPublisher:
     def __init__(self):
         # variables saving states
         self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
-        self.q = np.zeros(NUM_MOTOR)
-        self.dq = np.zeros(NUM_MOTOR)
-        self.tau = np.zeros(NUM_MOTOR)
-        self.kp = np.zeros(NUM_MOTOR)
-        self.kd = np.zeros(NUM_MOTOR)
+        self.q = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.dq = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.tau = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.kp = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.kd = np.zeros(NUM_MOTOR, dtype=np.float32)
 
         # publish low command
         self.low_cmd_publisher = ChannelPublisher(TOPIC_LOWCMD, LowCmd_)
@@ -126,7 +141,7 @@ class CommandPublisher:
 class HandSubscriber:
     def __init__(self):
         # variables tracking hand states
-        self._q = np.zeros(NUM_HAND_DOF)
+        self._q = np.zeros(NUM_HAND_DOF, dtype=np.float32)
 
         # subscribe hand state
         self.hand_state_subscriber = ChannelSubscriber(TOPIC_HANDSTATE, MotorStates_)
@@ -152,7 +167,7 @@ class HandPublisher:
     def __init__(self, dt=0.005):
         self.dt = dt
         # variables saving hand states
-        self.q = np.zeros(NUM_HAND_DOF)
+        self.q = np.zeros(NUM_HAND_DOF, dtype=np.float32)
 
         # publish hand command
         self.hand_cmd_publisher = ChannelPublisher(TOPIC_HANDCMD, MotorCmds_)
@@ -181,11 +196,11 @@ class HandPublisher:
 class ArmSDKPublisher:
     def __init__(self):
         # variables saving states
-        self.q = np.zeros(NUM_MOTOR)
-        self.dq = np.zeros(NUM_MOTOR)
-        self.tau = np.zeros(NUM_MOTOR)
-        self.kp = np.zeros(NUM_MOTOR)
-        self.kd = np.zeros(NUM_MOTOR)
+        self.q = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.dq = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.tau = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.kp = np.zeros(NUM_MOTOR, dtype=np.float32)
+        self.kd = np.zeros(NUM_MOTOR, dtype=np.float32)
 
         # publish arm sdk command
         self.arm_cmd_publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)

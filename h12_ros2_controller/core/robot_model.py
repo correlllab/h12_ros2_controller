@@ -28,7 +28,7 @@ class RobotModel:
         self._tau = np.zeros(self.model.nv)
 
         # initialize with zero joint positions
-        pin.forwardKinematics(self.model, self.data, self.q)
+        pin.forwardKinematics(self.model, self.data, self.state['q'])
         pin.updateFramePlacements(self.model, self.data)
 
         # flags for additional initialization
@@ -92,36 +92,31 @@ class RobotModel:
         return collision_model, collision_data
 
     @property
-    def q(self):
-        return np.copy(self._q)
+    def state(self):
+        # If state_subscriber exists, use its state dict
+        if self.state_subscriber is not None:
+            return self.state_subscriber.state
+        # Otherwise, fallback to local fields
+        return {
+            'q': np.copy(self._q),
+            'dq': np.copy(self._dq),
+            'tau': np.copy(self._tau),
+        }
 
     @property
-    def dq(self):
-        return np.copy(self._dq)
-
-    @property
-    def tau(self):
-        return np.copy(self._tau)
+    def state_reduced(self):
+        result = {}
+        for k, v in self.state.items():
+            result[k] = np.copy(v[self.reduced_mask])
+        return result
 
     @property
     def zero_q(self):
         return np.zeros(self.model.nq)
 
     @property
-    def q_reduced(self):
-        return np.copy(self._q[self.reduced_mask])
-
-    @property
-    def dq_reduced(self):
-        return np.copy(self._dq[self.reduced_mask])
-
-    @property
-    def tau_reduced(self):
-        return np.copy(self._tau[self.reduced_mask])
-
-    @property
     def zero_q_reduced(self):
-        return np.copy(self.zero_q[self.reduced_mask])
+        return np.zeros(self.model_reduced.nq)
 
     def shutdown(self):
         if self.state_subscriber is not None:
@@ -211,16 +206,16 @@ class RobotModel:
     def sync_subscriber(self):
         if self.state_subscriber is not None:
             # update the q, dq, tau
-            self._q = self.state_subscriber.q
-            self._dq = self.state_subscriber.dq
-            self._tau = self.state_subscriber.tau
+            self._q = self.state_subscriber.state['q']
+            self._dq = self.state_subscriber.state['dq']
+            self._tau = self.state_subscriber.state['tau']
 
     def update_kinematics(self):
         # udpate data with the current joint positions
-        pin.forwardKinematics(self.model, self.data, self.q, self.dq)
+        pin.forwardKinematics(self.model, self.data, self.state['q'], self.state['dq'])
         pin.updateFramePlacements(self.model, self.data)
         if self.init_reduced:
-            pin.forwardKinematics(self.model_reduced, self.data_reduced, self.q_reduced, self.dq_reduced)
+            pin.forwardKinematics(self.model_reduced, self.data_reduced, self.state_reduced['q'], self.state_reduced['dq'])
             pin.updateFramePlacements(self.model_reduced, self.data_reduced)
 
     def update_visualizer(self):
@@ -280,7 +275,7 @@ class RobotModel:
         if q is not None:
             data, q = self.model.createData(), q
         else:
-            data, q = self.data, self.q
+            data, q = self.data, self.state['q']
         # update kinematics
         pin.forwardKinematics(self.model, data, q)
         pin.updateFramePlacements(self.model, data)
@@ -302,7 +297,7 @@ class RobotModel:
         if q is not None:
             data, q = self.model.createData(), q
         else:
-            data, q = self.data, self.q
+            data, q = self.data, self.state['q']
         # update kinematics
         pin.forwardKinematics(self.model, data, q)
         pin.updateFramePlacements(self.model, data)
@@ -332,14 +327,14 @@ class RobotModel:
         return twist
 
     def get_frame_wrench(self, frame_name: str, q: np.ndarray=None):
-        q = self.q if q is None else q
+        q = self.state['q'] if q is None else q
         tau_gravity = pin.rnea(self.model,
                                self.data,
                                q,
                                np.zeros(self.model.nv),
                                np.zeros(self.model.nv))
         jac = self.get_frame_jacobian(frame_name, q)
-        wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.tau - tau_gravity)
+        wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.state['tau'] - tau_gravity)
         return wrench
 
     def check_valid(self, q):

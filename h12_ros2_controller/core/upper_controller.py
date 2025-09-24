@@ -1,3 +1,4 @@
+from ast import Del
 import os
 import time
 import numpy as np
@@ -63,7 +64,7 @@ class UpperController:
         self.command_publisher.kp[24:27] = 50.0
         self.command_publisher.kd[24:27] = 3.0
         # enable upper body motors
-        init_q = self.robot_model.q_reduced
+        init_q = self.robot_model.state_reduced['q']
         self.command_publisher.enable_motor(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in pace
@@ -120,7 +121,7 @@ class UpperController:
         self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
@@ -139,7 +140,7 @@ class UpperController:
         self.apply_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
@@ -194,20 +195,20 @@ class UpperController:
         # solve dynamics
         tau = pin.rnea(self.robot_model.model,
                        self.robot_model.data,
-                       self.robot_model.q + vel * self.dt,
-                       self.robot_model.dq,
+                       self.robot_model.state['q'] + vel * self.dt,
+                       self.robot_model.state['dq'],
                        np.zeros(self.robot_model.model.nv))
 
         # send the velocity command to the robot
-        self.command_publisher.q = self.robot_model.q + vel * self.dt
+        self.command_publisher.q = self.robot_model.state['q'] + vel * self.dt
         self.command_publisher.dq = vel
         self.command_publisher.tau = tau
 
         if self.recording:
             # get values for upper body joints only
-            q = self.robot_model.q[12:27]
-            dq = self.robot_model.dq[12:27]
-            tau = self.robot_model.tau[12:27]
+            q = self.robot_model.state['q'][12:27]
+            dq = self.robot_model.state['dq'][12:27]
+            tau = self.robot_model.state['tau'][12:27]
             q_cmd = self.command_publisher.q[12:27]
             dq_cmd = self.command_publisher.dq[12:27]
             tau_cmd = self.command_publisher.tau[12:27]

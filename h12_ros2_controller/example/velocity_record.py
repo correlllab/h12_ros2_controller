@@ -30,7 +30,7 @@ def save_data(filepath, steps=1000):
         robot_model.update_visualizer()
 
         # record all dp and ee velocities
-        dq_arr.append(robot_model.dq)
+        dq_arr.append(robot_model.state['dq'])
         left_ee_twist_arr.append(robot_model.get_frame_twist(left_ee_name))
         right_ee_twist_arr.append(robot_model.get_frame_twist(right_ee_name))
 

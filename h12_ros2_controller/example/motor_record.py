@@ -26,7 +26,7 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
     # sync initial state
     robot_model.sync_subscriber()
     robot_model.update_kinematics()
-    q_start = robot_model.q[joint_idx]
+    q_start = robot_model.state['q'][joint_idx]
 
     for step in range(steps):
         # sync robot state
@@ -43,9 +43,9 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         robot_model.sync_subscriber()
         robot_model.update_kinematics()
         # record
-        q_arr.append(robot_model.q[joint_idx])
-        dq_arr.append(robot_model.dq[joint_idx])
-        tau_arr.append(robot_model.tau[joint_idx])
+        q_arr.append(robot_model.state['q'][joint_idx])
+        dq_arr.append(robot_model.state['dq'][joint_idx])
+        tau_arr.append(robot_model.state['tau'][joint_idx])
         q_cmd_arr.append(command_publisher.q[joint_idx])
         dq_cmd_arr.append(command_publisher.dq[joint_idx])
 
@@ -59,9 +59,9 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
     for _ in range(50):
         robot_model.sync_subscriber()
         robot_model.update_kinematics()
-        q_arr.append(robot_model.q[joint_idx])
-        dq_arr.append(robot_model.dq[joint_idx])
-        tau_arr.append(robot_model.tau[joint_idx])
+        q_arr.append(robot_model.state['q'][joint_idx])
+        dq_arr.append(robot_model.state['dq'][joint_idx])
+        tau_arr.append(robot_model.state['tau'][joint_idx])
         q_cmd_arr.append(command_publisher.q[joint_idx])
         dq_cmd_arr.append(command_publisher.dq[joint_idx])
         time.sleep(0.01)
@@ -94,7 +94,7 @@ def main(joint_name, q_start, q_end, steps=100):
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
-    init_q = robot_model.q
+    init_q = robot_model.state['q']
     command_publisher.enable_motor(motor_ids, init_q)
     command_publisher.start_publisher()
 

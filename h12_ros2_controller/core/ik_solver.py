@@ -119,8 +119,8 @@ class IKSolver:
 
     def update_configurations(self):
         '''Update Pink configurations with current robot state'''
-        self.configuration.update(self.robot_model.q)
-        self.reduced_configuration.update(self.robot_model.q_reduced)
+        self.configuration.update(self.robot_model.state['q'])
+        self.reduced_configuration.update(self.robot_model.state_reduced['q'])
 
     def set_from_configuration(self):
         '''Set initial targets for all tasks from current configuration'''

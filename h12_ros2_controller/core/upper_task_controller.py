@@ -71,7 +71,7 @@ class UpperTaskController(UpperController):
         vel = self.limit_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
@@ -81,7 +81,7 @@ class UpperTaskController(UpperController):
         vel = self.limit_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
-        self.robot_model._q = self.robot_model.q + vel * self.dt
+        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
 
