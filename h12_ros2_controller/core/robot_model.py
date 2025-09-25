@@ -150,7 +150,6 @@ class RobotModel:
 
     def visualize_wrench(self, link_name):
         # get frame position and wrench
-        origin = self.get_frame_position(link_name)
         wrench = self.get_frame_wrench(link_name)
 
         # create cyclinder to represent force
@@ -214,6 +213,15 @@ class RobotModel:
     def update_visualizer(self):
         if self.viz is not None:
             self.viz.display()
+
+    def get_gravity_compensation(self, q: np.ndarray=None):
+        q = self.state['q'] if q is None else q
+        tau_gravity = pin.rnea(self.model,
+                               self.data,
+                               q,
+                               np.zeros(self.model.nv),
+                               np.zeros(self.model.nv))
+        return tau_gravity
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)

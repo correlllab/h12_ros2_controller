@@ -132,10 +132,10 @@ def setup_gains(command_publisher):
     command_publisher.kp[6] = 200.0
     command_publisher.kd[6] = 3.0
     # gain for hip pitch
-    command_publisher.kp[1] = 400.0
-    command_publisher.kd[1] = 20.0
-    command_publisher.kp[7] = 400.0
-    command_publisher.kd[7] = 20.0
+    command_publisher.kp[1] = 500.0
+    command_publisher.kd[1] = 40.0
+    command_publisher.kp[7] = 500.0
+    command_publisher.kd[7] = 40.0
     # gain for hip roll
     command_publisher.kp[2] = 200.0
     command_publisher.kd[2] = 2.5

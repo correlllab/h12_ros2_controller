@@ -35,7 +35,7 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
         command_publisher.q[joint_idx] = q_target
-        command_publisher.dq[joint_idx] = (q_end - q_start) / (steps * 0.01)
+        command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
 
         # sync robot state
         robot_model.update_kinematics()
@@ -128,28 +128,28 @@ def save_results(data, filename):
 if __name__ == '__main__':
     path = './data/motor_record_mj'
     joint_name_list = [
-        # 'left_hip_yaw_joint', 'right_hip_yaw_joint',
+        'left_hip_yaw_joint', 'right_hip_yaw_joint',
         'left_hip_pitch_joint', 'right_hip_pitch_joint',
-        # 'left_hip_roll_joint', 'right_hip_roll_joint',
-        # 'left_knee_joint', 'right_knee_joint',
-        # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
-        # 'left_ankle_roll_joint', 'right_ankle_roll_joint'
+        'left_hip_roll_joint', 'right_hip_roll_joint',
+        'left_knee_joint', 'right_knee_joint',
+        'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
+        'left_ankle_roll_joint', 'right_ankle_roll_joint'
     ]
     q_start_list = [
-        # 0.0, 0.0,
         0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0
     ]
     q_end_list = [
-        # 0.3, -0.3, # hip yaw
+        0.3, -0.3, # hip yaw
         -0.5, -0.5, # hip pitch
-        # 0.5, -0.5, # hip roll
-        # 1.0, 1.0, # knee
-        # -0.5, -0.5, # ankle pitch
-        # 0.25, -0.25 # ankle roll
+        0.5, -0.5, # hip roll
+        1.0, 1.0, # knee
+        -0.5, -0.5, # ankle pitch
+        0.25, -0.25 # ankle roll
     ]
     steps = 100
 

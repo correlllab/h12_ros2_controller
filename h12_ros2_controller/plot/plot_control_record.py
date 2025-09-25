@@ -25,19 +25,38 @@ def plot_recording(filename, savepath):
         joint_id = ids[i]
         joint_name = BODY_JOINTS[joint_id]
 
-        plt.figure()
-        plt.plot(q[:, i], label='q')
-        plt.plot(dq[:, i], label='dq')
-        plt.plot(tau[:, i], label='tau')
-        plt.plot(q_cmd[:, i], label='q_cmd')
-        plt.plot(dq_cmd[:, i], label='dq_cmd')
-        plt.plot(tau_cmd[:, i], label='tau_cmd')
-        plt.plot(torque_cmd[:, i], label='torque_cmd')
-        plt.title(joint_name)
-        plt.xlabel('Time')
-        plt.ylabel('Value')
+        plt.figure(figsize=(12, 8))
+
+        # Top panel: Position (q)
+        plt.subplot(3, 1, 1)
+        plt.plot(q[:, i], label='q', linewidth=2)
+        plt.plot(q_cmd[:, i], '--', label='q_cmd', linewidth=2)
+        plt.title(f'{joint_name} - Position')
+        plt.ylabel('Position (rad)')
         plt.legend()
         plt.grid()
+
+        # Middle panel: Velocity (dq)
+        plt.subplot(3, 1, 2)
+        plt.plot(dq[:, i], label='dq', linewidth=2)
+        plt.plot(dq_cmd[:, i], '--', label='dq_cmd', linewidth=2)
+        plt.title('Velocity')
+        plt.ylabel('Velocity (rad/s)')
+        plt.legend()
+        plt.grid()
+
+        # Bottom panel: Torque
+        plt.subplot(3, 1, 3)
+        plt.plot(tau[:, i], label='tau', linewidth=2)
+        plt.plot(tau_cmd[:, i], '--', label='tau_cmd', linewidth=2)
+        plt.plot(torque_cmd[:, i], '-.', label='torque_cmd', linewidth=2)
+        plt.title('Torque')
+        plt.xlabel('Time Steps')
+        plt.ylabel('Torque (Nm)')
+        plt.legend()
+        plt.grid()
+
+        plt.tight_layout()
         plt.savefig(f'{savepath}/{joint_name}.png')
         plt.close()
 

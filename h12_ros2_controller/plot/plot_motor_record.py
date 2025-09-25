@@ -13,17 +13,36 @@ def plot_recording(filename, savepath):
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
-    plt.figure()
+
+    plt.figure(figsize=(12, 8))
+
+    plt.subplot(3, 1, 1)
     plt.plot(q, label='q')
-    plt.plot(dq, label='dq')
-    plt.plot(tau, label='tau')
-    plt.plot(q_cmd, label='q_cmd')
-    plt.plot(dq_cmd, label='dq_cmd')
-    plt.legend()
-    plt.title(joint_name)
+    plt.plot(q_cmd, '--', label='q_cmd')
+    plt.title(f'{joint_name} - Position')
     plt.xlabel('Time')
-    plt.ylabel('Value')
+    plt.ylabel('Position')
+    plt.legend()
     plt.grid()
+
+    plt.subplot(3, 1, 2)
+    plt.plot(dq, label='dq')
+    plt.plot(dq_cmd, '--', label='dq_cmd')
+    plt.title('Velocity')
+    plt.xlabel('Time')
+    plt.ylabel('Velocity')
+    plt.legend()
+    plt.grid()
+
+    plt.subplot(3, 1, 3)
+    plt.plot(tau, label='tau')
+    plt.title('Torque')
+    plt.xlabel('Time')
+    plt.ylabel('Torque')
+    plt.legend()
+    plt.grid()
+
+    plt.tight_layout()
     plt.savefig(f'{savepath}/{joint_name}.png')
     plt.close()
 
