@@ -128,34 +128,34 @@ def setup_gains(command_publisher):
 
     # gain for hip yaw
     command_publisher.kp[0] = 200.0
-    command_publisher.kd[0] = 3.0
+    command_publisher.kd[0] = 5.0
     command_publisher.kp[6] = 200.0
-    command_publisher.kd[6] = 3.0
+    command_publisher.kd[6] = 5.0
     # gain for hip pitch
-    command_publisher.kp[1] = 500.0
-    command_publisher.kd[1] = 40.0
-    command_publisher.kp[7] = 500.0
-    command_publisher.kd[7] = 40.0
+    command_publisher.kp[1] = 350.0
+    command_publisher.kd[1] = 35.0
+    command_publisher.kp[7] = 350.0
+    command_publisher.kd[7] = 35.0
     # gain for hip roll
-    command_publisher.kp[2] = 200.0
-    command_publisher.kd[2] = 2.5
-    command_publisher.kp[8] = 200.0
-    command_publisher.kd[8] = 2.5
+    command_publisher.kp[2] = 300.0
+    command_publisher.kd[2] = 30.0
+    command_publisher.kp[8] = 300.0
+    command_publisher.kd[8] = 30.0
     # gain for knee
     command_publisher.kp[3] = 300.0
-    command_publisher.kd[3] = 4.0
+    command_publisher.kd[3] = 10.0
     command_publisher.kp[9] = 300.0
-    command_publisher.kd[9] = 4.0
+    command_publisher.kd[9] = 10.0
     # gain for ankle pitch
-    command_publisher.kp[4] = 60.0
-    command_publisher.kd[4] = 2.0
-    command_publisher.kp[10] = 60.0
-    command_publisher.kd[10] = 2.0
+    command_publisher.kp[4] = 150.0
+    command_publisher.kd[4] = 5.0
+    command_publisher.kp[10] = 150.0
+    command_publisher.kd[10] = 5.0
     # gain for ankle roll
-    command_publisher.kp[5] = 40.0
-    command_publisher.kd[5] = 2.0
-    command_publisher.kp[11] = 40.0
-    command_publisher.kd[11] = 2.0
+    command_publisher.kp[5] = 150.0
+    command_publisher.kd[5] = 5.0
+    command_publisher.kp[11] = 150.0
+    command_publisher.kd[11] = 5.0
 
     # gain for torso (12)
     command_publisher.kp[12] = 150.0

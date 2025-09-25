@@ -23,22 +23,15 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
     q_cmd_arr = []
     dq_cmd_arr = []
 
-    # sync initial state
-    robot_model.update_kinematics()
     q_start = robot_model.state['q'][joint_idx]
 
     for step in range(steps):
-        # sync robot state
-        robot_model.update_kinematics()
-
         # linear interpolation
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
         command_publisher.q[joint_idx] = q_target
         command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
 
-        # sync robot state
-        robot_model.update_kinematics()
         # record
         q_arr.append(robot_model.state['q'][joint_idx])
         dq_arr.append(robot_model.state['dq'][joint_idx])
@@ -48,13 +41,15 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
 
         time.sleep(0.01)
 
-    # zero out publisher
+    # fix on final state
     command_publisher.q[joint_idx] = q_end
     command_publisher.dq[joint_idx] = 0.0
 
     # stationary sleep
     for _ in range(50):
-        robot_model.update_kinematics()
+        # update gravity compensation only
+        command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
+        # record
         q_arr.append(robot_model.state['q'][joint_idx])
         dq_arr.append(robot_model.state['dq'][joint_idx])
         tau_arr.append(robot_model.state['tau'][joint_idx])
