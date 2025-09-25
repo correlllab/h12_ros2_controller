@@ -126,11 +126,21 @@ def setup_gains(command_publisher):
     command_publisher.kp.fill(100.0)
     command_publisher.kd.fill(5.0)
 
-    # gain for hip
-    command_publisher.kp[0:3] = 200.0
-    command_publisher.kd[0:3] = 2.5
-    command_publisher.kp[6:9] = 200.0
-    command_publisher.kd[6:9] = 2.5
+    # gain for hip yaw
+    command_publisher.kp[0] = 200.0
+    command_publisher.kd[0] = 3.0
+    command_publisher.kp[6] = 200.0
+    command_publisher.kd[6] = 3.0
+    # gain for hip pitch
+    command_publisher.kp[1] = 400.0
+    command_publisher.kd[1] = 20.0
+    command_publisher.kp[7] = 400.0
+    command_publisher.kd[7] = 20.0
+    # gain for hip roll
+    command_publisher.kp[2] = 200.0
+    command_publisher.kd[2] = 2.5
+    command_publisher.kp[8] = 200.0
+    command_publisher.kd[8] = 2.5
     # gain for knee
     command_publisher.kp[3] = 300.0
     command_publisher.kd[3] = 4.0

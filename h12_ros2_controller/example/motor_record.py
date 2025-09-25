@@ -128,28 +128,28 @@ def save_results(data, filename):
 if __name__ == '__main__':
     path = './data/motor_record_mj'
     joint_name_list = [
-        'left_hip_yaw_joint', 'right_hip_yaw_joint',
+        # 'left_hip_yaw_joint', 'right_hip_yaw_joint',
         'left_hip_pitch_joint', 'right_hip_pitch_joint',
-        'left_hip_roll_joint', 'right_hip_roll_joint',
-        'left_knee_joint', 'right_knee_joint',
-        'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
-        'left_ankle_roll_joint', 'right_ankle_roll_joint'
+        # 'left_hip_roll_joint', 'right_hip_roll_joint',
+        # 'left_knee_joint', 'right_knee_joint',
+        # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
+        # 'left_ankle_roll_joint', 'right_ankle_roll_joint'
     ]
     q_start_list = [
+        # 0.0, 0.0,
         0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0
     ]
     q_end_list = [
-        0.3, -0.3, # hip yaw
+        # 0.3, -0.3, # hip yaw
         -0.5, -0.5, # hip pitch
-        0.5, -0.5, # hip roll
-        1.0, 1.0, # knee
-        -0.5, -0.5, # ankle pitch
-        0.25, -0.25 # ankle roll
+        # 0.5, -0.5, # hip roll
+        # 1.0, 1.0, # knee
+        # -0.5, -0.5, # ankle pitch
+        # 0.25, -0.25 # ankle roll
     ]
     steps = 100
 
