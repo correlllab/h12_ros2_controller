@@ -127,10 +127,10 @@ def setup_gains(command_publisher):
     command_publisher.kd.fill(5.0)
 
     # gain for hip yaw
-    command_publisher.kp[0] = 200.0
-    command_publisher.kd[0] = 5.0
-    command_publisher.kp[6] = 200.0
-    command_publisher.kd[6] = 5.0
+    command_publisher.kp[0] = 300.0
+    command_publisher.kd[0] = 25.0
+    command_publisher.kp[6] = 300.0
+    command_publisher.kd[6] = 25.0
     # gain for hip pitch
     command_publisher.kp[1] = 350.0
     command_publisher.kd[1] = 35.0

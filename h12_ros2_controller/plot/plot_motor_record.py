@@ -10,6 +10,8 @@ def plot_recording(filename, savepath):
     tau = data['tau']  # joint torques
     q_cmd = data['q_cmd']  # commanded joint positions
     dq_cmd = data['dq_cmd']  # commanded joint velocities
+    tau_cmd = data['tau_cmd'] # commanded torques
+    torque_cmd = data['torque_cmd'] # total torque based on equation
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
@@ -36,6 +38,8 @@ def plot_recording(filename, savepath):
 
     plt.subplot(3, 1, 3)
     plt.plot(tau, label='tau')
+    plt.plot(tau_cmd, '--', label='tau_cmd')
+    plt.plot(torque_cmd, '-.', label='torque_cmd')
     plt.title('Torque')
     plt.xlabel('Time')
     plt.ylabel('Torque')
@@ -55,12 +59,16 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     tau_left = left_data['tau']
     q_cmd_left = left_data['q_cmd']
     dq_cmd_left = left_data['dq_cmd']
+    tau_cmd_left = left_data['tau_cmd']
+    torque_cmd_left = left_data['torque_cmd']
 
     q_right = right_data['q']
     dq_right = right_data['dq']
     tau_right = right_data['tau']
     q_cmd_right = right_data['q_cmd']
     dq_cmd_right = right_data['dq_cmd']
+    tau_cmd_right = right_data['tau_cmd']
+    torque_cmd_right = right_data['torque_cmd']
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
@@ -92,6 +100,10 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     plt.subplot(3, 1, 3)
     plt.plot(tau_left, label='Left tau')
     plt.plot(tau_right, label='Right tau')
+    plt.plot(tau_cmd_left, '--', label='Left tau_cmd')
+    plt.plot(tau_cmd_right, '--', label='Right tau_cmd')
+    plt.plot(torque_cmd_left, '-.', label='Left torque_cmd')
+    plt.plot(torque_cmd_right, '-.', label='Right torque_cmd')
     plt.title('Joint Torque Comparison')
     plt.xlabel('Time')
     plt.ylabel('Torque')
@@ -104,7 +116,7 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
 
 
 if __name__ == '__main__':
-    filepath = './motor_record_mj'
+    filepath = './motor_record'
     savepath = f'./figures/{filepath}'
     joint_name_list = [
         'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
@@ -114,7 +126,7 @@ if __name__ == '__main__':
     ]
 
     # single torso joint
-    plot_recording(f'./data/{filepath}/torso_joint.npz', f'./figures/{filepath}')
+    # plot_recording(f'./data/{filepath}/torso_joint.npz', f'./figures/{filepath}')
     for joint_name in joint_name_list:
         left_filename = f'./data/{filepath}/left_{joint_name}.npz'
         right_filename = f'./data/{filepath}/right_{joint_name}.npz'
