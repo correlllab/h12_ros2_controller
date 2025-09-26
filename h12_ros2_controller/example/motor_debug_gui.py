@@ -137,10 +137,10 @@ def setup_gains(command_publisher):
     command_publisher.kp[7] = 350.0
     command_publisher.kd[7] = 35.0
     # gain for hip roll
-    command_publisher.kp[2] = 300.0
-    command_publisher.kd[2] = 30.0
-    command_publisher.kp[8] = 300.0
-    command_publisher.kd[8] = 30.0
+    command_publisher.kp[2] = 250.0
+    command_publisher.kd[2] = 25.0
+    command_publisher.kp[8] = 250.0
+    command_publisher.kd[8] = 25.0
     # gain for knee
     command_publisher.kp[3] = 300.0
     command_publisher.kd[3] = 10.0
@@ -158,8 +158,8 @@ def setup_gains(command_publisher):
     command_publisher.kd[11] = 5.0
 
     # gain for torso (12)
-    command_publisher.kp[12] = 150.0
-    command_publisher.kd[12] = 3.0
+    command_publisher.kp[12] = 200.0
+    command_publisher.kd[12] = 10.0
 
     # gain for shoulder pitch/roll
     command_publisher.kp[13:15] = 200.0
@@ -177,10 +177,10 @@ def setup_gains(command_publisher):
     command_publisher.kp[23] = 150.0
     command_publisher.kd[23] = 4.0
     # gain for wrist
-    command_publisher.kp[17:20] = 50.0
-    command_publisher.kd[17:20] = 3.0
-    command_publisher.kp[24:27] = 50.0
-    command_publisher.kd[24:27] = 3.0
+    command_publisher.kp[17:20] = 120.0
+    command_publisher.kd[17:20] = 4.0
+    command_publisher.kp[24:27] = 120.0
+    command_publisher.kd[24:27] = 4.0
 
 def main_loop(gui, robot_model, command_publisher):
     '''main control loop for motor debugging'''

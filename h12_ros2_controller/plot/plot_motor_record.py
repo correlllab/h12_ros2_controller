@@ -99,19 +99,25 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     plt.grid()
 
     plt.tight_layout()
-    plt.savefig(f'{savepath}/{joint_name}_comparison.png')
+    plt.savefig(f'{savepath}/comparison_{joint_name}.png')
     plt.close()
 
 
 if __name__ == '__main__':
     filepath = './motor_record_mj'
-    joint_name_list = ['hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
-                       'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint']
+    savepath = f'./figures/{filepath}'
+    joint_name_list = [
+        'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
+        'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint',
+        'shoulder_pitch_joint', 'shoulder_roll_joint', 'shoulder_yaw_joint',
+        'elbow_joint', 'wrist_roll_joint', 'wrist_pitch_joint', 'wrist_yaw_joint'
+    ]
 
+    # single torso joint
+    plot_recording(f'./data/{filepath}/torso_joint.npz', f'./figures/{filepath}')
     for joint_name in joint_name_list:
         left_filename = f'./data/{filepath}/left_{joint_name}.npz'
         right_filename = f'./data/{filepath}/right_{joint_name}.npz'
-        savepath = f'./figures/{filepath}'
         plot_recording(left_filename, savepath)
         plot_recording(right_filename, savepath)
         plot_comparison(joint_name, left_filename, right_filename, savepath)
