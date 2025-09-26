@@ -116,7 +116,7 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
 
 
 if __name__ == '__main__':
-    filepath = './motor_record'
+    filepath = './motor_record_mj'
     savepath = f'./figures/{filepath}'
     joint_name_list = [
         'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
