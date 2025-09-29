@@ -189,7 +189,7 @@ class ArmController(UpperController):
     @property
     def left_ee_error(self):
         task = self.ik_solver.frame_tasks.get('left_ee')
-        return task.compute_error(self.ik_solver.reduced_configuration)
+        return task.compute_error(self.ik_solver.configuration_reduced)
 
     '''
     right end effector target properties
@@ -257,7 +257,7 @@ class ArmController(UpperController):
     @property
     def right_ee_error(self):
         task = self.ik_solver.frame_tasks.get('right_ee')
-        return task.compute_error(self.ik_solver.reduced_configuration)
+        return task.compute_error(self.ik_solver.configuration_reduced)
 
     @property
     def joint_error(self):
@@ -265,7 +265,7 @@ class ArmController(UpperController):
 
     @property
     def joint_error_reduced(self):
-        return self.ik_solver.config_task.compute_error(self.ik_solver.reduced_configuration)
+        return self.ik_solver.config_task.compute_error(self.ik_solver.configuration_reduced)
 
     def sync_robot_model(self):
         # call parent sync method

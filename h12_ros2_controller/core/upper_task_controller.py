@@ -37,7 +37,7 @@ class UpperTaskController(UpperController):
         task = self.ik_solver.frame_tasks.get(task_name)
         if task is None:
             raise ValueError(f'Task {task_name} not found')
-        return task.compute_error(self.ik_solver.reduced_configuration)
+        return task.compute_error(self.ik_solver.configuration_reduced)
 
     def remove_frame_task(self, task_name: str):
         '''Remove a frame task'''
@@ -81,6 +81,8 @@ class UpperTaskController(UpperController):
         vel = self.limit_joint_vel(vel)
         # directly update the robot model for visualization
         self.ik_solver.update_visualizer()
+        # force robot model to use local variable tracking states
+        self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.robot_model.update_kinematics()
         self.robot_model.update_visualizer()
