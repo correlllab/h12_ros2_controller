@@ -9,9 +9,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.core.channel_interface import CommandPublisher, setup_gains_mj, setup_gains_real
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
-from h12_ros2_controller.example.motor_debug_gui import setup_gains
 
 def record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps):
     # get joint index
@@ -102,7 +101,8 @@ def main(joint_name_list, q_start_list, q_end_list, steps, path):
     robot_model.update_kinematics()
 
     # setup motor gains
-    setup_gains(command_publisher)
+    setup_gains_mj(command_publisher)
+    # setup_gains_real(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))

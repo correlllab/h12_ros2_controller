@@ -6,7 +6,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
+from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher, setup_gains_mj, setup_gains_real
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -42,33 +42,14 @@ class UpperController:
         else:
             self.command_publisher = CommandPublisher()
 
-        # gain for shoulder
-        self.command_publisher.kp[13:15] = 200.0
-        self.command_publisher.kd[13:15] = 6.0
-        self.command_publisher.kp[20:22] = 200.0
-        self.command_publisher.kd[20:22] = 6.0
-        # gain for shoulder yaw
-        self.command_publisher.kp[15] = 150.0
-        self.command_publisher.kd[15] = 4.0
-        self.command_publisher.kp[22] = 150.0
-        self.command_publisher.kd[22] = 4.0
-        # gain for elbow
-        self.command_publisher.kp[16] = 150.0
-        self.command_publisher.kd[16] = 4.0
-        self.command_publisher.kp[23] = 150.0
-        self.command_publisher.kd[23] = 4.0
-        # gain for wrist
-        self.command_publisher.kp[17:20] = 50.0
-        self.command_publisher.kd[17:20] = 3.0
-        self.command_publisher.kp[24:27] = 50.0
-        self.command_publisher.kd[24:27] = 3.0
+        # setup_gains_mj(self.command_publisher)
+        setup_gains_real(self.command_publisher)
+
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
         self.command_publisher.enable_motor(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in pace
-        self.command_publisher.kp[12] = 150.0
-        self.command_publisher.kd[12] = 3.0
         self.command_publisher.enable_motor([12], [0.0])
         self.command_publisher.start_publisher()
 

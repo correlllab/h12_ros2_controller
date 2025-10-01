@@ -8,8 +8,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher
-from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
+from h12_ros2_controller.core.channel_interface import CommandPublisher, setup_gains_mj, setup_gains_real
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class MotorDebugGUI:
     '''GUI interface for motor debugging'''
@@ -120,73 +120,7 @@ class MotorDebugGUI:
         except:
             pass
 
-def setup_gains(command_publisher):
-    '''configure motor gains for all joints'''
-    # initialize all gains to default values
-    command_publisher.kp.fill(100.0)
-    command_publisher.kd.fill(5.0)
 
-    # gain for hip yaw
-    # this set works well for simulation
-    command_publisher.kp[0] = 200.0
-    command_publisher.kd[0] = 8.0
-    command_publisher.kp[6] = 200.0
-    command_publisher.kd[6] = 8.0
-    # this set works well for real robot
-    # command_publisher.kp[0] = 300.0
-    # command_publisher.kd[0] = 25.0
-    # command_publisher.kp[6] = 300.0
-    # command_publisher.kd[6] = 25.0
-    # gain for hip pitch
-    command_publisher.kp[1] = 350.0
-    command_publisher.kd[1] = 35.0
-    command_publisher.kp[7] = 350.0
-    command_publisher.kd[7] = 35.0
-    # gain for hip roll
-    command_publisher.kp[2] = 250.0
-    command_publisher.kd[2] = 25.0
-    command_publisher.kp[8] = 250.0
-    command_publisher.kd[8] = 25.0
-    # gain for knee
-    command_publisher.kp[3] = 300.0
-    command_publisher.kd[3] = 10.0
-    command_publisher.kp[9] = 300.0
-    command_publisher.kd[9] = 10.0
-    # gain for ankle pitch
-    command_publisher.kp[4] = 150.0
-    command_publisher.kd[4] = 5.0
-    command_publisher.kp[10] = 150.0
-    command_publisher.kd[10] = 5.0
-    # gain for ankle roll
-    command_publisher.kp[5] = 150.0
-    command_publisher.kd[5] = 5.0
-    command_publisher.kp[11] = 150.0
-    command_publisher.kd[11] = 5.0
-
-    # gain for torso (12)
-    command_publisher.kp[12] = 200.0
-    command_publisher.kd[12] = 10.0
-
-    # gain for shoulder pitch/roll
-    command_publisher.kp[13:15] = 200.0
-    command_publisher.kd[13:15] = 6.0
-    command_publisher.kp[20:22] = 200.0
-    command_publisher.kd[20:22] = 6.0
-    # gain for shoulder yaw
-    command_publisher.kp[15] = 150.0
-    command_publisher.kd[15] = 4.0
-    command_publisher.kp[22] = 150.0
-    command_publisher.kd[22] = 4.0
-    # gain for elbow
-    command_publisher.kp[16] = 150.0
-    command_publisher.kd[16] = 4.0
-    command_publisher.kp[23] = 150.0
-    command_publisher.kd[23] = 4.0
-    # gain for wrist
-    command_publisher.kp[17:20] = 120.0
-    command_publisher.kd[17:20] = 4.0
-    command_publisher.kp[24:27] = 120.0
-    command_publisher.kd[24:27] = 4.0
 
 def main_loop(gui, robot_model, command_publisher):
     '''main control loop for motor debugging'''
@@ -227,7 +161,8 @@ def main():
     robot_model.update_kinematics()
 
     # setup motor gains
-    setup_gains(command_publisher)
+    setup_gains_mj(command_publisher)
+    # setup_gains_real(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
