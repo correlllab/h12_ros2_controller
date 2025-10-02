@@ -88,8 +88,8 @@ def main(timeout=10.0,
                     )
                 )
                 # use goto as step function
-                # step_function = lambda: arm_controller.goto_reduced_configuration(q_reduced)
-                step_function = lambda: arm_controller.sim_goto_reduced_configuration(q_reduced)
+                step_function = lambda: arm_controller.goto_reduced_configuration(q_reduced)
+                # step_function = lambda: arm_controller.sim_goto_reduced_configuration(q_reduced)
             elif keyword != '':
                 print(f'Unknown keyword: {keyword}')
                 continue

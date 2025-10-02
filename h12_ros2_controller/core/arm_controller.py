@@ -267,9 +267,9 @@ class ArmController(UpperController):
     def joint_error_reduced(self):
         return self.ik_solver.config_task.compute_error(self.ik_solver.configuration_reduced)
 
-    def sync_robot_model(self):
-        # call parent sync method
-        super().sync_robot_model()
+    def update_robot_model(self):
+        # call parent update method
+        super().update_robot_model()
         # add end effector specific visualization
         if self.visualize:
             self.robot_model.visualize_wrench(self.left_ee_name)
@@ -283,53 +283,44 @@ class ArmController(UpperController):
         self._right_arm_action = vel[RIGHT_ARM_INDEX] * self.dt
 
     def control_full_body_step(self):
-        # sync robot model
-        self.sync_robot_model()
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
+        self.update_robot_model()
 
     def control_dual_arm_step(self):
-        # sync robot model
-        self.sync_robot_model()
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
-
         # enforce torso neutral position
         self.command_publisher.q[12] = 0
+        self.update_robot_model()
 
     def sim_full_body_step(self):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
-        # directly update the robot model for visualization
-        self.ik_solver.update_visualizer()
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
-        self.robot_model.update_kinematics()
-        self.robot_model.update_visualizer()
+        self.update_robot_model()
 
     def sim_dual_arm_step(self):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
-        # directly update the robot model for visualization
-        self.ik_solver.update_visualizer()
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
-        self.robot_model.update_kinematics()
-        self.robot_model.update_visualizer()
+        self.update_robot_model()
 
     def gravity_compensation_step(self):
-        # sync robot model
-        self.sync_robot_model()
+        # update robot model
+        self.update_robot_model()
 
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
         right_wrench = self.robot_model.get_frame_wrench(self.right_ee_name)
@@ -382,8 +373,8 @@ class ArmController(UpperController):
         self.command_publisher.tau = tau - self.ki * self.dq_i
 
     def impedance_step(self, x_target):
-        # sync robot model
-        self.sync_robot_model()
+        # update robot model
+        self.update_robot_model()
 
         # solve IK to get joint velocity
         vel = self.ik_solver.ik_step_reduced()

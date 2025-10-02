@@ -42,7 +42,7 @@ def main(timeout=10.0,
                                                 w_lim=2.0,
                                                 dq_lim=2.0,
                                                 d_min=0.02,
-                                                visualize=True,
+                                                visualize=False,
                                                 use_sport_mode=use_sport_mode)
 
     try:
@@ -57,8 +57,8 @@ def main(timeout=10.0,
             start_time = time.time()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # upper_task_controller.sim_step_reduced()
                 upper_task_controller.control_step_reduced()
+                # upper_task_controller.sim_step_reduced()
 
                 # print error
                 error = upper_task_controller.get_frame_task_error(task_name)

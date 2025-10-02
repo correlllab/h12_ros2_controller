@@ -77,8 +77,8 @@ class UpperController:
         self.tau_cmd_arr = []
         self.torque_cmd_arr = []
 
-    def sync_robot_model(self):
-        # sync robot model and compute forward kinematics
+    def update_robot_model(self):
+        # update kinematics
         self.robot_model.update_kinematics()
         # update visualizer if needed
         if self.visualize:
@@ -86,46 +86,40 @@ class UpperController:
             self.robot_model.update_visualizer()
 
     def goto_configuration(self, q):
-        # sync robot model
-        self.sync_robot_model()
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
+        self.update_robot_model()
 
     def sim_goto_configuration(self, q):
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
-        # directly update the robot model for visualization
-        self.ik_solver.update_visualizer()
+        # force robot model to use local variable tracking states
+        self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
-        self.robot_model.update_kinematics()
-        self.robot_model.update_visualizer()
+        self.update_robot_model()
 
     def goto_reduced_configuration(self, q_reduced):
-        # sync robot model
-        self.sync_robot_model()
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
+        self.update_robot_model()
 
     def sim_goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self.limit_joint_vel(vel)
         self.apply_joint_vel(vel)
-        # directly update the robot model for visualization
-        self.ik_solver.update_visualizer()
+        # force robot model to use local variable tracking states
+        self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
-        self.robot_model.update_kinematics()
-        self.robot_model.update_visualizer()
+        self.update_robot_model()
 
     def lock_configuration(self, q):
-        # sync robot model
-        self.sync_robot_model()
         # compute tau and enforce same q
         tau = pin.rnea(self.robot_model.model,
                        self.robot_model.data,
@@ -137,6 +131,7 @@ class UpperController:
         self.command_publisher.q = q
         self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
         self.command_publisher.tau = tau
+        self.update_robot_model()
 
     def limit_joint_vel(self, vel):
         # get end effector twist

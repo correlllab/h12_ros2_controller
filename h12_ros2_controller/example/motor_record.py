@@ -96,7 +96,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, path):
     robot_model.init_subscriber()
     command_publisher = CommandPublisher()
 
-    # wait for initial state sync
+    # wait for initial state
     time.sleep(1.0)
     robot_model.update_kinematics()
 

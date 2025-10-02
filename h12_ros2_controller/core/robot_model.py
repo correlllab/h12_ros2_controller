@@ -148,6 +148,14 @@ class RobotModel:
             print(err)
             exit(0)
 
+    def visualize_center_of_mass(self):
+        com_pos = self.get_center_of_mass()
+        transform = np.eye(4)
+        transform[:3, 3] = com_pos
+        self.viz.viewer['center_of_mass'].set_object(geo.Sphere(0.02))
+        self.viz.viewer['center_of_mass'].set_transform(transform)
+        self.viz.viewer['center_of_mass'].set_property('color', (1.0, 0.5, 0.0, 0.8))
+
     def visualize_wrench(self, link_name):
         # get frame position and wrench
         wrench = self.get_frame_wrench(link_name)
@@ -213,6 +221,16 @@ class RobotModel:
     def update_visualizer(self):
         if self.viz is not None:
             self.viz.display()
+
+    def get_center_of_mass(self, q: np.ndarray=None):
+        q = self.state['q'] if q is None else q
+        com = pin.centerOfMass(self.model, self.data, q)
+        return com
+
+    def get_center_of_mass_reduced(self, q_reduced: np.ndarray=None):
+        q_reduced = self.state_reduced['q'] if q_reduced is None else q_reduced
+        com = pin.centerOfMass(self.model_reduced, self.data_reduced, q_reduced)
+        return com
 
     def get_gravity_compensation(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q

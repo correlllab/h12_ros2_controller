@@ -121,14 +121,12 @@ class MotorDebugGUI:
             pass
 
 
-
 def main_loop(gui, robot_model, command_publisher):
     '''main control loop for motor debugging'''
     try:
         while True:
             gui.update()
 
-            # sync robot state
             robot_model.update_kinematics()
 
             # update target position for the controlled motor
@@ -156,7 +154,7 @@ def main():
     robot_model.init_subscriber()
     command_publisher = CommandPublisher()
 
-    # wait for initial state sync
+    # wait for initial state
     time.sleep(1.0)
     robot_model.update_kinematics()
 

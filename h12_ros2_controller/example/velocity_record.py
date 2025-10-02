@@ -24,7 +24,7 @@ def save_data(filepath, steps=1000):
     right_ee_twist_arr = []
 
     for _ in tqdm(range(steps)):
-        # sync data
+        # update robot state
         robot_model.update_kinematics()
         robot_model.update_visualizer()
 
