@@ -157,17 +157,22 @@ class DualArmServer(Node):
         else:
             self.get_logger().info('Going to target end-effector poses')
             # set left and right target poses
-            self.controller.left_ee_target_transformation = self._pose_to_matrix(
-                goal_handle.request.left_target
-            )
-            self.controller.right_ee_target_transformation = self._pose_to_matrix(
-                goal_handle.request.right_target
-            )
+            # self.controller.left_ee_target_transformation = self._pose_to_matrix(
+            #     goal_handle.request.left_target
+            # )
+            # self.controller.right_ee_target_transformation = self._pose_to_matrix(
+            #     goal_handle.request.right_target
+            # )
             # step_function = lambda: self.controller.sim_dual_arm_step()
+
+            self.controller.left_ee_target_transformation = np.array(goal_handle.request.left_target, dtype=np.float64).reshape(4, 4)
+            self.controller.right_ee_target_transformation = np.array(goal_handle.request.right_target, dtype=np.float64).reshape(4, 4)
+
             step_function = lambda: self.controller.control_dual_arm_step()
 
         start_time = time.time()
-        while time.time() - start_time < self.timeout:
+        timeout = goal_handle.request.duration if goal_handle.request.duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
             frame_start_time = time.time()
             # control one step
             step_function()
