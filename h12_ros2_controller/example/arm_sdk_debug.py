@@ -66,11 +66,7 @@ def main():
             target_q[control_idx] = slider.get()
             q_diff = target_q - robot_model.state['q']
 
-            tau = pin.rnea(robot_model.model,
-                           robot_model.data,
-                           target_q,
-                           robot_model.state['dq'],
-                           np.zeros(robot_model.model.nv))
+            tau = robot_model.get_gravity_compensation(target_q)
 
             arm_sdk_publisher.q[control_idx] = target_q[control_idx]
             arm_sdk_publisher.dq[control_idx] = q_diff[control_idx]

@@ -120,12 +120,8 @@ class UpperController:
         self.update_robot_model()
 
     def lock_configuration(self, q):
-        # compute tau and enforce same q
-        tau = pin.rnea(self.robot_model.model,
-                       self.robot_model.data,
-                       q,
-                       np.zeros(self.robot_model.model.nv),
-                       np.zeros(self.robot_model.model.nv))
+        # compute gravity compensation torque
+        tau = self.robot_model.get_gravity_compensation(q)
 
         # send command to lock the robot in current configuration
         self.command_publisher.q = q
@@ -166,16 +162,12 @@ class UpperController:
         return vel_scaled
 
     def apply_joint_vel(self, vel):
-        # solve dynamics
-        tau = pin.rnea(self.robot_model.model,
-                       self.robot_model.data,
-                       self.robot_model.state['q'] + vel * self.dt,
-                       self.robot_model.state['dq'],
-                       np.zeros(self.robot_model.model.nv))
+        # get gravity compensation torque
+        tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
 
         # send the velocity command to the robot
         self.command_publisher.q = self.robot_model.state['q'] + vel * self.dt
-        self.command_publisher.dq = vel
+        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
         self.command_publisher.tau = tau
 
         if self.recording:
