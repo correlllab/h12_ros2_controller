@@ -33,7 +33,7 @@ class DualArmServer(Node):
                                         w_lim=2.0,
                                         dq_lim=2.0,
                                         d_min=0.02,
-                                        visualize=True)
+                                        visualize=False)
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
             PoseStamped,
