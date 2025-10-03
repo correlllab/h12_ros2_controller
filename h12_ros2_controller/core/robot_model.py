@@ -152,9 +152,10 @@ class RobotModel:
         com_pos = self.get_center_of_mass()
         transform = np.eye(4)
         transform[:3, 3] = com_pos
-        self.viz.viewer['center_of_mass'].set_object(geo.Sphere(0.02))
-        self.viz.viewer['center_of_mass'].set_transform(transform)
-        self.viz.viewer['center_of_mass'].set_property('color', (1.0, 0.5, 0.0, 0.8))
+        viewer = self.viz.viewer
+        viewer['center_of_mass'].set_object(geo.Sphere(0.02))
+        viewer['center_of_mass'].set_transform(transform)
+        viewer['center_of_mass'].set_property('color', (1.0, 0.5, 0.0, 0.8))
 
     def visualize_wrench(self, link_name):
         # get frame position and wrench

@@ -84,6 +84,8 @@ class UpperController:
         if self.visualize:
             self.ik_solver.update_visualizer()
             self.robot_model.update_visualizer()
+            # visualize center of mass
+            self.robot_model.visualize_center_of_mass()
 
     def goto_configuration(self, q):
         # solve IK and apply control
