@@ -1,9 +1,6 @@
-import os
-import time
 import numpy as np
 import pinocchio as pin
 
-from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.upper_controller import UpperController
 from h12_ros2_controller.utility.joint_definition import LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
@@ -274,9 +271,9 @@ class ArmController(UpperController):
         if self.visualize:
             self.robot_model.visualize_wrench(self.left_ee_name)
 
-    def apply_joint_vel(self, vel):
+    def apply_joint_position(self, vel):
         # call parent method
-        super().apply_joint_vel(vel)
+        super().apply_joint_position(vel)
 
         # update joint action for end effectors
         self._left_arm_action = vel[LEFT_ARM_INDEX] * self.dt
@@ -286,14 +283,18 @@ class ArmController(UpperController):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
 
     def control_dual_arm_step(self):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
         # enforce torso neutral position
         self.command_publisher.q[12] = 0
         self.update_robot_model()
@@ -302,20 +303,24 @@ class ArmController(UpperController):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step()
         vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
-        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
+        self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
 
     def sim_dual_arm_step(self):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced()
         vel = self.limit_joint_vel(vel)
-        self.apply_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
-        self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
+        self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
 
     def gravity_compensation_step(self):

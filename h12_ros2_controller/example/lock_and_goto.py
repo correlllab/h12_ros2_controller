@@ -7,7 +7,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.core.arm_controller import UpperController
 from h12_ros2_controller.core.robot_model import RobotModel
 
 def save():
@@ -19,40 +19,40 @@ def save():
     robot_model.update_kinematics()
     print('Saving current configuration...')
     q = robot_model.state['q']
-    np.save('./data/h1_2_configuration.npy', q)
+    np.save('./data/h12_configuration.npy', q)
 
 def lock():
     ChannelFactoryInitialize()
-    print('Initializing ArmController...')
-    arm_controller = ArmController('assets/h1_2/h1_2.urdf',
-                                   'assets/h1_2/h1_2_sphere.urdf',
-                                   'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.01,
-                                   visualize=True)
+    print('Initializing UpperController...')
+    upper_controller = UpperController('assets/h1_2/h1_2.urdf',
+                                       'assets/h1_2/h1_2_sphere.urdf',
+                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+                                       dt=0.01,
+                                       visualize=True)
 
     print('Lock robot in current configuration')
-    q = arm_controller.robot_model.state['q']
-    np.save('./data/h1_2_configuration.npy', q)
+    q = upper_controller.robot_model.state['q']
+    np.save('./data/h12_configuration.npy', q)
 
     while True:
-        arm_controller.lock_configuration(q)
-        time.sleep(arm_controller.dt)
+        upper_controller.lock_configuration(q)
+        time.sleep(upper_controller.dt)
 
 def goto():
     ChannelFactoryInitialize()
-    print('Initializing ArmController...')
-    arm_controller = ArmController('assets/h1_2/h1_2.urdf',
-                                   'assets/h1_2/h1_2_sphere.urdf',
-                                   'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.01,
-                                   visualize=True)
+    print('Initializing UpperController...')
+    upper_controller = UpperController('assets/h1_2/h1_2.urdf',
+                                       'assets/h1_2/h1_2_sphere.urdf',
+                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+                                       dt=0.01,
+                                       visualize=True)
 
     print('Goto saved configuration')
-    q = np.load('./data/h1_2_configuration.npy')
+    q = np.load('./data/h12_configuration.npy')
 
     while True:
-        arm_controller.goto_configuration(q)
-        time.sleep(arm_controller.dt)
+        upper_controller.goto_configuration(q)
+        time.sleep(upper_controller.dt)
 
 # check
 if __name__ == "__main__":

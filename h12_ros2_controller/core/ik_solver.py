@@ -80,6 +80,16 @@ class IKSolver:
                 self.solver = preferred
                 break
 
+    @property
+    def q(self):
+        '''Get current joint configuration'''
+        return np.copy(self.configuration.q)
+
+    @property
+    def q_reduced(self):
+        '''Get current reduced joint configuration'''
+        return np.copy(self.configuration_reduced.q)
+
     def add_frame_task(self, task_name: str, frame_name: str,
                        position_cost: float = 50.0,
                        orientation_cost: float = 30.0,
@@ -133,11 +143,24 @@ class IKSolver:
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.configuration)
 
-    def set_from_reduced_configuration(self):
+    def set_from_configuration_reduced(self):
         '''Set initial targets for all tasks from reduced configuration'''
         self.update_configurations()
         for task in self.frame_tasks.values():
             task.set_target_from_configuration(self.configuration_reduced)
+
+    def integrate(self, vel: np.ndarray):
+        '''Integrate the current configuration with given joint velocity'''
+        vel_reduced = vel[self.robot_model.reduced_mask]
+        self.configuration.integrate_inplace(vel, self.dt)
+        self.configuration_reduced.integrate_inplace(vel_reduced, self.dt)
+
+    def integrate_reduced(self, vel_reduced: np.ndarray):
+        '''Integrate the current reduced configuration with given reduced joint velocity'''
+        vel = self.robot_model.zero_q
+        vel[self.robot_model.reduced_mask] = vel_reduced
+        self.configuration.integrate_inplace(vel, self.dt)
+        self.configuration_reduced.integrate_inplace(vel_reduced, self.dt)
 
     def _ik(self, tasks, dt):
         '''Helper function solving IK for all tasks'''
