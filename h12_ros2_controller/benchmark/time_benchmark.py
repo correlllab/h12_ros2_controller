@@ -17,9 +17,6 @@ class TimeBenchmark:
         @param arm_controller: your ArmController instance
         @param target_poses: list of np.array (each pose is a vector of joint angles or end-effector pose)
         @param iter: number of iterations to run for timing benchmark
-        @param timeout: time to wait for each target pose
-        @param threshold_linear: linear error threshold to consider target reached
-        @param threshold_angular: angular error threshold to consider target reached
         '''
         self.arm_controller = arm_controller
         self.target_poses = target_poses
@@ -42,7 +39,7 @@ class TimeBenchmark:
 
         for pose_idx, target_pose in enumerate(tqdm(self.target_poses, desc='Target poses')):
             # reset to neutral position
-            # self.reset_to_neutral_pin()
+            self.reset_to_neutral_pin()
 
             # set target pose
             target_pose[3:] = np.deg2rad(target_pose[3:])
