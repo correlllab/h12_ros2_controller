@@ -42,7 +42,7 @@ class TimeBenchmark:
 
         for pose_idx, target_pose in enumerate(tqdm(self.target_poses, desc='Target poses')):
             # reset to neutral position
-            self.reset_to_neutral_pin()
+            # self.reset_to_neutral_pin()
 
             # set target pose
             target_pose[3:] = np.deg2rad(target_pose[3:])

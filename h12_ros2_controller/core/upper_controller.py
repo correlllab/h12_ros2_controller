@@ -100,9 +100,8 @@ class UpperController:
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
         vel = self.limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
+        # integrate IK solver
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
@@ -121,9 +120,8 @@ class UpperController:
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self.limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
+        # integrate IK solver
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
