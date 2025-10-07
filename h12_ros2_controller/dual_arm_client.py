@@ -3,10 +3,13 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, PoseStamped
 
+import numpy as np
 from pynput import keyboard
 from scipy.spatial.transform import Rotation as R
+from pyquaternion import Quaternion
 
 from custom_ros_messages.action import DualArm
+from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
 
 class DualArmClient(Node):
     def __init__(self):
@@ -61,10 +64,24 @@ class DualArmClient(Node):
     def subscribe_right_ee_target(self, msg):
         self.right_ee_target = msg.pose
 
-    def send_goal(self, left_target: Pose=Pose(), right_target: Pose=Pose(), keyword: str=''):
+    def send_goal(self, left_target: Pose=None, right_target: Pose=None, keyword: str=''):
         goal_msg = DualArm.Goal()
-        goal_msg.left_target = left_target
-        goal_msg.right_target = right_target
+
+        if keyword:
+            # For keyword commands, send identity matrices (will be overridden by server)
+            goal_msg.left_target = np.eye(4).flatten().tolist()
+            goal_msg.right_target = np.eye(4).flatten().tolist()
+        else:
+            # Convert poses to transformation matrices
+            if left_target is None:
+                left_target = Pose()
+            if right_target is None:
+                right_target = Pose()
+            left_matrix = self._pose_to_matrix(left_target)
+            right_matrix = self._pose_to_matrix(right_target)
+            goal_msg.left_target = left_matrix.flatten().tolist()
+            goal_msg.right_target = right_matrix.flatten().tolist()
+
         goal_msg.keyword = keyword
 
         self.action_client.wait_for_server()
@@ -110,6 +127,18 @@ class DualArmClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
+    @staticmethod
+    def _pose_to_matrix(pose):
+        position = pose.position
+        orientation = pose.orientation
+        rotation = Quaternion(
+            [orientation.w, orientation.x, orientation.y, orientation.z]
+        ).rotation_matrix
+        matrix = np.eye(4)
+        matrix[:3, :3] = rotation
+        matrix[:3, 3] = [position.x, position.y, position.z]
+        return matrix
+
 def list_to_pose(values):
     assert(len(values) == 6), 'Please enter a pose of 6 elements'
     x, y, z, roll, pitch, yaw = values
@@ -117,7 +146,7 @@ def list_to_pose(values):
     pose.position.x = x
     pose.position.y = y
     pose.position.z = z
-    quat = R.from_euler('xyz', [roll, pitch, yaw], degrees=True).as_quat()
+    quat = R.from_euler('xyz', [roll, pitch, yaw], degrees=False).as_quat()  # Changed to degrees=False since we convert to radians earlier
     pose.orientation.x = quat[0]
     pose.orientation.y = quat[1]
     pose.orientation.z = quat[2]
@@ -132,7 +161,7 @@ def input_keyword_or_poses():
     If keyword is provided, poses will be None
     If no keyword, poses will be provided
     '''
-    print('Available keywords: "home"')
+    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
 
     choice = input('Enter keyword (or press Enter for manual poses): ').strip()
 
@@ -157,6 +186,8 @@ def input_pose(side):
             continue
         try:
             values = [float(val) for val in parts]
+            # degrees to radian for rotations
+            values[3:] = np.deg2rad(values[3:])
             return list_to_pose(values)
         except ValueError:
             print('Invalid input. Make sure all 6 values are numeric.')
