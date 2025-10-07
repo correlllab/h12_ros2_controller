@@ -8,14 +8,18 @@ disabled_links = [
     'left_knee_link','left_ankle_pitch_link','left_ankle_roll_link',
     'right_hip_yaw_link','right_hip_pitch_link','right_hip_roll_link',
     'right_knee_link','right_ankle_pitch_link','right_ankle_roll_link',
-    # 'L_hand_base_link',
+    'left_shoulder_pitch_link',
+    'left_wrist_pitch_link',
+    'L_hand_base_link',
     'L_index_proximal','L_index_intermediate',
     'L_middle_proximal','L_middle_intermediate','L_pinky_proximal',
     'L_pinky_intermediate','L_ring_proximal','L_ring_intermediate',
     'L_thumb_proximal_base','L_thumb_proximal','L_thumb_intermediate',
     'L_thumb_distal',
     'logo_link',
-    # 'R_hand_base_link',
+    'right_shoulder_pitch_link',
+    'right_wrist_pitch_link',
+    'R_hand_base_link',
     'R_index_proximal','R_index_intermediate',
     'R_middle_proximal','R_middle_intermediate','R_pinky_proximal',
     'R_pinky_intermediate','R_ring_proximal','R_ring_intermediate',
@@ -66,17 +70,25 @@ all_links = all_links_full
 
 # enabled links
 left_arm_links = [
-    'left_shoulder_pitch_link', 'left_shoulder_roll_link', 'left_shoulder_yaw_link',
+    # 'left_shoulder_pitch_link',
+    'left_shoulder_roll_link',
+    'left_shoulder_yaw_link',
     'left_elbow_link',
-    'left_wrist_roll_link', 'left_wrist_pitch_link', 'left_wrist_yaw_link',
-    'L_hand_base_link'
+    'left_wrist_roll_link',
+    # 'left_wrist_pitch_link',
+    'left_wrist_yaw_link',
+    # 'L_hand_base_link'
 ]
 
 right_arm_links = [
-    'right_shoulder_pitch_link', 'right_shoulder_roll_link', 'right_shoulder_yaw_link',
+    # 'right_shoulder_pitch_link',
+    'right_shoulder_roll_link',
+    'right_shoulder_yaw_link',
     'right_elbow_link',
-    'right_wrist_roll_link', 'right_wrist_pitch_link', 'right_wrist_yaw_link',
-    'R_hand_base_link'
+    'right_wrist_roll_link',
+    # 'right_wrist_pitch_link',
+    'right_wrist_yaw_link',
+    # 'R_hand_base_link'
 ]
 
 output_file = './assets/h1_2/h1_2_sphere_collision.srdf'
