@@ -296,9 +296,9 @@ def setup_gains_mj(command_publisher):
 
     # gain for shoulder pitch/roll
     command_publisher.kp[13:15] = 200.0
-    command_publisher.kd[13:15] = 6.0
+    command_publisher.kd[13:15] = 10.0
     command_publisher.kp[20:22] = 200.0
-    command_publisher.kd[20:22] = 6.0
+    command_publisher.kd[20:22] = 10.0
     # gain for shoulder yaw
     command_publisher.kp[15] = 150.0
     command_publisher.kd[15] = 4.0
@@ -359,9 +359,9 @@ def setup_gains_real(command_publisher):
 
     # gain for shoulder pitch/roll
     command_publisher.kp[13:15] = 200.0
-    command_publisher.kd[13:15] = 6.0
+    command_publisher.kd[13:15] = 10.0
     command_publisher.kp[20:22] = 200.0
-    command_publisher.kd[20:22] = 6.0
+    command_publisher.kd[20:22] = 10.0
     # gain for shoulder yaw
     command_publisher.kp[15] = 150.0
     command_publisher.kd[15] = 4.0
