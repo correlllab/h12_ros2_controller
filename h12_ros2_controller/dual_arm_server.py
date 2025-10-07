@@ -16,7 +16,7 @@ from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class DualArmServer(Node):
-    def __init__(self, dt=0.025,
+    def __init__(self, dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
@@ -218,7 +218,7 @@ class DualArmServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = DualArmServer(dt=0.025,
+    node = DualArmServer(dt=0.03,
                          timeout=10.0,
                          threshold_linear=5e-3,
                          threshold_angular=2e-2)
