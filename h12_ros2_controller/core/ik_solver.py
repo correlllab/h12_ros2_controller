@@ -188,7 +188,6 @@ class IKSolver:
 
     def ik_step(self):
         '''Solve one step of IK for all tasks and return joint velocity'''
-        self.update_configurations()
         self.posture_task.set_target_from_configuration(self.configuration)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
         # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task]
@@ -196,7 +195,6 @@ class IKSolver:
 
     def ik_step_reduced(self):
         '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
-        self.update_configurations()
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
         # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
@@ -270,13 +268,11 @@ class IKSolver:
 
     def goto_configuration(self, q: np.ndarray):
         '''Solve one step of IK to reach a target joint configuration.'''
-        self.update_configurations()
         self.config_task.set_target(q)
         return self._ik([self.config_task], self.dt)
 
     def goto_reduced_configuration(self, q_reduced: np.ndarray):
         '''Solve one step of IK to reach a target reduced joint configuration.'''
-        self.update_configurations()
         self.config_task.set_target(q_reduced)
         vel = self._ik_reduced([self.config_task], self.dt)
         # convert reduced vel to full vel

@@ -143,7 +143,7 @@ def main(timeout=10.0,
     finally:
         print('Shutting down...')
         arm_controller.stop_recording()
-        arm_controller.save_recording('data/control_record/record_real_latest.npz')
+        arm_controller.save_recording('data/control_record/record_mj.npz')
         arm_controller.shutdown()
 
 if __name__ == '__main__':

@@ -61,7 +61,7 @@ def plot_recording(filename, savepath):
         plt.close()
 
 if __name__ == '__main__':
-    path = 'record_real_latest'
+    path = 'record_mj'
     filename = f'data/control_record/{path}.npz'
     savepath = f'figures/control_record/{path}'
     plot_recording(filename, savepath)
