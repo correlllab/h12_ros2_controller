@@ -77,6 +77,10 @@ class UpperController:
         self.tau_cmd_arr = []
         self.torque_cmd_arr = []
 
+    def update_ik_solver(self):
+        # update IK solver with the latest robot configuration
+        self.ik_solver.update_configurations()
+
     def update_robot_model(self):
         # update kinematics
         self.robot_model.update_kinematics()

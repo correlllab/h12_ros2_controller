@@ -28,10 +28,12 @@ class TimeBenchmark:
         # timing logs - 2D array: [num_target_poses, num_iters]
         self.iter_times = []
 
-    def reset_to_neutral_pin(self):
+    def reset_to_neutral(self):
         '''Reset arm to the neutral pose'''
+        self.arm_controller.robot_model.state_subscriber = None
         self.arm_controller.robot_model._q = self.neutral_pose
-        self.arm_controller.robot_model.update_kinematics()
+        self.arm_controller.update_robot_model()
+        self.arm_controller.update_ik_solver()
 
     def run_benchmark(self):
         '''Run the timing benchmark sequence'''
@@ -39,7 +41,7 @@ class TimeBenchmark:
 
         for pose_idx, target_pose in enumerate(tqdm(self.target_poses, desc='Target poses')):
             # reset to neutral position
-            self.reset_to_neutral_pin()
+            self.reset_to_neutral()
 
             # set target pose
             target_pose[3:] = np.deg2rad(target_pose[3:])
