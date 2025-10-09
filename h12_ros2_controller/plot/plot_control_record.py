@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -6,8 +7,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
-def plot_recording(filename, savepath):
-    data = np.load(filename)
+def plot_recording(filepath, savepath):
+    print(f"Loading data from: {filepath}")
+    data = np.load(filepath)
     ids = data['ids']  # motor ids
     q = data['q']  # joint positions
     dq = data['dq']  # joint velocities
@@ -60,8 +62,19 @@ def plot_recording(filename, savepath):
         plt.savefig(f'{savepath}/{joint_name}.png')
         plt.close()
 
+    print(f"Plots saved to: {savepath}")
+
 if __name__ == '__main__':
-    path = 'record_real'
-    filename = f'data/control_record/{path}.npz'
-    savepath = f'figures/control_record/{path}'
-    plot_recording(filename, savepath)
+    parser = argparse.ArgumentParser(description='Plot control recording data')
+    parser.add_argument('filename', help='Recording filename (e.g., record_real)')
+    args = parser.parse_args()
+
+    # check if file exists
+    filepath = f'data/control_record/{args.filename}.npz'
+    if not os.path.exists(filepath):
+        print(f"Error: File '{filepath}' does not exist.")
+        sys.exit(1)
+    # set save path
+    savepath = f'figures/control_record/{args.filename}'
+
+    plot_recording(filepath, savepath)

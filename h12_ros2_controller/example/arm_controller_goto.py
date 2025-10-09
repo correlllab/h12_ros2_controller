@@ -53,7 +53,8 @@ def input_pose(side):
 def main(timeout=10.0,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
-         use_sport_mode=False):
+         use_sport_mode=False,
+         save_filename=None):
     ChannelFactoryInitialize()
     # initialize arm controller
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
@@ -143,7 +144,10 @@ def main(timeout=10.0,
     finally:
         print('Shutting down...')
         arm_controller.stop_recording()
-        arm_controller.save_recording('data/control_record/record_real.npz')
+        if save_filename:
+            save_path = f'data/control_record/{save_filename}'
+            arm_controller.save_recording(save_path)
+            print(f'Recording saved to {save_path}')
         arm_controller.shutdown()
 
 if __name__ == '__main__':
@@ -151,11 +155,12 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
     group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')
+    parser.add_argument('--save', type=str, help='Save recording to specified filename.npz in data/control_record/')
     args = parser.parse_args()
 
     if args.sport:
-        main(timeout=15.0, use_sport_mode=True)
+        main(timeout=15.0, use_sport_mode=True, save_filename=args.save)
     elif args.debug:
-        main(timeout=15.0, use_sport_mode=False)
+        main(timeout=15.0, use_sport_mode=False, save_filename=args.save)
     else:
         print('Invalid argument! Use --debug or --sport')
