@@ -6,31 +6,30 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.core.arm_controller import GravityCompController
 
 def main(use_sport_mode=False):
-    print('Initializing ArmController...')
+    print('Initializing GravityCompController...')
     ChannelFactoryInitialize()
-    arm_controller = ArmController('assets/h1_2/h1_2.urdf',
-                                   'assets/h1_2/h1_2_sphere.urdf',
-                                   'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.01,
-                                   visualize=False,
-                                   use_sport_mode=use_sport_mode)
+    gravity_comp_controller = GravityCompController('assets/h1_2/h1_2.urdf',
+                                                    'assets/h1_2/h1_2_sphere.urdf',
+                                                    'assets/h1_2/h1_2_sphere_collision.srdf',
+                                                    dt=0.01,
+                                                    visualize=False,
+                                                    use_sport_mode=use_sport_mode)
     # set gain for damp mode
-    arm_controller.damp_mode(6.0)
-
+    gravity_comp_controller.damp_mode(6.0)
 
     try:
         while True:
             start_time = time.time()
-            arm_controller.gravity_compensation_step()
-            time.sleep(max(0.0, arm_controller.dt - (time.time() - start_time)))
+            gravity_comp_controller.gravity_compensation_step()
+            time.sleep(max(0.0, gravity_comp_controller.dt - (time.time() - start_time)))
     except Exception as e:
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
-        arm_controller.shutdown()
+        gravity_comp_controller.shutdown()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')

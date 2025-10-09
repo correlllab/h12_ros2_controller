@@ -1,4 +1,3 @@
-from ast import Del
 import os
 import time
 import numpy as np
@@ -76,6 +75,73 @@ class UpperController:
         self.dq_cmd_arr = []
         self.tau_cmd_arr = []
         self.torque_cmd_arr = []
+
+    '''
+    joint position for left and right arms
+    '''
+    @property
+    def left_arm_q(self):
+        return np.copy(self.robot_model.state['q'][LEFT_ARM_INDEX])
+
+    @property
+    def right_arm_q(self):
+        return np.copy(self.robot_model.state['q'][RIGHT_ARM_INDEX])
+
+    '''
+    left end effector properties
+    left_ee_transformation: transformation matrix of the left end effector
+    left_ee_position: position of the left end effector
+    left_ee_rotation: rotation matrix of the left end effector
+    left_ee_rpy: roll, pitch, yaw of the left end effector
+    left_ee_pose: pose of the left end effector (x, y, z, roll, pitch, yaw)
+    '''
+    @property
+    def left_ee_transformation(self):
+        return self.robot_model.get_frame_transformation(self.left_ee_name)
+
+    @property
+    def left_ee_position(self):
+        return self.robot_model.get_frame_position(self.left_ee_name)
+
+    @property
+    def left_ee_rotation(self):
+        return self.robot_model.get_frame_rotation(self.left_ee_name)
+
+    @property
+    def left_ee_rpy(self):
+        return pin.rpy.matrixToRpy(self.left_ee_rotation)
+
+    @property
+    def left_ee_pose(self):
+        return np.concatenate([self.left_ee_position, self.left_ee_rpy])
+
+    '''
+    right end effector properties
+    right_ee_transformation: transformation matrix of the right end effector
+    right_ee_position: position of the right end effector
+    right_ee_rotation: rotation matrix of the right end effector
+    right_ee_rpy: roll, pitch, yaw of the right end effector
+    right_ee_pose: pose of the right end effector (x, y, z, roll, pitch, yaw)
+    '''
+    @property
+    def right_ee_transformation(self):
+        return self.robot_model.get_frame_transformation(self.right_ee_name)
+
+    @property
+    def right_ee_position(self):
+        return self.robot_model.get_frame_position(self.right_ee_name)
+
+    @property
+    def right_ee_rotation(self):
+        return self.robot_model.get_frame_rotation(self.right_ee_name)
+
+    @property
+    def right_ee_rpy(self):
+        return pin.rpy.matrixToRpy(self.right_ee_rotation)
+
+    @property
+    def right_ee_pose(self):
+        return np.concatenate([self.right_ee_position, self.right_ee_rpy])
 
     def update_ik_solver(self):
         # update IK solver with the latest robot configuration
