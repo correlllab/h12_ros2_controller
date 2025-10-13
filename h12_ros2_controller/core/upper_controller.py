@@ -68,6 +68,7 @@ class UpperController:
 
         # variables recording states
         self.recording = False
+        self.com_arr = []
         self.q_arr = []
         self.dq_arr = []
         self.tau_arr = []
@@ -248,6 +249,8 @@ class UpperController:
         self.command_publisher.tau = tau
 
         if self.recording:
+            # record center of mass
+            com = self.robot_model.get_center_of_mass()
             # get values for upper body joints only
             q = self.robot_model.state['q'][12:27]
             dq = self.robot_model.state['dq'][12:27]
@@ -258,6 +261,7 @@ class UpperController:
             kp = self.command_publisher.kp[12:27]
             kd = self.command_publisher.kd[12:27]
             # record
+            self.com_arr.append(com)
             self.q_arr.append(q)
             self.dq_arr.append(dq)
             self.tau_arr.append(tau)
@@ -290,6 +294,7 @@ class UpperController:
         self.recording = False
 
     def clear_recording(self):
+        self.com_arr = []
         self.q_arr = []
         self.dq_arr = []
         self.tau_arr = []
@@ -302,6 +307,7 @@ class UpperController:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         np.savez(filename,
                  ids=np.array([i for i in range(12, 27)]),
+                 com=self.com_arr,
                  q=self.q_arr,
                  dq=self.dq_arr,
                  tau=self.tau_arr,

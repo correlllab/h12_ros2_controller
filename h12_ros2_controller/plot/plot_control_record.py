@@ -11,6 +11,7 @@ def plot_recording(filepath, savepath):
     print(f"Loading data from: {filepath}")
     data = np.load(filepath)
     ids = data['ids']  # motor ids
+    com = data['com']  # center of mass
     q = data['q']  # joint positions
     dq = data['dq']  # joint velocities
     tau = data['tau']  # joint torques
@@ -21,6 +22,20 @@ def plot_recording(filepath, savepath):
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
+
+    # plot center of mass
+    plt.figure(figsize=(10, 6))
+    plt.plot(com[:, 0], label='X', linewidth=2)
+    plt.plot(com[:, 1], label='Y', linewidth=2)
+    plt.plot(com[:, 2], label='Z', linewidth=2)
+    plt.title('Center of Mass Trajectory')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Position (m)')
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(f'{savepath}/center_of_mass.png')
+    plt.close()
 
     # create graph for each motor
     for i in range(q.shape[1]):

@@ -31,7 +31,8 @@ def input_frame_task():
 def main(timeout=10.0,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
-         use_sport_mode=False):
+         use_sport_mode=False,
+         save_filename=None):
     ChannelFactoryInitialize()
     # initialize upper task controller
     upper_task_controller = UpperTaskController('assets/h1_2/h1_2.urdf',
@@ -59,6 +60,7 @@ def main(timeout=10.0,
 
             # main loop
             start_time = time.time()
+            upper_task_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 upper_task_controller.control_step_reduced()
@@ -78,6 +80,12 @@ def main(timeout=10.0,
 
                 time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
 
+            for _ in range(50):
+                frame_start_time = time.time()
+                upper_task_controller.control_step_reduced()
+                time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
+            upper_task_controller.stop_recording()
+
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
             if cont != 'y':
@@ -86,6 +94,11 @@ def main(timeout=10.0,
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
+        upper_task_controller.stop_recording()
+        if save_filename:
+            save_path = f'data/control_record/{save_filename}'
+            upper_task_controller.save_recording(save_path)
+            print(f'Recording saved to {save_path}')
         upper_task_controller.shutdown()
 
 if __name__ == '__main__':
@@ -93,11 +106,12 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
     group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')
+    parser.add_argument('--save', type=str, help='Save recording to specified filename.npz in data/control_record/')
     args = parser.parse_args()
 
     if args.sport:
-        main(timeout=10.0, use_sport_mode=True)
+        main(timeout=10.0, use_sport_mode=True, save_filename=args.save)
     elif args.debug:
-        main(timeout=10.0, use_sport_mode=False)
+        main(timeout=10.0, use_sport_mode=False, save_filename=args.save)
     else:
         print('Invalid argument! Use --debug or --sport')
