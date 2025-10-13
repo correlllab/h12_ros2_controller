@@ -129,8 +129,9 @@ class IKSolver:
             for task_name, task in self.frame_tasks.items():
                 viewer[task_name].set_transform(task.transform_target_to_world.np)
                 frame_name = self.frame_tasks[task_name].frame
-                frame_id = self.robot_model.model.getFrameId(frame_name)
-                viewer[frame_name].set_transform(self.robot_model.data.oMf[frame_id].np)
+                viewer[frame_name].set_transform(
+                    self.robot_model.get_frame_transformation(frame_name)
+                )
 
     def update_configurations(self):
         '''Update Pink configurations with current robot state'''

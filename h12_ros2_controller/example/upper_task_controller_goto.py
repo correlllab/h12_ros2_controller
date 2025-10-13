@@ -37,7 +37,7 @@ def main(timeout=10.0,
     upper_task_controller = UpperTaskController('assets/h1_2/h1_2.urdf',
                                                 'assets/h1_2/h1_2_sphere.urdf',
                                                 'assets/h1_2/h1_2_sphere_collision.srdf',
-                                                dt=0.03,
+                                                dt=0.025,
                                                 v_lim=1.0,
                                                 w_lim=2.0,
                                                 dq_lim=2.0,
@@ -54,6 +54,10 @@ def main(timeout=10.0,
             upper_task_controller.clear_frame_tasks()
             upper_task_controller.add_frame_task(task_name, frame_name, pose)
 
+            # update ik solver with current state
+            upper_task_controller.update_ik_solver()
+
+            # main loop
             start_time = time.time()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
