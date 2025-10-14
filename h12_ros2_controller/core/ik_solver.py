@@ -197,8 +197,8 @@ class IKSolver:
     def ik_step_reduced(self):
         '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
-        tasks = list(self.frame_tasks.values()) + [self.posture_task]
-        # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
+        # tasks = list(self.frame_tasks.values()) + [self.posture_task]
+        tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
         vel = self._ik_reduced(tasks, self.dt)
         # convert reduced vel to full vel
         vel_full = self.robot_model.zero_q
