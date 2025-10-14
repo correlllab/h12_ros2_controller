@@ -64,13 +64,13 @@ class IKSolver:
             pink.limits.ConfigurationLimit(robot_model.model),
             pink.limits.VelocityLimit(robot_model.model),
             pink.limits.AccelerationLimit(robot_model.model,
-                                          35.0 * np.ones(robot_model.model.nv))
+                                          25.0 * np.ones(robot_model.model.nv))
         ]
         self.limits_reduced = [
             pink.limits.ConfigurationLimit(robot_model.model_reduced),
             pink.limits.VelocityLimit(robot_model.model_reduced),
             pink.limits.AccelerationLimit(robot_model.model_reduced,
-                                          35.0 * np.ones(robot_model.model_reduced.nv))
+                                          25.0 * np.ones(robot_model.model_reduced.nv))
         ]
 
         # solver selection
@@ -197,8 +197,8 @@ class IKSolver:
     def ik_step_reduced(self):
         '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
-        # tasks = list(self.frame_tasks.values()) + [self.posture_task]
-        tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
+        tasks = list(self.frame_tasks.values()) + [self.posture_task]
+        # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
         vel = self._ik_reduced(tasks, self.dt)
         # convert reduced vel to full vel
         vel_full = self.robot_model.zero_q

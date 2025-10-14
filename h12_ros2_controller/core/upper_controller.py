@@ -48,7 +48,7 @@ class UpperController:
         init_q = self.robot_model.state_reduced['q']
         self.command_publisher.enable_motor(self.enabled_ids, init_q)
 
-        # enable torso motor such that it's locked in pace
+        # enable torso motor such that it's locked in place
         self.command_publisher.enable_motor([12], [0.0])
         self.command_publisher.start_publisher()
 
