@@ -215,8 +215,6 @@ class ArmController(UpperController):
         # integrate IK solver and command the joint position
         self.ik_solver.integrate(vel)
         self.apply_joint_position(self.ik_solver.q)
-        # enforce torso neutral position
-        self.command_publisher.q[12] = 0
         self.update_robot_model()
 
     def sim_full_body_step(self):

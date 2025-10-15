@@ -24,15 +24,27 @@ def plot_recording(filepath, savepath):
     os.makedirs(savepath, exist_ok=True)
 
     # plot center of mass
-    plt.figure(figsize=(10, 6))
-    plt.plot(com[:, 0], label='X', linewidth=2)
-    plt.plot(com[:, 1], label='Y', linewidth=2)
-    plt.plot(com[:, 2], label='Z', linewidth=2)
-    plt.title('Center of Mass Trajectory')
-    plt.xlabel('Time Steps')
-    plt.ylabel('Position (m)')
-    plt.legend()
-    plt.grid()
+    fig, axes = plt.subplots(3, 1, figsize=(12, 8))
+
+    # X component
+    axes[0].plot(com[:, 0], 'r-', linewidth=2)
+    axes[0].set_title('Center of Mass - X Component')
+    axes[0].set_ylabel('X Position (m)')
+    axes[0].grid(True)
+
+    # Y component
+    axes[1].plot(com[:, 1], 'g-', linewidth=2)
+    axes[1].set_title('Center of Mass - Y Component')
+    axes[1].set_ylabel('Y Position (m)')
+    axes[1].grid(True)
+
+    # Z component
+    axes[2].plot(com[:, 2], 'b-', linewidth=2)
+    axes[2].set_title('Center of Mass - Z Component')
+    axes[2].set_xlabel('Time Steps')
+    axes[2].set_ylabel('Z Position (m)')
+    axes[2].grid(True)
+
     plt.tight_layout()
     plt.savefig(f'{savepath}/center_of_mass.png')
     plt.close()

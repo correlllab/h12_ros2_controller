@@ -235,6 +235,7 @@ class UpperController:
         ])
 
         vel_scaled = np.zeros_like(vel)
+        vel_scaled[:13] = vel[:13]
         vel_scaled[LEFT_ARM_INDEX] = left_scaler * vel[LEFT_ARM_INDEX]
         vel_scaled[RIGHT_ARM_INDEX] = right_scaler * vel[RIGHT_ARM_INDEX]
 

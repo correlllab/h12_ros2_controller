@@ -110,6 +110,7 @@ HAND_JOINTS = [
 ]
 
 ENABLED_JOINTS = [
+    # 'torso_joint',
     # left arm
     'left_shoulder_pitch_joint',
     'left_shoulder_roll_joint',
