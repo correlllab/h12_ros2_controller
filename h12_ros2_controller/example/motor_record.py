@@ -12,80 +12,78 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher, setup_gains_mj, setup_gains_real
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
+def get_state(robot_model, command_publisher, joint_idx):
+    state = robot_model.state
+    feedback_state = {
+        'q': state['q'][joint_idx],
+        'dq': state['dq'][joint_idx],
+        'ddq': state['ddq'][joint_idx],
+        'tau': state['tau'][joint_idx],
+    }
+    cmd_state = {
+        'kp': command_publisher.kp[joint_idx],
+        'kd': command_publisher.kd[joint_idx],
+        'q_cmd': command_publisher.q[joint_idx],
+        'dq_cmd': command_publisher.dq[joint_idx],
+        'tau_cmd': command_publisher.tau[joint_idx],
+    }
+    full_state = {**feedback_state, **cmd_state}
+    return full_state
+
 def record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps):
     # get joint index
     joint_idx = BODY_JOINTS.index(joint_name)
-    # empty array for recording
-    q_arr = []
-    dq_arr = []
-    tau_arr = []
-    q_cmd_arr = []
-    dq_cmd_arr = []
-    tau_cmd_arr = []
-    torque_cmd_arr = []
+    # empty array for recording states
+    state_arr = []
 
     q_start = robot_model.state['q'][joint_idx]
-
-    # save gains
-    kp = command_publisher.kp[joint_idx]
-    kd = command_publisher.kd[joint_idx]
 
     for step in range(steps):
         # linear interpolation
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
+        # command positional control with gravity compensation
         command_publisher.q[joint_idx] = q_target
         command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
 
-        # record
-        state = robot_model.state
-        q_arr.append(state['q'][joint_idx])
-        dq_arr.append(state['dq'][joint_idx])
-        tau_arr.append(state['tau'][joint_idx])
-        q_cmd_arr.append(command_publisher.q[joint_idx])
-        dq_cmd_arr.append(command_publisher.dq[joint_idx])
-        tau_cmd_arr.append(command_publisher.tau[joint_idx])
-        torque_cmd_arr.append(
-            kp * (command_publisher.q[joint_idx] - state['q'][joint_idx]) +
-            kd * (0 - state['dq'][joint_idx]) +
-            command_publisher.tau[joint_idx]
-        )
-
+        # record state
+        state_arr.append(get_state(robot_model, command_publisher, joint_idx))
         time.sleep(0.01)
 
     # fix on final state
     command_publisher.q[joint_idx] = q_end
     command_publisher.dq[joint_idx] = 0.0
+    command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
 
-    # stationary sleep
+    return state_arr
+
+def record_static_motion(robot_model, command_publisher, joint_name, steps):
+    # get joint index
+    joint_idx = BODY_JOINTS.index(joint_name)
+    # empty array for recording states
+    state_arr = []
+
     for _ in range(steps):
-        # update gravity compensation only
+        # command gravity compensation only
         command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
-        # record
-        state = robot_model.state
-        q_arr.append(state['q'][joint_idx])
-        dq_arr.append(state['dq'][joint_idx])
-        tau_arr.append(state['tau'][joint_idx])
-        q_cmd_arr.append(command_publisher.q[joint_idx])
-        dq_cmd_arr.append(command_publisher.dq[joint_idx])
-        tau_cmd_arr.append(command_publisher.tau[joint_idx])
-        torque_cmd_arr.append(
-            kp * (command_publisher.q[joint_idx] - state['q'][joint_idx]) +
-            kd * (0 - state['dq'][joint_idx]) +
-            command_publisher.tau[joint_idx]
-        )
+
+        # record state
+        state_arr.append(get_state(robot_model, command_publisher, joint_idx))
         time.sleep(0.01)
 
-    return {
-        'joint_name': joint_name,
-        'q': np.array(q_arr),
-        'dq': np.array(dq_arr),
-        'tau': np.array(tau_arr),
-        'q_cmd': np.array(q_cmd_arr),
-        'dq_cmd': np.array(dq_cmd_arr),
-        'tau_cmd': np.array(tau_cmd_arr),
-        'torque_cmd': np.array(torque_cmd_arr)
-    }
+    return state_arr
+
+def record_free_motion(robot_model, command_publisher, joint_name, steps):
+    # get joint index
+    joint_idx = BODY_JOINTS.index(joint_name)
+    # empty array for recording states
+    state_arr = []
+
+    for _ in range(steps):
+        state_arr.append(get_state(robot_model, command_publisher, joint_idx))
+        time.sleep(0.01)
+
+    return state_arr
 
 def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     # initialize channel
@@ -101,8 +99,8 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     robot_model.update_kinematics()
 
     # setup motor gains
-    # setup_gains_mj(command_publisher)
-    setup_gains_real(command_publisher)
+    setup_gains_mj(command_publisher)
+    # setup_gains_real(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
@@ -118,41 +116,61 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     for joint_name, q_start, q_end in tqdm(joint_data):
         # move to start position
         _ = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
+        _ = record_static_motion(robot_model, command_publisher, joint_name, steps)
         # record linear motion
-        data_go = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
+        states_go = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
+        states_go_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
+        time.sleep(3.0)
+        states_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
         # go back to start
-        data_back = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
+        states_back = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
+        states_back_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
 
-        data = {
-            'joint_name': data_go['joint_name'],
-            'q': np.concatenate([data_go['q'], data_back['q']]),
-            'dq': np.concatenate([data_go['dq'], data_back['dq']]),
-            'tau': np.concatenate([data_go['tau'], data_back['tau']]),
-            'q_cmd': np.concatenate([data_go['q_cmd'], data_back['q_cmd']]),
-            'dq_cmd': np.concatenate([data_go['dq_cmd'], data_back['dq_cmd']]),
-            'tau_cmd': np.concatenate([data_go['tau_cmd'], data_back['tau_cmd']]),
-            'torque_cmd': np.concatenate([data_go['torque_cmd'], data_back['torque_cmd']])
-        }
+        # combine state arrays
+        states = states_go + states_go_static + states_back + states_back_static
 
-        save_results(data, f'{savepath}/{joint_name}.npz')
+        save_results(states_static, joint_name, f'{savepath}/{joint_name}_static.npz')
+        save_results(states, joint_name, f'{savepath}/{joint_name}_all.npz')
 
-    # shutdown
+    # shutdown command publisher
     command_publisher.shutdown()
+    time.sleep(3.0)
+    # record free motion
+    for joint_name in joint_name_list:
+        states = record_free_motion(robot_model, command_publisher, joint_name, steps)
+        save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
+
     robot_model.shutdown()
 
-    return data
-
-def save_results(data, filename):
+def save_results(states, joint_name, filename):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+    q_arr = np.array([state['q'] for state in states])
+    dq_arr = np.array([state['dq'] for state in states])
+    ddq_arr = np.array([state['ddq'] for state in states])
+    tau_arr = np.array([state['tau'] for state in states])
+    q_cmd_arr = np.array([state['q_cmd'] for state in states])
+    dq_cmd_arr = np.array([state['dq_cmd'] for state in states])
+    tau_cmd_arr = np.array([state['tau_cmd'] for state in states])
+
+    # compute PD torque
+    kp_arr = np.array([state['kp'] for state in states])
+    kd_arr = np.array([state['kd'] for state in states])
+    torque_cmd_arr = kp_arr * (q_cmd_arr - q_arr) + kd_arr * (dq_cmd_arr - dq_arr) + tau_cmd_arr
+
+    # Save to npz file
     np.savez(filename,
-             joint_name=data['joint_name'],
-             q=data['q'],
-             dq=data['dq'],
-             tau=data['tau'],
-             q_cmd=data['q_cmd'],
-             dq_cmd=data['dq_cmd'],
-             tau_cmd=data['tau_cmd'],
-             torque_cmd=data['torque_cmd'])
+             joint_name=joint_name,
+             kp=kp_arr,
+             kd=kd_arr,
+             q=q_arr,
+             dq=dq_arr,
+             ddq=ddq_arr,
+             tau=tau_arr,
+             q_cmd=q_cmd_arr,
+             dq_cmd=dq_cmd_arr,
+             tau_cmd=tau_cmd_arr,
+             torque_cmd=torque_cmd_arr)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Motor recording script')
@@ -164,13 +182,13 @@ if __name__ == '__main__':
     savepath = f'./data/motor_record/{args.save}'
 
     joint_name_list = [
-        # 'left_hip_yaw_joint', 'right_hip_yaw_joint',
-        # 'left_hip_pitch_joint', 'right_hip_pitch_joint',
-        # 'left_hip_roll_joint', 'right_hip_roll_joint',
-        # 'left_knee_joint', 'right_knee_joint',
-        # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
-        # 'left_ankle_roll_joint', 'right_ankle_roll_joint',
-        # 'torso_joint',
+        'left_hip_yaw_joint', 'right_hip_yaw_joint',
+        'left_hip_pitch_joint', 'right_hip_pitch_joint',
+        'left_hip_roll_joint', 'right_hip_roll_joint',
+        'left_knee_joint', 'right_knee_joint',
+        'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
+        'left_ankle_roll_joint', 'right_ankle_roll_joint',
+        'torso_joint',
         'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
         'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
         'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
@@ -180,13 +198,13 @@ if __name__ == '__main__':
         'left_wrist_yaw_joint', 'right_wrist_yaw_joint',
     ]
     q_start_list = [
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0,
         0.0, 0.0,
         0.0, 0.0,
         0.0, 0.0,
@@ -196,13 +214,13 @@ if __name__ == '__main__':
         0.0, 0.0,
     ]
     q_end_list = [
-        # 0.3, -0.3, # hip yaw
-        # -0.5, -0.5, # hip pitch
-        # 0.3, -0.3, # hip roll
-        # 1.0, 1.0, # knee
-        # -0.5, -0.5, # ankle pitch
-        # 0.25, -0.25, # ankle roll
-        # 1.0, # torso
+        0.3, -0.3, # hip yaw
+        -0.5, -0.5, # hip pitch
+        0.3, -0.3, # hip roll
+        1.0, 1.0, # knee
+        -0.5, -0.5, # ankle pitch
+        0.25, -0.25, # ankle roll
+        1.0, # torso
         -0.5, -0.5, # shoulder pitch
         1.0, -1.0, # shoulder roll
         1.0, -1.0, # shoulder yaw
@@ -211,6 +229,6 @@ if __name__ == '__main__':
         0.3, 0.3, # wrist pitch
         0.8, -0.8, # wrist yaw
     ]
-    steps = 100
+    steps = 50
 
     main(joint_name_list, q_start_list, q_end_list, steps, savepath)

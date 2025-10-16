@@ -131,11 +131,12 @@ if __name__ == '__main__':
         'elbow_joint', 'wrist_roll_joint', 'wrist_pitch_joint', 'wrist_yaw_joint'
     ]
 
-    # single torso joint
-    # plot_recording(f'data/motor_record/{folder}/torso_joint.npz', savepath)
-    for joint_name in joint_name_list:
-        left_filename = f'data/motor_record/{folder}/left_{joint_name}.npz'
-        right_filename = f'data/motor_record/{folder}/right_{joint_name}.npz'
-        plot_recording(left_filename, savepath)
-        plot_recording(right_filename, savepath)
-        plot_comparison(joint_name, left_filename, right_filename, savepath)
+    for variant in ['free', 'static', 'all']:
+        # single torso joint
+        plot_recording(f'data/motor_record/{folder}/torso_joint_{variant}.npz', f'{savepath}/{variant}')
+        for joint_name in joint_name_list:
+            left_filename = f'data/motor_record/{folder}/left_{joint_name}_{variant}.npz'
+            right_filename = f'data/motor_record/{folder}/right_{joint_name}_{variant}.npz'
+            plot_recording(left_filename, f'{savepath}/{variant}')
+            plot_recording(right_filename, f'{savepath}/{variant}')
+            plot_comparison(joint_name, left_filename, right_filename, f'{savepath}/{variant}')
