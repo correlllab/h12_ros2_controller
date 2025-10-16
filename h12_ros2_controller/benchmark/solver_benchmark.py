@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 
 import os
@@ -38,7 +39,7 @@ def run_benchmark(solver, filepath, mode):
 
     benchmark = PrecisionBenchmark(arm_controller, target_poses)
     benchmark.run_benchmark(mode)
-    benchmark.save_results(f'data/{filepath}/{solver}.npz')
+    benchmark.save_results(f'data/compare_solver/{filepath}/{solver}.npz')
 
     # reset to neutral position before shutdown
     if mode == 'pin':
@@ -48,10 +49,24 @@ def run_benchmark(solver, filepath, mode):
     arm_controller.shutdown()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Solver Benchmark Script')
+    parser.add_argument('--save', type=str, required=True,
+                        help='Folder name to save benchmark results in data/compare_solver/')
+
+    # Mutually exclusive group for mode selection
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('--real', action='store_true',
+                            help='Run benchmark with real robot routine')
+    mode_group.add_argument('--pin', action='store_true',
+                            help='Run benchmark with pure Pinocchio kinematics')
+
+    args = parser.parse_args()
+
+    # Set mode based on arguments
+    mode = 'real' if args.real else 'pin'
+
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
-    filepath = 'compare_solver_onrobot'
-    mode = 'real'
 
     ChannelFactoryInitialize()
     for solver in solvers:
-        run_benchmark(solver, filepath, mode)
+        run_benchmark(solver, args.save, mode)

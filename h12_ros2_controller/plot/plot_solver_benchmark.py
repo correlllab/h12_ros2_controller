@@ -1,4 +1,5 @@
 import os
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -37,10 +38,14 @@ def plot_benchmark(solver, filepath, savepath):
     plt.close()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Plot solver benchmark results')
+    parser.add_argument('folder',
+                        help='Folder name containing benchmark results in data/compare_solver/')
+    args = parser.parse_args()
+
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
-    path = 'compare_solver_onrobot'
 
     for solver in solvers:
-        filepath = f'./data/{path}/{solver}.npz'
-        savepath = f'./figures/{path}'
+        filepath = f'./data/compare_solver/{args.folder}/{solver}.npz'
+        savepath = f'./figures/compare_solver/{args.folder}'
         plot_benchmark(solver, filepath, savepath)

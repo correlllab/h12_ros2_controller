@@ -210,8 +210,10 @@ def compare_recordings(filenames, savepath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Compare multiple control recording data')
-    parser.add_argument('filenames', nargs='+', help='Recording filenames to compare (e.g., record1 record2 record3)')
-    parser.add_argument('--save', '-s', type=str, help='Output directory name (default: comparison_<first_filename>)')
+    parser.add_argument('filenames', nargs='+',
+                        help='Recording filenames to compare (e.g., record1 record2 record3)')
+    parser.add_argument('--save', '-s', type=str,
+                        help='Output directory name (default: comparison_<first_filename>)')
     args = parser.parse_args()
 
     # set save path

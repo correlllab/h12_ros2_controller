@@ -93,7 +93,8 @@ def plot_recording(filepath, savepath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot control recording data')
-    parser.add_argument('filename', help='Recording filename (e.g., record_real)')
+    parser.add_argument('filename',
+                        help='Recording filename in data/control_record/')
     args = parser.parse_args()
 
     # check if file exists

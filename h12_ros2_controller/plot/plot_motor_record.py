@@ -118,11 +118,12 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot motor recording data')
-    parser.add_argument('filepath', help='Recording filepath (e.g., motor_record)')
+    parser.add_argument('folder',
+                        help='Recording folder in data/motor_record/')
     args = parser.parse_args()
 
-    filepath = args.filepath
-    savepath = f'figures/{filepath}'
+    folder = args.folder
+    savepath = f'figures/motor_record/{folder}'
     joint_name_list = [
         'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
         'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint',
@@ -131,10 +132,10 @@ if __name__ == '__main__':
     ]
 
     # single torso joint
-    # plot_recording(f'data/{filepath}/torso_joint.npz', savepath)
+    # plot_recording(f'data/motor_record/{folder}/torso_joint.npz', savepath)
     for joint_name in joint_name_list:
-        left_filename = f'data/{filepath}/left_{joint_name}.npz'
-        right_filename = f'data/{filepath}/right_{joint_name}.npz'
+        left_filename = f'data/motor_record/{folder}/left_{joint_name}.npz'
+        right_filename = f'data/motor_record/{folder}/right_{joint_name}.npz'
         plot_recording(left_filename, savepath)
         plot_recording(right_filename, savepath)
         plot_comparison(joint_name, left_filename, right_filename, savepath)

@@ -1,4 +1,5 @@
 import time
+import argparse
 import numpy as np
 from tqdm import tqdm
 
@@ -86,7 +87,7 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
         'torque_cmd': np.array(torque_cmd_arr)
     }
 
-def main(joint_name_list, q_start_list, q_end_list, steps, path):
+def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     # initialize channel
     ChannelFactoryInitialize()
 
@@ -133,7 +134,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, path):
             'torque_cmd': np.concatenate([data_go['torque_cmd'], data_back['torque_cmd']])
         }
 
-        save_results(data, f'{path}/{joint_name}.npz')
+        save_results(data, f'{savepath}/{joint_name}.npz')
 
     # shutdown
     command_publisher.shutdown()
@@ -154,7 +155,14 @@ def save_results(data, filename):
              torque_cmd=data['torque_cmd'])
 
 if __name__ == '__main__':
-    path = './data/motor_record'
+    parser = argparse.ArgumentParser(description='Motor recording script')
+    parser.add_argument('--save', type=str, required=True,
+                        help='Folder name to save motor recordings in data/motor_record/')
+    args = parser.parse_args()
+
+    # set path using command line argument
+    savepath = f'./data/motor_record/{args.save}'
+
     joint_name_list = [
         # 'left_hip_yaw_joint', 'right_hip_yaw_joint',
         # 'left_hip_pitch_joint', 'right_hip_pitch_joint',
@@ -205,4 +213,4 @@ if __name__ == '__main__':
     ]
     steps = 100
 
-    main(joint_name_list, q_start_list, q_end_list, steps, path)
+    main(joint_name_list, q_start_list, q_end_list, steps, savepath)
