@@ -106,31 +106,36 @@ def compare_recordings(filenames, savepath):
     # create center of mass comparison plot
     fig, axes = plt.subplots(3, 1, figsize=(14, 10))
 
-    # X component comparison
+    # define RGB color palettes for each component
+    red_colors = plt.cm.Reds(np.linspace(0.4, 1.0, len(all_data)))
+    green_colors = plt.cm.Greens(np.linspace(0.4, 1.0, len(all_data)))
+    blue_colors = plt.cm.Blues(np.linspace(0.4, 1.0, len(all_data)))
+
+    # X component comparison (Red shades)
     ax = axes[0]
     for j, (filename, data) in enumerate(all_data):
         ax.plot(data['com'][:, 0], label=f'{filename}',
-               color=colors[j], linewidth=2, alpha=0.8)
+               color=red_colors[j], linewidth=2, alpha=0.8)
     ax.set_title('Center of Mass - X Component Comparison')
     ax.set_ylabel('X Position (m)')
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     ax.grid(True, alpha=0.3)
 
-    # Y component comparison
+    # Y component comparison (Green shades)
     ax = axes[1]
     for j, (filename, data) in enumerate(all_data):
         ax.plot(data['com'][:, 1], label=f'{filename}',
-               color=colors[j], linewidth=2, alpha=0.8)
+               color=green_colors[j], linewidth=2, alpha=0.8)
     ax.set_title('Center of Mass - Y Component Comparison')
     ax.set_ylabel('Y Position (m)')
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     ax.grid(True, alpha=0.3)
 
-    # Z component comparison
+    # Z component comparison (Blue shades)
     ax = axes[2]
     for j, (filename, data) in enumerate(all_data):
         ax.plot(data['com'][:, 2], label=f'{filename}',
-               color=colors[j], linewidth=2, alpha=0.8)
+               color=blue_colors[j], linewidth=2, alpha=0.8)
     ax.set_title('Center of Mass - Z Component Comparison')
     ax.set_xlabel('Time Steps')
     ax.set_ylabel('Z Position (m)')
