@@ -75,7 +75,7 @@ class IKSolver:
 
         # solver selection
         self.solver = qpsolvers.available_solvers[0]
-        for preferred in ['proxqp', 'daqp', 'quadprog', 'osqp']:
+        for preferred in ['daqp', 'proxqp', 'quadprog', 'osqp']:
             if preferred in qpsolvers.available_solvers:
                 self.solver = preferred
                 break

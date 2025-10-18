@@ -98,9 +98,14 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     time.sleep(1.0)
     robot_model.update_kinematics()
 
+    # record free motion
+    for joint_name in joint_name_list:
+        states = record_free_motion(robot_model, command_publisher, joint_name, 200)
+        save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
+
     # setup motor gains
-    setup_gains_mj(command_publisher)
-    # setup_gains_real(command_publisher)
+    # setup_gains_mj(command_publisher)
+    setup_gains_real(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
@@ -121,7 +126,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
         states_go = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
         states_go_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
         time.sleep(3.0)
-        states_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
+        states_static = record_static_motion(robot_model, command_publisher, joint_name, 200)
         # go back to start
         states_back = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
         states_back_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
@@ -132,14 +137,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
         save_results(states_static, joint_name, f'{savepath}/{joint_name}_static.npz')
         save_results(states, joint_name, f'{savepath}/{joint_name}_all.npz')
 
-    # shutdown command publisher
     command_publisher.shutdown()
-    time.sleep(3.0)
-    # record free motion
-    for joint_name in joint_name_list:
-        states = record_free_motion(robot_model, command_publisher, joint_name, steps)
-        save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
-
     robot_model.shutdown()
 
 def save_results(states, joint_name, filename):
@@ -224,7 +222,7 @@ if __name__ == '__main__':
         -0.5, -0.5, # shoulder pitch
         1.0, -1.0, # shoulder roll
         1.0, -1.0, # shoulder yaw
-        1.0, 1.0, # elbow
+        -0.5, -0.5, # elbow
         1.0, -1.0, # wrist roll
         0.3, 0.3, # wrist pitch
         0.8, -0.8, # wrist yaw
