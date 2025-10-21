@@ -19,21 +19,30 @@ class GravityCompController(UpperController):
         # i control on dq
         self.dq_i = np.zeros(self.robot_model.model.nv)
         self.ki = np.zeros(self.robot_model.model.nv)
-        # gain for shoulder
-        # self.ki[13:16] = 320.0
-        # self.ki[20:23] = 320.0
-        self.ki[13:16] = 100.0
-        self.ki[20:23] = 100.0
+        # gain for shoulder pitch
+        self.ki[13] = 250.0
+        self.ki[20] = 250.0
+        # gain for shoulder roll
+        self.ki[14] = 250.0
+        self.ki[21] = 250.0
+        # gain for shoulder yaw
+        self.ki[15] = 100.0
+        self.ki[22] = 100.0
         # gain for elbow
-        # self.ki[16:18] = 220.0
-        # self.ki[23:25] = 220.0
-        self.ki[16:18] = 100.0
-        self.ki[23:25] = 100.0
+        self.ki[16] = 100.0
+        self.ki[23] = 100.0
         # gain for wrist
-        # self.ki[18:20] = 120.0
-        # self.ki[25:27] = 120.0
-        self.ki[18:20] = 100.0
-        self.ki[25:27] = 100.0
+        self.ki[17:20] = 80.0
+        self.ki[24:27] = 80.0
+
+        # damp all joints except torso
+        self.damp_mode(6.0)
+        # fix torso joint
+        self.command_publisher.q[12] = 0.0
+        self.command_publisher.dq[12] = 0.0
+        self.command_publisher.tau[12] = 0.0
+        self.command_publisher.kp[12] = 200.0
+        self.command_publisher.kd[12] = 10.0
 
     def gravity_compensation_step(self):
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)

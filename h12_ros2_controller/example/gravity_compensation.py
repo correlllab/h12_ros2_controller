@@ -17,8 +17,6 @@ def main(use_sport_mode=False):
                                                     dt=0.01,
                                                     visualize=False,
                                                     use_sport_mode=use_sport_mode)
-    # set gain for damp mode
-    gravity_comp_controller.damp_mode(6.0)
 
     try:
         while True:
