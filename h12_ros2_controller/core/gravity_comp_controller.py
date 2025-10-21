@@ -23,8 +23,8 @@ class GravityCompController(UpperController):
         self.ki[13] = 250.0
         self.ki[20] = 250.0
         # gain for shoulder roll
-        self.ki[14] = 250.0
-        self.ki[21] = 250.0
+        self.ki[14] = 350.0
+        self.ki[21] = 350.0
         # gain for shoulder yaw
         self.ki[15] = 100.0
         self.ki[22] = 100.0
@@ -32,8 +32,8 @@ class GravityCompController(UpperController):
         self.ki[16] = 100.0
         self.ki[23] = 100.0
         # gain for wrist
-        self.ki[17:20] = 80.0
-        self.ki[24:27] = 80.0
+        self.ki[17:20] = 100.0
+        self.ki[24:27] = 100.0
 
         # damp all joints except torso
         self.damp_mode(6.0)
