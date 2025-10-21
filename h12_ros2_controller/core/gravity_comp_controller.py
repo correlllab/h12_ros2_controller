@@ -22,18 +22,18 @@ class GravityCompController(UpperController):
         # gain for shoulder
         # self.ki[13:16] = 320.0
         # self.ki[20:23] = 320.0
-        self.ki[13:16] = 0.0
-        self.ki[20:23] = 0.0
+        self.ki[13:16] = 100.0
+        self.ki[20:23] = 100.0
         # gain for elbow
         # self.ki[16:18] = 220.0
         # self.ki[23:25] = 220.0
-        self.ki[16:18] = 0.0
-        self.ki[23:25] = 0.0
+        self.ki[16:18] = 100.0
+        self.ki[23:25] = 100.0
         # gain for wrist
         # self.ki[18:20] = 120.0
         # self.ki[25:27] = 120.0
-        self.ki[18:20] = 0.0
-        self.ki[25:27] = 0.0
+        self.ki[18:20] = 100.0
+        self.ki[25:27] = 100.0
 
     def gravity_compensation_step(self):
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
