@@ -2,6 +2,7 @@ import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.upper_controller import UpperController
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class GravityCompController(UpperController):
     def __init__(self,
@@ -20,29 +21,34 @@ class GravityCompController(UpperController):
         self.dq_i = np.zeros(self.robot_model.model.nv)
         self.ki = np.zeros(self.robot_model.model.nv)
         # gain for shoulder pitch
-        self.ki[13] = 250.0
-        self.ki[20] = 250.0
+        self.ki[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 250.0
+        self.ki[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 250.0
         # gain for shoulder roll
-        self.ki[14] = 350.0
-        self.ki[21] = 350.0
+        self.ki[BODY_JOINTS.index('left_shoulder_roll_joint')] = 350.0
+        self.ki[BODY_JOINTS.index('right_shoulder_roll_joint')] = 350.0
         # gain for shoulder yaw
-        self.ki[15] = 100.0
-        self.ki[22] = 100.0
+        self.ki[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 100.0
         # gain for elbow
-        self.ki[16] = 100.0
-        self.ki[23] = 100.0
+        self.ki[BODY_JOINTS.index('left_elbow_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('right_elbow_joint')] = 100.0
         # gain for wrist
-        self.ki[17:20] = 100.0
-        self.ki[24:27] = 100.0
+        self.ki[BODY_JOINTS.index('left_wrist_pitch_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('left_wrist_roll_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('left_wrist_yaw_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('right_wrist_pitch_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('right_wrist_roll_joint')] = 100.0
+        self.ki[BODY_JOINTS.index('right_wrist_yaw_joint')] = 100.0
 
         # damp all joints except torso
         self.damp_mode(6.0)
         # fix torso joint
-        self.command_publisher.q[12] = 0.0
-        self.command_publisher.dq[12] = 0.0
-        self.command_publisher.tau[12] = 0.0
-        self.command_publisher.kp[12] = 200.0
-        self.command_publisher.kd[12] = 10.0
+        torso_idx = BODY_JOINTS.index('torso_joint')
+        self.command_publisher.q[torso_idx] = 0.0
+        self.command_publisher.dq[torso_idx] = 0.0
+        self.command_publisher.tau[torso_idx] = 0.0
+        self.command_publisher.kp[torso_idx] = 200.0
+        self.command_publisher.kd[torso_idx] = 10.0
 
     def gravity_compensation_step(self):
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
@@ -51,37 +57,55 @@ class GravityCompController(UpperController):
         right_force = np.linalg.norm(right_wrench[:3])
         left_torque = np.linalg.norm(left_wrench[3:])
         right_torque = np.linalg.norm(right_wrench[3:])
-        # threshold for left shoulder joints
+        # threshold for left shoulder pitch
         if left_force > 24.0:
-            self.dq_i[13:16] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 0.0
+        # threshold for left shoulder roll
+        if left_force > 30.0:
+            self.dq_i[BODY_JOINTS.index('left_shoulder_roll_joint')] = 0.0
+        # threshold for left shoulder yaw
+        if left_force > 18.0:
+            self.dq_i[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.0
         # threshold for left elbow joints
         if left_force > 20.0:
-            self.dq_i[16:18] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_elbow_joint')] = 0.0
         # threshold for left wrist joints
         if left_force > 12.0:
-            self.dq_i[18:20] = 0.0
-        # threshold for right shoulder joints
+            self.dq_i[BODY_JOINTS.index('left_wrist_roll_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_wrist_pitch_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_wrist_yaw_joint')] = 0.0
+
+        # threshold for right shoulder pitch
         if right_force > 24.0:
-            self.dq_i[20:23] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 0.0
+        # threshold for right shoulder roll
+        if right_force > 30.0:
+            self.dq_i[BODY_JOINTS.index('right_shoulder_roll_joint')] = 0.0
+        # threshold for right shoulder yaw
+        if right_force > 18.0:
+            self.dq_i[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 0.0
         # threshold for right elbow joints
         if right_force > 20.0:
-            self.dq_i[23:25] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_elbow_joint')] = 0.0
         # threshold for right wrist joints
         if right_force > 12.0:
-            self.dq_i[25:27] = 0.0
+            # self.dq_i[24:27] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_wrist_roll_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_wrist_pitch_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_wrist_yaw_joint')] = 0.0
 
         # threshold for left shoulder yaw joints
         if left_torque > 4.0:
-            self.dq_i[15] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.0
         # threshold for left elbow roll joints
         if left_torque > 2.0:
-            self.dq_i[17] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_elbow_roll_joint')] = 0.0
         # threshold for right shoulder yaw joints
         if right_torque > 4.0:
-            self.dq_i[22] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 0.0
         # threshold for right elbow roll joints
         if right_torque > 2.0:
-            self.dq_i[24] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_elbow_roll_joint')] = 0.0
 
         # integrate dq
         self.dq_i += self.robot_model.state['dq'] * self.dt
