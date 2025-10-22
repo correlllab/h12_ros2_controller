@@ -8,7 +8,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.arm_controller import ArmController
-from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 def input_keyword_or_poses():
     '''

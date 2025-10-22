@@ -8,7 +8,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, setup_gains_mj, setup_gains_real
+from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.utility.robot_setting import setup_gains_mj, setup_gains_real
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class MotorDebugGUI:

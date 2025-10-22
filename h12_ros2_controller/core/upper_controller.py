@@ -5,8 +5,9 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher, setup_gains_mj, setup_gains_real
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
+from h12_ros2_controller.utility.robot_setting import setup_gains_mj, setup_gains_real
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
     def __init__(self,
@@ -34,6 +35,7 @@ class UpperController:
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(urdf_sphere_path, srdf_sphere_path)
         self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
+        self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
 
         # initialize command publisher for upper body motors
         if use_sport_mode:
@@ -49,7 +51,7 @@ class UpperController:
         self.command_publisher.enable_motor(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in place
-        self.command_publisher.enable_motor([12], [0.0])
+        self.command_publisher.enable_motor([BODY_JOINTS.index('torso_joint')], [0.0])
         self.command_publisher.start_publisher()
 
         # initialize IK solver
@@ -253,14 +255,14 @@ class UpperController:
             # record center of mass
             com = self.robot_model.get_center_of_mass()
             # get values for upper body joints only
-            q = self.robot_model.state['q'][12:27]
-            dq = self.robot_model.state['dq'][12:27]
-            tau = self.robot_model.state['tau'][12:27]
-            q_cmd = self.command_publisher.q[12:27]
-            dq_cmd = self.command_publisher.dq[12:27]
-            tau_cmd = self.command_publisher.tau[12:27]
-            kp = self.command_publisher.kp[12:27]
-            kd = self.command_publisher.kd[12:27]
+            q = self.robot_model.state['q'][self.upper_ids]
+            dq = self.robot_model.state['dq'][self.upper_ids]
+            tau = self.robot_model.state['tau'][self.upper_ids]
+            q_cmd = self.command_publisher.q[self.upper_ids]
+            dq_cmd = self.command_publisher.dq[self.upper_ids]
+            tau_cmd = self.command_publisher.tau[self.upper_ids]
+            kp = self.command_publisher.kp[self.upper_ids]
+            kd = self.command_publisher.kd[self.upper_ids]
             # record
             self.com_arr.append(com)
             self.q_arr.append(q)
@@ -307,7 +309,7 @@ class UpperController:
     def save_recording(self, filename):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         np.savez(filename,
-                 ids=np.array([i for i in range(12, 27)]),
+                 ids=np.array(self.upper_ids),
                  com=self.com_arr,
                  q=self.q_arr,
                  dq=self.dq_arr,

@@ -9,7 +9,7 @@ from scipy.spatial.transform import Rotation as R
 from pyquaternion import Quaternion
 
 from custom_ros_messages.action import DualArm
-from h12_ros2_controller.utility.named_configs import NAMED_CONFIGS
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 class DualArmClient(Node):
     def __init__(self):

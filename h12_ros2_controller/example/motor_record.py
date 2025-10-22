@@ -9,7 +9,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, setup_gains_mj, setup_gains_real
+from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.utility.robot_setting import setup_gains_mj, setup_gains_real
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 def get_state(robot_model, command_publisher, joint_idx):
@@ -85,7 +86,7 @@ def record_free_motion(robot_model, command_publisher, joint_name, steps):
 
     return state_arr
 
-def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
+def main(joint_name_list, q_start_list, q_end_list, steps, savepath, use_real_gains):
     # initialize channel
     ChannelFactoryInitialize()
 
@@ -104,8 +105,10 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
         save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
 
     # setup motor gains
-    # setup_gains_mj(command_publisher)
-    setup_gains_real(command_publisher)
+    if use_real_gains:
+        setup_gains_real(command_publisher)
+    else:
+        setup_gains_mj(command_publisher)
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
@@ -174,6 +177,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Motor recording script')
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save motor recordings in data/motor_record/')
+    # create mutually exclusive group for real/sim mode
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('--real', action='store_true',
+                           help='Use real robot gains')
+    mode_group.add_argument('--sim', action='store_true',
+                           help='Use simulation gains')
     args = parser.parse_args()
 
     # set path using command line argument
@@ -229,4 +238,5 @@ if __name__ == '__main__':
     ]
     steps = 50
 
-    main(joint_name_list, q_start_list, q_end_list, steps, savepath)
+    main(joint_name_list, q_start_list, q_end_list, steps, savepath,
+         use_real_gains=args.real)
