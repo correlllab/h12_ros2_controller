@@ -74,17 +74,16 @@ def record_static_motion(robot_model, command_publisher, joint_name, steps):
 
     return state_arr
 
-def record_free_motion(robot_model, command_publisher, joint_name, steps):
-    # get joint index
-    joint_idx = BODY_JOINTS.index(joint_name)
+def record_free_motion(robot_model, command_publisher, steps):
     # empty array for recording states
-    state_arr = []
+    joint_states = [[] for _ in range(len(BODY_JOINTS))]
 
     for _ in range(steps):
-        state_arr.append(get_state(robot_model, command_publisher, joint_idx))
+        for joint_idx in range(len(BODY_JOINTS)):
+            joint_states[joint_idx].append(get_state(robot_model, command_publisher, joint_idx))
         time.sleep(0.01)
 
-    return state_arr
+    return joint_states
 
 def main(joint_name_list, q_start_list, q_end_list, steps, savepath, use_real_gains):
     # initialize channel
@@ -100,8 +99,11 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath, use_real_ga
     robot_model.update_kinematics()
 
     # record free motion
+    print('Recording free motion noise...')
+    joint_states = record_free_motion(robot_model, command_publisher, 200)
     for joint_name in joint_name_list:
-        states = record_free_motion(robot_model, command_publisher, joint_name, 200)
+        joint_idx = BODY_JOINTS.index(joint_name)
+        states = joint_states[joint_idx]
         save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
 
     # setup motor gains
@@ -117,6 +119,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath, use_real_ga
     command_publisher.start_publisher()
 
     # move elbow to 0 position
+    print('Moving elbows to 0 position...')
     record_linear_motion(robot_model, command_publisher, 'left_elbow_joint', 0.0, steps)
     record_linear_motion(robot_model, command_publisher, 'right_elbow_joint', 0.0, steps)
 
