@@ -6,7 +6,7 @@ import pinocchio as pin
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
-from h12_ros2_controller.utility.robot_setting import setup_gains_mj, setup_gains_real
+from h12_ros2_controller.utility.robot_setting import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -43,8 +43,7 @@ class UpperController:
         else:
             self.command_publisher = CommandPublisher()
 
-        # setup_gains_mj(self.command_publisher)
-        setup_gains_real(self.command_publisher)
+        setup_gains(self.command_publisher)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
