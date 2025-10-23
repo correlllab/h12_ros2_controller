@@ -1,6 +1,7 @@
 import time
 import argparse
 import numpy as np
+import pinocchio as pin
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -8,6 +9,26 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.upper_task_controller import UpperTaskController
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+
+def input_keyword_or_frame_task():
+    '''
+    Ask user for keyword command or manual frame task input
+    Returns (keyword, frame_name, pose) tuple
+    If keyword is provided, frame_name and pose will be None
+    If no keyword, frame_name and pose will be provided
+    '''
+    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
+
+    choice = input('Enter keyword (or press Enter for manual frame task): ').strip()
+
+    if choice:
+        # user entered a keyword
+        return choice, None, None
+    else:
+        # user wants manual frame task input
+        frame_name, pose = input_frame_task()
+        return '', frame_name, pose
 
 def input_frame_task():
     '''Get frame name and pose from user'''
@@ -48,12 +69,28 @@ def main(timeout=10.0,
 
     try:
         while True:
-            # get frame task input
-            frame_name, pose = input_frame_task()
-            task_name = f'{frame_name}_task'
-            # add frame task
-            upper_task_controller.clear_frame_tasks()
-            upper_task_controller.add_frame_task(task_name, frame_name, pose)
+            # get keyword or frame task input
+            keyword, frame_name, pose = input_keyword_or_frame_task()
+
+            # handle keyword configuration
+            if keyword in NAMED_CONFIGS:
+                print(f'Going to named configuration: {keyword}')
+                q_reduced = NAMED_CONFIGS[keyword]
+                # use goto as step function
+                step_function = lambda: upper_task_controller.goto_reduced_configuration(q_reduced)
+                # step_function = lambda: upper_task_controller.sim_goto_reduced_configuration(q_reduced)
+            elif keyword != '':
+                print(f'Unknown keyword: {keyword}')
+                continue
+            else:
+                # manual frame task input
+                print('Going to manual frame task')
+                task_name = f'{frame_name}_task'
+                # add frame task
+                upper_task_controller.clear_frame_tasks()
+                upper_task_controller.add_frame_task(task_name, frame_name, pose)
+                step_function = lambda: upper_task_controller.control_step_reduced()
+                # step_function = lambda: upper_task_controller.sim_step_reduced()
 
             # update ik solver with current state
             upper_task_controller.update_ik_solver()
@@ -63,26 +100,27 @@ def main(timeout=10.0,
             upper_task_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                upper_task_controller.control_step_reduced()
-                # upper_task_controller.sim_step_reduced()
+                # control one step
+                step_function()
 
-                # print error
-                error = upper_task_controller.get_frame_task_error(task_name)
-                linear_error = np.linalg.norm(error[:3])
-                angular_error = np.linalg.norm(error[3:])
+                # print error (only for frame task mode)
+                if keyword not in NAMED_CONFIGS:
+                    error = upper_task_controller.get_frame_task_error(task_name)
+                    linear_error = np.linalg.norm(error[:3])
+                    angular_error = np.linalg.norm(error[3:])
 
-                print(f'Linear Error: {linear_error:.4f}, Angular Error: {angular_error:.4f}')
+                    print(f'Linear Error: {linear_error:.4f}, Angular Error: {angular_error:.4f}')
 
-                # early break
-                if linear_error < threshold_linear and angular_error < threshold_angular:
-                    print('Target reached!')
-                    break
+                    # early break
+                    if linear_error < threshold_linear and angular_error < threshold_angular:
+                        print('Target reached!')
+                        break
 
                 time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
 
             for _ in range(50):
                 frame_start_time = time.time()
-                upper_task_controller.control_step_reduced()
+                step_function()
                 time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
             upper_task_controller.stop_recording()
 
