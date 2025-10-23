@@ -3,11 +3,13 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
 
+import numpy as np
+
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
 
 class JointStatePublisher(Node):
     def __init__(self):
@@ -30,8 +32,11 @@ class JointStatePublisher(Node):
         msg = JointState()
         msg.header = Header()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.name = BODY_JOINTS
-        msg.position = self.robot_model.state['q'].tolist()
+        # publish 0 for non-body joints
+        joint_pos = np.zeros(len(ALL_JOINTS))
+        joint_pos[[ALL_JOINTS.index(joint) for joint in BODY_JOINTS]] = self.robot_model.state['q'].tolist()
+        msg.name = ALL_JOINTS
+        msg.position = joint_pos.tolist()
 
         self.publisher.publish(msg)
 
