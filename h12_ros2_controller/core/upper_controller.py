@@ -7,7 +7,7 @@ from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
 from h12_ros2_controller.utility.robot_setting import setup_gains_mj, setup_gains_real
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
     def __init__(self,
@@ -52,6 +52,13 @@ class UpperController:
 
         # enable torso motor such that it's locked in place
         self.command_publisher.enable_motor([BODY_JOINTS.index('torso_joint')], [0.0])
+
+        # enable lower body motor
+        lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
+        lower_init = self.robot_model.state['q'][lower_ids]
+        self.command_publisher.enable_motor(lower_ids, lower_init)
+
+        # start publisher
         self.command_publisher.start_publisher()
 
         # initialize IK solver
