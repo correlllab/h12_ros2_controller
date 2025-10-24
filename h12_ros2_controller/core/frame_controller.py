@@ -2,7 +2,7 @@ import numpy as np
 import pinocchio as pin
 from h12_ros2_controller.core.upper_controller import UpperController
 
-class UpperTaskController(UpperController):
+class FrameController(UpperController):
     def __init__(self,
                  urdf_path: str,
                  urdf_sphere_path: str,

@@ -8,7 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.upper_task_controller import UpperTaskController
+from h12_ros2_controller.core.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 def input_keyword_or_frame_task():
@@ -56,16 +56,16 @@ def main(timeout=10.0,
          save_filename=None):
     ChannelFactoryInitialize()
     # initialize upper task controller
-    upper_task_controller = UpperTaskController('assets/h1_2/h1_2.urdf',
-                                                'assets/h1_2/h1_2_sphere.urdf',
-                                                'assets/h1_2/h1_2_sphere_collision.srdf',
-                                                dt=0.025,
-                                                v_lim=1.0,
-                                                w_lim=2.0,
-                                                dq_lim=2.0,
-                                                d_min=0.02,
-                                                visualize=False,
-                                                use_sport_mode=use_sport_mode)
+    upper_task_controller = FrameController('assets/h1_2/h1_2.urdf',
+                                            'assets/h1_2/h1_2_sphere.urdf',
+                                            'assets/h1_2/h1_2_sphere_collision.srdf',
+                                            dt=0.025,
+                                            v_lim=1.0,
+                                            w_lim=2.0,
+                                            dq_lim=2.0,
+                                            d_min=0.02,
+                                            visualize=False,
+                                            use_sport_mode=use_sport_mode)
 
     try:
         while True:
