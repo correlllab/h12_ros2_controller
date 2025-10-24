@@ -32,6 +32,8 @@ setup(
             'joint_state_publisher = h12_ros2_controller.ros2.joint_state_publisher:main',
             'dual_arm_server = h12_ros2_controller.ros2.dual_arm_server:main',
             'dual_arm_client = h12_ros2_controller.ros2.dual_arm_client:main',
+            'frame_task_server = h12_ros2_controller.ros2.frame_task_server:main',
+            'frame_task_client = h12_ros2_controller.ros2.frame_task_client:main',
             'hand_controller_node = h12_ros2_controller.ros2.hand_controller_node:main',
             'hand_cmd_gui = h12_ros2_controller.ros2.hand_cmd_gui:main',
         ],
