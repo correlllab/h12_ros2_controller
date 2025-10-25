@@ -13,6 +13,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from custom_ros_messages.msg import StringArray
 from custom_ros_messages.action import FrameTask
 from h12_ros2_controller.core.frame_controller import FrameController
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class FrameTaskServer(Node):
@@ -99,7 +100,7 @@ class FrameTaskServer(Node):
         return pose
 
     async def execute_callback(self, goal_handle):
-        self.get_logger().info('Received new goal!')
+        self.get_logger().info('Received goal')
 
         goal = goal_handle.request
 
@@ -108,21 +109,24 @@ class FrameTaskServer(Node):
         self.frame_names = goal.frame_names
         self.frame_targets = goal.frame_targets
 
-        # print out the goal contents
-        self.get_logger().info(f'Keyword: {goal.keyword}')
-        self.get_logger().info(f'Duration: {goal.duration.sec}s {goal.duration.nanosec}ns')
+        if goal.keyword in NAMED_CONFIGS:
+            q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
+            self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
+            step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
+        elif goal.keyword != '':
+            self.get_logger().warning(f'Unknown keyword: {goal.keyword}')
+            self.get_logger().warning(f'Aborting the goal...')
+            goal_handle.abort()
+            result = FrameTask.Result()
+            result.success = False
+            return result
+        else:
+            for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
+                task_name = f'{frame_name}_task'
+                self.controller.add_frame_task(task_name, frame_name, self._pose_to_matrix(frame_target))
+            step_function = lambda: self.controller.control_step()
 
-        for name, pose in zip(goal.frame_names, goal.frame_targets):
-            self.get_logger().info(f'Frame: {name}')
-            self.get_logger().info(
-                f'    Position: ({pose.position.x:.3f}, {pose.position.y:.3f}, {pose.position.z:.3f})'
-            )
-            self.get_logger().info(
-                f'    Orientation: ({pose.orientation.x:.3f}, {pose.orientation.y:.3f}, {pose.orientation.z:.3f}, {pose.orientation.w:.3f})'
-            )
-            self.controller.add_frame_task(name, name, self._pose_to_matrix(pose))
-
-        # update ik solver with current state
+            # update ik solver with current state
         self.controller.update_ik_solver()
 
         # main loop
@@ -132,7 +136,7 @@ class FrameTaskServer(Node):
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             # control one step
-            self.controller.control_step()
+            step_function()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')

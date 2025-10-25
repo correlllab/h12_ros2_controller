@@ -119,10 +119,12 @@ class DualArmServer(Node):
         self.get_logger().info('Received goal')
         feedback_msg = DualArm.Feedback()
 
+        goal = goal
+
         # goto named configuration
-        if goal_handle.request.keyword in NAMED_CONFIGS:
-            q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
-            self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
+        if goal.keyword in NAMED_CONFIGS:
+            q_reduced = NAMED_CONFIGS[goal.keyword]
+            self.get_logger().info(f'Going to named configuration: {goal.keyword}')
             # compute the target end-effector poses from q_reduced
             self.controller.left_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
                 self.controller.left_ee_name, q_reduced
@@ -134,8 +136,8 @@ class DualArmServer(Node):
             # step_function = lambda: self.controller.sim_goto_reduced_configuration(q_reduced)
             step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
         # unknown keyword, abort
-        elif goal_handle.request.keyword != '':
-            self.get_logger().warning(f'Unknown keyword: {goal_handle.request.keyword}')
+        elif goal.keyword != '':
+            self.get_logger().warning(f'Unknown keyword: {goal.keyword}')
             self.get_logger().warning(f'Aborting the goal...')
             goal_handle.abort()
             result = DualArm.Result()
@@ -145,10 +147,10 @@ class DualArmServer(Node):
         else:
             self.get_logger().info('Going to target end-effector poses')
             self.controller.left_ee_target_transformation = np.array(
-                goal_handle.request.left_target, dtype=np.float64
+                goal.left_target, dtype=np.float64
             ).reshape(4, 4)
             self.controller.right_ee_target_transformation = np.array(
-                goal_handle.request.right_target, dtype=np.float64
+                goal.right_target, dtype=np.float64
             ).reshape(4, 4)
 
             step_function = lambda: self.controller.control_dual_arm_step()
@@ -158,7 +160,7 @@ class DualArmServer(Node):
 
         # main loop
         start_time = time.time()
-        timeout = goal_handle.request.duration if goal_handle.request.duration > 0.0 else self.timeout
+        timeout = goal.duration if goal.duration > 0.0 else self.timeout
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             # control one step
