@@ -16,7 +16,8 @@ from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 class DualArmServer(Node):
-    def __init__(self, dt=0.03,
+    def __init__(self,
+                 dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
@@ -24,6 +25,7 @@ class DualArmServer(Node):
         self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
+
         ChannelFactoryInitialize()
         self.controller = ArmController(URDF_PIN_PATH,
                                         URDF_SPHERE_PATH,
@@ -34,6 +36,7 @@ class DualArmServer(Node):
                                         dq_lim=2.0,
                                         d_min=0.02,
                                         visualize=False)
+
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
             PoseStamped,
@@ -56,10 +59,7 @@ class DualArmServer(Node):
             'right_ee_target',
             10
         )
-        self.left_ee_pose_timer = self.create_timer(1.0 / 100, self.publish_left_ee_pose)
-        self.right_ee_pose_timer = self.create_timer(1.0 / 100, self.publish_right_ee_pose)
-        self.left_ee_target_timer = self.create_timer(1.0 / 100, self.publish_left_ee_target)
-        self.right_ee_target_timer = self.create_timer(1.0 / 100, self.publish_right_ee_target)
+        self.publisher_timer = self.create_timer(1.0 / 100, self.publisher_callback)
 
         # action server to control dual arms
         self.action_server = ActionServer(
@@ -103,28 +103,16 @@ class DualArmServer(Node):
         pose_stamped.pose = pose
         return pose_stamped
 
-    def publish_left_ee_pose(self):
+    def publisher_callback(self):
         self.controller.update_robot_model()
         # transform and publish the pose
         left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
-        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
-
-    def publish_right_ee_pose(self):
-        self.controller.update_robot_model()
-        # transform and publish the pose
         right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
-        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
-
-    def publish_left_ee_target(self):
-        self.controller.update_robot_model()
-        # transform and publish the pose
         left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
-        self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-
-    def publish_right_ee_target(self):
-        self.controller.update_robot_model()
-        # transform and publish the pose
         right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
+        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+        self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
     async def execute_callback(self, goal_handle):

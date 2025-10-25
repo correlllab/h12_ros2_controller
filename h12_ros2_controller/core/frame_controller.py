@@ -14,11 +14,16 @@ class FrameController(UpperController):
                          dt, v_lim, w_lim, dq_lim, d_min,
                          visualize, use_sport_mode)
 
-    def add_frame_task(self, task_name: str, frame_name: str, pose: np.ndarray = None):
+    def add_frame_task(self, task_name: str, frame_name: str, target: np.ndarray = None):
         '''Add a frame task with optional pose'''
         self.ik_solver.add_frame_task(task_name, frame_name)
-        if pose is not None:
-            self.set_frame_task_pose(task_name, pose)
+        if target is not None:
+            if target.shape == (6,):
+                self.set_frame_task_pose(task_name, target)
+            elif target.shape == (4, 4):
+                self.set_frame_task_transformation(task_name, target)
+            else:
+                raise ValueError('Target must be either a 6D pose or a 4x4 transformation matrix')
 
     def set_frame_task_pose(self, task_name: str, pose: np.ndarray):
         '''Set pose for a frame task'''
@@ -30,6 +35,15 @@ class FrameController(UpperController):
         rpy = np.array(pose[3:])
         rotation = pin.rpy.rpyToMatrix(rpy)
         transform = pin.SE3(rotation, position)
+        task.transform_target_to_world = transform
+
+    def set_frame_task_transformation(self, task_name: str, transformation: np.ndarray):
+        '''Set transformation for a frame task'''
+        assert transformation.shape == (4, 4), 'Transformation must be a 4x4 matrix'
+        task = self.ik_solver.frame_tasks.get(task_name)
+        if task is None:
+            raise ValueError(f'Task {task_name} not found')
+        transform = pin.SE3(transformation)
         task.transform_target_to_world = transform
 
     def get_frame_task_error(self, task_name: str):
@@ -95,3 +109,7 @@ class FrameController(UpperController):
         rotation = self.robot_model.get_frame_rotation(frame_name)
         rpy = pin.rpy.matrixToRpy(rotation)
         return np.concatenate([position, rpy])
+
+    def get_frame_transformation(self, frame_name: str):
+        '''Get current transformation matrix of a frame'''
+        return self.robot_model.get_frame_transformation(frame_name)
