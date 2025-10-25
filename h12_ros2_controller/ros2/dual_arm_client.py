@@ -5,8 +5,8 @@ from geometry_msgs.msg import Pose, PoseStamped
 
 import numpy as np
 from pynput import keyboard
-from scipy.spatial.transform import Rotation as R
 from pyquaternion import Quaternion
+from scipy.spatial.transform import Rotation as R
 
 from custom_ros_messages.action import DualArm
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -64,9 +64,11 @@ class DualArmClient(Node):
     def subscribe_right_ee_target(self, msg):
         self.right_ee_target = msg.pose
 
-    def send_goal(self, left_target: Pose=None, right_target: Pose=None, keyword: str=''):
+    def send_goal(self, keyword: str='',
+                  left_target: Pose=None, right_target: Pose=None):
         goal_msg = DualArm.Goal()
 
+        goal_msg.keyword = keyword
         if keyword:
             # For keyword commands, send identity matrices (will be overridden by server)
             goal_msg.left_target = np.eye(4).flatten().tolist()
@@ -82,8 +84,7 @@ class DualArmClient(Node):
             goal_msg.left_target = left_matrix.flatten().tolist()
             goal_msg.right_target = right_matrix.flatten().tolist()
 
-        goal_msg.keyword = keyword
-
+        self.get_logger().info('Waiting for action server...')
         self.action_client.wait_for_server()
 
         # send action
@@ -200,13 +201,7 @@ def main(args=None):
     try:
         while rclpy.ok():
             keyword, left_pose, right_pose = input_keyword_or_poses()
-
-            if keyword:
-                # send keyword command
-                node.send_goal(keyword=keyword)
-            else:
-                # send pose targets
-                node.send_goal(left_target=left_pose, right_target=right_pose)
+            node.send_goal(keyword, left_pose, right_pose)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

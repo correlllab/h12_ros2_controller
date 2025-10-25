@@ -44,7 +44,7 @@ def input_frame_task():
             values = [float(val) for val in parts]
             # degrees to radians for roll, pitch, yaw
             values[3:] = np.deg2rad(values[3:])
-            return frame_name, values
+            return frame_name, np.array(values)
         except ValueError:
             print('Invalid input. Make sure all 6 values are numeric.')
             continue
@@ -56,16 +56,16 @@ def main(timeout=10.0,
          save_filename=None):
     ChannelFactoryInitialize()
     # initialize upper task controller
-    upper_task_controller = FrameController('assets/h1_2/h1_2.urdf',
-                                            'assets/h1_2/h1_2_sphere.urdf',
-                                            'assets/h1_2/h1_2_sphere_collision.srdf',
-                                            dt=0.025,
-                                            v_lim=1.0,
-                                            w_lim=2.0,
-                                            dq_lim=2.0,
-                                            d_min=0.02,
-                                            visualize=False,
-                                            use_sport_mode=use_sport_mode)
+    frame_controller = FrameController('assets/h1_2/h1_2.urdf',
+                                       'assets/h1_2/h1_2_sphere.urdf',
+                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+                                       dt=0.025,
+                                       v_lim=1.0,
+                                       w_lim=2.0,
+                                       dq_lim=2.0,
+                                       d_min=0.02,
+                                       visualize=False,
+                                       use_sport_mode=use_sport_mode)
 
     try:
         while True:
@@ -77,8 +77,8 @@ def main(timeout=10.0,
                 print(f'Going to named configuration: {keyword}')
                 q_reduced = NAMED_CONFIGS[keyword]
                 # use goto as step function
-                step_function = lambda: upper_task_controller.goto_reduced_configuration(q_reduced)
-                # step_function = lambda: upper_task_controller.sim_goto_reduced_configuration(q_reduced)
+                step_function = lambda: frame_controller.goto_reduced_configuration(q_reduced)
+                # step_function = lambda: frame_controller.sim_goto_reduced_configuration(q_reduced)
             elif keyword != '':
                 print(f'Unknown keyword: {keyword}')
                 continue
@@ -87,17 +87,17 @@ def main(timeout=10.0,
                 print('Going to manual frame task')
                 task_name = f'{frame_name}_task'
                 # add frame task
-                upper_task_controller.clear_frame_tasks()
-                upper_task_controller.add_frame_task(task_name, frame_name, pose)
-                step_function = lambda: upper_task_controller.control_step_reduced()
-                # step_function = lambda: upper_task_controller.sim_step_reduced()
+                frame_controller.clear_frame_tasks()
+                frame_controller.add_frame_task(task_name, frame_name, pose)
+                step_function = lambda: frame_controller.control_step_reduced()
+                # step_function = lambda: frame_controller.sim_step_reduced()
 
             # update ik solver with current state
-            upper_task_controller.update_ik_solver()
+            frame_controller.update_ik_solver()
 
             # main loop
             start_time = time.time()
-            upper_task_controller.start_recording()
+            frame_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 # control one step
@@ -105,7 +105,7 @@ def main(timeout=10.0,
 
                 # print error (only for frame task mode)
                 if keyword not in NAMED_CONFIGS:
-                    error = upper_task_controller.get_frame_task_error(task_name)
+                    error = frame_controller.get_frame_task_error(task_name)
                     linear_error = np.linalg.norm(error[:3])
                     angular_error = np.linalg.norm(error[3:])
 
@@ -116,13 +116,13 @@ def main(timeout=10.0,
                         print('Target reached!')
                         break
 
-                time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
+                time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
 
             for _ in range(50):
                 frame_start_time = time.time()
                 step_function()
-                time.sleep(max(0.0, upper_task_controller.dt - (time.time() - frame_start_time)))
-            upper_task_controller.stop_recording()
+                time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
+            frame_controller.stop_recording()
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -132,15 +132,15 @@ def main(timeout=10.0,
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
-        upper_task_controller.stop_recording()
+        frame_controller.stop_recording()
         if save_filename:
             save_path = f'data/control_record/{save_filename}'
-            upper_task_controller.save_recording(save_path)
+            frame_controller.save_recording(save_path)
             print(f'Recording saved to {save_path}')
-        upper_task_controller.shutdown()
+        frame_controller.shutdown()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Upper Task Controller Goto')
+    parser = argparse.ArgumentParser(description='Frame Controller Goto')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
     group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')

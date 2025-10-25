@@ -101,7 +101,6 @@ class FrameTaskServer(Node):
 
     async def execute_callback(self, goal_handle):
         self.get_logger().info('Received goal')
-
         goal = goal_handle.request
 
         # clear existing frame tasks
@@ -109,10 +108,13 @@ class FrameTaskServer(Node):
         self.frame_names = goal.frame_names
         self.frame_targets = goal.frame_targets
 
+        # goto named configuration
         if goal.keyword in NAMED_CONFIGS:
             q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
             self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
+            # use goto configuration as step function
             step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
+        # unknown keyword, abort
         elif goal.keyword != '':
             self.get_logger().warning(f'Unknown keyword: {goal.keyword}')
             self.get_logger().warning(f'Aborting the goal...')
@@ -121,12 +123,15 @@ class FrameTaskServer(Node):
             result.success = False
             return result
         else:
+            self.get_logger().info('Going to target frame poses')
+            # set frame tasks
             for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
                 task_name = f'{frame_name}_task'
                 self.controller.add_frame_task(task_name, frame_name, self._pose_to_matrix(frame_target))
-            step_function = lambda: self.controller.control_step()
+            # use control step as step function
+            step_function = lambda: self.controller.control_step_reduced()
 
-            # update ik solver with current state
+        # update ik solver with current state
         self.controller.update_ik_solver()
 
         # main loop
@@ -144,6 +149,26 @@ class FrameTaskServer(Node):
                 result = FrameTask.Result()
                 result.success = False
                 return result
+
+            # compute errors
+            errors_linear = []
+            errors_angular = []
+            for frame_name in self.frame_names:
+                error = self.controller.get_frame_task_error(f'{frame_name}_task')
+                errors_linear.append(np.linalg.norm(error[:3]))
+                errors_angular.append(np.linalg.norm(error[3:]))
+            # send feedback
+            feedback_msg = FrameTask.Feedback()
+            feedback_msg.errors_linear = errors_linear
+            feedback_msg.errors_angular = errors_angular
+            goal_handle.publish_feedback(feedback_msg)
+
+            # check if the goal is reached
+            if len(errors_linear) > 0 and len(errors_angular) > 0:
+                if (max(errors_linear) < self.threshold_linear and
+                    max(errors_angular) < self.threshold_angular):
+                    self.get_logger().info('Goal reached')
+                    break
 
             time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
             await asyncio.sleep(0)

@@ -117,9 +117,8 @@ class DualArmServer(Node):
 
     async def execute_callback(self, goal_handle):
         self.get_logger().info('Received goal')
-        feedback_msg = DualArm.Feedback()
 
-        goal = goal
+        goal = goal_handle.request
 
         # goto named configuration
         if goal.keyword in NAMED_CONFIGS:
@@ -132,8 +131,7 @@ class DualArmServer(Node):
             self.controller.right_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
                 self.controller.right_ee_name, q_reduced
             )
-            # use goto as step function
-            # step_function = lambda: self.controller.sim_goto_reduced_configuration(q_reduced)
+            # use goto configuration as step function
             step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
         # unknown keyword, abort
         elif goal.keyword != '':
@@ -146,13 +144,14 @@ class DualArmServer(Node):
         # goto end-effector poses
         else:
             self.get_logger().info('Going to target end-effector poses')
+            # set target
             self.controller.left_ee_target_transformation = np.array(
                 goal.left_target, dtype=np.float64
             ).reshape(4, 4)
             self.controller.right_ee_target_transformation = np.array(
                 goal.right_target, dtype=np.float64
             ).reshape(4, 4)
-
+            # use control dual arm as step function
             step_function = lambda: self.controller.control_dual_arm_step()
 
         # update ik solver with current state
@@ -179,6 +178,7 @@ class DualArmServer(Node):
             right_error_linear = np.linalg.norm(self.controller.right_ee_error[:3])
             right_error_angular = np.linalg.norm(self.controller.right_ee_error[3:])
             # write feedback
+            feedback_msg = DualArm.Feedback()
             feedback_msg.left_error_linear = left_error_linear
             feedback_msg.left_error_angular = left_error_angular
             feedback_msg.right_error_linear = right_error_linear
