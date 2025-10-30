@@ -183,13 +183,13 @@ if __name__ == '__main__':
     savepath = f'./data/motor_record/{args.save}'
 
     joint_name_list = [
-        'left_hip_yaw_joint', 'right_hip_yaw_joint',
-        'left_hip_pitch_joint', 'right_hip_pitch_joint',
-        'left_hip_roll_joint', 'right_hip_roll_joint',
-        'left_knee_joint', 'right_knee_joint',
-        'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
-        'left_ankle_roll_joint', 'right_ankle_roll_joint',
-        'torso_joint',
+        # 'left_hip_yaw_joint', 'right_hip_yaw_joint',
+        # 'left_hip_pitch_joint', 'right_hip_pitch_joint',
+        # 'left_hip_roll_joint', 'right_hip_roll_joint',
+        # 'left_knee_joint', 'right_knee_joint',
+        # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
+        # 'left_ankle_roll_joint', 'right_ankle_roll_joint',
+        # 'torso_joint',
         'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
         'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
         'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
@@ -199,13 +199,13 @@ if __name__ == '__main__':
         'left_wrist_yaw_joint', 'right_wrist_yaw_joint',
     ]
     q_start_list = [
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0,
         0.0, 0.0,
         0.0, 0.0,
         0.0, 0.0,
@@ -215,13 +215,13 @@ if __name__ == '__main__':
         0.0, 0.0,
     ]
     q_end_list = [
-        0.3, -0.3, # hip yaw
-        -0.5, -0.5, # hip pitch
-        0.3, -0.3, # hip roll
-        1.0, 1.0, # knee
-        -0.5, -0.5, # ankle pitch
-        0.25, -0.25, # ankle roll
-        1.0, # torso
+        # 0.3, -0.3, # hip yaw
+        # -0.5, -0.5, # hip pitch
+        # 0.3, -0.3, # hip roll
+        # 1.0, 1.0, # knee
+        # -0.5, -0.5, # ankle pitch
+        # 0.25, -0.25, # ankle roll
+        # 1.0, # torso
         -0.5, -0.5, # shoulder pitch
         1.0, -1.0, # shoulder roll
         1.0, -1.0, # shoulder yaw

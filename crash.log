@@ -1,0 +1,35 @@
+ros2 run h12_ros2_controller dual_arm_server 
+CommandPublisher initialized.
+All joints are locked in the initial position.
+[INFO] [1761862814.005055311] [dual_arm_server]: Controller server initialized
+[INFO] [1761863046.315509093] [dual_arm_server]: Received goal
+[INFO] [1761863046.315703740] [dual_arm_server]: Going to target end-effector poses
+Traceback (most recent call last):
+  File "/home/unitree/core_ws/install/h12_ros2_controller/lib/h12_ros2_controller/dual_arm_server", line 33, in <module>
+    sys.exit(load_entry_point('h12-ros2-controller==0.0.1', 'console_scripts', 'dual_arm_server')())
+  File "/home/unitree/core_ws/install/h12_ros2_controller/lib/python3.10/site-packages/h12_ros2_controller/ros2/dual_arm_server.py", line 215, in main
+    rclpy.spin(node)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 222, in spin
+    executor.spin_once()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 739, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 736, in _spin_once_impl
+    raise handler.exception()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 239, in __call__
+    self._handler.send(None)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 437, in handler
+    await call_coroutine(entity, arg)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 351, in _execute_timer
+    await await_or_execute(tmr.callback)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+    return callback(*args)
+  File "/home/unitree/core_ws/install/h12_ros2_controller/lib/python3.10/site-packages/h12_ros2_controller/ros2/dual_arm_server.py", line 111, in publisher_callback
+    left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
+  File "/home/unitree/core_ws/install/h12_ros2_controller/lib/python3.10/site-packages/h12_ros2_controller/ros2/dual_arm_server.py", line 92, in _matrix_to_pose
+    rotation = Quaternion(matrix=matrix[:3, :3])
+  File "/home/unitree/.local/lib/python3.10/site-packages/pyquaternion/quaternion.py", line 101, in __init__
+    self.q = Quaternion._from_matrix(kwargs["matrix"], **optional_args).q
+  File "/home/unitree/.local/lib/python3.10/site-packages/pyquaternion/quaternion.py", line 181, in _from_matrix
+    raise ValueError("Matrix must be orthogonal, i.e. its transpose should be its inverse")
+ValueError: Matrix must be orthogonal, i.e. its transpose should be its inverse
+[ros2run]: Process exited with failure 1

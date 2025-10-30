@@ -125,15 +125,15 @@ if __name__ == '__main__':
     folder = args.folder
     savepath = f'figures/motor_record/{folder}'
     joint_name_list = [
-        'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
-        'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint',
+        # 'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
+        # 'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint',
         'shoulder_pitch_joint', 'shoulder_roll_joint', 'shoulder_yaw_joint',
         'elbow_joint', 'wrist_roll_joint', 'wrist_pitch_joint', 'wrist_yaw_joint'
     ]
 
     for variant in ['free', 'static', 'all']:
         # single torso joint
-        plot_recording(f'data/motor_record/{folder}/torso_joint_{variant}.npz', f'{savepath}/{variant}')
+        # plot_recording(f'data/motor_record/{folder}/torso_joint_{variant}.npz', f'{savepath}/{variant}')
         for joint_name in joint_name_list:
             left_filename = f'data/motor_record/{folder}/left_{joint_name}_{variant}.npz'
             right_filename = f'data/motor_record/{folder}/right_{joint_name}_{variant}.npz'
