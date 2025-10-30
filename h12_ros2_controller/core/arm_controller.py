@@ -18,8 +18,10 @@ class ArmController(UpperController):
                          visualize, use_sport_mode)
 
         # add frame tasks to IK solver
-        self.ik_solver.add_frame_task('left_ee', self.left_ee_name)
-        self.ik_solver.add_frame_task('right_ee', self.right_ee_name)
+        self.left_task_name = 'left_ee'
+        self.right_task_name = 'right_ee'
+        self.ik_solver.add_frame_task(self.left_task_name, self.left_ee_name)
+        self.ik_solver.add_frame_task(self.right_task_name, self.right_ee_name)
 
         # set initial targets for IK solver from current configuration
         self.ik_solver.update_configurations()
@@ -51,35 +53,35 @@ class ArmController(UpperController):
     '''
     @property
     def left_ee_target_transformation(self):
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         return np.copy(task.transform_target_to_world.np)
 
     @left_ee_target_transformation.setter
     def left_ee_target_transformation(self, transformation):
         assert(transformation.shape == (4, 4)), 'Transformation should be a 4x4 matrix.'
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         task.transform_target_to_world = pin.SE3(transformation)
 
     @property
     def left_ee_target_position(self):
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         return np.copy(task.transform_target_to_world.translation)
 
     @left_ee_target_position.setter
     def left_ee_target_position(self, position):
         assert(len(position) == 3), 'Position should be a list of 3 elements (x, y, z).'
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         task.transform_target_to_world.translation = np.array(position)
 
     @property
     def left_ee_target_rotation(self):
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         return np.copy(task.transform_target_to_world.rotation)
 
     @left_ee_target_rotation.setter
     def left_ee_target_rotation(self, rotation):
         assert(rotation.shape == (3, 3)), 'Rotation should be a 3x3 matrix.'
-        task = self.ik_solver.frame_tasks.get('left_ee')
+        task = self.ik_solver.frame_tasks.get(self.left_task_name)
         task.transform_target_to_world.rotation = np.array(rotation)
 
     @property
@@ -105,8 +107,10 @@ class ArmController(UpperController):
 
     @property
     def left_ee_error(self):
-        task = self.ik_solver.frame_tasks.get('left_ee')
-        return task.compute_error(self.ik_solver.configuration_reduced)
+        return self.ik_solver.compute_error_reduced(
+            self.ik_solver.frame_tasks[self.left_task_name],
+            self.robot_model.state_reduced['q']
+        )
 
     '''
     right end effector target properties
@@ -119,35 +123,35 @@ class ArmController(UpperController):
     '''
     @property
     def right_ee_target_transformation(self):
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         return np.copy(task.transform_target_to_world.np)
 
     @right_ee_target_transformation.setter
     def right_ee_target_transformation(self, transformation):
         assert(transformation.shape == (4, 4)), 'Transformation should be a 4x4 matrix.'
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         task.transform_target_to_world = pin.SE3(transformation)
 
     @property
     def right_ee_target_position(self):
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         return np.copy(task.transform_target_to_world.translation)
 
     @right_ee_target_position.setter
     def right_ee_target_position(self, position):
         assert(len(position) == 3), 'Position should be a list of 3 elements (x, y, z).'
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         task.transform_target_to_world.translation = np.array(position)
 
     @property
     def right_ee_target_rotation(self):
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         return np.copy(task.transform_target_to_world.rotation)
 
     @right_ee_target_rotation.setter
     def right_ee_target_rotation(self, rotation):
         assert(rotation.shape == (3, 3)), 'Rotation should be a 3x3 matrix.'
-        task = self.ik_solver.frame_tasks.get('right_ee')
+        task = self.ik_solver.frame_tasks.get(self.right_task_name)
         task.transform_target_to_world.rotation = np.array(rotation)
 
     @property
@@ -173,16 +177,24 @@ class ArmController(UpperController):
 
     @property
     def right_ee_error(self):
-        task = self.ik_solver.frame_tasks.get('right_ee')
-        return task.compute_error(self.ik_solver.configuration_reduced)
+        return self.ik_solver.compute_error_reduced(
+            self.ik_solver.frame_tasks[self.right_task_name],
+            self.robot_model.state_reduced['q']
+        )
 
     @property
     def joint_error(self):
-        return self.ik_solver.config_task.compute_error(self.ik_solver.configuration)
+        return self.ik_solver.compute_error(
+            self.ik_solver.config_task,
+            self.robot_model.state['q']
+        )
 
     @property
     def joint_error_reduced(self):
-        return self.ik_solver.config_task.compute_error(self.ik_solver.configuration_reduced)
+        return self.ik_solver.compute_error_reduced(
+            self.ik_solver.config_task,
+            self.robot_model.state_reduced['q']
+        )
 
     def update_robot_model(self):
         # call parent update method

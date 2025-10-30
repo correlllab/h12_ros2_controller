@@ -65,7 +65,7 @@ def main(timeout=10.0,
                                    w_lim=2.0,
                                    dq_lim=2.0,
                                    d_min=0.02,
-                                   visualize=False,
+                                   visualize=True,
                                    use_sport_mode=use_sport_mode)
 
     try:
