@@ -15,7 +15,7 @@ def print_joint_positions(robot_model, joint_groups):
     state = robot_model.state
 
     print('\n' + '='*80)
-    print(f'{'JOINT POSITIONS':^80}')
+    print(f'{"JOINT POSITIONS":^80}')
     print('='*80)
 
     for group_name, joint_names in joint_groups.items():
@@ -49,24 +49,29 @@ def main(damping_value, update_rate):
     # initialize channel
     ChannelFactoryInitialize()
 
-    # initialize robot model and command publisher
+    # initialize robot model
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
-    command_publisher = CommandPublisher()
 
     # wait for initial state
     print('Waiting for robot connection...')
     time.sleep(1.0)
     robot_model.update_kinematics()
 
-    # setup low damping
-    setup_low_damping(command_publisher, damping_value)
-
-    # enable all motors with low damping
-    motor_ids = list(range(27))
-    init_q = robot_model.state['q']
-    command_publisher.enable_motor(motor_ids, init_q)
-    command_publisher.start_publisher()
+    command_publisher = None
+    if damping_value is not None:
+        # initialize command publisher only if damping is provided
+        command_publisher = CommandPublisher()
+        # setup low damping
+        setup_low_damping(command_publisher, damping_value)
+        # enable all motors with low damping
+        motor_ids = list(range(27))
+        init_q = robot_model.state['q']
+        command_publisher.enable_motor(motor_ids, init_q)
+        command_publisher.start_publisher()
+        print(f'Starting position monitoring with damping={damping_value}, update_rate={update_rate}Hz')
+    else:
+        print(f'Starting position monitoring (listener only), update_rate={update_rate}Hz')
 
     # define joint groups using predefined definitions from joint_definition
     joint_groups = {
@@ -74,18 +79,12 @@ def main(damping_value, update_rate):
         'upper_body': UPPER_BODY_JOINTS
     }
 
-    print(f'Starting position monitoring with damping={damping_value}, update_rate={update_rate}Hz')
     print('Press Ctrl+C to stop...')
 
     try:
         while True:
-            # update robot state
             robot_model.update_kinematics()
-
-            # print joint positions in organized format
             print_joint_positions(robot_model, joint_groups)
-
-            # sleep according to update rate
             time.sleep(1.0 / update_rate)
 
     except KeyboardInterrupt:
@@ -93,16 +92,17 @@ def main(damping_value, update_rate):
 
     finally:
         # shutdown
-        command_publisher.shutdown()
+        if command_publisher is not None:
+            command_publisher.shutdown()
         robot_model.shutdown()
         print('Motor position checker stopped.')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Motor position checker with low damping')
-    parser.add_argument('--damping', type=float, default=0.5,
-                        help='Damping value to set for all joints (default: 0.5)')
-    parser.add_argument('--rate', type=float, default=10.0,
-                        help='Update rate in Hz (default: 10.0)')
+    parser = argparse.ArgumentParser(description='Motor position checker with optional damping')
+    parser.add_argument('--damping', type=float, default=None,
+                        help='Damping value to set for all joints (optional, listener only if not provided)')
+    parser.add_argument('--rate', type=float, default=30.0,
+                        help='Update rate in Hz (default: 30.0)')
     args = parser.parse_args()
 
     main(args.damping, args.rate)
