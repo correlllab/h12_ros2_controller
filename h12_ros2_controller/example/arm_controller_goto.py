@@ -67,6 +67,9 @@ def main(timeout=10.0,
                                    d_min=0.02,
                                    visualize=True,
                                    use_sport_mode=use_sport_mode)
+    if save_filename is not None:
+        arm_controller.start_recording(save_path='data/control_record',
+                                       filename=save_filename)
 
     try:
         while True:
@@ -108,7 +111,6 @@ def main(timeout=10.0,
 
             # main loop
             start_time = time.time()
-            arm_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 # control one step
@@ -137,7 +139,6 @@ def main(timeout=10.0,
                 frame_start_time = time.time()
                 step_function()
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
-            arm_controller.stop_recording()
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -147,11 +148,6 @@ def main(timeout=10.0,
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
-        arm_controller.stop_recording()
-        if save_filename:
-            save_path = f'data/control_record/{save_filename}'
-            arm_controller.save_recording(save_path)
-            print(f'Recording saved to {save_path}')
         arm_controller.shutdown()
 
 if __name__ == '__main__':

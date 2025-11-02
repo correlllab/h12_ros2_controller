@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 import numpy as np
 import pinocchio as pin
 
@@ -75,15 +76,20 @@ class UpperController:
         self.right_ee_name = 'right_wrist_yaw_link'
 
         # variables recording states
-        self.recording = False
-        self.com_arr = []
-        self.q_arr = []
-        self.dq_arr = []
-        self.tau_arr = []
-        self.q_cmd_arr = []
-        self.dq_cmd_arr = []
-        self.tau_cmd_arr = []
-        self.torque_cmd_arr = []
+        self._recording = False
+        self._com_arr = []
+        self._q_arr = []
+        self._dq_arr = []
+        self._tau_arr = []
+        self._q_cmd_arr = []
+        self._dq_cmd_arr = []
+        self._tau_cmd_arr = []
+        self._torque_cmd_arr = []
+
+        # background saving variables
+        self._save_path = None
+        self._save_filename = None
+        self._save_interval = self.dt
 
     '''
     joint position for left and right arms
@@ -257,27 +263,28 @@ class UpperController:
         self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
         self.command_publisher.tau = tau
 
-        if self.recording:
+        if self._recording:
             # record center of mass
             com = self.robot_model.get_center_of_mass()
             # get values for upper body joints only
-            q = self.robot_model.state['q'][self.upper_ids]
-            dq = self.robot_model.state['dq'][self.upper_ids]
-            tau = self.robot_model.state['tau'][self.upper_ids]
+            state = self.robot_model.state
+            q = state['q'][self.upper_ids]
+            dq = state['dq'][self.upper_ids]
+            tau = state['tau'][self.upper_ids]
             q_cmd = self.command_publisher.q[self.upper_ids]
             dq_cmd = self.command_publisher.dq[self.upper_ids]
             tau_cmd = self.command_publisher.tau[self.upper_ids]
             kp = self.command_publisher.kp[self.upper_ids]
             kd = self.command_publisher.kd[self.upper_ids]
             # record
-            self.com_arr.append(com)
-            self.q_arr.append(q)
-            self.dq_arr.append(dq)
-            self.tau_arr.append(tau)
-            self.q_cmd_arr.append(q_cmd)
-            self.dq_cmd_arr.append(dq_cmd)
-            self.tau_cmd_arr.append(tau_cmd)
-            self.torque_cmd_arr.append(
+            self._com_arr.append(com)
+            self._q_arr.append(q)
+            self._dq_arr.append(dq)
+            self._tau_arr.append(tau)
+            self._q_cmd_arr.append(q_cmd)
+            self._dq_cmd_arr.append(dq_cmd)
+            self._tau_cmd_arr.append(tau_cmd)
+            self._torque_cmd_arr.append(
                 tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
             )
 
@@ -285,6 +292,7 @@ class UpperController:
         self.command_publisher.estop()
 
     def shutdown(self):
+        self.stop_recording()
         self.robot_model.shutdown()
         self.command_publisher.shutdown()
 
@@ -296,31 +304,46 @@ class UpperController:
         self.command_publisher.dq.fill(0.0)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
-    def start_recording(self):
-        self.recording = True
+    def start_recording(self, save_path, filename):
+        '''Start recording with background saving'''
+        self._recording = True
+        self._save_path = save_path
+        self._save_filename = filename
+        # start daemon thread - no lifecycle management needed
+        threading.Thread(target=self._save_worker, daemon=True).start()
 
     def stop_recording(self):
-        self.recording = False
+        '''Stop recording'''
+        self._recording = False
 
     def clear_recording(self):
-        self.com_arr = []
-        self.q_arr = []
-        self.dq_arr = []
-        self.tau_arr = []
-        self.q_cmd_arr = []
-        self.dq_cmd_arr = []
-        self.tau_cmd_arr = []
-        self.torque_cmd_arr = []
+        self._com_arr = []
+        self._q_arr = []
+        self._dq_arr = []
+        self._tau_arr = []
+        self._q_cmd_arr = []
+        self._dq_cmd_arr = []
+        self._tau_cmd_arr = []
+        self._torque_cmd_arr = []
 
-    def save_recording(self, filename):
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        np.savez(filename,
-                 ids=np.array(self.upper_ids),
-                 com=self.com_arr,
-                 q=self.q_arr,
-                 dq=self.dq_arr,
-                 tau=self.tau_arr,
-                 q_cmd=self.q_cmd_arr,
-                 dq_cmd=self.dq_cmd_arr,
-                 tau_cmd=self.tau_cmd_arr,
-                 torque_cmd=self.torque_cmd_arr)
+    def _save_worker(self):
+        '''Background worker thread for constant saving'''
+        while self._recording:
+            try:
+                filename = f'{self._save_path}/{self._save_filename}.npz'
+                # save logic moved here
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
+                np.savez(filename,
+                         ids=np.array(self.upper_ids),
+                         com=self._com_arr,
+                         q=self._q_arr,
+                         dq=self._dq_arr,
+                         tau=self._tau_arr,
+                         q_cmd=self._q_cmd_arr,
+                         dq_cmd=self._dq_cmd_arr,
+                         tau_cmd=self._tau_cmd_arr,
+                         torque_cmd=self._torque_cmd_arr)
+            except Exception as e:
+                print(f'Failed to auto-save recording: {str(e)}')
+
+            time.sleep(self._save_interval)

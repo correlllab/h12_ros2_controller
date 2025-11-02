@@ -11,3 +11,5 @@ URDF_PIN_PATH = f'{MODEL_H12_PATH}/h1_2.urdf'
 URDF_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_ros.urdf'
 URDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere.urdf'
 SRDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere_collision.srdf'
+# data path
+DATA_PATH = f'{PACKAGE_PATH}/data'

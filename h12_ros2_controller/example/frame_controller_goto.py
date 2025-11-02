@@ -66,6 +66,9 @@ def main(timeout=10.0,
                                        d_min=0.02,
                                        visualize=False,
                                        use_sport_mode=use_sport_mode)
+    if save_filename is not None:
+        frame_controller.start_recording(save_path='data/control_record',
+                                         filename=save_filename)
 
     try:
         while True:
@@ -132,11 +135,6 @@ def main(timeout=10.0,
         print(f'Exception occurred: {e}')
     finally:
         print('Shutting down...')
-        frame_controller.stop_recording()
-        if save_filename:
-            save_path = f'data/control_record/{save_filename}'
-            frame_controller.save_recording(save_path)
-            print(f'Recording saved to {save_path}')
         frame_controller.shutdown()
 
 if __name__ == '__main__':
