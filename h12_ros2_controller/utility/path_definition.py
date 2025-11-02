@@ -1,7 +1,9 @@
+from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 
 # useful path
-PACKAGE_PATH = get_package_share_directory('h12_ros2_controller')
+PACKAGE_NAME = 'h12_ros2_controller'
+PACKAGE_PATH = get_package_share_directory(PACKAGE_NAME)
 
 MODEL_PACKAGE_PATH = get_package_share_directory('h12_ros2_model')
 MODEL_ASSETS_PATH = f'{MODEL_PACKAGE_PATH}/assets'
@@ -12,4 +14,5 @@ URDF_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_ros.urdf'
 URDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere.urdf'
 SRDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere_collision.srdf'
 # data path
-DATA_PATH = f'{PACKAGE_PATH}/data'
+HOME = str(Path.home())
+LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'

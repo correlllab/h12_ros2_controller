@@ -207,6 +207,9 @@ def main(args=None):
             cont = input('Do you want to send another goal? (y/n): ').lower()
             if cont != 'y':
                 break
+    except KeyboardInterrupt:
+        pass
     finally:
         node.destroy_node()
+    if rclpy.ok():
         rclpy.shutdown()

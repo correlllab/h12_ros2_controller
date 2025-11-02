@@ -315,6 +315,7 @@ class UpperController:
     def stop_recording(self):
         '''Stop recording'''
         self._recording = False
+        print(f'Recording stopped; data saved to {self._save_path}/{self._save_filename}.npz')
 
     def clear_recording(self):
         self._com_arr = []

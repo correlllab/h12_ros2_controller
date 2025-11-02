@@ -14,7 +14,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from custom_ros_messages.action import DualArm
 from h12_ros2_controller.core.arm_controller import ArmController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, DATA_PATH
+from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, LOG_PATH
 
 class DualArmServer(Node):
     def __init__(self,
@@ -38,7 +38,7 @@ class DualArmServer(Node):
                                         d_min=0.02,
                                         visualize=False)
         # start recording with background saving
-        save_path = f'{DATA_PATH}/control_record'
+        save_path = f'{LOG_PATH}/control_record'
         self.controller.start_recording(save_path=save_path, filename='record_ros2')
 
         # publisher of left and right end-effector poses
@@ -222,4 +222,5 @@ def main(args=None):
     finally:
         node.controller.shutdown()
         node.destroy_node()
-    rclpy.shutdown()
+    if rclpy.ok():
+        rclpy.shutdown()
