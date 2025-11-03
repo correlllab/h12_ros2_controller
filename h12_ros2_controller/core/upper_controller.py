@@ -258,10 +258,10 @@ class UpperController:
     def apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
-        # send the position command to robot
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
+        # # send the position command to robot
+        # self.command_publisher.q = q
+        # self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
+        # self.command_publisher.tau = tau
 
         if self._recording:
             # record center of mass

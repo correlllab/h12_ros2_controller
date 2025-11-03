@@ -43,37 +43,37 @@ def setup_gains(command_publisher):
     command_publisher.kd[BODY_JOINTS.index('torso_joint')] = 0.0
 
     # gain for shoulder pitch
-    command_publisher.kp[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 0.0
     # gain for shoulder roll
-    command_publisher.kp[BODY_JOINTS.index('left_shoulder_roll_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('left_shoulder_roll_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_shoulder_roll_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('right_shoulder_roll_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_shoulder_roll_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_shoulder_roll_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_shoulder_roll_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_shoulder_roll_joint')] = 0.0
     # gain for shoulder yaw
-    command_publisher.kp[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 100.0
-    command_publisher.kd[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 0.0
     # gain for elbow
-    command_publisher.kp[BODY_JOINTS.index('left_elbow_joint')] = 80.0
-    command_publisher.kd[BODY_JOINTS.index('left_elbow_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_elbow_joint')] = 80.0
-    command_publisher.kd[BODY_JOINTS.index('right_elbow_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_elbow_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_elbow_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_elbow_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_elbow_joint')] = 0.0
     # gain for wrist roll
-    command_publisher.kp[BODY_JOINTS.index('left_wrist_roll_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('left_wrist_roll_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_wrist_roll_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('right_wrist_roll_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_wrist_roll_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_wrist_roll_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_wrist_roll_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_wrist_roll_joint')] = 0.0
     # gain for wrist pitch
-    command_publisher.kp[BODY_JOINTS.index('left_wrist_pitch_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('left_wrist_pitch_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_wrist_pitch_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('right_wrist_pitch_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_wrist_pitch_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_wrist_pitch_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_wrist_pitch_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_wrist_pitch_joint')] = 0.0
     # gain for wrist yaw
-    command_publisher.kp[BODY_JOINTS.index('left_wrist_yaw_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('left_wrist_yaw_joint')] = 10.0
-    command_publisher.kp[BODY_JOINTS.index('right_wrist_yaw_joint')] = 60.0
-    command_publisher.kd[BODY_JOINTS.index('right_wrist_yaw_joint')] = 10.0
+    command_publisher.kp[BODY_JOINTS.index('left_wrist_yaw_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('left_wrist_yaw_joint')] = 0.0
+    command_publisher.kp[BODY_JOINTS.index('right_wrist_yaw_joint')] = 0.0
+    command_publisher.kd[BODY_JOINTS.index('right_wrist_yaw_joint')] = 0.0

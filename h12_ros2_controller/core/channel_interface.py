@@ -15,7 +15,7 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_def
 
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
-TOPIC_LOWCMD = 'rt/lowcmd'
+TOPIC_LOWCMD = 'disabled'
 TOPIC_LOWSTATE = 'rt/lowstate'
 TOPIC_HIGHSTATE = 'rt/sportmodestate'
 TOPIC_HANDSTATE = 'rt/inspire/state'
