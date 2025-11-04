@@ -163,7 +163,7 @@ class CommandPublisher:
     def estop(self):
         self.mode.fill(0)
         self.kp.fill(0.0)
-        self.kd.fill(5.0)
+        self.kd.fill(0.0)
 
     def shutdown(self):
         self.estop()
