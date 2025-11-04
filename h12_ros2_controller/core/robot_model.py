@@ -208,8 +208,13 @@ class RobotModel:
 
         return transform
 
-    def init_subscriber(self):
-        self.state_subscriber = StateSubscriber()
+    def init_subscriber(self, state_subscriber=None):
+        if state_subscriber is not None:
+            print('Using provided StateSubscriber instance.')
+            self.state_subscriber = state_subscriber
+        else:
+            print('Creating new StateSubscriber instance.')
+            self.state_subscriber = StateSubscriber()
 
     def update_kinematics(self):
         # udpate data with the current joint positions

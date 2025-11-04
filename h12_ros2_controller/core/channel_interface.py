@@ -14,8 +14,9 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_default
 
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.robot_setting import JOINT_POSITION_LIMITS, JOINT_VELOCITY_LIMITS, JOINT_TORQUE_LIMITS
 
-TOPIC_LOWCMD = 'disabled'
+TOPIC_LOWCMD = 'rt/lowcmd'
 TOPIC_LOWSTATE = 'rt/lowstate'
 TOPIC_HIGHSTATE = 'rt/sportmodestate'
 TOPIC_HANDSTATE = 'rt/inspire/state'
@@ -40,10 +41,10 @@ class StateSubscriber:
         self._motor_state = np.zeros(NUM_MOTOR, dtype=np.uint32)
 
         # subscribe low state
-        self.low_state_subscriber = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
-        self.low_state_subscriber.Init(self.subscribe_low_state, 10)
+        self._low_state_subscriber = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
+        self._low_state_subscriber.Init(self._subscribe_low_state, 10)
 
-    def subscribe_low_state(self, msg: LowState_):
+    def _subscribe_low_state(self, msg: LowState_):
         self.last_time = time.time()
         for i in range(NUM_MOTOR):
             self._mode[i] = msg.motor_state[i].mode
@@ -71,7 +72,7 @@ class StateSubscriber:
         }
 
     def shutdown(self):
-        self.low_state_subscriber.Close()
+        self._low_state_subscriber.Close()
         print('StateSubscriber shutdown')
 
 class CommandPublisher:
@@ -85,39 +86,68 @@ class CommandPublisher:
         self.kd = np.zeros(NUM_MOTOR, dtype=np.float32)
 
         # publish low command
-        self.low_cmd_publisher = ChannelPublisher(TOPIC_LOWCMD, LowCmd_)
-        self.low_cmd_publisher.Init()
+        self._low_cmd_publisher = ChannelPublisher(TOPIC_LOWCMD, LowCmd_)
+        self._low_cmd_publisher.Init()
 
         # initialize low command
-        self.crc = CRC()
-        self.low_cmd = LowCmd_default()
-        self.low_cmd.mode_pr = 0
-        self.low_cmd.mode_machine = 6
+        self._crc = CRC()
+        self._low_cmd = LowCmd_default()
+        self._low_cmd.mode_pr = 0
+        self._low_cmd.mode_machine = 6
 
         # start publisher thread
-        self.low_cmd_thread = RecurrentThread(
+        self._low_cmd_thread = RecurrentThread(
             interval=0.005,
-            target=self.publish_low_cmd,
+            target=self._publish_low_cmd,
             name='low_cmd_thread'
         )
 
         print('CommandPublisher initialized.')
         print('All joints are locked in the initial position.')
 
-    def publish_low_cmd(self):
+    def _publish_low_cmd(self):
         # start_time = time.time()
         for i in range(NUM_MOTOR):
-            self.low_cmd.motor_cmd[i].mode = self.mode[i]
-            self.low_cmd.motor_cmd[i].q = self.q[i]
-            self.low_cmd.motor_cmd[i].dq = self.dq[i]
-            self.low_cmd.motor_cmd[i].tau = self.tau[i]
-            self.low_cmd.motor_cmd[i].kp = self.kp[i]
-            self.low_cmd.motor_cmd[i].kd = self.kd[i]
+            # check position, velocity, torque limits
+            safe = self._check_limits(i)
+            self._low_cmd.motor_cmd[i].mode = self.mode[i]
+            if safe:
+                self._low_cmd.motor_cmd[i].q = self.q[i]
+                self._low_cmd.motor_cmd[i].dq = self.dq[i]
+                self._low_cmd.motor_cmd[i].tau = self.tau[i]
+                self._low_cmd.motor_cmd[i].kp = self.kp[i]
+                self._low_cmd.motor_cmd[i].kd = self.kd[i]
         # set CRC
-        self.low_cmd.crc = self.crc.Crc(self.low_cmd)
+        self._low_cmd.crc = self._crc.Crc(self._low_cmd)
         # write to publisher
-        self.low_cmd_publisher.Write(self.low_cmd)
+        self._low_cmd_publisher.Write(self._low_cmd)
         # print(f'CommandPublisher publish time: {time.time() - start_time:.6f} seconds')
+
+    def _check_limits(self, i):
+        if (
+            self.q[i] < JOINT_POSITION_LIMITS[i]['low'] or
+            self.q[i] > JOINT_POSITION_LIMITS[i]['high']
+        ):
+            print(f'Position limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
+            print(f'  Commanded Position: {self.q[i]:.4f} rad')
+            print(f'  Lower Limit: {JOINT_POSITION_LIMITS[i]["low"]:.4f} rad')
+            print(f'  Upper Limit: {JOINT_POSITION_LIMITS[i]["high"]:.4f} rad')
+            self.estop()
+            return False
+        if abs(self.dq[i]) > JOINT_VELOCITY_LIMITS[i]:
+            print(f'Velocity limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
+            print(f'  Commanded Velocity: {self.dq[i]:.4f} rad/s')
+            print(f'  Velocity Limit: {JOINT_VELOCITY_LIMITS[i]:.4f} rad/s')
+            self.estop()
+            return False
+        if abs(self.tau[i]) > JOINT_TORQUE_LIMITS[i]:
+            print(f'Torque limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
+            print(f'  Commanded Torque: {self.tau[i]:.4f} Nm')
+            print(f'  Torque Limit: {JOINT_TORQUE_LIMITS[i]:.4f} Nm')
+            self.estop()
+            return False
+
+        return True
 
     def enable_motor(self, motor_ids, init_q):
         motor_ids, init_q = np.array(motor_ids), np.array(init_q)
@@ -128,15 +158,17 @@ class CommandPublisher:
         self.q[motor_ids] = init_q
 
     def start_publisher(self):
-        self.low_cmd_thread.Start()
+        self._low_cmd_thread.Start()
 
     def estop(self):
         self.mode.fill(0)
+        self.kp.fill(0.0)
+        self.kd.fill(5.0)
 
     def shutdown(self):
         self.estop()
-        self.low_cmd_thread.Wait(0)
-        self.low_cmd_publisher.Close()
+        self._low_cmd_thread.Wait(0)
+        self._low_cmd_publisher.Close()
         print('CommandPublisher shutdown.')
 
 class HandSubscriber:
