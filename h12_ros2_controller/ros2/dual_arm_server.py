@@ -123,6 +123,8 @@ class DualArmServer(Node):
         self.get_logger().info('Received goal')
 
         goal = goal_handle.request
+        print(f'{goal.keyword=}')
+        print(f'{goal.keyword in NAMED_CONFIGS=}')
 
         # goto named configuration
         if goal.keyword in NAMED_CONFIGS:

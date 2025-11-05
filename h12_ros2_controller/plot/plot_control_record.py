@@ -8,8 +8,9 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 def plot_recording(filepath, savepath):
-    print(f"Loading data from: {filepath}")
+    print(f'Loading data from: {filepath}')
     data = np.load(filepath)
+    print(f'{dir(data)=}')
     ids = data['ids']  # motor ids
     com = data['com']  # center of mass
     q = data['q']  # joint positions
@@ -19,6 +20,20 @@ def plot_recording(filepath, savepath):
     dq_cmd = data['dq_cmd']  # commanded joint velocities
     tau_cmd = data['tau_cmd']  # commanded joint torques
     torque_cmd = data['torque_cmd']  # commanded overall torque
+    l = [
+            ('ids', ids),
+            ('com', com),
+            ('q', q),
+            ('dq', dq),
+            ('tau', tau),
+            ('q_cmd', q_cmd),
+            ('dq_cmd', dq_cmd),
+            ('tau_cmd', tau_cmd),
+            ('torque_cmd', torque_cmd)
+        ]
+    for name, d in l:
+        print(f'{name}: {len(d)}')
+        print(d)
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
@@ -89,7 +104,7 @@ def plot_recording(filepath, savepath):
         plt.savefig(f'{savepath}/{joint_name}.png')
         plt.close()
 
-    print(f"Plots saved to: {savepath}")
+    print(f'Plots saved to: {savepath}')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot control recording data')
