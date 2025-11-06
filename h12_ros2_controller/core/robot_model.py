@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pinocchio as pin
 from pinocchio.visualize import MeshcatVisualizer
@@ -93,10 +94,10 @@ class RobotModel:
 
     @property
     def state(self):
-        # If state_subscriber exists, use its state dict
+        # if state_subscriber exists, use its state dict
         if self.state_subscriber is not None:
             return self.state_subscriber.state
-        # Otherwise, fallback to local fields
+        # otherwise, fallback to local fields
         return {
             'q': np.copy(self._q),
             'dq': np.copy(self._dq),
@@ -105,10 +106,10 @@ class RobotModel:
 
     @property
     def state_reduced(self):
-        result = {}
+        state_reduced = {}
         for k, v in self.state.items():
-            result[k] = np.copy(v[self.reduced_mask])
-        return result
+            state_reduced[k] = np.copy(v[self.reduced_mask])
+        return state_reduced
 
     @property
     def zero_q(self):

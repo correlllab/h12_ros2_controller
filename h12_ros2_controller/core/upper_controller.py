@@ -87,9 +87,10 @@ class UpperController:
         self._torque_cmd_arr = []
 
         # background saving variables
-        self._save_path = None
-        self._save_filename = None
-        self._save_interval = self.dt
+        self._record_path = None
+        self._record_filename = None
+        self._record_interval = self.dt
+        self._record_lock = threading.Lock()
 
     '''
     joint position for left and right arms
@@ -258,10 +259,11 @@ class UpperController:
     def apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
-        # # send the position command to robot
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
+        with self.command_publisher._data_lock:
+            # send the position command to robot
+            self.command_publisher.q = q
+            self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
+            self.command_publisher.tau = tau
 
         if self._recording:
             # record center of mass
@@ -271,22 +273,24 @@ class UpperController:
             q = state['q'][self.upper_ids]
             dq = state['dq'][self.upper_ids]
             tau = state['tau'][self.upper_ids]
-            q_cmd = self.command_publisher.q[self.upper_ids]
-            dq_cmd = self.command_publisher.dq[self.upper_ids]
-            tau_cmd = self.command_publisher.tau[self.upper_ids]
-            kp = self.command_publisher.kp[self.upper_ids]
-            kd = self.command_publisher.kd[self.upper_ids]
-            # record
-            self._com_arr.append(com)
-            self._q_arr.append(q)
-            self._dq_arr.append(dq)
-            self._tau_arr.append(tau)
-            self._q_cmd_arr.append(q_cmd)
-            self._dq_cmd_arr.append(dq_cmd)
-            self._tau_cmd_arr.append(tau_cmd)
-            self._torque_cmd_arr.append(
-                tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
-            )
+            with self.command_publisher._data_lock:
+                q_cmd = self.command_publisher.q[self.upper_ids]
+                dq_cmd = self.command_publisher.dq[self.upper_ids]
+                tau_cmd = self.command_publisher.tau[self.upper_ids]
+                kp = self.command_publisher.kp[self.upper_ids]
+                kd = self.command_publisher.kd[self.upper_ids]
+            # record with thread-safe access
+            with self._record_lock:
+                self._com_arr.append(com)
+                self._q_arr.append(q)
+                self._dq_arr.append(dq)
+                self._tau_arr.append(tau)
+                self._q_cmd_arr.append(q_cmd)
+                self._dq_cmd_arr.append(dq_cmd)
+                self._tau_cmd_arr.append(tau_cmd)
+                self._torque_cmd_arr.append(
+                    tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
+                )
 
     def estop(self):
         self.command_publisher.estop()
@@ -307,44 +311,62 @@ class UpperController:
     def start_recording(self, save_path, filename):
         '''Start recording with background saving'''
         self._recording = True
-        self._save_path = save_path
-        self._save_filename = filename
-        # start daemon thread - no lifecycle management needed
-        threading.Thread(target=self._save_worker, daemon=True).start()
+        self._record_path = save_path
+        self._record_filename = filename
+        # start recording thread
+        threading.Thread(
+            target=self._save_recording,
+            name='save_recording_thread',
+            daemon=True
+        ).start()
 
     def stop_recording(self):
         '''Stop recording'''
         self._recording = False
-        print(f'Recording stopped; data saved to {self._save_path}/{self._save_filename}.npz')
+        print(f'Recording stopped; data saved to {self._record_path}/{self._record_filename}.npz')
 
     def clear_recording(self):
-        self._com_arr = []
-        self._q_arr = []
-        self._dq_arr = []
-        self._tau_arr = []
-        self._q_cmd_arr = []
-        self._dq_cmd_arr = []
-        self._tau_cmd_arr = []
-        self._torque_cmd_arr = []
+        with self._record_lock:
+            self._com_arr = []
+            self._q_arr = []
+            self._dq_arr = []
+            self._tau_arr = []
+            self._q_cmd_arr = []
+            self._dq_cmd_arr = []
+            self._tau_cmd_arr = []
+            self._torque_cmd_arr = []
 
-    def _save_worker(self):
+    def _save_recording(self):
         '''Background worker thread for constant saving'''
         while self._recording:
             try:
-                filename = f'{self._save_path}/{self._save_filename}.npz'
+                filename = f'{self._record_path}/{self._record_filename}.npz'
                 # save logic moved here
                 os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+                # acquire lock to save copy of the arrays
+                with self._record_lock:
+                    # create copies of the arrays for safe access outside the lock
+                    com = np.array(self._com_arr)
+                    q = np.array(self._q_arr)
+                    dq = np.array(self._dq_arr)
+                    tau = np.array(self._tau_arr)
+                    q_cmd = np.array(self._q_cmd_arr)
+                    dq_cmd = np.array(self._dq_cmd_arr)
+                    tau_cmd = np.array(self._tau_cmd_arr)
+                    torque_cmd = np.array(self._torque_cmd_arr)
+                # save to the file
                 np.savez(filename,
                          ids=np.array(self.upper_ids),
-                         com=self._com_arr,
-                         q=self._q_arr,
-                         dq=self._dq_arr,
-                         tau=self._tau_arr,
-                         q_cmd=self._q_cmd_arr,
-                         dq_cmd=self._dq_cmd_arr,
-                         tau_cmd=self._tau_cmd_arr,
-                         torque_cmd=self._torque_cmd_arr)
+                         com=com,
+                         q=q,
+                         dq=dq,
+                         tau=tau,
+                         q_cmd=q_cmd,
+                         dq_cmd=dq_cmd,
+                         tau_cmd=tau_cmd,
+                         torque_cmd=torque_cmd)
             except Exception as e:
                 print(f'Failed to auto-save recording: {str(e)}')
 
-            time.sleep(self._save_interval)
+            time.sleep(self._record_interval)

@@ -1,4 +1,5 @@
 import time
+import threading
 import numpy as np
 
 from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelPublisher
@@ -30,6 +31,7 @@ INDEX_NOT_USED = NUM_MOTOR
 class StateSubscriber:
     def __init__(self):
         # variable tracking states
+        self._time_stamp = 0.0
         self._mode = np.zeros(NUM_MOTOR, dtype=np.uint8)
         self._q = np.zeros(NUM_MOTOR, dtype=np.float32)
         self._dq = np.zeros(NUM_MOTOR, dtype=np.float32)
@@ -41,42 +43,46 @@ class StateSubscriber:
         self._motor_state = np.zeros(NUM_MOTOR, dtype=np.uint32)
 
         # subscribe low state
+        self._subscriber_lock = threading.Lock()
         self._low_state_subscriber = ChannelSubscriber(TOPIC_LOWSTATE, LowState_)
         self._low_state_subscriber.Init(self._subscribe_low_state, 10)
 
     def _subscribe_low_state(self, msg: LowState_):
-        self.last_time = time.time()
-        for i in range(NUM_MOTOR):
-            self._mode[i] = msg.motor_state[i].mode
-            self._q[i] = msg.motor_state[i].q
-            self._dq[i] = msg.motor_state[i].dq
-            self._ddq[i] = msg.motor_state[i].ddq
-            self._tau[i] = msg.motor_state[i].tau_est
-            self._temperature[i] = msg.motor_state[i].temperature
-            self._vol[i] = msg.motor_state[i].vol
-            self._sensor[i] = msg.motor_state[i].sensor
-            self._motor_state[i] = msg.motor_state[i].motorstate
+        with self._subscriber_lock:
+            self._time_stamp = time.time()
+            for i in range(NUM_MOTOR):
+                self._mode[i] = msg.motor_state[i].mode
+                self._q[i] = msg.motor_state[i].q
+                self._dq[i] = msg.motor_state[i].dq
+                self._ddq[i] = msg.motor_state[i].ddq
+                self._tau[i] = msg.motor_state[i].tau_est
+                self._temperature[i] = msg.motor_state[i].temperature
+                self._vol[i] = msg.motor_state[i].vol
+                self._sensor[i] = msg.motor_state[i].sensor
+                self._motor_state[i] = msg.motor_state[i].motorstate
 
     @property
     def state(self):
-        return {
-            'mode': np.copy(self._mode),
-            'q': np.copy(self._q),
-            'dq': np.copy(self._dq),
-            'ddq': np.copy(self._ddq),
-            'tau': np.copy(self._tau),
-            'temperature': np.copy(self._temperature),
-            'vol': np.copy(self._vol),
-            'sensor': np.copy(self._sensor),
-            'motor_state': np.copy(self._motor_state),
-        }
+        with self._subscriber_lock:
+            return {
+                'mode': self._mode.copy(),
+                'q': self._q.copy(),
+                'dq': self._dq.copy(),
+                'ddq': self._ddq.copy(),
+                'tau': self._tau.copy(),
+                'temperature': self._temperature.copy(),
+                'vol': self._vol.copy(),
+                'sensor': self._sensor.copy(),
+                'motor_state': self._motor_state.copy(),
+            }
 
     def shutdown(self):
         self._low_state_subscriber.Close()
         print('StateSubscriber shutdown')
 
 class CommandPublisher:
-    def __init__(self):
+    def __init__(self, dt=0.005):
+        self.dt = dt
         # variables saving states
         self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
         self.q = np.zeros(NUM_MOTOR, dtype=np.float32)
@@ -95,35 +101,40 @@ class CommandPublisher:
         self._low_cmd.mode_pr = 0
         self._low_cmd.mode_machine = 6
 
-        # start publisher thread
-        self._low_cmd_thread = RecurrentThread(
-            interval=0.005,
+        # create publisher thread
+        self._data_lock = threading.Lock()
+        self._publishing = False
+        self._low_cmd_thread = threading.Thread(
             target=self._publish_low_cmd,
-            name='low_cmd_thread'
+            name='publish_low_cmd_thread',
+            daemon=True
         )
 
         print('CommandPublisher initialized.')
         print('All joints are locked in the initial position.')
 
     def _publish_low_cmd(self):
-        # start_time = time.time()
-        # assert data integrity before publishing
-        self._check_data_integrity()
-        # write to low command
-        for i in range(NUM_MOTOR):
-            # check position, velocity, torque limits
-            self._enforce_limits(i)
-            self._low_cmd.motor_cmd[i].mode = self.mode[i]
-            self._low_cmd.motor_cmd[i].q = self.q[i]
-            self._low_cmd.motor_cmd[i].dq = self.dq[i]
-            self._low_cmd.motor_cmd[i].tau = self.tau[i]
-            self._low_cmd.motor_cmd[i].kp = self.kp[i]
-            self._low_cmd.motor_cmd[i].kd = self.kd[i]
-        # set CRC
-        self._low_cmd.crc = self._crc.Crc(self._low_cmd)
-        # write to publisher
-        self._low_cmd_publisher.Write(self._low_cmd)
-        # print(f'CommandPublisher publish time: {time.time() - start_time:.6f} seconds')
+        while self._publishing:
+            # start_time = time.time()
+            with self._data_lock:
+                # assert data integrity before publishing
+                self._check_data_integrity()
+                # write to low command
+                for i in range(NUM_MOTOR):
+                    # check position, velocity, torque limits
+                    self._enforce_limits(i)
+                    self._low_cmd.motor_cmd[i].mode = self.mode[i]
+                    self._low_cmd.motor_cmd[i].q = self.q[i]
+                    self._low_cmd.motor_cmd[i].dq = self.dq[i]
+                    self._low_cmd.motor_cmd[i].tau = self.tau[i]
+                    self._low_cmd.motor_cmd[i].kp = self.kp[i]
+                    self._low_cmd.motor_cmd[i].kd = self.kd[i]
+            # set CRC
+            self._low_cmd.crc = self._crc.Crc(self._low_cmd)
+            # write to publisher
+            self._low_cmd_publisher.Write(self._low_cmd)
+            # print(f'CommandPublisher publish time: {time.time() - start_time:.6f} seconds')
+            time.sleep(self.dt)
 
     def _check_data_integrity(self):
         assert np.all(self.mode == 0) or np.all(self.mode == 1), 'Motor mode should be either 0 (disabled) or 1 (enabled).'
@@ -156,20 +167,23 @@ class CommandPublisher:
         assert len(motor_ids) == len(init_q), 'Motor IDs and initial positions must have the same length.'
         assert np.all(motor_ids < NUM_MOTOR) and np.all(motor_ids >= 0), f'Motor IDs must be within [0, {NUM_MOTOR}).'
 
-        self.mode[motor_ids] = 1
-        self.q[motor_ids] = init_q
+        with self._data_lock:
+            self.mode[motor_ids] = 1
+            self.q[motor_ids] = init_q
 
     def start_publisher(self):
-        self._low_cmd_thread.Start()
+        self._publishing = True
+        self._low_cmd_thread.start()
 
     def estop(self):
-        self.mode.fill(0)
-        self.kp.fill(0.0)
-        self.kd.fill(0.0)
+        with self._data_lock:
+            self.mode.fill(0)
+            self.kp.fill(0.0)
+            self.kd.fill(0.0)
 
     def shutdown(self):
         self.estop()
-        self._low_cmd_thread.Wait(0)
+        self._publishing = False
         self._low_cmd_publisher.Close()
         print('CommandPublisher shutdown.')
 
