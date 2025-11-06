@@ -107,47 +107,49 @@ class CommandPublisher:
 
     def _publish_low_cmd(self):
         # start_time = time.time()
+        # assert data integrity before publishing
+        self._check_data_integrity()
+        # write to low command
         for i in range(NUM_MOTOR):
             # check position, velocity, torque limits
-            safe = self._check_limits(i)
+            self._enforce_limits(i)
             self._low_cmd.motor_cmd[i].mode = self.mode[i]
-            if safe:
-                self._low_cmd.motor_cmd[i].q = self.q[i]
-                self._low_cmd.motor_cmd[i].dq = self.dq[i]
-                self._low_cmd.motor_cmd[i].tau = self.tau[i]
-                self._low_cmd.motor_cmd[i].kp = self.kp[i]
-                self._low_cmd.motor_cmd[i].kd = self.kd[i]
+            self._low_cmd.motor_cmd[i].q = self.q[i]
+            self._low_cmd.motor_cmd[i].dq = self.dq[i]
+            self._low_cmd.motor_cmd[i].tau = self.tau[i]
+            self._low_cmd.motor_cmd[i].kp = self.kp[i]
+            self._low_cmd.motor_cmd[i].kd = self.kd[i]
         # set CRC
         self._low_cmd.crc = self._crc.Crc(self._low_cmd)
         # write to publisher
         self._low_cmd_publisher.Write(self._low_cmd)
         # print(f'CommandPublisher publish time: {time.time() - start_time:.6f} seconds')
 
-    def _check_limits(self, i):
-        if (
-            self.q[i] < JOINT_POSITION_LIMITS[i]['low'] or
-            self.q[i] > JOINT_POSITION_LIMITS[i]['high']
-        ):
-            print(f'Position limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
-            print(f'  Commanded Position: {self.q[i]:.4f} rad')
-            print(f'  Lower Limit: {JOINT_POSITION_LIMITS[i]["low"]:.4f} rad')
-            print(f'  Upper Limit: {JOINT_POSITION_LIMITS[i]["high"]:.4f} rad')
-            self.estop()
-            return False
-        if abs(self.dq[i]) > JOINT_VELOCITY_LIMITS[i]:
-            print(f'Velocity limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
-            print(f'  Commanded Velocity: {self.dq[i]:.4f} rad/s')
-            print(f'  Velocity Limit: {JOINT_VELOCITY_LIMITS[i]:.4f} rad/s')
-            self.estop()
-            return False
-        if abs(self.tau[i]) > JOINT_TORQUE_LIMITS[i]:
-            print(f'Torque limit of joint {i} {BODY_JOINTS[i]} exceeded. Estopping...')
-            print(f'  Commanded Torque: {self.tau[i]:.4f} Nm')
-            print(f'  Torque Limit: {JOINT_TORQUE_LIMITS[i]:.4f} Nm')
-            self.estop()
-            return False
+    def _check_data_integrity(self):
+        assert np.all(self.mode == 0) or np.all(self.mode == 1), 'Motor mode should be either 0 (disabled) or 1 (enabled).'
+        assert not np.isnan(self.q).any(), 'Position command should not contain NaN.'
+        assert not np.isinf(self.q).any(), 'Position command should not contain Inf.'
+        assert not np.isnan(self.dq).any(), 'Velocity command should not contain NaN.'
+        assert not np.isinf(self.dq).any(), 'Velocity command should not contain Inf.'
+        assert not np.isnan(self.tau).any(), 'Torque command should not contain NaN.'
+        assert not np.isinf(self.tau).any(), 'Torque command should not contain Inf.'
+        assert not np.isnan(self.kp).any(), 'Kp command should not contain NaN.'
+        assert not np.isinf(self.kp).any(), 'Kp command should not contain Inf.'
+        assert not np.isnan(self.kd).any(), 'Kd command should not contain NaN.'
+        assert not np.isinf(self.kd).any(), 'Kd command should not contain Inf.'
 
-        return True
+    def _enforce_limits(self, i):
+        # enforce joint limits
+        if self.q[i] < JOINT_POSITION_LIMITS[i]['low']:
+            self.q[i] = JOINT_POSITION_LIMITS[i]['low']
+        if self.q[i] > JOINT_POSITION_LIMITS[i]['high']:
+            self.q[i] = JOINT_POSITION_LIMITS[i]['high']
+        # enforce velocity limit
+        if abs(self.dq[i]) > JOINT_VELOCITY_LIMITS[i]:
+            self.dq[i] = np.sign(self.dq[i]) * JOINT_VELOCITY_LIMITS[i]
+        # enforce torque limit
+        if abs(self.tau[i]) > JOINT_TORQUE_LIMITS[i]:
+            self.tau[i] = np.sign(self.tau[i]) * JOINT_TORQUE_LIMITS[i]
 
     def enable_motor(self, motor_ids, init_q):
         motor_ids, init_q = np.array(motor_ids), np.array(init_q)
