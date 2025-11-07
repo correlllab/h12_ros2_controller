@@ -6,8 +6,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
-from h12_ros2_controller.utility.robot_setting import setup_gains
+from h12_ros2_controller.core.low_cmd_controller import LowCmdController
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -38,28 +37,24 @@ class UpperController:
         self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
         self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
 
-        # initialize command publisher for upper body motors
-        if use_sport_mode:
-            self.command_publisher = ArmSDKPublisher()
-        else:
-            self.command_publisher = LowCmdPublisher()
-
-        setup_gains(self.command_publisher)
+        # intialize low cmd publisher
+        self.low_cmd_controller = LowCmdController(self.robot_model,
+                                                   sport_mode=use_sport_mode)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
-        self.command_publisher.enable_motor(self.enabled_ids, init_q)
+        self.low_cmd_controller.enable_motors(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in place
-        self.command_publisher.enable_motor([BODY_JOINTS.index('torso_joint')], [0.0])
+        self.low_cmd_controller.enable_motors([BODY_JOINTS.index('torso_joint')], [0.0])
 
         # enable lower body motor
         lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
         lower_init = self.robot_model.state['q'][lower_ids]
-        self.command_publisher.enable_motor(lower_ids, lower_init)
+        self.low_cmd_controller.enable_motors(lower_ids, lower_init)
 
         # start publisher
-        self.command_publisher.start()
+        self.low_cmd_controller.start()
 
         # initialize IK solver
         self.ik_solver = IKSolver(
@@ -216,11 +211,10 @@ class UpperController:
     def lock_configuration(self, q):
         # compute gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(q)
-
+        # always commanding zero velocity
+        dq = np.zeros(self.robot_model.model.nv)
         # send command to lock the robot in current configuration
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
+        self.low_cmd_controller.set_joint_commands( q, dq, tau)
         self.update_robot_model()
 
     def limit_joint_vel(self, vel):
@@ -259,11 +253,8 @@ class UpperController:
     def apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
-        with self.command_publisher._data_lock:
-            # send the position command to robot
-            self.command_publisher.q = q
-            self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-            self.command_publisher.tau = tau
+        dq = np.zeros(self.robot_model.model.nv)
+        self.low_cmd_controller.set_joint_commands(q, dq, tau)
 
         if self._recording:
             # record center of mass
@@ -273,12 +264,12 @@ class UpperController:
             q = state['q'][self.upper_ids]
             dq = state['dq'][self.upper_ids]
             tau = state['tau'][self.upper_ids]
-            with self.command_publisher._data_lock:
-                q_cmd = self.command_publisher.q[self.upper_ids]
-                dq_cmd = self.command_publisher.dq[self.upper_ids]
-                tau_cmd = self.command_publisher.tau[self.upper_ids]
-                kp = self.command_publisher.kp[self.upper_ids]
-                kd = self.command_publisher.kd[self.upper_ids]
+            with self.low_cmd_controller.command_publisher._data_lock:
+                q_cmd = self.low_cmd_controller.command_publisher.q[self.upper_ids]
+                dq_cmd = self.low_cmd_controller.command_publisher.dq[self.upper_ids]
+                tau_cmd = self.low_cmd_controller.command_publisher.tau[self.upper_ids]
+                kp = self.low_cmd_controller.command_publisher.kp[self.upper_ids]
+                kd = self.low_cmd_controller.command_publisher.kd[self.upper_ids]
             # record with thread-safe access
             with self._record_lock:
                 self._com_arr.append(com)
@@ -293,19 +284,18 @@ class UpperController:
                 )
 
     def estop(self):
-        self.command_publisher.estop()
+        self.low_cmd_controller.estop()
 
     def shutdown(self):
         self.stop_recording()
         self.robot_model.shutdown()
-        self.command_publisher.shutdown()
+        self.low_cmd_controller.shutdown()
 
     def damp_mode(self, kd=3.0):
-        # zero out kp
-        self.command_publisher.kp.fill(0.0)
-        # gain on kd for damping
-        self.command_publisher.kd.fill(kd)
-        self.command_publisher.dq.fill(0.0)
+        kp = np.zeros(self.robot_model.model.nv)
+        kd = kd * np.ones(self.robot_model.model.nv)
+        dq = np.zeros(self.robot_model.model.nv)
+        self.low_cmd_controller.set_joint_commands(dq=dq, kp=kp, kd=kd)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
     def start_recording(self, save_path, filename):

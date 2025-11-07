@@ -112,7 +112,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     # enable all motors at initial positions
     motor_ids = list(range(27))
     init_q = robot_model.state['q']
-    command_publisher.enable_motor(motor_ids, init_q)
+    command_publisher.enable_motors(motor_ids, init_q)
     command_publisher.start()
 
     # move elbow to 0 position

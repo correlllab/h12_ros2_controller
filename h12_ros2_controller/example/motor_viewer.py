@@ -68,7 +68,7 @@ def main(damping_value, update_rate):
         # enable all motors with low damping
         motor_ids = list(range(27))
         init_q = robot_model.state['q']
-        command_publisher.enable_motor(motor_ids, init_q)
+        command_publisher.enable_motors(motor_ids, init_q)
         command_publisher.start()
         print(f'Starting position monitoring with damping={damping_value}, update_rate={update_rate}Hz')
     else:

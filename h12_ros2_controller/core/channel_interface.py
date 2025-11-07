@@ -178,7 +178,7 @@ class CommandPublisher(ABC):
         if abs(self.tau[i]) > JOINT_TORQUE_LIMITS[i]:
             self.tau[i] = np.sign(self.tau[i]) * JOINT_TORQUE_LIMITS[i]
 
-    def enable_motor(self, motor_ids, init_q):
+    def enable_motors(self, motor_ids, init_q):
         '''Enable motors with given IDs and initial positions'''
         motor_ids, init_q = np.array(motor_ids), np.array(init_q)
         assert len(motor_ids) == len(init_q), 'Motor IDs and initial positions must have the same length.'
@@ -224,8 +224,8 @@ class LowCmdPublisher(CommandPublisher):
             daemon=True
         )
 
-    def enable_motor(self, motor_ids, init_q):
-        super().enable_motor(motor_ids, init_q)
+    def enable_motors(self, motor_ids, init_q):
+        super().enable_motors(motor_ids, init_q)
         with self._data_lock:
             self.mode[motor_ids] = 1
             self.q[motor_ids] = init_q
@@ -245,9 +245,9 @@ class ArmSDKPublisher(CommandPublisher):
             daemon=True
         )
 
-    def enable_motor(self, motor_ids, init_q):
+    def enable_motors(self, motor_ids, init_q):
         '''Override to add ARM SDK specific enable logic'''
-        super().enable_motor(motor_ids, init_q)
+        super().enable_motors(motor_ids, init_q)
         with self._data_lock:
             super()._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
 
