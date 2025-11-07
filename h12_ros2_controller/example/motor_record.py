@@ -9,7 +9,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.robot_setting import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -92,7 +92,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     # initialize robot model and command publisher
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
-    command_publisher = CommandPublisher()
+    command_publisher = LowCmdPublisher()
 
     # wait for initial state
     time.sleep(1.0)
@@ -113,7 +113,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
     motor_ids = list(range(27))
     init_q = robot_model.state['q']
     command_publisher.enable_motor(motor_ids, init_q)
-    command_publisher.start_publisher()
+    command_publisher.start()
 
     # move elbow to 0 position
     print('Moving elbows to 0 position...')

@@ -7,7 +7,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher
+from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS
 
 def print_joint_positions(robot_model, joint_groups):
@@ -62,14 +62,14 @@ def main(damping_value, update_rate):
     command_publisher = None
     if damping_value is not None:
         # initialize command publisher only if damping is provided
-        command_publisher = CommandPublisher()
+        command_publisher = LowCmdPublisher()
         # setup low damping
         setup_low_damping(command_publisher, damping_value)
         # enable all motors with low damping
         motor_ids = list(range(27))
         init_q = robot_model.state['q']
         command_publisher.enable_motor(motor_ids, init_q)
-        command_publisher.start_publisher()
+        command_publisher.start()
         print(f'Starting position monitoring with damping={damping_value}, update_rate={update_rate}Hz')
     else:
         print(f'Starting position monitoring (listener only), update_rate={update_rate}Hz')

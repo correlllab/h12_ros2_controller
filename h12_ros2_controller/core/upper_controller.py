@@ -6,7 +6,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
+from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
 from h12_ros2_controller.utility.robot_setting import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
@@ -42,7 +42,7 @@ class UpperController:
         if use_sport_mode:
             self.command_publisher = ArmSDKPublisher()
         else:
-            self.command_publisher = CommandPublisher()
+            self.command_publisher = LowCmdPublisher()
 
         setup_gains(self.command_publisher)
 
@@ -59,7 +59,7 @@ class UpperController:
         self.command_publisher.enable_motor(lower_ids, lower_init)
 
         # start publisher
-        self.command_publisher.start_publisher()
+        self.command_publisher.start()
 
         # initialize IK solver
         self.ik_solver = IKSolver(

@@ -45,7 +45,7 @@ def main():
     motor_ids = [i for i in range(13, 27)]
     init_q = robot_model.state['q'][LEFT_ARM_INDEX + RIGHT_ARM_INDEX]
     arm_sdk_publisher.enable_motor(motor_ids, init_q)
-    arm_sdk_publisher.start_publisher()
+    arm_sdk_publisher.start()
 
     control_idx = 14
     root = tk.Tk()
