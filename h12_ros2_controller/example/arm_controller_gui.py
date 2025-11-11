@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.arm_controller import ArmController
 
-def main(use_sport_mode=False):
+def main(sport_mode=False):
     ChannelFactoryInitialize()
     # example usage
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
@@ -22,7 +22,7 @@ def main(use_sport_mode=False):
                                    dq_lim=1.5,
                                    d_min=0.02,
                                    visualize=True,
-                                   use_sport_mode=use_sport_mode)
+                                   sport_mode=sport_mode)
     arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]
     arm_controller.right_ee_target_pose = [0.3, -0.2, 0.1, 0.0, 0.0, 0.0]
 
@@ -156,13 +156,13 @@ def main(use_sport_mode=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--debug', action='store_true', help='Run in debug mode (use_sport_mode=False)')
-    group.add_argument('--sport', action='store_true', help='Run in sport mode (use_sport_mode=True)')
+    group.add_argument('--debug', action='store_true', help='Run in debug mode (sport_mode=False)')
+    group.add_argument('--sport', action='store_true', help='Run in sport mode (sport_mode=True)')
     args = parser.parse_args()
 
     if args.sport:
-        main(use_sport_mode=True)
+        main(sport_mode=True)
     elif args.debug:
-        main(use_sport_mode=False)
+        main(sport_mode=False)
     else:
         print('Invalid argument! Use --debug or --sport')

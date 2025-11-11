@@ -77,7 +77,7 @@ Controller of the h12 robot with ROS2 services
                                    dq_lim=2.0,
                                    d_min=0.02,
                                    visualize=True, # use this to turn on meshcat visualization
-                                   use_sport_mode=use_sport_mode)
+                                   sport_mode=sport_mode)
     ```
 
 - Change `arm_controller.control_dual_arm_step()` to `arm_controller.sim_dual_arm_step()`

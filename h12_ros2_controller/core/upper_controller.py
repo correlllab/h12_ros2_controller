@@ -16,7 +16,7 @@ class UpperController:
                  srdf_sphere_path: str,
                  dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
                  visualize=False,
-                 use_sport_mode=False):
+                 sport_mode=False):
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
@@ -39,7 +39,7 @@ class UpperController:
 
         # intialize low cmd publisher
         self.low_cmd_controller = LowCmdController(self.robot_model,
-                                                   sport_mode=use_sport_mode)
+                                                   sport_mode=sport_mode)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
