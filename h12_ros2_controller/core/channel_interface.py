@@ -83,7 +83,7 @@ class StateSubscriber:
 class CommandPublisher(ABC):
     '''Base class for command publishers with shared functionality.'''
     def __init__(self, dt=0.005):
-        self.dt = dt
+        self._dt = dt
         # data fileds
         self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
         self.q = np.zeros(NUM_MOTOR, dtype=np.float32)
@@ -93,7 +93,7 @@ class CommandPublisher(ABC):
         self.kd = np.zeros(NUM_MOTOR, dtype=np.float32)
 
         # shared threading interface
-        self._data_lock = threading.Lock()
+        self.data_lock = threading.Lock()
         self._publisher = None
         self._publishing = False
         self._publishing_thread = None
@@ -129,7 +129,7 @@ class CommandPublisher(ABC):
         '''Publishing loop for low commands'''
         while self._publishing:
             start_time = time.time()
-            with self._data_lock:
+            with self.data_lock:
                 # assert data integrity before publishing
                 self._check_data_integrity()
                 # write to low command
@@ -147,7 +147,7 @@ class CommandPublisher(ABC):
             # write to publisher
             self._publisher.Write(self._low_cmd)
             # sleep to maintain publishing rate
-            time.sleep(max(0, self.dt - (time.time() - start_time)))
+            time.sleep(max(0, self._dt - (time.time() - start_time)))
             # print(f'LowCmdPublisher publish time: {time.time() - start_time:.6f} seconds')
 
     def _check_data_integrity(self):
@@ -192,13 +192,14 @@ class CommandPublisher(ABC):
     def shutdown(self):
         '''Shutdown the publisher'''
         self.estop()
+        time.sleep(self._dt)
         self._publishing = False
         self._publisher.Close()
         print(f'{self.__class__.__name__} shutdown.')
 
     def estop(self):
         '''Emergency stop logic'''
-        with self._data_lock:
+        with self.data_lock:
             self.mode.fill(0)
             self.tau.fill(0.0)
             self.kp.fill(0.0)
@@ -226,7 +227,7 @@ class LowCmdPublisher(CommandPublisher):
 
     def enable_motors(self, motor_ids, init_q):
         super().enable_motors(motor_ids, init_q)
-        with self._data_lock:
+        with self.data_lock:
             self.mode[motor_ids] = 1
             self.q[motor_ids] = init_q
 
@@ -248,7 +249,7 @@ class ArmSDKPublisher(CommandPublisher):
     def enable_motors(self, motor_ids, init_q):
         '''Override to add ARM SDK specific enable logic'''
         super().enable_motors(motor_ids, init_q)
-        with self._data_lock:
+        with self.data_lock:
             super()._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
 
 class HandSubscriber:

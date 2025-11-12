@@ -264,12 +264,12 @@ class UpperController:
             q = state['q'][self.upper_ids]
             dq = state['dq'][self.upper_ids]
             tau = state['tau'][self.upper_ids]
-            with self.low_cmd_controller.command_publisher._data_lock:
-                q_cmd = self.low_cmd_controller.command_publisher.q[self.upper_ids]
-                dq_cmd = self.low_cmd_controller.command_publisher.dq[self.upper_ids]
-                tau_cmd = self.low_cmd_controller.command_publisher.tau[self.upper_ids]
-                kp = self.low_cmd_controller.command_publisher.kp[self.upper_ids]
-                kd = self.low_cmd_controller.command_publisher.kd[self.upper_ids]
+            with self.low_cmd_controller._command_publisher.data_lock:
+                q_cmd = self.low_cmd_controller._command_publisher.q[self.upper_ids]
+                dq_cmd = self.low_cmd_controller._command_publisher.dq[self.upper_ids]
+                tau_cmd = self.low_cmd_controller._command_publisher.tau[self.upper_ids]
+                kp = self.low_cmd_controller._command_publisher.kp[self.upper_ids]
+                kd = self.low_cmd_controller._command_publisher.kd[self.upper_ids]
             # record with thread-safe access
             with self._record_lock:
                 self._com_arr.append(com)
