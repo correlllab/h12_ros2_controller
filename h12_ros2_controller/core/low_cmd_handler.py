@@ -4,7 +4,7 @@ import threading
 import numpy as np
 from typing import Optional, List
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
-from h12_ros2_controller.utility.robot_setting import setup_gains, JOINT_POSITION_LIMITS, JOINT_VELOCITY_LIMITS, JOINT_TORQUE_LIMITS
+from h12_ros2_controller.utility.robot_setting import setup_gains, JOINT_POSITION_ESTOP_LIMITS, JOINT_VELOCITY_ESTOP_LIMITS, JOINT_TORQUE_ESTOP_LIMITS
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
 
 class LowCmdHandler:
@@ -129,16 +129,16 @@ class LowCmdHandler:
             state = self._robot_model.state
             for i in range(len(state['q'])):
                 # check position limits
-                if (state['q'][i] < JOINT_POSITION_LIMITS[i]['low'] - 0.1 or
-                    state['q'][i] > JOINT_POSITION_LIMITS[i]['high'] + 0.1):
+                if (state['q'][i] < JOINT_POSITION_ESTOP_LIMITS[i]['low'] or
+                    state['q'][i] > JOINT_POSITION_ESTOP_LIMITS[i]['high']):
                     print(f'Position limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["q"][i]:.3f} rad')
                     self.estop()
                 # check velocity limits
-                if abs(state['dq'][i]) > JOINT_VELOCITY_LIMITS[i] + 0.1:
+                if abs(state['dq'][i]) > JOINT_VELOCITY_ESTOP_LIMITS[i]:
                     print(f'Velocity limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["dq"][i]:.3f} rad/s')
                     self.estop()
                 # check torque limits
-                if abs(state['tau'][i]) > JOINT_TORQUE_LIMITS[i] + 0.1:
+                if abs(state['tau'][i]) > JOINT_TORQUE_ESTOP_LIMITS[i]:
                     print(f'Torque limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["tau"][i]:.3f} Nm')
                     self.estop()
             time.sleep(max(0, self._checker_dt - (time.time() - start_time)))

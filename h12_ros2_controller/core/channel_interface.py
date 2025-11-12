@@ -15,7 +15,7 @@ from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState_default
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_default
 
-from h12_ros2_controller.utility.robot_setting import JOINT_POSITION_LIMITS, JOINT_VELOCITY_LIMITS, JOINT_TORQUE_LIMITS
+from h12_ros2_controller.utility.robot_setting import JOINT_POSITION_CLIP_LIMITS, JOINT_VELOCITY_CLIP_LIMITS, JOINT_TORQUE_CLIP_LIMITS
 
 TOPIC_LOWCMD = 'rt/lowcmd'
 TOPIC_LOWSTATE = 'rt/lowstate'
@@ -167,16 +167,16 @@ class CommandPublisher(ABC):
     def _enforce_limits(self, i: int):
         '''Enforce joint limits for a specific joint index'''
         # enforce position limit
-        if self.q[i] < JOINT_POSITION_LIMITS[i]['low']:
-            self.q[i] = JOINT_POSITION_LIMITS[i]['low']
-        if self.q[i] > JOINT_POSITION_LIMITS[i]['high']:
-            self.q[i] = JOINT_POSITION_LIMITS[i]['high']
+        if self.q[i] < JOINT_POSITION_CLIP_LIMITS[i]['low']:
+            self.q[i] = JOINT_POSITION_CLIP_LIMITS[i]['low']
+        if self.q[i] > JOINT_POSITION_CLIP_LIMITS[i]['high']:
+            self.q[i] = JOINT_POSITION_CLIP_LIMITS[i]['high']
         # enforce velocity limit
-        if abs(self.dq[i]) > JOINT_VELOCITY_LIMITS[i]:
-            self.dq[i] = np.sign(self.dq[i]) * JOINT_VELOCITY_LIMITS[i]
+        if abs(self.dq[i]) > JOINT_VELOCITY_CLIP_LIMITS[i]:
+            self.dq[i] = np.sign(self.dq[i]) * JOINT_VELOCITY_CLIP_LIMITS[i]
         # enforce torque limit
-        if abs(self.tau[i]) > JOINT_TORQUE_LIMITS[i]:
-            self.tau[i] = np.sign(self.tau[i]) * JOINT_TORQUE_LIMITS[i]
+        if abs(self.tau[i]) > JOINT_TORQUE_CLIP_LIMITS[i]:
+            self.tau[i] = np.sign(self.tau[i]) * JOINT_TORQUE_CLIP_LIMITS[i]
 
     def enable_motors(self, motor_ids, init_q):
         '''Enable motors with given IDs and initial positions'''

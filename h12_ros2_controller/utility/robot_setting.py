@@ -1,5 +1,8 @@
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
+# Joint limits use URDF values directly
+# Functions for conservative scaling will be added later
+
 JOINT_POSITION_LIMITS = [
     {'low': -0.43, 'high': 0.43},      # left_hip_yaw_joint
     {'low': -3.14, 'high': 2.5},       # left_hip_pitch_joint
@@ -35,71 +38,95 @@ JOINT_POSITION_LIMITS = [
 ]
 
 JOINT_VELOCITY_LIMITS = [
-    5.0,  # left_hip_yaw_joint (URDF: 23, conservative: 5.0)
-    5.0,  # left_hip_pitch_joint (URDF: 23, conservative: 5.0)
-    5.0,  # left_hip_roll_joint (URDF: 23, conservative: 5.0)
-    3.0,  # left_knee_joint (URDF: 14, conservative: 3.0)
-    2.0,  # left_ankle_pitch_joint (URDF: 9, conservative: 2.0)
-    2.0,  # left_ankle_roll_joint (URDF: 9, conservative: 2.0)
+    23.0,  # left_hip_yaw_joint
+    23.0,  # left_hip_pitch_joint
+    23.0,  # left_hip_roll_joint
+    14.0,  # left_knee_joint
+    9.0,   # left_ankle_pitch_joint
+    9.0,   # left_ankle_roll_joint
 
-    5.0,  # right_hip_yaw_joint (URDF: 23, conservative: 5.0)
-    5.0,  # right_hip_pitch_joint (URDF: 23, conservative: 5.0)
-    5.0,  # right_hip_roll_joint (URDF: 23, conservative: 5.0)
-    3.0,  # right_knee_joint (URDF: 14, conservative: 3.0)
-    2.0,  # right_ankle_pitch_joint (URDF: 9, conservative: 2.0)
-    2.0,  # right_ankle_roll_joint (URDF: 9, conservative: 2.0)
+    23.0,  # right_hip_yaw_joint
+    23.0,  # right_hip_pitch_joint
+    23.0,  # right_hip_roll_joint
+    14.0,  # right_knee_joint
+    9.0,   # right_ankle_pitch_joint
+    9.0,   # right_ankle_roll_joint
 
-    5.0,  # torso_joint (URDF: 23, conservative: 5.0)
+    23.0,  # torso_joint
 
-    2.0,  # left_shoulder_pitch_joint (URDF: 9, conservative: 2.0)
-    2.0,  # left_shoulder_roll_joint (URDF: 9, conservative: 2.0)
-    4.0,  # left_shoulder_yaw_joint (URDF: 20, conservative: 4.0)
-    4.0,  # left_elbow_joint (URDF: 20, conservative: 4.0)
-    6.0,  # left_wrist_roll_joint (URDF: 31.4, conservative: 6.0)
-    6.0,  # left_wrist_pitch_joint (URDF: 31.4, conservative: 6.0)
-    6.0,  # left_wrist_yaw_joint (URDF: 31.4, conservative: 6.0)
+    9.0,   # left_shoulder_pitch_joint
+    9.0,   # left_shoulder_roll_joint
+    20.0,  # left_shoulder_yaw_joint
+    20.0,  # left_elbow_joint
+    31.4,  # left_wrist_roll_joint
+    31.4,  # left_wrist_pitch_joint
+    31.4,  # left_wrist_yaw_joint
 
-    2.0,  # right_shoulder_pitch_joint (URDF: 9, conservative: 2.0)
-    2.0,  # right_shoulder_roll_joint (URDF: 9, conservative: 2.0)
-    4.0,  # right_shoulder_yaw_joint (URDF: 20, conservative: 4.0)
-    4.0,  # right_elbow_joint (URDF: 20, conservative: 4.0)
-    6.0,  # right_wrist_roll_joint (URDF: 31.4, conservative: 6.0)
-    6.0,  # right_wrist_pitch_joint (URDF: 31.4, conservative: 6.0)
-    6.0,  # right_wrist_yaw_joint (URDF: 31.4, conservative: 6.0)
+    9.0,   # right_shoulder_pitch_joint
+    9.0,   # right_shoulder_roll_joint
+    20.0,  # right_shoulder_yaw_joint
+    20.0,  # right_elbow_joint
+    31.4,  # right_wrist_roll_joint
+    31.4,  # right_wrist_pitch_joint
+    31.4,  # right_wrist_yaw_joint
 ]
 
 JOINT_TORQUE_LIMITS = [
-    40.0,  # left_hip_yaw_joint (URDF: 200, conservative: 40.0)
-    40.0,  # left_hip_pitch_joint (URDF: 200, conservative: 40.0)
-    40.0,  # left_hip_roll_joint (URDF: 200, conservative: 40.0)
-    60.0,  # left_knee_joint (URDF: 300, conservative: 60.0)
-    12.0,  # left_ankle_pitch_joint (URDF: 60, conservative: 12.0)
-    8.0,   # left_ankle_roll_joint (URDF: 40, conservative: 8.0)
+    200.0,  # left_hip_yaw_joint
+    200.0,  # left_hip_pitch_joint
+    200.0,  # left_hip_roll_joint
+    300.0,  # left_knee_joint
+    60.0,   # left_ankle_pitch_joint
+    40.0,   # left_ankle_roll_joint
 
-    40.0,  # right_hip_yaw_joint (URDF: 200, conservative: 40.0)
-    40.0,  # right_hip_pitch_joint (URDF: 200, conservative: 40.0)
-    40.0,  # right_hip_roll_joint (URDF: 200, conservative: 40.0)
-    60.0,  # right_knee_joint (URDF: 300, conservative: 60.0)
-    12.0,  # right_ankle_pitch_joint (URDF: 60, conservative: 12.0)
-    8.0,   # right_ankle_roll_joint (URDF: 40, conservative: 8.0)
+    200.0,  # right_hip_yaw_joint
+    200.0,  # right_hip_pitch_joint
+    200.0,  # right_hip_roll_joint
+    300.0,  # right_knee_joint
+    60.0,   # right_ankle_pitch_joint
+    40.0,   # right_ankle_roll_joint
 
-    40.0,  # torso_joint (URDF: 200, conservative: 40.0)
+    200.0,  # torso_joint
 
-    8.0,   # left_shoulder_pitch_joint (URDF: 40, conservative: 8.0)
-    8.0,   # left_shoulder_roll_joint (URDF: 40, conservative: 8.0)
-    3.6,   # left_shoulder_yaw_joint (URDF: 18, conservative: 3.6)
-    3.6,   # left_elbow_joint (URDF: 18, conservative: 3.6)
-    3.8,   # left_wrist_roll_joint (URDF: 19, conservative: 3.8)
-    3.8,   # left_wrist_pitch_joint (URDF: 19, conservative: 3.8)
-    3.8,   # left_wrist_yaw_joint (URDF: 19, conservative: 3.8)
+    40.0,   # left_shoulder_pitch_joint
+    40.0,   # left_shoulder_roll_joint
+    18.0,   # left_shoulder_yaw_joint
+    18.0,   # left_elbow_joint
+    19.0,   # left_wrist_roll_joint
+    19.0,   # left_wrist_pitch_joint
+    19.0,   # left_wrist_yaw_joint
 
-    8.0,   # right_shoulder_pitch_joint (URDF: 40, conservative: 8.0)
-    8.0,   # right_shoulder_roll_joint (URDF: 40, conservative: 8.0)
-    3.6,   # right_shoulder_yaw_joint (URDF: 18, conservative: 3.6)
-    3.6,   # right_elbow_joint (URDF: 18, conservative: 3.6)
-    3.8,   # right_wrist_roll_joint (URDF: 19, conservative: 3.8)
-    3.8,   # right_wrist_pitch_joint (URDF: 19, conservative: 3.8)
-    3.8,   # right_wrist_yaw_joint (URDF: 19, conservative: 3.8)
+    40.0,   # right_shoulder_pitch_joint
+    40.0,   # right_shoulder_roll_joint
+    18.0,   # right_shoulder_yaw_joint
+    18.0,   # right_elbow_joint
+    19.0,   # right_wrist_roll_joint
+    19.0,   # right_wrist_pitch_joint
+    19.0,   # right_wrist_yaw_joint
+]
+
+JOINT_POSITION_CLIP_LIMITS = [
+    {'low': limit['low'] + 0.02, 'high': limit['high'] - 0.02} for limit in JOINT_POSITION_LIMITS
+]
+
+JOINT_POSITION_ESTOP_LIMITS = [
+    {'low': limit['low'] + 0.01, 'high': limit['high'] - 0.01} for limit in JOINT_POSITION_LIMITS
+]
+
+JOINT_VELOCITY_CLIP_LIMITS = [
+    limit * 0.25 for limit in JOINT_VELOCITY_LIMITS
+]
+
+JOINT_VELOCITY_ESTOP_LIMITS = [
+    limit * 0.6 for limit in JOINT_VELOCITY_LIMITS
+]
+
+JOINT_TORQUE_CLIP_LIMITS = [
+    limit * 0.25 for limit in JOINT_TORQUE_LIMITS
+]
+
+JOINT_TORQUE_ESTOP_LIMITS = [
+    limit * 0.8 for limit in JOINT_TORQUE_LIMITS
 ]
 
 def setup_gains(command_publisher):
