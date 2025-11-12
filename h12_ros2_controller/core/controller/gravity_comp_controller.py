@@ -1,7 +1,7 @@
 import numpy as np
 import pinocchio as pin
 
-from h12_ros2_controller.core.upper_controller import UpperController
+from h12_ros2_controller.core.controller.upper_controller import UpperController
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class GravityCompController(UpperController):

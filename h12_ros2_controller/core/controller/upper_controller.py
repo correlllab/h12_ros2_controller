@@ -38,23 +38,23 @@ class UpperController:
         self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
 
         # intialize low cmd publisher
-        self.low_cmd_controller = LowCmdHandler(self.robot_model,
-                                                   sport_mode=sport_mode)
+        self.low_cmd_handler = LowCmdHandler(self.robot_model,
+                                             sport_mode=sport_mode)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
-        self.low_cmd_controller.enable_motors(self.enabled_ids, init_q)
+        self.low_cmd_handler.enable_motors(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in place
-        self.low_cmd_controller.enable_motors([BODY_JOINTS.index('torso_joint')], [0.0])
+        self.low_cmd_handler.enable_motors([BODY_JOINTS.index('torso_joint')], [0.0])
 
         # enable lower body motor
         lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
         lower_init = self.robot_model.state['q'][lower_ids]
-        self.low_cmd_controller.enable_motors(lower_ids, lower_init)
+        self.low_cmd_handler.enable_motors(lower_ids, lower_init)
 
         # start publisher
-        self.low_cmd_controller.start()
+        self.low_cmd_handler.start()
 
         # initialize IK solver
         self.ik_solver = IKSolver(
@@ -214,7 +214,7 @@ class UpperController:
         # always commanding zero velocity
         dq = np.zeros(self.robot_model.model.nv)
         # send command to lock the robot in current configuration
-        self.low_cmd_controller.set_joint_commands( q, dq, tau)
+        self.low_cmd_handler.set_joint_commands( q, dq, tau)
         self.update_robot_model()
 
     def limit_joint_vel(self, vel):
@@ -254,7 +254,7 @@ class UpperController:
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
         dq = np.zeros(self.robot_model.model.nv)
-        self.low_cmd_controller.set_joint_commands(q, dq, tau)
+        self.low_cmd_handler.set_joint_commands(q, dq, tau)
 
         if self._recording:
             # record center of mass
@@ -264,12 +264,12 @@ class UpperController:
             q = state['q'][self.upper_ids]
             dq = state['dq'][self.upper_ids]
             tau = state['tau'][self.upper_ids]
-            with self.low_cmd_controller.command_publisher._data_lock:
-                q_cmd = self.low_cmd_controller.command_publisher.q[self.upper_ids]
-                dq_cmd = self.low_cmd_controller.command_publisher.dq[self.upper_ids]
-                tau_cmd = self.low_cmd_controller.command_publisher.tau[self.upper_ids]
-                kp = self.low_cmd_controller.command_publisher.kp[self.upper_ids]
-                kd = self.low_cmd_controller.command_publisher.kd[self.upper_ids]
+            with self.low_cmd_handler.command_publisher._data_lock:
+                q_cmd = self.low_cmd_handler.command_publisher.q[self.upper_ids]
+                dq_cmd = self.low_cmd_handler.command_publisher.dq[self.upper_ids]
+                tau_cmd = self.low_cmd_handler.command_publisher.tau[self.upper_ids]
+                kp = self.low_cmd_handler.command_publisher.kp[self.upper_ids]
+                kd = self.low_cmd_handler.command_publisher.kd[self.upper_ids]
             # record with thread-safe access
             with self._record_lock:
                 self._com_arr.append(com)
@@ -284,18 +284,18 @@ class UpperController:
                 )
 
     def estop(self):
-        self.low_cmd_controller.estop()
+        self.low_cmd_handler.estop()
 
     def shutdown(self):
         self.stop_recording()
         self.robot_model.shutdown()
-        self.low_cmd_controller.shutdown()
+        self.low_cmd_handler.shutdown()
 
     def damp_mode(self, kd=3.0):
         kp = np.zeros(self.robot_model.model.nv)
         kd = kd * np.ones(self.robot_model.model.nv)
         dq = np.zeros(self.robot_model.model.nv)
-        self.low_cmd_controller.set_joint_commands(dq=dq, kp=kp, kd=kd)
+        self.low_cmd_handler.set_joint_commands(dq=dq, kp=kp, kd=kd)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
     def start_recording(self, save_path, filename):

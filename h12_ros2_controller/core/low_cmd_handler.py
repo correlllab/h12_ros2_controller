@@ -5,15 +5,19 @@ from typing import Optional, List
 from h12_ros2_controller.utility.robot_setting import setup_gains, JOINT_POSITION_LIMITS, JOINT_VELOCITY_LIMITS, JOINT_TORQUE_LIMITS
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
 
-class LowCmdController:
-    def __init__(self, robot_model, dt=0.005, sport_mode: bool=False):
-        self.dt = dt
+class LowCmdHandler:
+    def __init__(self,
+                 robot_model,
+                 checker_dt=0.001,
+                 publisher_dt=0.002,
+                 sport_mode: bool=False):
+        self.checker_dt = checker_dt
         self.robot_model = robot_model
         # intialize command publisher
         if sport_mode:
-            self.command_publisher = ArmSDKPublisher(dt)
+            self.command_publisher = ArmSDKPublisher(publisher_dt)
         else:
-            self.command_publisher = LowCmdPublisher(dt)
+            self.command_publisher = LowCmdPublisher(publisher_dt)
         setup_gains(self.command_publisher)
 
         # background safety monitoring thread
@@ -62,6 +66,7 @@ class LowCmdController:
     def _safety_checker(self):
         '''Background thread for safety monitoring'''
         while True:
+            start_time = time.time()
             state = self.robot_model.state
             for i in range(len(state['q'])):
                 # check position limits
@@ -77,3 +82,4 @@ class LowCmdController:
                 if abs(state['tau'][i]) > JOINT_TORQUE_LIMITS[i] + 0.1:
                     print(f'Torque limit exceeded on joint {i}: {state["tau"][i]:.3f} Nm')
                     self.estop()
+            time.sleep(max(0, self.checker_dt - (time.time() - start_time)))

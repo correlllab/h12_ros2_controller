@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.benchmark.precision_benchmark import PrecisionBenchmark
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize

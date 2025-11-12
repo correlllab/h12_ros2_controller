@@ -6,7 +6,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.gravity_comp_controller import GravityCompController
+from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
 
 def main(sport_mode=False):
     print('Initializing GravityCompController...')

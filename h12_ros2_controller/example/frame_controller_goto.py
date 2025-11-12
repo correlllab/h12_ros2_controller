@@ -8,7 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.frame_controller import FrameController
+from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 def input_keyword_or_frame_task():

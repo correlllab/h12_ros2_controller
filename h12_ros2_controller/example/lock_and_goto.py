@@ -7,7 +7,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.arm_controller import UpperController
+from h12_ros2_controller.core.controller.arm_controller import UpperController
 from h12_ros2_controller.core.robot_model import RobotModel
 
 def save():

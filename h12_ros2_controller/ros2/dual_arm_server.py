@@ -12,7 +12,7 @@ from datetime import datetime
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from custom_ros_messages.action import DualArm
-from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, LOG_PATH
 
