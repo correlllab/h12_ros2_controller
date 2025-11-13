@@ -1,6 +1,4 @@
-import os
 import time
-import threading
 import numpy as np
 import pinocchio as pin
 
