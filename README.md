@@ -75,13 +75,9 @@ Controller of the h12 robot with ROS2 services
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.03,
-                                   v_lim=1.0,
-                                   w_lim=2.0,
-                                   dq_lim=2.0,
-                                   d_min=0.02,
+                                   dt=0.02,
                                    visualize=True, # use this to turn on meshcat visualization
-                                   sport_mode=sport_mode)
+                                   sport_mode=False)
     ```
 
 - Change `arm_controller.control_dual_arm_step()` to `arm_controller.sim_dual_arm_step()`

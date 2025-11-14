@@ -60,10 +60,6 @@ def main(timeout=10.0,
                                        'assets/h1_2/h1_2_sphere.urdf',
                                        'assets/h1_2/h1_2_sphere_collision.srdf',
                                        dt=0.025,
-                                       v_lim=1.0,
-                                       w_lim=2.0,
-                                       dq_lim=2.0,
-                                       d_min=0.02,
                                        visualize=False,
                                        sport_mode=sport_mode)
     if save_filename is not None:

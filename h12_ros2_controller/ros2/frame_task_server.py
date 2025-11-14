@@ -35,11 +35,8 @@ class FrameTaskServer(Node):
                                           URDF_SPHERE_PATH,
                                           SRDF_SPHERE_PATH,
                                           dt=dt,
-                                          v_lim=1.0,
-                                          w_lim=2.0,
-                                          dq_lim=2.0,
-                                          d_min=0.02,
-                                          visualize=False)
+                                          visualize=False,
+                                          sport_mode=False)
 
         # publisher publishing frame names and target poses
         self.frame_names_publisher = self.create_publisher(StringArray, 'frame_names', 10)

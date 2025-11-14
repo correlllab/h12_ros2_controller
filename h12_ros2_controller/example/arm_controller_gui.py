@@ -17,10 +17,6 @@ def main(sport_mode=False):
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.025,
-                                   v_lim=1.0,
-                                   w_lim=2.0,
-                                   dq_lim=1.5,
-                                   d_min=0.02,
                                    visualize=True,
                                    sport_mode=sport_mode)
     arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]

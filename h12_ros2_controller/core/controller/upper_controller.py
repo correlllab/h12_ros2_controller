@@ -12,16 +12,16 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
+                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=1.0, d_min=0.02,
                  visualize=False,
                  sport_mode=False):
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
-        self.vlim = v_lim
-        self.wlim = w_lim
+        self.v_lim = v_lim
+        self.w_lim = w_lim
         self.dq_lim = dq_lim
-        self.dmin = d_min
+        self.d_min = d_min
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -58,7 +58,7 @@ class UpperController:
         self.ik_solver = IKSolver(
             robot_model=self.robot_model,
             dt=self.dt,
-            dmin=self.dmin
+            d_min=self.d_min
         )
 
         if self.visualize:
@@ -211,17 +211,17 @@ class UpperController:
         right_dq_scaler = np.min(self.dq_lim / (np.abs(vel[RIGHT_ARM_INDEX]) + 1e-6))
 
         # scale left and right end effectors
-        left_scaler = np.min([
+        left_scaler = min([
             1.0,
             left_dq_scaler,
-            self.vlim / (np.linalg.norm(v_left) + 1e-6),
-            self.wlim / (np.linalg.norm(w_left) + 1e-6)
+            self.v_lim / (np.linalg.norm(v_left) + 1e-6),
+            self.w_lim / (np.linalg.norm(w_left) + 1e-6)
         ])
-        right_scaler = np.min([
+        right_scaler = min([
             1.0,
             right_dq_scaler,
-            self.vlim / (np.linalg.norm(v_right) + 1e-6),
-            self.wlim / (np.linalg.norm(w_right) + 1e-6)
+            self.v_lim / (np.linalg.norm(v_right) + 1e-6),
+            self.w_lim / (np.linalg.norm(w_right) + 1e-6)
         ])
 
         vel_scaled = np.zeros_like(vel)

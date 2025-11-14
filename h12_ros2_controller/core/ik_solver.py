@@ -10,7 +10,7 @@ class IKSolver:
     def __init__(self,
                  robot_model: RobotModel,
                  dt: float = 0.02,
-                 dmin: float = 0.05):
+                 d_min: float = 0.05):
         '''
         Initialize the IK solver with robot model and collision parameters
 
@@ -22,7 +22,7 @@ class IKSolver:
         '''
         self.robot_model = robot_model
         self.dt = dt
-        self.dmin = dmin
+        self.d_min = d_min
 
         # task management
         self.frame_tasks = {}  # maps task_name -> FrameTask
@@ -39,7 +39,7 @@ class IKSolver:
             n_collision_pairs=len(self.robot_model.collision_model_reduced.collisionPairs),
             gain=20.0,
             safe_displacement_gain=1.0,
-            d_min=dmin,
+            d_min=d_min,
         )
 
         # configurations
