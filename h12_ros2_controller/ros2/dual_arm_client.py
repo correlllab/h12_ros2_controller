@@ -85,7 +85,7 @@ class DualArmClient(Node):
         self.get_logger().info('Sending goal...')
         future = self.dual_arm_client.send_goal_async(
             goal_msg,
-            feedback_callback=self.feedback_callback
+            feedback_callback=self.dual_arm_feedback
         )
         rclpy.spin_until_future_complete(self, future)
         self.goal_handle = future.result()
@@ -109,7 +109,7 @@ class DualArmClient(Node):
         # stop the cancel listener thread
         listener.stop()
 
-    def feedback_callback(self, feedback_msg):
+    def dual_arm_feedback(self, feedback_msg):
         feedback = feedback_msg.feedback
         self.get_logger().info(f'Left Error Linear: {feedback.left_error_linear:.4f}, ' +
                                f'Left Error Angular: {feedback.left_error_angular:.4f}')
@@ -118,7 +118,7 @@ class DualArmClient(Node):
 
     def send_named_config_goal(self, config_name: str):
         goal_msg = NamedConfig.Goal()
-        goal_msg.keyword = config_name
+        goal_msg.config_name = config_name
 
         self.get_logger().info('Waiting for named config action server...')
         self.named_config_client.wait_for_server()
@@ -127,6 +127,7 @@ class DualArmClient(Node):
         self.get_logger().info(f'Sending named config goal: {config_name}...')
         future = self.named_config_client.send_goal_async(
             goal_msg,
+            feedback_callback=self.named_config_feedback
         )
         rclpy.spin_until_future_complete(self, future)
         self.goal_handle = future.result()
@@ -150,25 +151,29 @@ class DualArmClient(Node):
         # stop the cancel listener thread
         listener.stop()
 
+    def named_config_feedback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        self.get_logger().info(f'Joint Error: {feedback.joint_error:.4f}')
+
     def _keyboard_cancel(self, key):
         if key == keyboard.Key.backspace:
             if self.goal_handle is not None:
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
-def input_keyword_or_poses():
+def input_config_name_or_poses():
     '''
-    Ask user for keyword command or manual pose input
-    Returns (keyword, left_pose, right_pose) tuple
-    If keyword is provided, poses will be None
-    If no keyword, poses will be provided
+    Ask user for config name or manual pose input
+    Returns (config_name, left_pose, right_pose) tuple
+    If config_name is provided, poses will be None
+    If no config_name, poses will be provided
     '''
-    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
+    print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
 
-    choice = input('Enter keyword (or press Enter for manual poses): ').strip()
+    choice = input('Enter config name (or press Enter for manual poses): ').strip()
 
     if choice:
-        # user entered a keyword
+        # user entered a config name
         return choice, None, None
     else:
         print('Enter left end-effector pose:')
@@ -183,9 +188,9 @@ def main(args=None):
 
     try:
         while rclpy.ok():
-            keyword, left_pose, right_pose = input_keyword_or_poses()
-            if keyword != '':
-                node.send_named_config_goal(keyword)
+            config_name, left_pose, right_pose = input_config_name_or_poses()
+            if config_name != '':
+                node.send_named_config_goal(config_name)
             else:
                 node.send_dual_arm_goal(left_pose, right_pose)
 

@@ -1,11 +1,10 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from geometry_msgs.msg import Pose
 
 from pynput import keyboard
 
-from custom_ros_messages.action import FrameTask
+from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.ros2.utility import input_pose
 
@@ -19,8 +18,14 @@ class FrameTaskClient(Node):
             FrameTask,
             'frame_task'   # action name
         )
+        self.named_config_client = ActionClient(
+            self,
+            NamedConfig,
+            'named_config'
+        )
+        self.goal_handle = None
 
-    def send_goal(self, keyword='', frame_names=None, frame_targets=None):
+    def send_frame_task_goal(self, frame_names=None, frame_targets=None):
         goal_msg = FrameTask.Goal()
 
         goal_msg.frame_names = frame_names if frame_names is not None else []
@@ -33,7 +38,7 @@ class FrameTaskClient(Node):
         self.get_logger().info('Sending goal...')
         future = self.action_client.send_goal_async(
             goal_msg,
-            feedback_callback=self.feedback_callback
+            feedback_callback=self.frame_task_feedback
         )
         rclpy.spin_until_future_complete(self, future)
         self.goal_handle = future.result()
@@ -57,11 +62,50 @@ class FrameTaskClient(Node):
         # stop the cancel listener thread
         listener.stop()
 
-    def feedback_callback(self, feedback_msg):
+    def frame_task_feedback(self, feedback_msg):
         errors_linear = list(feedback_msg.feedback.errors_linear)
         errors_angular = list(feedback_msg.feedback.errors_angular)
         self.get_logger().info(f'Linear errors: {errors_linear}')
         self.get_logger().info(f'Angular errors: {errors_angular}')
+
+    def send_named_config_goal(self, config_name: str):
+        goal_msg = NamedConfig.Goal()
+        goal_msg.config_name = config_name
+
+        self.get_logger().info('Waiting for named config action server...')
+        self.named_config_client.wait_for_server()
+
+        # send action
+        self.get_logger().info(f'Sending named config goal: {config_name}...')
+        future = self.named_config_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self.named_config_feedback
+        )
+        rclpy.spin_until_future_complete(self, future)
+        self.goal_handle = future.result()
+        if not self.goal_handle.accepted:
+            self.get_logger().warn('Named config goal was rejected')
+            return
+
+        # start a cancel listener thread
+        self.get_logger().info('Named config goal accepted, waiting for result...')
+        self.get_logger().info('Press BACKSPACE to cancel the goal')
+        listener = keyboard.Listener(
+            on_press=self._keyboard_cancel
+        )
+        listener.start()
+
+        # wait till finish
+        future_result = self.goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self, future_result)
+        result = future_result.result().result
+        self.get_logger().info(f'Final result: success = {result.success}')
+        # stop the cancel listener thread
+        listener.stop()
+
+    def named_config_feedback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        self.get_logger().info(f'Joint Error: {feedback.joint_error:.4f}')
 
     def _keyboard_cancel(self, key):
         if key == keyboard.Key.backspace:
@@ -69,19 +113,19 @@ class FrameTaskClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
-def input_keyword_or_frame_task():
+def input_config_name_or_frame_task():
     '''
-    Ask user for keyword command or manual frame task input
-    Returns (keyword, frame_name, pose) tuple
-    If keyword is provided, frame_name and pose will be None
-    If no keyword, frame_name and pose will be provided
+    Ask user for config name or manual frame task input
+    Returns (config_name, frame_name, pose) tuple
+    If config_name is provided, frame_name and pose will be None
+    If no config_name, frame_name and pose will be provided
     '''
-    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
+    print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
 
-    choice = input('Enter keyword (or press Enter for manual frame task): ').strip()
+    choice = input('Enter config name (or press Enter for manual frame task): ').strip()
 
     if choice:
-        # user entered a keyword
+        # user entered a config name
         return choice, [], []
     else:
         # user wants manual frame task input
@@ -109,8 +153,11 @@ def main(args=None):
 
     try:
         while rclpy.ok():
-            keyword, frame_names, frame_poses = input_keyword_or_frame_task()
-            node.send_goal(keyword, frame_names, frame_poses)
+            config_name, frame_names, frame_poses = input_config_name_or_frame_task()
+            if config_name != '':
+                node.send_named_config_goal(config_name)
+            else:
+                node.send_frame_task_goal(frame_names, frame_poses)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
-from geometry_msgs.msg import Pose, PoseStamped
+from geometry_msgs.msg import PoseStamped
 
 import time
 import asyncio
@@ -76,7 +76,7 @@ class DualArmServer(Node):
             execute_callback=self.named_config_callback,
             cancel_callback=self.cancel_callback
         )
-        self.get_logger().info('Controller server initialized')
+        self.get_logger().info('Dual Arm Server initialized')
 
     def _stamp_pose(self, pose):
         pose_stamped = PoseStamped()
@@ -99,7 +99,6 @@ class DualArmServer(Node):
 
     async def dual_arm_callback(self, goal_handle):
         self.get_logger().info('Received goal')
-
         goal = goal_handle.request
         print(f'{goal.keyword=}')
         print(f'{goal.keyword in NAMED_CONFIGS=}')
@@ -121,6 +120,7 @@ class DualArmServer(Node):
             # control one step
             self.controller.control_dual_arm_step()
 
+            # handle cancel event
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -133,7 +133,7 @@ class DualArmServer(Node):
             left_error_angular = np.linalg.norm(self.controller.left_ee_error[3:])
             right_error_linear = np.linalg.norm(self.controller.right_ee_error[:3])
             right_error_angular = np.linalg.norm(self.controller.right_ee_error[3:])
-            # write feedback
+            # send feedback
             feedback_msg = DualArm.Feedback()
             feedback_msg.left_error_linear = left_error_linear
             feedback_msg.left_error_angular = left_error_angular
@@ -159,11 +159,10 @@ class DualArmServer(Node):
 
     async def named_config_callback(self, goal_handle):
         self.get_logger().info('Received named config goal')
-
         goal = goal_handle.request
-        config_name = goal.keyword
 
         # check if the named config exists
+        config_name = goal.config_name
         if config_name not in NAMED_CONFIGS:
             self.get_logger().warn(f'Named config "{config_name}" not found')
             goal_handle.canceled()
@@ -186,6 +185,7 @@ class DualArmServer(Node):
             # control one step
             self.controller.goto_reduced_configuration(q_reduced)
 
+            # handle cancel event
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -193,16 +193,15 @@ class DualArmServer(Node):
                 result.success = False
                 return result
 
-            # compute max joint position error
-            joint_errors = self.controller.reduced_configuration_error
-            max_error = np.max(np.abs(joint_errors))
+            # compute error
+            joint_error = np.max(np.abs(self.controller.reduced_configuration_error))
             # send feedback
             feedback_msg = NamedConfig.Feedback()
-            feedback_msg.max_joint_error = max_error
+            feedback_msg.joint_error = joint_error
             goal_handle.publish_feedback(feedback_msg)
 
             # check if the goal is reached
-            if max_error < 1e-3:
+            if joint_error < 1e-3:
                 self.get_logger().info('Named config reached')
                 break
 

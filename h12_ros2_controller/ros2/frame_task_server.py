@@ -10,7 +10,7 @@ import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from custom_ros_messages.msg import StringArray
-from custom_ros_messages.action import FrameTask
+from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
@@ -49,8 +49,17 @@ class FrameTaskServer(Node):
             self,
             FrameTask,
             'frame_task',
-            self.frame_task_callback
+            execute_callback=self.frame_task_callback,
+            cancel_callback=self.cancel_callback
         )
+        self.named_config_server = ActionServer(
+            self,
+            NamedConfig,
+            'named_config',
+            execute_callback=self.named_config_callback,
+            cancel_callback=self.cancel_callback
+        )
+        self.get_logger().info('Frame Task Server initialized')
 
     def publisher_callback(self):
         # publish frame names
@@ -80,8 +89,8 @@ class FrameTaskServer(Node):
         self.frame_names = goal.frame_names
         self.frame_targets = goal.frame_targets
 
-        self.get_logger().info('Going to target frame poses')
         # set frame tasks
+        self.get_logger().info('Going to target frame poses')
         for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
             task_name = f'{frame_name}_task'
             self.controller.add_frame_task(task_name, frame_name, pose_to_matrix(frame_target))
@@ -98,6 +107,7 @@ class FrameTaskServer(Node):
             # control one step
             self.controller.control_step_reduced()
 
+            # handle cancel event
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
                 goal_handle.canceled()
@@ -131,9 +141,63 @@ class FrameTaskServer(Node):
         # set result
         result = FrameTask.Result()
         result.success = True
-        self.get_logger().info('Goal succeeded')
+        goal_handle.succeed()
+        return result
+
+    async def named_config_callback(self, goal_handle):
+        self.get_logger().info('Received named config goal')
+        goal = goal_handle.request
+
+        # check if the named config exists
+        config_name = goal.config_name
+        if config_name not in NAMED_CONFIGS:
+            self.get_logger().warn(f'Named config "{config_name}" not found')
+            goal_handle.canceled()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
+
+        self.get_logger().info(f'Going to named config: {config_name}')
+        q_reduced = NAMED_CONFIGS[config_name]
+
+        # update ik solver with current state
+        self.controller.update_ik_solver()
+
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+            # control one step
+            self.controller.goto_reduced_configuration(q_reduced)
+
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
+
+            # compute error
+            joint_error = np.max(np.abs(self.controller.reduced_configuration_error))
+            # send feedback
+            feedback_msg = NamedConfig.Feedback()
+            feedback_msg.joint_error = joint_error
+            goal_handle.publish_feedback(feedback_msg)
+
+            # check if the goal is reached
+            if joint_error < 1e-3:
+                self.get_logger().info('Named config reached')
+                break
+
+            time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            await asyncio.sleep(0)
 
         goal_handle.succeed()
+        result = NamedConfig.Result()
+        result.success = True
         return result
 
     def cancel_callback(self, goal_handle):
