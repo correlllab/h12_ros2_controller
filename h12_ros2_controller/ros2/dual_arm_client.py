@@ -5,17 +5,22 @@ from geometry_msgs.msg import Pose, PoseStamped
 
 from pynput import keyboard
 
-from custom_ros_messages.action import DualArm
+from custom_ros_messages.action import DualArm, NamedConfig
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.ros2.utility import input_pose
 
 class DualArmClient(Node):
     def __init__(self):
         super().__init__('dual_arm_client')
-        self.action_client = ActionClient(
+        self.dual_arm_client = ActionClient(
             self,
             DualArm,
             'dual_arm'
+        )
+        self.named_config_client = ActionClient(
+            self,
+            NamedConfig,
+            'named_config'
         )
         self.goal_handle = None
 
@@ -74,11 +79,11 @@ class DualArmClient(Node):
         goal_msg.right_target = right_target
 
         self.get_logger().info('Waiting for action server...')
-        self.action_client.wait_for_server()
+        self.dual_arm_client.wait_for_server()
 
         # send action
         self.get_logger().info('Sending goal...')
-        future = self.action_client.send_goal_async(
+        future = self.dual_arm_client.send_goal_async(
             goal_msg,
             feedback_callback=self.feedback_callback
         )
@@ -110,6 +115,40 @@ class DualArmClient(Node):
                                f'Left Error Angular: {feedback.left_error_angular:.4f}')
         self.get_logger().info(f'Right Error Linear: {feedback.right_error_linear:.4f}, ' +
                                f'Right Error Angular: {feedback.right_error_angular:.4f}')
+
+    def send_named_config_goal(self, config_name: str):
+        goal_msg = NamedConfig.Goal()
+        goal_msg.keyword = config_name
+
+        self.get_logger().info('Waiting for named config action server...')
+        self.named_config_client.wait_for_server()
+
+        # send action
+        self.get_logger().info(f'Sending named config goal: {config_name}...')
+        future = self.named_config_client.send_goal_async(
+            goal_msg,
+        )
+        rclpy.spin_until_future_complete(self, future)
+        self.goal_handle = future.result()
+        if not self.goal_handle.accepted:
+            self.get_logger().warn('Named config goal was rejected')
+            return
+
+        # start a cancel listener thread
+        self.get_logger().info('Named config goal accepted, waiting for result...')
+        self.get_logger().info('Press BACKSPACE to cancel the goal')
+        listener = keyboard.Listener(
+            on_press=self._keyboard_cancel
+        )
+        listener.start()
+
+        # wait till finish
+        future_result = self.goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self, future_result)
+        result = future_result.result().result
+        self.get_logger().info(f'Final result: success = {result.success}')
+        # stop the cancel listener thread
+        listener.stop()
 
     def _keyboard_cancel(self, key):
         if key == keyboard.Key.backspace:
@@ -145,7 +184,10 @@ def main(args=None):
     try:
         while rclpy.ok():
             keyword, left_pose, right_pose = input_keyword_or_poses()
-            node.send_dual_arm_goal(left_pose, right_pose)
+            if keyword != '':
+                node.send_named_config_goal(keyword)
+            else:
+                node.send_dual_arm_goal(left_pose, right_pose)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

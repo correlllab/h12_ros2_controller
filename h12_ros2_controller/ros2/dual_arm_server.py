@@ -9,7 +9,7 @@ import numpy as np
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from custom_ros_messages.action import DualArm
+from custom_ros_messages.action import DualArm, NamedConfig
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, LOG_PATH
@@ -62,11 +62,18 @@ class DualArmServer(Node):
         self.publisher_timer = self.create_timer(1.0 / 100, self.publisher_callback)
 
         # action server to control dual arms
-        self.action_server = ActionServer(
+        self.dual_arm_server = ActionServer(
             self,
             DualArm,
             'dual_arm',
             execute_callback=self.dual_arm_callback,
+            cancel_callback=self.cancel_callback
+        )
+        self.named_config_server = ActionServer(
+            self,
+            NamedConfig,
+            'named_config',
+            execute_callback=self.named_config_callback,
             cancel_callback=self.cancel_callback
         )
         self.get_logger().info('Controller server initialized')
@@ -147,6 +154,63 @@ class DualArmServer(Node):
 
         goal_handle.succeed()
         result = DualArm.Result()
+        result.success = True
+        return result
+
+    async def named_config_callback(self, goal_handle):
+        self.get_logger().info('Received named config goal')
+
+        goal = goal_handle.request
+        config_name = goal.keyword
+
+        # check if the named config exists
+        if config_name not in NAMED_CONFIGS:
+            self.get_logger().warn(f'Named config "{config_name}" not found')
+            goal_handle.canceled()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
+
+        self.get_logger().info(f'Going to named config: {config_name}')
+        q_reduced = NAMED_CONFIGS[config_name]
+
+        # update ik solver with current state
+        self.controller.update_ik_solver()
+
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+            # control one step
+            self.controller.goto_reduced_configuration(q_reduced)
+
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
+
+            # compute max joint position error
+            joint_errors = self.controller.reduced_configuration_error
+            max_error = np.max(np.abs(joint_errors))
+            # send feedback
+            feedback_msg = NamedConfig.Feedback()
+            feedback_msg.max_joint_error = max_error
+            goal_handle.publish_feedback(feedback_msg)
+
+            # check if the goal is reached
+            if max_error < 1e-3:
+                self.get_logger().info('Named config reached')
+                break
+
+            time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            await asyncio.sleep(0)
+
+        goal_handle.succeed()
+        result = NamedConfig.Result()
         result.success = True
         return result
 

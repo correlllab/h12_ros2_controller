@@ -149,6 +149,13 @@ class UpperController:
             # visualize center of mass
             self.robot_model.visualize_center_of_mass()
 
+    @property
+    def configuration_error(self):
+        return self.ik_solver.compute_error(
+            self.ik_solver.config_task,
+            self.robot_model.state['q']
+        )
+
     def goto_configuration(self, q):
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
@@ -168,6 +175,13 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.update_robot_model()
+
+    @property
+    def reduced_configuration_error(self):
+        return self.ik_solver.compute_error_reduced(
+            self.ik_solver.config_task,
+            self.robot_model.state_reduced['q']
+        )
 
     def goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
