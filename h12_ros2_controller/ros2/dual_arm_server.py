@@ -6,8 +6,6 @@ from geometry_msgs.msg import Pose, PoseStamped
 import time
 import asyncio
 import numpy as np
-from pyquaternion import Quaternion
-from datetime import datetime
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -15,6 +13,7 @@ from custom_ros_messages.action import DualArm
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, LOG_PATH
+from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class DualArmServer(Node):
     def __init__(self,
@@ -66,36 +65,11 @@ class DualArmServer(Node):
         self.action_server = ActionServer(
             self,
             DualArm,
-            'move_dual_arm',
+            'dual_arm',
             execute_callback=self.dual_arm_callback,
             cancel_callback=self.cancel_callback
         )
         self.get_logger().info('Controller server initialized')
-
-    @staticmethod
-    def _pose_to_matrix(pose):
-        position = pose.position
-        orientation = pose.orientation
-        rotation = Quaternion(
-            [orientation.w, orientation.x, orientation.y, orientation.z]
-        ).rotation_matrix
-        matrix = np.eye(4)
-        matrix[:3, :3] = rotation
-        matrix[:3, 3] = [position.x, position.y, position.z]
-        return matrix
-
-    @staticmethod
-    def _matrix_to_pose(matrix):
-        pose = Pose()
-        pose.position.x = matrix[0, 3]
-        pose.position.y = matrix[1, 3]
-        pose.position.z = matrix[2, 3]
-        rotation = Quaternion(matrix=matrix[:3, :3])
-        pose.orientation.w = rotation.w
-        pose.orientation.x = rotation.x
-        pose.orientation.y = rotation.y
-        pose.orientation.z = rotation.z
-        return pose
 
     def _stamp_pose(self, pose):
         pose_stamped = PoseStamped()
@@ -107,10 +81,10 @@ class DualArmServer(Node):
     def publisher_callback(self):
         self.controller.update_robot_model()
         # transform and publish the pose
-        left_ee_pose = self._matrix_to_pose(self.controller.left_ee_transformation)
-        right_ee_pose = self._matrix_to_pose(self.controller.right_ee_transformation)
-        left_ee_target = self._matrix_to_pose(self.controller.left_ee_target_transformation)
-        right_ee_target = self._matrix_to_pose(self.controller.right_ee_target_transformation)
+        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
+        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
+        left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
+        right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
@@ -125,8 +99,8 @@ class DualArmServer(Node):
 
         self.get_logger().info('Going to target end-effector poses')
         # set target
-        self.controller.left_ee_target_transformation = self._pose_to_matrix(goal.left_target)
-        self.controller.right_ee_target_transformation = self._pose_to_matrix(goal.right_target)
+        self.controller.left_ee_target_transformation = pose_to_matrix(goal.left_target)
+        self.controller.right_ee_target_transformation = pose_to_matrix(goal.right_target)
 
         # update ik solver with current state
         self.controller.update_ik_solver()

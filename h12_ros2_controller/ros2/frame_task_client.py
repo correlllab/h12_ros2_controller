@@ -2,15 +2,12 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from geometry_msgs.msg import Pose
-from builtin_interfaces.msg import Duration
 
-import numpy as np
 from pynput import keyboard
-from pyquaternion import Quaternion
-from scipy.spatial.transform import Rotation as R
 
 from custom_ros_messages.action import FrameTask
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.ros2.utility import input_pose
 
 class FrameTaskClient(Node):
     def __init__(self):
@@ -72,21 +69,6 @@ class FrameTaskClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
 
-def list_to_pose(values):
-    assert(len(values) == 6), 'Please enter a pose of 6 elements'
-    x, y, z, roll, pitch, yaw = values
-    pose = Pose()
-    pose.position.x = x
-    pose.position.y = y
-    pose.position.z = z
-    quat = R.from_euler('xyz', [roll, pitch, yaw], degrees=False).as_quat()  # Changed to degrees=False since we convert to radians earlier
-    pose.orientation.x = quat[0]
-    pose.orientation.y = quat[1]
-    pose.orientation.z = quat[2]
-    pose.orientation.w = quat[3]
-
-    return pose
-
 def input_keyword_or_frame_task():
     '''
     Ask user for keyword command or manual frame task input
@@ -117,21 +99,9 @@ def input_keyword_or_frame_task():
 def input_frame_task():
     '''Get frame name and pose from user'''
     frame_name = input('Enter frame name: ')
-    while True:
-        input_pose = input('Enter x y z roll pitch yaw (separated by space): ')
-        parts = input_pose.strip().split()
+    target_pose = input_pose()
 
-        if len(parts) != 6:
-            print('Invalid input. Please enter exactly 6 values.')
-            continue
-        try:
-            values = [float(val) for val in parts]
-            # degrees to radians for roll, pitch, yaw
-            values[3:] = np.deg2rad(values[3:])
-            return frame_name, list_to_pose(values)
-        except ValueError:
-            print('Invalid input. Make sure all 6 values are numeric.')
-            continue
+    return frame_name, target_pose
 
 def main(args=None):
     rclpy.init(args=args)

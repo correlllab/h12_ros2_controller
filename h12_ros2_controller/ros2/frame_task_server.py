@@ -1,12 +1,11 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
-from geometry_msgs.msg import Pose, PoseStamped, PoseArray
+from geometry_msgs.msg import Pose, PoseArray
 
 import time
 import asyncio
 import numpy as np
-from pyquaternion import Quaternion
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
@@ -15,6 +14,7 @@ from custom_ros_messages.action import FrameTask
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
+from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class FrameTaskServer(Node):
     def __init__(self,
@@ -66,35 +66,10 @@ class FrameTaskServer(Node):
         # publish frame poses
         frame_poses = PoseArray()
         frame_poses.poses = [
-            self._matrix_to_pose(self.controller.get_frame_transformation(name))
+            matrix_to_pose(self.controller.get_frame_transformation(name))
             for name in self.frame_names
         ]
         self.frame_poses_publisher.publish(frame_poses)
-
-    @staticmethod
-    def _pose_to_matrix(pose):
-        position = pose.position
-        orientation = pose.orientation
-        rotation = Quaternion(
-            [orientation.w, orientation.x, orientation.y, orientation.z]
-        ).rotation_matrix
-        matrix = np.eye(4)
-        matrix[:3, :3] = rotation
-        matrix[:3, 3] = [position.x, position.y, position.z]
-        return matrix
-
-    @staticmethod
-    def _matrix_to_pose(matrix):
-        pose = Pose()
-        pose.position.x = matrix[0, 3]
-        pose.position.y = matrix[1, 3]
-        pose.position.z = matrix[2, 3]
-        rotation = Quaternion(matrix=matrix[:3, :3])
-        pose.orientation.w = rotation.w
-        pose.orientation.x = rotation.x
-        pose.orientation.y = rotation.y
-        pose.orientation.z = rotation.z
-        return pose
 
     async def frame_task_callback(self, goal_handle):
         self.get_logger().info('Received goal')
@@ -109,7 +84,7 @@ class FrameTaskServer(Node):
         # set frame tasks
         for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
             task_name = f'{frame_name}_task'
-            self.controller.add_frame_task(task_name, frame_name, self._pose_to_matrix(frame_target))
+            self.controller.add_frame_task(task_name, frame_name, pose_to_matrix(frame_target))
 
         # update ik solver with current state
         self.controller.update_ik_solver()
