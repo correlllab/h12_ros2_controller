@@ -64,25 +64,16 @@ class DualArmClient(Node):
     def subscribe_right_ee_target(self, msg):
         self.right_ee_target = msg.pose
 
-    def send_goal(self, keyword: str='',
-                  left_target: Pose=None, right_target: Pose=None):
+    def send_dual_arm_goal(self, left_target: Pose=None, right_target: Pose=None):
         goal_msg = DualArm.Goal()
 
-        goal_msg.keyword = keyword
-        if keyword:
-            # For keyword commands, send identity matrices (will be overridden by server)
-            goal_msg.left_target = np.eye(4).flatten().tolist()
-            goal_msg.right_target = np.eye(4).flatten().tolist()
-        else:
-            # Convert poses to transformation matrices
-            if left_target is None:
-                left_target = Pose()
-            if right_target is None:
-                right_target = Pose()
-            left_matrix = self._pose_to_matrix(left_target)
-            right_matrix = self._pose_to_matrix(right_target)
-            goal_msg.left_target = left_matrix.flatten().tolist()
-            goal_msg.right_target = right_matrix.flatten().tolist()
+        # Convert poses to transformation matrices
+        if left_target is None:
+            left_target = Pose()
+        if right_target is None:
+            right_target = Pose()
+        goal_msg.left_target = left_target
+        goal_msg.right_target = right_target
 
         self.get_logger().info('Waiting for action server...')
         self.action_client.wait_for_server()
@@ -127,18 +118,6 @@ class DualArmClient(Node):
             if self.goal_handle is not None:
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal_async()
-
-    @staticmethod
-    def _pose_to_matrix(pose):
-        position = pose.position
-        orientation = pose.orientation
-        rotation = Quaternion(
-            [orientation.w, orientation.x, orientation.y, orientation.z]
-        ).rotation_matrix
-        matrix = np.eye(4)
-        matrix[:3, :3] = rotation
-        matrix[:3, 3] = [position.x, position.y, position.z]
-        return matrix
 
 def list_to_pose(values):
     assert(len(values) == 6), 'Please enter a pose of 6 elements'
@@ -201,7 +180,7 @@ def main(args=None):
     try:
         while rclpy.ok():
             keyword, left_pose, right_pose = input_keyword_or_poses()
-            node.send_goal(keyword, left_pose, right_pose)
+            node.send_dual_arm_goal(left_pose, right_pose)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

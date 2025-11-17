@@ -48,8 +48,8 @@ class FrameTaskServer(Node):
         self.action_server = ActionServer(
             self,
             FrameTask,
-            'frame_task',          # action name
-            self.execute_callback
+            'frame_task',
+            self.frame_task_callback
         )
 
     def publisher_callback(self):
@@ -96,7 +96,7 @@ class FrameTaskServer(Node):
         pose.orientation.z = rotation.z
         return pose
 
-    async def execute_callback(self, goal_handle):
+    async def frame_task_callback(self, goal_handle):
         self.get_logger().info('Received goal')
         goal = goal_handle.request
 
@@ -105,28 +105,11 @@ class FrameTaskServer(Node):
         self.frame_names = goal.frame_names
         self.frame_targets = goal.frame_targets
 
-        # goto named configuration
-        if goal.keyword in NAMED_CONFIGS:
-            q_reduced = NAMED_CONFIGS[goal_handle.request.keyword]
-            self.get_logger().info(f'Going to named configuration: {goal_handle.request.keyword}')
-            # use goto configuration as step function
-            step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
-        # unknown keyword, abort
-        elif goal.keyword != '':
-            self.get_logger().warning(f'Unknown keyword: {goal.keyword}')
-            self.get_logger().warning(f'Aborting the goal...')
-            goal_handle.abort()
-            result = FrameTask.Result()
-            result.success = False
-            return result
-        else:
-            self.get_logger().info('Going to target frame poses')
-            # set frame tasks
-            for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
-                task_name = f'{frame_name}_task'
-                self.controller.add_frame_task(task_name, frame_name, self._pose_to_matrix(frame_target))
-            # use control step as step function
-            step_function = lambda: self.controller.control_step_reduced()
+        self.get_logger().info('Going to target frame poses')
+        # set frame tasks
+        for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
+            task_name = f'{frame_name}_task'
+            self.controller.add_frame_task(task_name, frame_name, self._pose_to_matrix(frame_target))
 
         # update ik solver with current state
         self.controller.update_ik_solver()
@@ -138,7 +121,7 @@ class FrameTaskServer(Node):
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             # control one step
-            step_function()
+            self.controller.control_step_reduced()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')

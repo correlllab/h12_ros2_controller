@@ -67,7 +67,7 @@ class DualArmServer(Node):
             self,
             DualArm,
             'move_dual_arm',
-            execute_callback=self.execute_callback,
+            execute_callback=self.dual_arm_callback,
             cancel_callback=self.cancel_callback
         )
         self.get_logger().info('Controller server initialized')
@@ -116,57 +116,29 @@ class DualArmServer(Node):
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
-    async def execute_callback(self, goal_handle):
+    async def dual_arm_callback(self, goal_handle):
         self.get_logger().info('Received goal')
 
         goal = goal_handle.request
         print(f'{goal.keyword=}')
         print(f'{goal.keyword in NAMED_CONFIGS=}')
 
-        # goto named configuration
-        if goal.keyword in NAMED_CONFIGS:
-            q_reduced = NAMED_CONFIGS[goal.keyword]
-            self.get_logger().info(f'Going to named configuration: {goal.keyword}')
-            # compute the target end-effector poses from q_reduced
-            self.controller.left_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
-                self.controller.left_ee_name, q_reduced
-            )
-            self.controller.right_ee_target_transformation = self.controller.robot_model.get_frame_transformation_reduced(
-                self.controller.right_ee_name, q_reduced
-            )
-            # use goto configuration as step function
-            step_function = lambda: self.controller.goto_reduced_configuration(q_reduced)
-        # unknown keyword, abort
-        elif goal.keyword != '':
-            self.get_logger().warning(f'Unknown keyword: {goal.keyword}')
-            self.get_logger().warning(f'Aborting the goal...')
-            goal_handle.abort()
-            result = DualArm.Result()
-            result.success = False
-            return result
-        # goto end-effector poses
-        else:
-            self.get_logger().info('Going to target end-effector poses')
-            # set target
-            self.controller.left_ee_target_transformation = np.array(
-                goal.left_target, dtype=np.float64
-            ).reshape(4, 4)
-            self.controller.right_ee_target_transformation = np.array(
-                goal.right_target, dtype=np.float64
-            ).reshape(4, 4)
-            # use control dual arm as step function
-            step_function = lambda: self.controller.control_dual_arm_step()
+        self.get_logger().info('Going to target end-effector poses')
+        # set target
+        self.controller.left_ee_target_transformation = self._pose_to_matrix(goal.left_target)
+        self.controller.right_ee_target_transformation = self._pose_to_matrix(goal.right_target)
 
         # update ik solver with current state
         self.controller.update_ik_solver()
 
         # main loop
         start_time = time.time()
-        timeout = goal.duration if goal.duration > 0.0 else self.timeout
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             # control one step
-            step_function()
+            self.controller.control_dual_arm_step()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
