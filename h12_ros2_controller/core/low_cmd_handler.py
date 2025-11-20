@@ -124,7 +124,7 @@ class LowCmdHandler:
 
     def _safety_checker(self):
         '''Background thread for safety monitoring'''
-        while self._checking_safety:
+        while self._checking_safety and not self._estopped:
             start_time = time.time()
             state = self._robot_model.state
             for i in range(len(state['q'])):
