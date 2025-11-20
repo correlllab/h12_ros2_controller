@@ -111,7 +111,7 @@ class FrameTaskClient(Node):
         if key == keyboard.Key.backspace:
             if self.goal_handle is not None:
                 self.get_logger().info('Cancelling goal...')
-                self.goal_handle.cancel_goal_async()
+                self.goal_handle.cancel_goal()
 
 def input_config_name_or_frame_task():
     '''
