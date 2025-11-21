@@ -230,6 +230,6 @@ if __name__ == '__main__':
         0.3, 0.3, # wrist pitch
         0.8, -0.8, # wrist yaw
     ]
-    steps = 50
+    steps = 100
 
     main(joint_name_list, q_start_list, q_end_list, steps, savepath)
