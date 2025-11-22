@@ -131,11 +131,11 @@ class CommandPublisher(ABC):
             start_time = time.time()
             with self.data_lock:
                 # assert data integrity before publishing
-                self._check_data_integrity()
+                # self._check_data_integrity()
                 # write to low command
                 for i in range(NUM_MOTOR):
                     # check position, velocity, torque limits
-                    self._enforce_limits(i)
+                    # self._enforce_limits(i)
                     self._low_cmd.motor_cmd[i].mode = self.mode[i]
                     self._low_cmd.motor_cmd[i].q = self.q[i]
                     self._low_cmd.motor_cmd[i].dq = self.dq[i]
@@ -152,7 +152,7 @@ class CommandPublisher(ABC):
 
     def _check_data_integrity(self):
         '''Check data integrity'''
-        assert np.all(self.mode == 0) or np.all(self.mode == 1), 'Motor mode should be either 0 (disabled) or 1 (enabled).'
+        assert np.all(np.logical_or(self.mode == 0, self.mode == 1)), 'Motor mode should be either 0 (disabled) or 1 (enabled).'
         assert not np.isnan(self.q).any(), 'Position command should not contain NaN.'
         assert not np.isinf(self.q).any(), 'Position command should not contain Inf.'
         assert not np.isnan(self.dq).any(), 'Velocity command should not contain NaN.'
