@@ -98,11 +98,11 @@ class DualArmServer(Node):
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
-    async def dual_arm_callback(self, goal_handle):
-        self.get_logger().info('Received goal')
-        goal = goal_handle.request
-        print(f'{goal.keyword=}')
-        print(f'{goal.keyword in NAMED_CONFIGS=}')
+    def dual_arm_callback(self, goal_handle):
+        with self._controller_lock:
+            self.get_logger().info('Received goal')
+            goal = goal_handle.request
+            self.get_logger().info(str(goal))
 
             self.get_logger().info('Going to target end-effector poses')
             # set target
@@ -161,6 +161,7 @@ class DualArmServer(Node):
         with self._controller_lock:
             self.get_logger().info('Received named config goal')
             goal = goal_handle.request
+            self.get_logger().info(str(goal))
 
             # check if the named config exists
             config_name = goal.config_name
