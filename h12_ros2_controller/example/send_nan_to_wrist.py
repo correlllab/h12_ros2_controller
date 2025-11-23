@@ -36,8 +36,9 @@ def main():
     dq = []
     ddq = []
     tau = []
-    while time.time() - start_time < 0.1:
+    while time.time() - start_time < 0.5:
         command_publisher.q[joint_idx] = np.nan
+        command_publisher.tau[joint_idx] = np.nan
         q.append(robot_model.state['q'][joint_idx])
         dq.append(robot_model.state['dq'][joint_idx])
         ddq.append(robot_model.state['ddq'][joint_idx])

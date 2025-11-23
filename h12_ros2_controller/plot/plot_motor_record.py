@@ -124,6 +124,9 @@ if __name__ == '__main__':
 
     folder = args.folder
     savepath = f'figures/motor_record/{folder}'
+    filename = f'data/motor_record/{folder}/left_wrist_yaw_joint.npz'
+    savepath = f'figures/motor_record/{folder}'
+    plot_recording(filename, savepath)
     joint_name_list = [
         # 'hip_yaw_joint', 'hip_pitch_joint', 'hip_roll_joint',
         # 'knee_joint', 'ankle_pitch_joint', 'ankle_roll_joint',

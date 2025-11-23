@@ -190,12 +190,12 @@ if __name__ == '__main__':
         # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
         # 'left_ankle_roll_joint', 'right_ankle_roll_joint',
         # 'torso_joint',
-        'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
-        'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
-        'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
-        'left_elbow_joint', 'right_elbow_joint',
-        'left_wrist_roll_joint', 'right_wrist_roll_joint',
-        'left_wrist_pitch_joint', 'right_wrist_pitch_joint',
+        # 'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
+        # 'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
+        # 'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
+        # 'left_elbow_joint', 'right_elbow_joint',
+        # 'left_wrist_roll_joint', 'right_wrist_roll_joint',
+        # 'left_wrist_pitch_joint', 'right_wrist_pitch_joint',
         'left_wrist_yaw_joint', 'right_wrist_yaw_joint',
     ]
     q_start_list = [
@@ -206,12 +206,12 @@ if __name__ == '__main__':
         # 0.0, 0.0,
         # 0.0, 0.0,
         # 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
+        # 0.0, 0.0,
         0.0, 0.0,
     ]
     q_end_list = [
@@ -222,12 +222,12 @@ if __name__ == '__main__':
         # -0.5, -0.5, # ankle pitch
         # 0.25, -0.25, # ankle roll
         # 1.0, # torso
-        -0.5, -0.5, # shoulder pitch
-        1.0, -1.0, # shoulder roll
-        1.0, -1.0, # shoulder yaw
-        -0.5, -0.5, # elbow
-        1.0, -1.0, # wrist roll
-        0.3, 0.3, # wrist pitch
+        # -0.5, -0.5, # shoulder pitch
+        # 1.0, -1.0, # shoulder roll
+        # 1.0, -1.0, # shoulder yaw
+        # -0.5, -0.5, # elbow
+        # 1.0, -1.0, # wrist roll
+        # 0.3, 0.3, # wrist pitch
         0.8, -0.8, # wrist yaw
     ]
     steps = 100
