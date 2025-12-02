@@ -131,11 +131,11 @@ class CommandPublisher(ABC):
             start_time = time.time()
             with self.data_lock:
                 # assert data integrity before publishing
-                # self._check_data_integrity()
+                self._check_data_integrity()
                 # write to low command
                 for i in range(NUM_MOTOR):
                     # check position, velocity, torque limits
-                    # self._enforce_limits(i)
+                    self._enforce_limits(i)
                     self._low_cmd.motor_cmd[i].mode = self.mode[i]
                     self._low_cmd.motor_cmd[i].q = self.q[i]
                     self._low_cmd.motor_cmd[i].dq = self.dq[i]
