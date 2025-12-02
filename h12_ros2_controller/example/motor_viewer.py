@@ -14,7 +14,7 @@ def print_joint_positions(robot_model, joint_groups):
     '''Print joint positions in an organized format by groups'''
     state = robot_model.state
 
-    print('\n' + '='*80)
+    print('='*80)
     print(f'{"JOINT POSITIONS":^80}')
     print('='*80)
 
@@ -89,7 +89,7 @@ def main(damping_value, update_rate):
             time.sleep(1.0 / update_rate)
 
     except KeyboardInterrupt:
-        print('\nStopping motor position checker...')
+        print('Stopping motor position checker...')
 
     finally:
         # shutdown
