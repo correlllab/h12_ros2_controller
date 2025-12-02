@@ -1,7 +1,7 @@
 import numpy as np
 import pinocchio as pin
 
-from h12_ros2_controller.core.upper_controller import UpperController
+from h12_ros2_controller.core.controller.upper_controller import UpperController
 from h12_ros2_controller.utility.joint_definition import LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class ArmController(UpperController):
@@ -11,11 +11,11 @@ class ArmController(UpperController):
                  srdf_sphere_path: str,
                  dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
                  visualize=False,
-                 use_sport_mode=False):
+                 sport_mode=False):
         # initialize base controller
         super().__init__(urdf_path, urdf_sphere_path, srdf_sphere_path,
                          dt, v_lim, w_lim, dq_lim, d_min,
-                         visualize, use_sport_mode)
+                         visualize, sport_mode)
 
         # add frame tasks to IK solver
         self.left_task_name = 'left_ee'

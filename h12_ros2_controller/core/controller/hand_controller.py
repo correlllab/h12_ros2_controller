@@ -10,7 +10,7 @@ class HandController:
     @property
     def q_right(self):
         '''
-        Get the right hand angles.
+        Get the right hand angles
         0 for close, 1 for open
         #index 0:pinky
         #index 1:ring
@@ -24,7 +24,7 @@ class HandController:
     @property
     def q_left(self):
         '''
-        Get the left hand angles.
+        Get the left hand angles
         0 for close, 1 for open
         #index 0:pinky
         #index 1:ring
@@ -37,7 +37,7 @@ class HandController:
 
     def ctrl_right(self, right_arr):
         '''
-        Control the right hand with right angles.
+        Control the right hand with right angles
         0 for close, 1 for open
         #index 0:pinky
         #index 1:ring
@@ -51,7 +51,7 @@ class HandController:
 
     def ctrl_left(self, left_arr):
         '''
-        Control the left hand with left angles.
+        Control the left hand with left angles
         0 for close, 1 for open
         #index 0:pinky
         #index 1:ring
@@ -65,7 +65,7 @@ class HandController:
 
     def ctrl(self, right_arr, left_arr):
         '''
-        Control the hand with right and left angles.
+        Control the hand with right and left angles
         0 for close, 1 for open
         #index 0:pinky
         #index 1:ring

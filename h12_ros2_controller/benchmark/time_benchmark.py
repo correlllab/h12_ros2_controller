@@ -8,7 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.arm_controller import ArmController
+from h12_ros2_controller.core.controller.arm_controller import ArmController
 
 class TimeBenchmark:
     def __init__(self, arm_controller, target_poses,
@@ -111,11 +111,8 @@ if __name__ == '__main__':
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
-                                   v_lim=1.0,
-                                   w_lim=2.0,
-                                   dq_lim=2.0,
-                                   d_min=0.02,
-                                   visualize=True)
+                                   visualize=True,
+                                   sport_mode=False)
 
     target_poses = [
         np.array([0.3, 0.2, 0.2, 0, 0, 0]),

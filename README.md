@@ -41,13 +41,17 @@ Controller of the h12 robot with ROS2 services
 - `figures` contains generated figures.
 - `h12_ros2_controller/`: contains source code.
     - `core/`: contains the core implementaiton of robot kinematics solver, controller and communication interface.
-        - `arm_controller.py` provides functions to control end-effectors and query their states.
+        - `controller/` contains different controllers.
+            - `hand_controller.py` tracks hand states and commands finger positions.
+            - `upper_controller.py` is the base class for upper body controllers (ArmController, FrameController, ImpedanceController, GravityCompController).
+            - `arm_controller.py` provides functions to control end-effectors and query their states.
+            - `frame_controller.py` provides functions to add frame tasks for any frame and move the upper body accordingly.
+            - `gravity_comp_controller.py` provides functions to fix upper body in any fixed pose using I-control.
+            - `impedance_controller.py` provides functions to control end-effectors with impedance.
         - `channel_interface.py` implements a publisher for motor commands and a subscriber for motor states using the Unitree Python SDK.
-        - `hand_controller.py` tracks hand states and commands finger positions.
         - `ik_solver` solves inverse kinematics with self-collision avoidance.
+        - `low_cmd_handler` sends command through `low_cmd_publisher` and monitors robot states from `robot_model` to trigger active e-stop.
         - `robot_model.py` tracks robot states and provides useful functions for kinematics, Jacobians, etc., using Pinocchio.
-        - `upper_controller.py` is the base class for upper body controllers (ArmController & UpperTaskController).
-        - `upper_task_controller.py` provides functions to add frame tasks for any frame and move the upper body accordingly.
     - `plot/` contains scripts to plot figures.
     - `example/` contains example scripts using core functionalities without ros dependencies.
     - `utility/` contains useful scripts to inspect robot descriptions, process collision pairs, and inspect joint velocities.
@@ -71,13 +75,9 @@ Controller of the h12 robot with ROS2 services
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.03,
-                                   v_lim=1.0,
-                                   w_lim=2.0,
-                                   dq_lim=2.0,
-                                   d_min=0.02,
+                                   dt=0.02,
                                    visualize=True, # use this to turn on meshcat visualization
-                                   use_sport_mode=use_sport_mode)
+                                   sport_mode=False)
     ```
 
 - Change `arm_controller.control_dual_arm_step()` to `arm_controller.sim_dual_arm_step()`

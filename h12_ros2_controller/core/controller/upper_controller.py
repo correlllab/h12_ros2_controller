@@ -1,13 +1,10 @@
-import os
 import time
-import threading
 import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import CommandPublisher, ArmSDKPublisher
-from h12_ros2_controller.utility.robot_setting import setup_gains
+from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -15,16 +12,16 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
+                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=1.0, d_min=0.02,
                  visualize=False,
-                 use_sport_mode=False):
+                 sport_mode=False):
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
-        self.vlim = v_lim
-        self.wlim = w_lim
+        self.v_lim = v_lim
+        self.w_lim = w_lim
         self.dq_lim = dq_lim
-        self.dmin = d_min
+        self.d_min = d_min
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -38,34 +35,30 @@ class UpperController:
         self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
         self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
 
-        # initialize command publisher for upper body motors
-        if use_sport_mode:
-            self.command_publisher = ArmSDKPublisher()
-        else:
-            self.command_publisher = CommandPublisher()
-
-        setup_gains(self.command_publisher)
+        # intialize low cmd publisher
+        self.low_cmd_handler = LowCmdHandler(self.robot_model,
+                                             sport_mode=sport_mode)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
-        self.command_publisher.enable_motor(self.enabled_ids, init_q)
+        self.low_cmd_handler.enable_motors(self.enabled_ids, init_q)
 
         # enable torso motor such that it's locked in place
-        self.command_publisher.enable_motor([BODY_JOINTS.index('torso_joint')], [0.0])
+        self.low_cmd_handler.enable_motors([BODY_JOINTS.index('torso_joint')], [0.0])
 
         # enable lower body motor
         lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
         lower_init = self.robot_model.state['q'][lower_ids]
-        self.command_publisher.enable_motor(lower_ids, lower_init)
+        self.low_cmd_handler.enable_motors(lower_ids, lower_init)
 
         # start publisher
-        self.command_publisher.start_publisher()
+        self.low_cmd_handler.start()
 
         # initialize IK solver
         self.ik_solver = IKSolver(
             robot_model=self.robot_model,
             dt=self.dt,
-            dmin=self.dmin
+            d_min=self.d_min
         )
 
         if self.visualize:
@@ -74,22 +67,6 @@ class UpperController:
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
-
-        # variables recording states
-        self._recording = False
-        self._com_arr = []
-        self._q_arr = []
-        self._dq_arr = []
-        self._tau_arr = []
-        self._q_cmd_arr = []
-        self._dq_cmd_arr = []
-        self._tau_cmd_arr = []
-        self._torque_cmd_arr = []
-
-        # background saving variables
-        self._save_path = None
-        self._save_filename = None
-        self._save_interval = self.dt
 
     '''
     joint position for left and right arms
@@ -172,6 +149,13 @@ class UpperController:
             # visualize center of mass
             self.robot_model.visualize_center_of_mass()
 
+    @property
+    def configuration_error(self):
+        return self.ik_solver.compute_error(
+            self.ik_solver.config_task,
+            self.robot_model.state['q']
+        )
+
     def goto_configuration(self, q):
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
@@ -191,6 +175,13 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.update_robot_model()
+
+    @property
+    def reduced_configuration_error(self):
+        return self.ik_solver.compute_error_reduced(
+            self.ik_solver.config_task,
+            self.robot_model.state_reduced['q']
+        )
 
     def goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
@@ -215,11 +206,10 @@ class UpperController:
     def lock_configuration(self, q):
         # compute gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(q)
-
+        # always commanding zero velocity
+        dq = np.zeros(self.robot_model.model.nv)
         # send command to lock the robot in current configuration
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
+        self.low_cmd_handler.set_joint_commands( q, dq, tau)
         self.update_robot_model()
 
     def limit_joint_vel(self, vel):
@@ -235,17 +225,17 @@ class UpperController:
         right_dq_scaler = np.min(self.dq_lim / (np.abs(vel[RIGHT_ARM_INDEX]) + 1e-6))
 
         # scale left and right end effectors
-        left_scaler = np.min([
+        left_scaler = min([
             1.0,
             left_dq_scaler,
-            self.vlim / (np.linalg.norm(v_left) + 1e-6),
-            self.wlim / (np.linalg.norm(w_left) + 1e-6)
+            self.v_lim / (np.linalg.norm(v_left) + 1e-6),
+            self.w_lim / (np.linalg.norm(w_left) + 1e-6)
         ])
-        right_scaler = np.min([
+        right_scaler = min([
             1.0,
             right_dq_scaler,
-            self.vlim / (np.linalg.norm(v_right) + 1e-6),
-            self.wlim / (np.linalg.norm(w_right) + 1e-6)
+            self.v_lim / (np.linalg.norm(v_right) + 1e-6),
+            self.w_lim / (np.linalg.norm(w_right) + 1e-6)
         ])
 
         vel_scaled = np.zeros_like(vel)
@@ -258,93 +248,32 @@ class UpperController:
     def apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
-        # # send the position command to robot
-        self.command_publisher.q = q
-        self.command_publisher.dq = np.zeros(self.robot_model.model.nv)
-        self.command_publisher.tau = tau
-
-        if self._recording:
-            # record center of mass
-            com = self.robot_model.get_center_of_mass()
-            # get values for upper body joints only
-            state = self.robot_model.state
-            q = state['q'][self.upper_ids]
-            dq = state['dq'][self.upper_ids]
-            tau = state['tau'][self.upper_ids]
-            q_cmd = self.command_publisher.q[self.upper_ids]
-            dq_cmd = self.command_publisher.dq[self.upper_ids]
-            tau_cmd = self.command_publisher.tau[self.upper_ids]
-            kp = self.command_publisher.kp[self.upper_ids]
-            kd = self.command_publisher.kd[self.upper_ids]
-            # record
-            self._com_arr.append(com)
-            self._q_arr.append(q)
-            self._dq_arr.append(dq)
-            self._tau_arr.append(tau)
-            self._q_cmd_arr.append(q_cmd)
-            self._dq_cmd_arr.append(dq_cmd)
-            self._tau_cmd_arr.append(tau_cmd)
-            self._torque_cmd_arr.append(
-                tau_cmd + kp * (q_cmd - q) + kd * (dq_cmd - dq)
-            )
+        dq = np.zeros(self.robot_model.model.nv)
+        self.low_cmd_handler.set_joint_commands(q, dq, tau)
 
     def estop(self):
-        self.command_publisher.estop()
+        self.low_cmd_handler.estop()
 
     def shutdown(self):
         self.stop_recording()
         self.robot_model.shutdown()
-        self.command_publisher.shutdown()
+        self.low_cmd_handler.shutdown()
 
     def damp_mode(self, kd=3.0):
-        # zero out kp
-        self.command_publisher.kp.fill(0.0)
-        # gain on kd for damping
-        self.command_publisher.kd.fill(kd)
-        self.command_publisher.dq.fill(0.0)
+        kp = np.zeros(self.robot_model.model.nv)
+        kd = kd * np.ones(self.robot_model.model.nv)
+        dq = np.zeros(self.robot_model.model.nv)
+        self.low_cmd_handler.set_joint_commands(dq=dq, kp=kp, kd=kd)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
-    def start_recording(self, save_path, filename):
+    def start_recording(self, save_path, filename, record_interval=0.01):
         '''Start recording with background saving'''
-        self._recording = True
-        self._save_path = save_path
-        self._save_filename = filename
-        # start daemon thread - no lifecycle management needed
-        threading.Thread(target=self._save_worker, daemon=True).start()
+        self.low_cmd_handler.start_recording(self.upper_ids, save_path, filename, record_interval)
 
     def stop_recording(self):
         '''Stop recording'''
-        self._recording = False
-        print(f'Recording stopped; data saved to {self._save_path}/{self._save_filename}.npz')
+        self.low_cmd_handler.stop_recording()
 
     def clear_recording(self):
-        self._com_arr = []
-        self._q_arr = []
-        self._dq_arr = []
-        self._tau_arr = []
-        self._q_cmd_arr = []
-        self._dq_cmd_arr = []
-        self._tau_cmd_arr = []
-        self._torque_cmd_arr = []
-
-    def _save_worker(self):
-        '''Background worker thread for constant saving'''
-        while self._recording:
-            try:
-                filename = f'{self._save_path}/{self._save_filename}.npz'
-                # save logic moved here
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
-                np.savez(filename,
-                         ids=np.array(self.upper_ids),
-                         com=self._com_arr,
-                         q=self._q_arr,
-                         dq=self._dq_arr,
-                         tau=self._tau_arr,
-                         q_cmd=self._q_cmd_arr,
-                         dq_cmd=self._dq_cmd_arr,
-                         tau_cmd=self._tau_cmd_arr,
-                         torque_cmd=self._torque_cmd_arr)
-            except Exception as e:
-                print(f'Failed to auto-save recording: {str(e)}')
-
-            time.sleep(self._save_interval)
+        '''Clear recorded'''
+        self.low_cmd_handler.clear_recording()

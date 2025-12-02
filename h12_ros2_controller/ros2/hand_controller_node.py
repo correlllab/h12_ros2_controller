@@ -4,7 +4,7 @@ from std_msgs.msg import Float64MultiArray
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from h12_ros2_controller.core.hand_controller import HandController
+from h12_ros2_controller.core.controller.hand_controller import HandController
 
 '''
 Finger angles definition

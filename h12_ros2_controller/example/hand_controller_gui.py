@@ -7,7 +7,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.core.hand_controller import HandController
+from h12_ros2_controller.core.controller.hand_controller import HandController
 
 def main():
     ChannelFactoryInitialize()
