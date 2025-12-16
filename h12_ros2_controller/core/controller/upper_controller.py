@@ -148,6 +148,8 @@ class UpperController:
             self.robot_model.update_visualizer()
             # visualize center of mass
             self.robot_model.visualize_center_of_mass()
+            # visualize zmp
+            self.robot_model.visualize_zmp()
 
     @property
     def configuration_error(self):

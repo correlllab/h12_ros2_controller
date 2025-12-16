@@ -158,6 +158,15 @@ class RobotModel:
         viewer['center_of_mass'].set_transform(transform)
         viewer['center_of_mass'].set_property('color', (1.0, 0.5, 0.0, 0.8))
 
+    def visualize_zmp(self):
+        zmp_pos = self.compute_zmp()
+        transform = np.eye(4)
+        transform[:3, 3] = zmp_pos
+        viewer = self.viz.viewer
+        viewer['zmp'].set_object(geo.Sphere(0.02))
+        viewer['zmp'].set_transform(transform)
+        viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))
+
     def visualize_wrench(self, link_name):
         # get frame position and wrench
         wrench = self.get_frame_wrench(link_name)
@@ -354,6 +363,33 @@ class RobotModel:
         jac = self.get_frame_jacobian(frame_name, q)
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.state['tau'] - tau_gravity)
         return wrench
+
+    def compute_zmp(self, q: np.ndarray=None):
+        q = self.state['q'] if q is None else q
+        com = self.get_center_of_mass(q)
+
+        # centroidal momentum time derivative
+        pin.computeCentroidalMomentumTimeVariation(
+            self.model, self.data, q, self.state['dq'], self.state['ddq']
+        )
+        dhg = self.data.dhg
+
+        F_ext = dhg.linear
+        tau_ext = dhg.angular
+
+        # gravity force
+        g = np.array([0, 0, -9.81])
+        m = pin.computeTotalMass(self.model)
+        F_g = m * g
+
+        tau_ext_contact = tau_ext - np.cross(com, F_ext + F_g)
+        F_ext_contact = F_ext - F_g
+
+        zmp_x = -tau_ext_contact[1] / F_ext_contact[2]
+        zmp_y = tau_ext_contact[0] / F_ext_contact[2]
+        zmp = np.array([zmp_x, zmp_y, 0.0])
+
+        return zmp
 
     def check_valid(self, q):
         '''Check if the given joint position is valid'''
