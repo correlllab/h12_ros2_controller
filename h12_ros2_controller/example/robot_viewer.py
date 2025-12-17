@@ -19,6 +19,8 @@ def main():
     while True:
         robot_model.update_kinematics()
         robot_model.update_visualizer()
+        robot_model.visualize_com()
+        robot_model.visualize_zmp()
         time.sleep(0.01)
 
 if __name__ == '__main__':

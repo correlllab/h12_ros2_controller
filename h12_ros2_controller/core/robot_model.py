@@ -149,17 +149,17 @@ class RobotModel:
             print(err)
             exit(0)
 
-    def visualize_center_of_mass(self):
-        com_pos = self.get_center_of_mass()
+    def visualize_com(self):
+        com_pos = self.get_com()
         transform = np.eye(4)
         transform[:3, 3] = com_pos
         viewer = self.viz.viewer
-        viewer['center_of_mass'].set_object(geo.Sphere(0.02))
-        viewer['center_of_mass'].set_transform(transform)
-        viewer['center_of_mass'].set_property('color', (1.0, 0.5, 0.0, 0.8))
+        viewer['com'].set_object(geo.Sphere(0.02))
+        viewer['com'].set_transform(transform)
+        viewer['com'].set_property('color', (1.0, 0.5, 0.0, 0.8))
 
     def visualize_zmp(self):
-        zmp_pos = self.compute_zmp()
+        zmp_pos = self.get_zmp()
         transform = np.eye(4)
         transform[:3, 3] = zmp_pos
         viewer = self.viz.viewer
@@ -234,15 +234,42 @@ class RobotModel:
         if self.viz is not None:
             self.viz.display()
 
-    def get_center_of_mass(self, q: np.ndarray=None):
+    def get_com(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q
         com = pin.centerOfMass(self.model, self.data, q)
         return com
 
-    def get_center_of_mass_reduced(self, q_reduced: np.ndarray=None):
+    def get_com_reduced(self, q_reduced: np.ndarray=None):
         q_reduced = self.state_reduced['q'] if q_reduced is None else q_reduced
         com = pin.centerOfMass(self.model_reduced, self.data_reduced, q_reduced)
         return com
+
+    def get_zmp(self, q: np.ndarray=None):
+        q = self.state['q'] if q is None else q
+        com = self.get_com(q)
+
+        # centroidal momentum time derivative
+        pin.computeCentroidalMomentumTimeVariation(
+            self.model, self.data, q, self.state['dq'], self.state['ddq']
+        )
+        dhg = self.data.dhg
+
+        F_ext = dhg.linear
+        tau_ext = dhg.angular
+
+        # gravity force
+        g = np.array([0, 0, -9.81])
+        m = pin.computeTotalMass(self.model)
+        F_g = m * g
+
+        tau_ext_contact = tau_ext - np.cross(com, F_ext + F_g)
+        F_ext_contact = F_ext - F_g
+
+        zmp_x = -tau_ext_contact[1] / F_ext_contact[2]
+        zmp_y = tau_ext_contact[0] / F_ext_contact[2]
+        zmp = np.array([zmp_x, zmp_y, 0.0])
+
+        return zmp
 
     def get_gravity_compensation(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q
@@ -352,11 +379,6 @@ class RobotModel:
         )
         return np.concatenate([twist.linear, twist.angular])
 
-    def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
-        jac = self.get_frame_jacobian(frame_name)
-        twist = jac @ dq
-        return twist
-
     def get_frame_wrench(self, frame_name: str, q: np.ndarray=None):
         q = self.state['q'] if q is None else q
         tau_gravity = self.get_gravity_compensation(q)
@@ -364,32 +386,10 @@ class RobotModel:
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.state['tau'] - tau_gravity)
         return wrench
 
-    def compute_zmp(self, q: np.ndarray=None):
-        q = self.state['q'] if q is None else q
-        com = self.get_center_of_mass(q)
-
-        # centroidal momentum time derivative
-        pin.computeCentroidalMomentumTimeVariation(
-            self.model, self.data, q, self.state['dq'], self.state['ddq']
-        )
-        dhg = self.data.dhg
-
-        F_ext = dhg.linear
-        tau_ext = dhg.angular
-
-        # gravity force
-        g = np.array([0, 0, -9.81])
-        m = pin.computeTotalMass(self.model)
-        F_g = m * g
-
-        tau_ext_contact = tau_ext - np.cross(com, F_ext + F_g)
-        F_ext_contact = F_ext - F_g
-
-        zmp_x = -tau_ext_contact[1] / F_ext_contact[2]
-        zmp_y = tau_ext_contact[0] / F_ext_contact[2]
-        zmp = np.array([zmp_x, zmp_y, 0.0])
-
-        return zmp
+    def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
+        jac = self.get_frame_jacobian(frame_name)
+        twist = jac @ dq
+        return twist
 
     def check_valid(self, q):
         '''Check if the given joint position is valid'''

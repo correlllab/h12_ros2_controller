@@ -147,7 +147,7 @@ class UpperController:
             self.ik_solver.update_visualizer()
             self.robot_model.update_visualizer()
             # visualize center of mass
-            self.robot_model.visualize_center_of_mass()
+            self.robot_model.visualize_com()
             # visualize zmp
             self.robot_model.visualize_zmp()
 
