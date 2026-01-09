@@ -14,6 +14,7 @@ from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState_default
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_default
+from unitree_sdk2py.idl.default import unitree_hg_msg_dds__IMUState_ as IMUState_default
 
 from h12_ros2_controller.utility.robot_setting import JOINT_POSITION_CLIP_LIMITS, JOINT_VELOCITY_CLIP_LIMITS, JOINT_TORQUE_CLIP_LIMITS
 
@@ -32,6 +33,7 @@ class StateSubscriber:
     def __init__(self):
         # variable tracking states
         self._time_stamp = 0.0
+        self._imu_state = IMUState_default()
         self._mode = np.zeros(NUM_MOTOR, dtype=np.uint8)
         self._q = np.zeros(NUM_MOTOR, dtype=np.float32)
         self._dq = np.zeros(NUM_MOTOR, dtype=np.float32)
@@ -50,6 +52,7 @@ class StateSubscriber:
     def _subscribe_low_state(self, msg: LowState_):
         with self._subscriber_lock:
             self._time_stamp = time.time()
+            self._imu_state = msg.imu_state
             for i in range(NUM_MOTOR):
                 self._mode[i] = msg.motor_state[i].mode
                 self._q[i] = msg.motor_state[i].q
@@ -65,6 +68,8 @@ class StateSubscriber:
     def state(self):
         with self._subscriber_lock:
             return {
+                'time_stamp': self._time_stamp,
+                'imu_state': self._imu_state,
                 'mode': self._mode.copy(),
                 'q': self._q.copy(),
                 'dq': self._dq.copy(),

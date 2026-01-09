@@ -106,9 +106,14 @@ class RobotModel:
 
     @property
     def state_reduced(self):
+        mask_keys = {'mode', 'q', 'dq', 'ddq', 'tau', 'vol', 'motor_state', 'temperature', 'sensor'}
         state_reduced = {}
         for k, v in self.state.items():
-            state_reduced[k] = np.copy(v[self.reduced_mask])
+            if k in mask_keys:
+                assert v.shape[0] == self.reduced_mask.size, 'mask length mismatch'
+                state_reduced[k] = np.copy(v[self.reduced_mask])
+            else:
+                state_reduced[k] = v
         return state_reduced
 
     @property
