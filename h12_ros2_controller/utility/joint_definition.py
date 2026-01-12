@@ -1,3 +1,9 @@
+# free-flyer base offsets
+# q vector: [x, y, z, qx, qy, qz, qw] then motor joints
+# v vector: [vx, vy, vz, wx, wy, wz] then motor joints
+BASE_NQ = 7  # position (3) + quaternion xyzw (4)
+BASE_NV = 6  # linear vel (3) + angular vel (3)
+
 ALL_JOINTS = [
     'left_hip_yaw_joint',
     'left_hip_pitch_joint',

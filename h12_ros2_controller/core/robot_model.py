@@ -74,6 +74,7 @@ class RobotModel:
         model, collision_model, visual_model = pin.buildModelsFromUrdf(
             filename=urdf_path,
             package_dirs=os.path.dirname(urdf_path),
+            root_joint=pin.JointModelFreeFlyer(),
         )
         # process to keep only the body joints
         frozen_joints = set(ALL_JOINTS) - set(BODY_JOINTS)
