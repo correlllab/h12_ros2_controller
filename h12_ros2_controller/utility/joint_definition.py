@@ -1,8 +1,12 @@
 # free-flyer base offsets
 # q vector: [x, y, z, qx, qy, qz, qw] then motor joints
 # v vector: [vx, vy, vz, wx, wy, wz] then motor joints
-BASE_NQ = 7  # position (3) + quaternion xyzw (4)
-BASE_NV = 6  # linear vel (3) + angular vel (3)
+FREEFLYER_NQ = 7  # position (3) + quaternion xyzw (4)
+FREEFLYER_NV = 6  # linear vel (3) + angular vel (3)
+
+# slice indices for free-flyer q vector (Pinocchio xyzw convention)
+FREEFLYER_POS = slice(0, 3)   # [x, y, z]
+FREEFLYER_QUAT = slice(3, 7)  # [qx, qy, qz, qw]
 
 # motor and hand degrees of freedom
 NUM_MOTOR = 27

@@ -175,13 +175,13 @@ class IKSolver:
 
     def integrate_reduced(self, vel_reduced: np.ndarray):
         '''Integrate the current reduced configuration with given reduced joint velocity'''
-        vel = self.robot_model.zero_q_body.copy()
+        vel = self.robot_model.zero_q_body
         vel[self.robot_model.reduced_mask] = vel_reduced
         self.configuration.integrate_inplace(vel, self.dt)
         self.configuration_reduced.integrate_inplace(vel_reduced, self.dt)
 
     def _ik(self, tasks, dt):
-        '''Helper function solving IK for all tasks (motor-only model)'''
+        '''Helper function solving IK on body model for all tasks'''
         return pink.solve_ik(
             self.configuration,
             tasks,
@@ -218,7 +218,7 @@ class IKSolver:
         # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
         vel = self._ik_reduced(tasks, self.dt)
         # convert reduced vel to full motor vel
-        vel_full = self.robot_model.zero_q_body.copy()
+        vel_full = self.robot_model.zero_q_body
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
@@ -272,14 +272,14 @@ class IKSolver:
                 linear_err += np.linalg.norm(err[:3])
                 angular_err += np.linalg.norm(err[3:])
             if linear_err < linear_threshold and angular_err < angular_threshold:
-                q_full = self.robot_model.zero_q_body.copy()
+                q_full = self.robot_model.zero_q_body
                 q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
                 return {
                     'q': q_full,
                     'success': True
                 }
 
-        q_full = self.robot_model.zero_q_body.copy()
+        q_full = self.robot_model.zero_q_body
         q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
         return {
             'q': q_full,
@@ -296,6 +296,6 @@ class IKSolver:
         self.config_task.set_target(q_reduced)
         vel = self._ik_reduced([self.config_task], self.dt)
         # convert reduced vel to full motor vel
-        vel_full = self.robot_model.zero_q_body.copy()
+        vel_full = self.robot_model.zero_q_body
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full

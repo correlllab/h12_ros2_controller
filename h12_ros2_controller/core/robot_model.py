@@ -1,7 +1,7 @@
 import os
-import time
 import numpy as np
 import pinocchio as pin
+from pyquaternion import Quaternion
 from pinocchio.visualize import MeshcatVisualizer
 
 import meshcat
@@ -10,16 +10,21 @@ import meshcat.geometry as geo
 import meshcat.transformations as tf
 
 from h12_ros2_controller.core.channel_interface import StateSubscriber
-from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS, BASE_NQ, BASE_NV, NUM_MOTOR
+from h12_ros2_controller.utility.joint_definition import (
+    ALL_JOINTS, BODY_JOINTS, NUM_MOTOR,
+    FREEFLYER_NQ, FREEFLYER_NV,
+    FREEFLYER_POS, FREEFLYER_QUAT
+)
 
 class RobotModel:
     def __init__(self, filename: str):
-        assert(os.path.splitext(filename)[1] == '.urdf'), 'Please provide a urdf file for the robot model.'
-        # model with free-flyer base for visualization and dynamics (RNEA)
+        assert(os.path.splitext(filename)[1] == '.urdf'), \
+            'Please provide a urdf file for the robot model.'
+        # full model (free-flyer) for visualization and dynamics
         self.model, _, self.visual_model = self._load_urdf_freeflyer(filename)
         self.data = self.model.createData()
 
-        # model without free-flyer for IK solver (motor joints only)
+        # model without free-flyer for IK solver (motor only)
         self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename)
         self.data_body = self.model_body.createData()
 
@@ -87,8 +92,8 @@ class RobotModel:
     @staticmethod
     def _load_urdf_freeflyer(urdf_path):
         '''
-        Load urdf with free-flyer base for visualization and dynamics
-        Returns model with nq=34 (7 base + 27 motor), nv=33 (6 base + 27 motor)
+        Load urdf with free-flyer root joint for visualization and dynamics
+        Returns full model (free-flyer) with nq=34 (7 free-flyer + 27 motor), nv=33 (6 free-flyer + 27 motor)
         '''
         model, collision_model, visual_model = pin.buildModelsFromUrdf(
             filename=urdf_path,
@@ -159,28 +164,43 @@ class RobotModel:
 
     def full_q(self, q: np.ndarray) -> np.ndarray:
         '''
-        Convert motor q (27) to full pinocchio q (34) with identity base
-        For use with model (free-flyer)
+        Convert motor q (27) to full pinocchio q (34) with pelvis orientation
+        IMU measures torso orientation, so we compensate for torso-to-pelvis transform
+        For use with full model with free-flyer base
         '''
         full_q = np.zeros(self.model.nq)
-        full_q[3:7] = [0, 0, 0, 1]  # identity quaternion xyzw
-        full_q[BASE_NQ:] = q
+        # get IMU quaternion from state if available
+        if self.state_subscriber is not None and 'imu_state' in self.state:
+            imu_quat = self.state['imu_state'].quaternion  # Unitree wxyz
+            torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
+            # get pelvis-to-torso transform from model_body
+            pin.forwardKinematics(self.model_body, self.data_body, q)
+            pin.updateFramePlacements(self.model_body, self.data_body)
+            pelvis_to_torso = self.data_body.oMf[self.model_body.getFrameId('torso_link')]
+            pelvis_to_torso_quat = Quaternion(matrix=pelvis_to_torso.rotation)
+            # pelvis_quat = torso_quat * inv(pelvis_to_torso_quat)
+            pelvis_quat = torso_quat * pelvis_to_torso_quat.inverse
+            # convert to pinocchio xyzw
+            full_q[FREEFLYER_QUAT] = [pelvis_quat.x, pelvis_quat.y, pelvis_quat.z, pelvis_quat.w]
+        else:
+            full_q[FREEFLYER_QUAT] = [0, 0, 0, 1]  # identity quaternion xyzw
+        full_q[FREEFLYER_NQ:] = q
         return full_q
 
     def full_v(self, v: np.ndarray) -> np.ndarray:
         '''
         Convert motor v (27) to full pinocchio v (33) with zero base velocity
-        For use with model (free-flyer)
+        For use with full model (free-flyer)
         '''
         full_v = np.zeros(self.model.nv)
-        full_v[BASE_NV:] = v
+        full_v[FREEFLYER_NV:] = v
         return full_v
 
     @property
     def zero_q(self):
-        '''Zero configuration for model (free-flyer), length 34'''
+        '''Zero configuration for full model (free-flyer), length 34'''
         zero = np.zeros(self.model.nq)
-        zero[3:7] = [0, 0, 0, 1]  # identity quaternion
+        zero[FREEFLYER_QUAT] = [0, 0, 0, 1]  # identity quaternion xyzw
         return zero
 
     @property
@@ -297,8 +317,8 @@ class RobotModel:
         print('StateSubscriber initialized.')
 
     def update_kinematics(self):
-        '''Update forward kinematics for model (free-flyer) and model_body'''
-        # update model (free-flyer) with current joint positions
+        '''Update forward kinematics for all models'''
+        # update full model (free-flyer) with current joint positions
         q_full = self.full_q(self.state['q'])
         dq_full = self.full_v(self.state['dq'])
         pin.forwardKinematics(self.model, self.data, q_full, dq_full)
@@ -366,8 +386,8 @@ class RobotModel:
                             q_full,
                             np.zeros(self.model.nv),
                             np.zeros(self.model.nv))
-        # return motor-only torques (skip base)
-        return tau_full[BASE_NV:]
+        # return motor-only torques (skip free-flyer)
+        return tau_full[FREEFLYER_NV:]
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
@@ -440,8 +460,8 @@ class RobotModel:
             frame_id,
             pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
         )
-        # return motor-only columns (skip base columns)
-        return jacobian_full[:, BASE_NV:]
+        # return motor-only columns (skip free-flyer columns)
+        return jacobian_full[:, FREEFLYER_NV:]
 
     def get_joint_jacobian(self, joint_name: str, q: np.ndarray=None):
         '''
@@ -465,8 +485,8 @@ class RobotModel:
             q_full,
             joint_id
         )
-        # return motor-only columns (skip base columns)
-        return jacobian_full[:, BASE_NV:]
+        # return motor-only columns (skip free-flyer columns)
+        return jacobian_full[:, FREEFLYER_NV:]
 
     def get_frame_twist(self, frame_name: str):
         frame_id = self.model.getFrameId(frame_name)
