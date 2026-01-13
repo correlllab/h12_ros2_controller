@@ -17,8 +17,8 @@ class PrecisionBenchmark:
         '''
         self.arm_controller = arm_controller
         self.target_poses = target_poses
-        self.neutral_pose = arm_controller.robot_model.zero_q
-        self.neutral_pose_reduced = arm_controller.robot_model.zero_q_reduced
+        self.neutral_pose = arm_controller.robot_model.zero_q_body
+        self.neutral_pose_reduced = arm_controller.robot_model.zero_q_body_reduced
 
         # parameters
         self.timeout = timeout

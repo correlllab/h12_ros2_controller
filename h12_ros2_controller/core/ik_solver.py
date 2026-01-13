@@ -13,12 +13,11 @@ class IKSolver:
                  d_min: float = 0.05):
         '''
         Initialize the IK solver with robot model and collision parameters
+        Uses model_body (no free-flyer) for IK solving
 
         @param robot_model: the robot model instance
-        @param urdf_sphere_path: path to the sphere collision URDF
-        @param srdf_sphere_path: path to the sphere collision SRDF
         @param dt: time step for IK solving
-        @param dmin: minimum distance for collision avoidance
+        @param d_min: minimum distance for collision avoidance
         '''
         self.robot_model = robot_model
         self.dt = dt
@@ -36,41 +35,41 @@ class IKSolver:
 
         assert(self.robot_model.init_collision), 'Collision model is not initialized.'
         self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(self.robot_model.collision_model_reduced.collisionPairs),
+            n_collision_pairs=len(self.robot_model.collision_model_body_reduced.collisionPairs),
             gain=20.0,
             safe_displacement_gain=1.0,
             d_min=d_min,
         )
 
-        # configurations
+        # configurations using model_body (no free-flyer)
         self.configuration = pink.Configuration(
-            robot_model.model,
-            robot_model.data,
-            robot_model.zero_q,
+            robot_model.model_body,
+            robot_model.data_body,
+            robot_model.zero_q_body,
         )
         self.configuration_reduced = pink.Configuration(
-            robot_model.model_reduced,
-            robot_model.data_reduced,
-            robot_model.zero_q_reduced,
-            collision_model=self.robot_model.collision_model_reduced,
-            collision_data=self.robot_model.collision_data_reduced
+            robot_model.model_body_reduced,
+            robot_model.data_body_reduced,
+            robot_model.zero_q_body_reduced,
+            collision_model=self.robot_model.collision_model_body_reduced,
+            collision_data=self.robot_model.collision_data_body_reduced
         )
         # set target for CoM task
         self.com_task.set_target_from_configuration(self.configuration)
         self.com_task_reduced.set_target_from_configuration(self.configuration_reduced)
 
-        # limits
+        # limits using model_body (no free-flyer)
         self.limits = [
-            pink.limits.ConfigurationLimit(robot_model.model),
-            pink.limits.VelocityLimit(robot_model.model),
-            pink.limits.AccelerationLimit(robot_model.model,
-                                          25.0 * np.ones(robot_model.model.nv))
+            pink.limits.ConfigurationLimit(robot_model.model_body),
+            pink.limits.VelocityLimit(robot_model.model_body),
+            pink.limits.AccelerationLimit(robot_model.model_body,
+                                          25.0 * np.ones(robot_model.model_body.nv))
         ]
         self.limits_reduced = [
-            pink.limits.ConfigurationLimit(robot_model.model_reduced),
-            pink.limits.VelocityLimit(robot_model.model_reduced),
-            pink.limits.AccelerationLimit(robot_model.model_reduced,
-                                          25.0 * np.ones(robot_model.model_reduced.nv))
+            pink.limits.ConfigurationLimit(robot_model.model_body_reduced),
+            pink.limits.VelocityLimit(robot_model.model_body_reduced),
+            pink.limits.AccelerationLimit(robot_model.model_body_reduced,
+                                          25.0 * np.ones(robot_model.model_body_reduced.nv))
         ]
 
         # solver selection
@@ -82,7 +81,7 @@ class IKSolver:
 
     @property
     def q(self):
-        '''Get current joint configuration'''
+        '''Get current joint configuration (motor-only, 27)'''
         return np.copy(self.configuration.q)
 
     @property
@@ -91,10 +90,10 @@ class IKSolver:
         return np.copy(self.configuration_reduced.q)
 
     def compute_error(self, task: pink.Task, q: np.ndarray) -> np.ndarray:
-        '''Compute the error for a specific task'''
+        '''Compute the error for a specific task (motor-only q, 27)'''
         configuration = pink.Configuration(
-            self.robot_model.model,
-            self.robot_model.data,
+            self.robot_model.model_body,
+            self.robot_model.data_body,
             q
         )
         return task.compute_error(configuration)
@@ -102,10 +101,10 @@ class IKSolver:
     def compute_error_reduced(self, task: pink.Task, q_reduced: np.ndarray) -> np.ndarray:
         '''Compute the error for a specific task on reduced model'''
         configuration_reduced = pink.Configuration(
-            self.robot_model.model_reduced,
-                self.robot_model.data_reduced,
-                q_reduced,
-            )
+            self.robot_model.model_body_reduced,
+            self.robot_model.data_body_reduced,
+            q_reduced,
+        )
         return task.compute_error(configuration_reduced)
 
     def add_frame_task(self, task_name: str, frame_name: str,
@@ -169,20 +168,20 @@ class IKSolver:
             task.set_target_from_configuration(self.configuration_reduced)
 
     def integrate(self, vel: np.ndarray):
-        '''Integrate the current configuration with given joint velocity'''
+        '''Integrate the current configuration with given joint velocity (motor-only, 27)'''
         vel_reduced = vel[self.robot_model.reduced_mask]
         self.configuration.integrate_inplace(vel, self.dt)
         self.configuration_reduced.integrate_inplace(vel_reduced, self.dt)
 
     def integrate_reduced(self, vel_reduced: np.ndarray):
         '''Integrate the current reduced configuration with given reduced joint velocity'''
-        vel = self.robot_model.zero_q
+        vel = self.robot_model.zero_q_body.copy()
         vel[self.robot_model.reduced_mask] = vel_reduced
         self.configuration.integrate_inplace(vel, self.dt)
         self.configuration_reduced.integrate_inplace(vel_reduced, self.dt)
 
     def _ik(self, tasks, dt):
-        '''Helper function solving IK for all tasks'''
+        '''Helper function solving IK for all tasks (motor-only model)'''
         return pink.solve_ik(
             self.configuration,
             tasks,
@@ -206,27 +205,28 @@ class IKSolver:
         )
 
     def ik_step(self):
-        '''Solve one step of IK for all tasks and return joint velocity'''
+        '''Solve one step of IK for all tasks and return joint velocity (motor-only, 27)'''
         self.posture_task.set_target_from_configuration(self.configuration)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
         # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task]
         return self._ik(tasks, self.dt)
 
     def ik_step_reduced(self):
-        '''Solve one step of IK on reduced model for all tasks and return joint velocity'''
+        '''Solve one step of IK on reduced model for all tasks and return motor-only velocity'''
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
         # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
         vel = self._ik_reduced(tasks, self.dt)
-        # convert reduced vel to full vel
-        vel_full = self.robot_model.zero_q
+        # convert reduced vel to full motor vel
+        vel_full = self.robot_model.zero_q_body.copy()
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
     def solve_ik(self, alpha=0.1,
                  timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
+        '''Solve IK to convergence and return motor-only q (27)'''
         # reset configuration to zero position
-        self.configuration.update(self.robot_model.zero_q)
+        self.configuration.update(self.robot_model.zero_q_body)
         # optimization loop
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -254,8 +254,9 @@ class IKSolver:
 
     def solve_ik_reduced(self, alpha=0.1,
                          timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
+        '''Solve IK on reduced model to convergence and return motor-only q (27)'''
         # reset configuration to zero position
-        self.configuration_reduced.update(self.robot_model.zero_q_reduced)
+        self.configuration_reduced.update(self.robot_model.zero_q_body_reduced)
         # optimization loop
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -271,14 +272,14 @@ class IKSolver:
                 linear_err += np.linalg.norm(err[:3])
                 angular_err += np.linalg.norm(err[3:])
             if linear_err < linear_threshold and angular_err < angular_threshold:
-                q_full = self.robot_model.zero_q
+                q_full = self.robot_model.zero_q_body.copy()
                 q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
                 return {
                     'q': q_full,
                     'success': True
                 }
 
-        q_full = self.robot_model.zero_q
+        q_full = self.robot_model.zero_q_body.copy()
         q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
         return {
             'q': q_full,
@@ -286,15 +287,15 @@ class IKSolver:
         }
 
     def goto_configuration(self, q: np.ndarray):
-        '''Solve one step of IK to reach a target joint configuration.'''
+        '''Solve one step of IK to reach a target joint configuration (motor-only, 27)'''
         self.config_task.set_target(q)
         return self._ik([self.config_task], self.dt)
 
     def goto_reduced_configuration(self, q_reduced: np.ndarray):
-        '''Solve one step of IK to reach a target reduced joint configuration.'''
+        '''Solve one step of IK to reach a target reduced joint configuration'''
         self.config_task.set_target(q_reduced)
         vel = self._ik_reduced([self.config_task], self.dt)
-        # convert reduced vel to full vel
-        vel_full = self.robot_model.zero_q
+        # convert reduced vel to full motor vel
+        vel_full = self.robot_model.zero_q_body.copy()
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full

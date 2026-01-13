@@ -17,6 +17,7 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_def
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__IMUState_ as IMUState_default
 
 from h12_ros2_controller.utility.robot_setting import JOINT_POSITION_CLIP_LIMITS, JOINT_VELOCITY_CLIP_LIMITS, JOINT_TORQUE_CLIP_LIMITS
+from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, NUM_HAND_DOF
 
 TOPIC_LOWCMD = 'rt/lowcmd'
 TOPIC_LOWSTATE = 'rt/lowstate'
@@ -25,8 +26,6 @@ TOPIC_HANDSTATE = 'rt/inspire/state'
 TOPIC_HANDCMD = 'rt/inspire/cmd'
 TOPIC_ARM_SDK = 'rt/arm_sdk'
 
-NUM_MOTOR = 27
-NUM_HAND_DOF = 12
 INDEX_NOT_USED = NUM_MOTOR
 
 class StateSubscriber:

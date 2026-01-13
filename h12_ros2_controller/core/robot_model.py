@@ -10,67 +10,86 @@ import meshcat.geometry as geo
 import meshcat.transformations as tf
 
 from h12_ros2_controller.core.channel_interface import StateSubscriber
-from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import ALL_JOINTS, BODY_JOINTS, BASE_NQ, BASE_NV, NUM_MOTOR
 
 class RobotModel:
     def __init__(self, filename: str):
         assert(os.path.splitext(filename)[1] == '.urdf'), 'Please provide a urdf file for the robot model.'
-        self.model, _, self.visual_model = self._load_urdf(filename)
-        # initialize data for the model
+        # model with free-flyer base for visualization and dynamics (RNEA)
+        self.model, _, self.visual_model = self._load_urdf_freeflyer(filename)
         self.data = self.model.createData()
+
+        # model without free-flyer for IK solver (motor joints only)
+        self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename)
+        self.data_body = self.model_body.createData()
 
         # placeholder for visualizer and state subscriber
         self.viz = None
         self.state_subscriber = None
 
-        # field variabels tracking joint states
-        self._q = np.zeros(self.model.nq)
-        self._dq = np.zeros(self.model.nv)
-        self._tau = np.zeros(self.model.nv)
+        # field variables tracking joint states (motor only, length NUM_MOTOR)
+        self._q = np.zeros(NUM_MOTOR)
+        self._dq = np.zeros(NUM_MOTOR)
+        self._tau = np.zeros(NUM_MOTOR)
 
         # initialize with zero joint positions
-        pin.forwardKinematics(self.model, self.data, self.state['q'])
+        pin.forwardKinematics(self.model, self.data, self.zero_q)
         pin.updateFramePlacements(self.model, self.data)
+        pin.forwardKinematics(self.model_body, self.data_body, self.zero_q_body)
+        pin.updateFramePlacements(self.model_body, self.data_body)
 
         # flags for additional initialization
         self.init_reduced = False
         self.init_collision = False
-        # placeholder mask for reduced model
-        self.reduced_mask = np.ones(self.model.nq, dtype=bool)
+        # placeholder mask for reduced model (motor only, length NUM_MOTOR)
+        self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
 
     def init_reduced_model(self, enabled_joints):
+        '''
+        create reduced model from model_body (no free-flyer) for IK
+        reduced_mask applies to motor-only arrays (length NUM_MOTOR)
+        '''
         self.init_reduced = True
         frozen_joints = set(BODY_JOINTS) - set(enabled_joints)
-        frozen_ids = [self.model.getJointId(joint_name) for joint_name in frozen_joints]
-        frozen_q_ids = [self.model.joints[joint_id].idx_q for joint_id in frozen_ids]
-        # create a reduced model
-        self.model_reduced = pin.buildReducedModel(
-            self.model, frozen_ids, self.zero_q
+        # get joint ids in model_body (no free-flyer, so no offset)
+        frozen_ids_body = [self.model_body.getJointId(joint_name) for joint_name in frozen_joints]
+        frozen_motor_ids = [self.model_body.joints[joint_id].idx_q for joint_id in frozen_ids_body]
+        # create reduced model from model_body
+        self.model_body_reduced = pin.buildReducedModel(
+            self.model_body, frozen_ids_body, self.zero_q_body
         )
-        self.data_reduced = self.model_reduced.createData()
-        # set the reduced mask
-        self.reduced_mask[frozen_q_ids] = False
-        # update the reduced q ids
-        self.frozen_ids = frozen_ids
+        self.data_body_reduced = self.model_body_reduced.createData()
+        # set the reduced mask (motor only)
+        self.reduced_mask[frozen_motor_ids] = False
+        # store frozen ids for collision model
+        self.frozen_ids_body = frozen_ids_body
 
     def init_collision_model(self, urdf_path, srdf_path):
-        '''Initialize the collision model from another urdf'''
+        '''
+        Initialize collision model from another urdf (sphere collision)
+        Uses model_body (no free-flyer) for collision checking
+        '''
         self.init_collision = True
-        model, collision_model, _ = self._load_urdf(urdf_path)
-        self.collision_model, self.collision_data = self._process_srdf(
-            model, collision_model, srdf_path
+        # load collision model without free-flyer
+        model_collision, collision_model, _ = self._load_urdf_body(urdf_path)
+        self.collision_model_body, self.collision_data_body = self._process_srdf(
+            model_collision, collision_model, srdf_path
         )
 
         if self.init_reduced:
-            model_reduced, collision_model_reduced = pin.buildReducedModel(
-                model, collision_model, self.frozen_ids, self.zero_q
+            model_collision_reduced, collision_model_reduced = pin.buildReducedModel(
+                model_collision, collision_model, self.frozen_ids_body, self.zero_q_body
             )
-            self.collision_model_reduced, self.collision_data_reduced = RobotModel._process_srdf(
-                model_reduced, collision_model_reduced, srdf_path
+            self.collision_model_body_reduced, self.collision_data_body_reduced = RobotModel._process_srdf(
+                model_collision_reduced, collision_model_reduced, srdf_path
             )
 
     @staticmethod
-    def _load_urdf(urdf_path):
+    def _load_urdf_freeflyer(urdf_path):
+        '''
+        Load urdf with free-flyer base for visualization and dynamics
+        Returns model with nq=34 (7 base + 27 motor), nv=33 (6 base + 27 motor)
+        '''
         model, collision_model, visual_model = pin.buildModelsFromUrdf(
             filename=urdf_path,
             package_dirs=os.path.dirname(urdf_path),
@@ -82,7 +101,24 @@ class RobotModel:
         model, [collision_model, visual_model] = pin.buildReducedModel(
             model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
         )
+        return model, collision_model, visual_model
 
+    @staticmethod
+    def _load_urdf_body(urdf_path):
+        '''
+        Load urdf without free-flyer for IK solver
+        Returns model with nq=27 (motor only), nv=27 (motor only)
+        '''
+        model, collision_model, visual_model = pin.buildModelsFromUrdf(
+            filename=urdf_path,
+            package_dirs=os.path.dirname(urdf_path),
+        )
+        # process to keep only the body joints
+        frozen_joints = set(ALL_JOINTS) - set(BODY_JOINTS)
+        frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
+        model, [collision_model, visual_model] = pin.buildReducedModel(
+            model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
+        )
         return model, collision_model, visual_model
 
     @staticmethod
@@ -107,6 +143,10 @@ class RobotModel:
 
     @property
     def state_reduced(self):
+        '''
+        Apply reduced_mask to motor-only state arrays
+        Reduced_mask is length NUM_MOTOR (27)
+        '''
         mask_keys = {'mode', 'q', 'dq', 'ddq', 'tau', 'vol', 'motor_state', 'temperature', 'sensor'}
         state_reduced = {}
         for k, v in self.state.items():
@@ -117,13 +157,41 @@ class RobotModel:
                 state_reduced[k] = v
         return state_reduced
 
-    @property
-    def zero_q(self):
-        return np.zeros(self.model.nq)
+    def full_q(self, q: np.ndarray) -> np.ndarray:
+        '''
+        Convert motor q (27) to full pinocchio q (34) with identity base
+        For use with model (free-flyer)
+        '''
+        full_q = np.zeros(self.model.nq)
+        full_q[3:7] = [0, 0, 0, 1]  # identity quaternion xyzw
+        full_q[BASE_NQ:] = q
+        return full_q
+
+    def full_v(self, v: np.ndarray) -> np.ndarray:
+        '''
+        Convert motor v (27) to full pinocchio v (33) with zero base velocity
+        For use with model (free-flyer)
+        '''
+        full_v = np.zeros(self.model.nv)
+        full_v[BASE_NV:] = v
+        return full_v
 
     @property
-    def zero_q_reduced(self):
-        return np.zeros(self.model_reduced.nq)
+    def zero_q(self):
+        '''Zero configuration for model (free-flyer), length 34'''
+        zero = np.zeros(self.model.nq)
+        zero[3:7] = [0, 0, 0, 1]  # identity quaternion
+        return zero
+
+    @property
+    def zero_q_body(self):
+        '''Zero configuration for model_body (no free-flyer), length 27'''
+        return np.zeros(self.model_body.nq)
+
+    @property
+    def zero_q_body_reduced(self):
+        '''Zero configuration for model_body_reduced'''
+        return np.zeros(self.model_body_reduced.nq)
 
     def shutdown(self):
         if self.state_subscriber is not None:
@@ -229,12 +297,20 @@ class RobotModel:
         print('StateSubscriber initialized.')
 
     def update_kinematics(self):
-        # udpate data with the current joint positions
-        pin.forwardKinematics(self.model, self.data, self.state['q'], self.state['dq'])
+        '''Update forward kinematics for model (free-flyer) and model_body'''
+        # update model (free-flyer) with current joint positions
+        q_full = self.full_q(self.state['q'])
+        dq_full = self.full_v(self.state['dq'])
+        pin.forwardKinematics(self.model, self.data, q_full, dq_full)
         pin.updateFramePlacements(self.model, self.data)
+        # update model_body (no free-flyer)
+        pin.forwardKinematics(self.model_body, self.data_body, self.state['q'], self.state['dq'])
+        pin.updateFramePlacements(self.model_body, self.data_body)
+        # update reduced model if initialized
         if self.init_reduced:
-            pin.forwardKinematics(self.model_reduced, self.data_reduced, self.state_reduced['q'], self.state_reduced['dq'])
-            pin.updateFramePlacements(self.model_reduced, self.data_reduced)
+            pin.forwardKinematics(self.model_body_reduced, self.data_body_reduced,
+                                  self.state_reduced['q'], self.state_reduced['dq'])
+            pin.updateFramePlacements(self.model_body_reduced, self.data_body_reduced)
 
     def update_visualizer(self):
         if self.viz is not None:
@@ -242,12 +318,14 @@ class RobotModel:
 
     def get_com(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q
-        com = pin.centerOfMass(self.model, self.data, q)
+        q_full = self.full_q(q)
+        com = pin.centerOfMass(self.model, self.data, q_full)
         return com
 
     def get_com_reduced(self, q_reduced: np.ndarray=None):
+        '''Get center of mass for the reduced model (model_body_reduced)'''
         q_reduced = self.state_reduced['q'] if q_reduced is None else q_reduced
-        com = pin.centerOfMass(self.model_reduced, self.data_reduced, q_reduced)
+        com = pin.centerOfMass(self.model_body_reduced, self.data_body_reduced, q_reduced)
         return com
 
     def get_zmp(self, q: np.ndarray=None):
@@ -255,8 +333,11 @@ class RobotModel:
         com = self.get_com(q)
 
         # centroidal momentum time derivative
+        q_full = self.full_q(q)
+        dq_full = self.full_v(self.state['dq'])
+        ddq_full = self.full_v(self.state['ddq'])
         pin.computeCentroidalMomentumTimeVariation(
-            self.model, self.data, q, self.state['dq'], self.state['ddq']
+            self.model, self.data, q_full, dq_full, ddq_full
         )
         dhg = self.data.dhg
 
@@ -279,18 +360,21 @@ class RobotModel:
 
     def get_gravity_compensation(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q
-        tau_gravity = pin.rnea(self.model,
-                               self.data,
-                               q,
-                               np.zeros(self.model.nv),
-                               np.zeros(self.model.nv))
-        return tau_gravity
+        q_full = self.full_q(q)
+        tau_full = pin.rnea(self.model,
+                            self.data,
+                            q_full,
+                            np.zeros(self.model.nv),
+                            np.zeros(self.model.nv))
+        # return motor-only torques (skip base)
+        return tau_full[BASE_NV:]
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
         if q is not None:
+            q_full = self.full_q(q)
             data_temp = self.model.createData()
-            pin.forwardKinematics(self.model, data_temp, q)
+            pin.forwardKinematics(self.model, data_temp, q_full)
             pin.updateFramePlacements(self.model, data_temp)
             transformation = data_temp.oMf[frame_id]
         else:
@@ -308,16 +392,17 @@ class RobotModel:
         return self._get_frame_transformation(frame_name, q).rotation
 
     def _get_frame_transformation_reduced(self, frame_name, q_reduced: np.ndarray=None):
+        '''Get frame transformation for the reduced model (model_body_reduced)'''
         assert(self.init_reduced), 'Reduced model is not initialized.'
-        frame_id = self.model_reduced.getFrameId(frame_name)
+        frame_id = self.model_body_reduced.getFrameId(frame_name)
         if q_reduced is not None:
-            data_reduced_temp = self.model_reduced.createData()
-            pin.forwardKinematics(self.model_reduced, data_reduced_temp, q_reduced)
-            pin.updateFramePlacements(self.model_reduced, data_reduced_temp)
-            transformation = data_reduced_temp.oMf[frame_id]
+            data_body_reduced_temp = self.model_body_reduced.createData()
+            pin.forwardKinematics(self.model_body_reduced, data_body_reduced_temp, q_reduced)
+            pin.updateFramePlacements(self.model_body_reduced, data_body_reduced_temp)
+            transformation = data_body_reduced_temp.oMf[frame_id]
         else:
             self.update_kinematics()
-            transformation = self.data_reduced.oMf[frame_id]
+            transformation = self.data_body_reduced.oMf[frame_id]
         return transformation
 
     def get_frame_transformation_reduced(self, frame_name: str, q_reduced: np.ndarray=None):
@@ -335,45 +420,53 @@ class RobotModel:
     def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None):
         '''
         Get the frame jacobian in the world frame
+        q is motor-only (27), returns motor-only jacobian (6 x 27)
         '''
         if q is not None:
-            data, q = self.model.createData(), q
+            q_full = self.full_q(q)
+            data = self.model.createData()
         else:
-            data, q = self.data, self.state['q']
+            q_full = self.full_q(self.state['q'])
+            data = self.data
         # update kinematics
-        pin.forwardKinematics(self.model, data, q)
+        pin.forwardKinematics(self.model, data, q_full)
         pin.updateFramePlacements(self.model, data)
         # compute jacobian
         frame_id = self.model.getFrameId(frame_name)
-        jacobian = pin.computeFrameJacobian(
+        jacobian_full = pin.computeFrameJacobian(
             self.model,
             data,
-            q,
+            q_full,
             frame_id,
             pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
         )
-        return jacobian
+        # return motor-only columns (skip base columns)
+        return jacobian_full[:, BASE_NV:]
 
     def get_joint_jacobian(self, joint_name: str, q: np.ndarray=None):
         '''
         Get the joint jacobian in the local frame of the joint
+        q is motor-only (27), returns motor-only jacobian (6 x 27)
         '''
         if q is not None:
-            data, q = self.model.createData(), q
+            q_full = self.full_q(q)
+            data = self.model.createData()
         else:
-            data, q = self.data, self.state['q']
+            q_full = self.full_q(self.state['q'])
+            data = self.data
         # update kinematics
-        pin.forwardKinematics(self.model, data, q)
+        pin.forwardKinematics(self.model, data, q_full)
         pin.updateFramePlacements(self.model, data)
         # compute jacobian
         joint_id = self.model.getJointId(joint_name)
-        jacobian = pin.computeJointJacobian(
+        jacobian_full = pin.computeJointJacobian(
             self.model,
             data,
-            q,
+            q_full,
             joint_id
         )
-        return jacobian
+        # return motor-only columns (skip base columns)
+        return jacobian_full[:, BASE_NV:]
 
     def get_frame_twist(self, frame_name: str):
         frame_id = self.model.getFrameId(frame_name)
@@ -398,38 +491,49 @@ class RobotModel:
         return twist
 
     def check_valid(self, q):
-        '''Check if the given joint position is valid'''
+        '''
+        Check if the given joint position is valid
+        q is motor-only (27)
+        '''
         return self.check_within_limits(q) and self.check_collision_free(q)
 
     def check_within_limits(self, q):
-        '''Check if the given joint position violates joint limits'''
+        '''
+        Check if the given motor joint position violates joint limits
+        q is motor-only (27)
+        '''
+        q_full = self.full_q(q)
         return (
-            np.all(q <= self.model.upperPositionLimit) and
-            np.all(q >= self.model.lowerPositionLimit)
+            np.all(q_full <= self.model.upperPositionLimit) and
+            np.all(q_full >= self.model.lowerPositionLimit)
         )
 
     def check_within_limits_reduced(self, q_reduced):
         '''Check if the given joint position violates joint limits for the reduced model'''
         assert(self.init_reduced), 'Reduced model is not initialized.'
         return (
-            np.all(q_reduced <= self.model_reduced.upperPositionLimit) and
-            np.all(q_reduced >= self.model_reduced.lowerPositionLimit)
+            np.all(q_reduced <= self.model_body_reduced.upperPositionLimit) and
+            np.all(q_reduced >= self.model_body_reduced.lowerPositionLimit)
         )
 
     def check_collision_free(self, q):
-        '''Check if the given joint position violates collision constraints'''
+        '''
+        check if the given joint position violates collision constraints
+        q is motor-only (27), uses collision_model_body (no free-flyer)
+        '''
         assert(self.init_collision), 'Collision model is not initialized.'
         return not pin.computeCollisions(
-            self.model, self.data,
-            self.collision_model, self.collision_data, q,
+            self.model_body, self.data_body,
+            self.collision_model_body, self.collision_data_body, q,
             stop_at_first_collision=True
         )
 
     def check_collision_free_reduced(self, q_reduced):
+        '''Check collision for the reduced model (model_body_reduced)'''
         assert(self.init_reduced), 'Reduced model is not initialized.'
         assert(self.init_collision), 'Collision model is not initialized.'
         return not pin.computeCollisions(
-            self.model_reduced, self.data_reduced,
-            self.collision_model, self.collision_data, q_reduced,
+            self.model_body_reduced, self.data_body_reduced,
+            self.collision_model_body_reduced, self.collision_data_body_reduced, q_reduced,
             stop_at_first_collision=True
         )

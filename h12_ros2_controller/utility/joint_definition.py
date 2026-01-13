@@ -4,6 +4,11 @@
 BASE_NQ = 7  # position (3) + quaternion xyzw (4)
 BASE_NV = 6  # linear vel (3) + angular vel (3)
 
+# motor and hand degrees of freedom
+NUM_MOTOR = 27
+NUM_HAND_DOF = 12
+
+# all joints defined in the URDF
 ALL_JOINTS = [
     'left_hip_yaw_joint',
     'left_hip_pitch_joint',
@@ -58,6 +63,7 @@ ALL_JOINTS = [
     'R_thumb_distal_joint'
 ]
 
+# body joints without hand joints
 BODY_JOINTS = [
     'left_hip_yaw_joint',
     'left_hip_pitch_joint',
