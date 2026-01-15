@@ -63,6 +63,7 @@ class UpperController:
 
         if self.visualize:
             self.robot_model.init_visualizer()
+            self.robot_model.config_visualizer(show_com=True, show_zmp=True)
 
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
@@ -146,10 +147,6 @@ class UpperController:
         if self.visualize:
             self.ik_solver.update_visualizer()
             self.robot_model.update_visualizer()
-            # visualize center of mass
-            self.robot_model.visualize_com()
-            # visualize zmp
-            self.robot_model.visualize_zmp()
 
     @property
     def configuration_error(self):

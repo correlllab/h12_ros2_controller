@@ -48,6 +48,8 @@ class RobotModel:
         self.init_collision = False
         # placeholder mask for reduced model (motor only, length NUM_MOTOR)
         self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
+        # visualization configuration
+        self.viz_config = {}
 
     def init_reduced_model(self, enabled_joints):
         '''
@@ -220,30 +222,69 @@ class RobotModel:
         print('RobotModel shutdown')
 
     def init_visualizer(self):
+        '''Initialize meshcat visualizer'''
         try:
             self.viz = MeshcatVisualizer(self.model, visual_model=self.visual_model,
                                          copy_models=False, data=self.data)
             self.viz.initViewer(open=True)
             self.viz.loadViewerModel('unitree_h1_2')
 
-            # show lidar frame
-            meshcat_shapes.frame(self.viz.viewer['lidar_frame'], opacity=1.0)
-            self.viz.viewer['lidar_frame'].set_transform(
-                self.get_frame_transformation('lidar_link')
-            )
-
-            # show head camera frame
-            meshcat_shapes.frame(self.viz.viewer['head_camera_frame'], opacity=1.0)
-            self.viz.viewer['head_camera_frame'].set_transform(
-                self.get_frame_transformation('head_camera_link')
-            )
+            # store visualization configuration
+            self.viz_config = {
+                'show_com': False,
+                'show_zmp': False,
+                'show_sensors': False,
+                'wrench_frames': [],
+            }
 
         except ImportError as err:
             print('ImportError: MeshcatVisualizer requires the meshcat package.')
             print(err)
             exit(0)
 
-    def visualize_com(self):
+    def config_visualizer(self,
+                          show_com=None,
+                          show_zmp=None,
+                          show_sensors=None,
+                          wrench_frames=None):
+        '''
+        Configure dynamic visualizations
+
+        @param show_sensors: visualize sensor frames (lidar and head camera)
+        @param show_com: visualize center of mass
+        @param show_zmp: visualize zero moment point
+        @param wrench_frames: list of frame names to visualize wrenches
+        '''
+        assert self.viz is not None, 'Visualizer must be initialized first.'
+
+        # update config with provided values only
+        config_updates = {
+            'show_com': show_com,
+            'show_zmp': show_zmp,
+            'show_sensors': show_sensors,
+            'wrench_frames': wrench_frames,
+        }
+        for key, value in config_updates.items():
+            if value is not None:
+                self.viz_config[key] = value
+
+        # initialize frame visualizations
+        if show_sensors:
+            meshcat_shapes.frame(self.viz.viewer['lidar_frame'], opacity=1.0)
+            meshcat_shapes.frame(self.viz.viewer['head_camera_frame'], opacity=1.0)
+
+    def _visualize_sensors(self):
+        '''Update sensor frame visualizations (lidar and head camera)'''
+        viewer = self.viz.viewer
+        viewer['lidar_frame'].set_transform(
+            self.get_frame_transformation('lidar_link')
+        )
+        viewer['head_camera_frame'].set_transform(
+            self.get_frame_transformation('head_camera_link')
+        )
+
+    def _visualize_com(self):
+        '''Update center of mass visualization'''
         com_pos = self.get_com()
         transform = np.eye(4)
         transform[:3, 3] = com_pos
@@ -252,7 +293,8 @@ class RobotModel:
         viewer['com'].set_transform(transform)
         viewer['com'].set_property('color', (1.0, 0.5, 0.0, 0.8))
 
-    def visualize_zmp(self):
+    def _visualize_zmp(self):
+        '''Update zero moment point visualization'''
         zmp_pos = self.get_zmp()
         transform = np.eye(4)
         transform[:3, 3] = zmp_pos
@@ -261,7 +303,7 @@ class RobotModel:
         viewer['zmp'].set_transform(transform)
         viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))
 
-    def visualize_wrench(self, link_name):
+    def _visualize_wrench(self, link_name):
         # get frame position and wrench
         wrench = self.get_frame_wrench(link_name)
 
@@ -333,8 +375,19 @@ class RobotModel:
             pin.updateFramePlacements(self.model_body_reduced, self.data_body_reduced)
 
     def update_visualizer(self):
+        '''Update robot visualization and all enabled dynamic visualizations'''
         if self.viz is not None:
             self.viz.display()
+
+            # update dynamic visualizations based on config
+            if self.viz_config.get('show_sensors', False):
+                self._visualize_sensors()
+            if self.viz_config.get('show_com', False):
+                self._visualize_com()
+            if self.viz_config.get('show_zmp', False):
+                self._visualize_zmp()
+            for frame_name in self.viz_config.get('wrench_frames', []):
+                self._visualize_wrench(frame_name)
 
     def get_com(self, q: np.ndarray=None):
         q = self.state['q'] if q is None else q

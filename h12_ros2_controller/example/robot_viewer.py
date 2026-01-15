@@ -13,14 +13,13 @@ def main():
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     # robot_model = RobotModel('./assets/h1_2/h1_2.xml')
     robot_model.init_visualizer()
+    robot_model.config_visualizer(show_sensors=True, show_com=True, show_zmp=True)
     robot_model.init_subscriber()
 
     # main loop shadowing robot states
     while True:
         robot_model.update_kinematics()
         robot_model.update_visualizer()
-        robot_model.visualize_com()
-        robot_model.visualize_zmp()
         time.sleep(0.01)
 
 if __name__ == '__main__':
