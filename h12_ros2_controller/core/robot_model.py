@@ -408,8 +408,8 @@ class RobotModel:
         # find reference support plane
         left_foot_pos = self.get_frame_position('left_ankle_roll_link', q)
         right_foot_pos = self.get_frame_position('right_ankle_roll_link', q)
-        support_plane_point = 0.5 * (left_foot_pos + right_foot_pos)
-        support_plane_height = support_plane_point[2]
+        ground_point = 0.5 * (left_foot_pos + right_foot_pos)
+        ground_height = ground_point[2]
 
         # centroidal momentum time derivative
         q_full = self.full_q(q)
@@ -420,8 +420,8 @@ class RobotModel:
         )
         dhg = self.data.dhg
 
-        F_ext = dhg.linear
-        tau_ext = dhg.angular
+        F_com = dhg.linear
+        tau_com = dhg.angular
 
         # gravity force
         g = np.array([0, 0, -9.81])
@@ -429,21 +429,19 @@ class RobotModel:
         F_g = m * g
 
         # isolate contact resultant force
-        F_ext_contact = F_ext - F_g
-
+        F_contact = F_com - F_g
         # shift torque from CoM -> support_plane_point on the plane
-        tau_ext_contact = tau_ext + np.cross(com - support_plane_point, F_ext_contact)
+        tau_contact = tau_com + np.cross(com - ground_point, F_contact)
 
         eps = 1e-6
         # TODO gate ZMP when contact is unreliable (low Fz / contact loss)
-
-        if abs(F_ext_contact[2]) < eps:
+        if abs(F_contact[2]) < eps:
             return np.zeros(3)
 
         # ZMP on support plane
-        zmp_x = support_plane_point[0] - tau_ext_contact[1] / F_ext_contact[2]
-        zmp_y = support_plane_point[1] + tau_ext_contact[0] / F_ext_contact[2]
-        zmp = np.array([zmp_x, zmp_y, support_plane_height])
+        zmp_x = ground_point[0] - tau_contact[1] / F_contact[2]
+        zmp_y = ground_point[1] + tau_contact[0] / F_contact[2]
+        zmp = np.array([zmp_x, zmp_y, ground_height])
 
         return zmp
 
