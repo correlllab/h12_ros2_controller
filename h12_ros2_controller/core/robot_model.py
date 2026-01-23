@@ -164,16 +164,18 @@ class RobotModel:
                 state_reduced[k] = v
         return state_reduced
 
-    def full_q(self, q: np.ndarray) -> np.ndarray:
+    def full_q(self, q: np.ndarray, imu_quat=None) -> np.ndarray:
         '''
-        Convert motor q (27) to full pinocchio q (34) with pelvis orientation
-        IMU measures torso orientation, so we compensate for torso-to-pelvis transform
-        For use with full model with free-flyer base
+        convert motor q (27) to full pinocchio q (34) with pelvis orientation
+        if imu_quat provided (unitree wxyz), use it; otherwise try state subscriber
+        for use with full model with free-flyer base
         '''
         full_q = np.zeros(self.model.nq)
-        # get IMU quaternion from state if available
-        if self.state_subscriber is not None and 'imu_state' in self.state:
-            imu_quat = self.state['imu_state'].quaternion  # Unitree wxyz
+        # get imu quaternion
+        if imu_quat is None and self.state_subscriber is not None and 'imu_state' in self.state:
+            imu_quat = self.state['imu_state'].quaternion  # unitree wxyz
+
+        if imu_quat is not None:
             torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
             # get pelvis-to-torso transform from model_body
             pin.forwardKinematics(self.model_body, self.data_body, q)
@@ -358,10 +360,10 @@ class RobotModel:
         self.state_subscriber = StateSubscriber()
         print('StateSubscriber initialized.')
 
-    def update_kinematics(self):
-        '''Update forward kinematics for all models'''
+    def update_kinematics(self, imu_quat=None):
+        '''update forward kinematics for all models'''
         # update full model (free-flyer) with current joint positions
-        q_full = self.full_q(self.state['q'])
+        q_full = self.full_q(self.state['q'], imu_quat=imu_quat)
         dq_full = self.full_v(self.state['dq'])
         pin.forwardKinematics(self.model, self.data, q_full, dq_full)
         pin.updateFramePlacements(self.model, self.data)
