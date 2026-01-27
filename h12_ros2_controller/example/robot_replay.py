@@ -9,8 +9,9 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.plot.plot_robot_record import create_zmp_plot, update_zmp_plot, clear_zmp_plot
 
-def run_replay_loop(robot_model, data, loop, replay_speed):
+def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
     '''Run the replay loop with given data and loop speed'''
     q_arr = data['q']
     time_stamp_arr = data.get('time_stamp', None)
@@ -18,6 +19,11 @@ def run_replay_loop(robot_model, data, loop, replay_speed):
     zmp_arr = data.get('zmp', None)
     com_arr = data.get('com', None)
     num_frames = len(q_arr)
+
+    # create plot if requested
+    plot_elements = None
+    if show_plot and zmp_arr is not None:
+        plot_elements = create_zmp_plot(num_frames=num_frames)
 
     print(f'Replaying {num_frames} frames')
 
@@ -27,6 +33,8 @@ def run_replay_loop(robot_model, data, loop, replay_speed):
         if frame_idx >= num_frames:
             if loop:
                 frame_idx = 0
+                if plot_elements is not None:
+                    clear_zmp_plot(plot_elements)
                 print('Looping...')
             else:
                 print('Replay finished')
@@ -69,6 +77,13 @@ def run_replay_loop(robot_model, data, loop, replay_speed):
             viewer['com'].set_transform(transform)
             viewer['com'].set_property('color', (1.0, 0.0, 0.0, 0.8))
 
+        # update plot if enabled
+        if plot_elements is not None:
+            zmp_pos = zmp_arr[frame_idx]
+            left_foot_pos = robot_model.get_frame_position('left_ankle_roll_link')
+            right_foot_pos = robot_model.get_frame_position('right_ankle_roll_link')
+            update_zmp_plot(plot_elements, frame_idx, zmp_pos, left_foot_pos, right_foot_pos)
+
         # print frame info
         if frame_idx % 10 == 0:
             print(f'Frame {frame_idx}/{num_frames}')
@@ -78,7 +93,7 @@ def run_replay_loop(robot_model, data, loop, replay_speed):
 
         frame_idx += 1
 
-def main(load_path, loop, replay_speed):
+def main(load_path, loop, replay_speed, show_plot):
     # load the data
     if not os.path.exists(load_path):
         print(f'Error: file {load_path} not found')
@@ -100,12 +115,12 @@ def main(load_path, loop, replay_speed):
     robot_model.init_visualizer()
 
     print(f'Starting replay from: {load_path}')
-    print(f'Loop: {loop}, Speed: {replay_speed}x')
+    print(f'Loop: {loop}, Speed: {replay_speed}x, Plot: {show_plot}')
     print('Press Ctrl+C to stop')
 
     # run replay loop
     try:
-        run_replay_loop(robot_model, data, loop, replay_speed)
+        run_replay_loop(robot_model, data, loop, replay_speed, show_plot)
     except KeyboardInterrupt:
         print('Stopping replay...')
 
@@ -116,9 +131,10 @@ if __name__ == '__main__':
     parser.add_argument('--load', type=str, required=True, help='Filename to load under data/robot_record/')
     parser.add_argument('--loop', action='store_true', help='Loop the replay')
     parser.add_argument('--speed', type=float, default=1.0, help='Replay speed factor')
+    parser.add_argument('--plot', action='store_true', help='Show ZMP plot')
     args = parser.parse_args()
 
     # set load path using command line argument
     load_path = f'./data/robot_record/{args.load}.npz'
 
-    main(load_path, args.loop, args.speed)
+    main(load_path, args.loop, args.speed, args.plot)
