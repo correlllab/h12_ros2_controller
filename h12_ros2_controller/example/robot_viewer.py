@@ -7,7 +7,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.plot.plot_robot_record import create_zmp_plot, update_zmp_plot
+from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, update_com_zmp_plot
 
 def main(show_plot):
     ChannelFactoryInitialize()
@@ -21,7 +21,7 @@ def main(show_plot):
     # create plot if requested
     plot_elements = None
     if show_plot:
-        plot_elements = create_zmp_plot()
+        plot_elements = create_com_zmp_plot()
 
     # main loop shadowing robot states
     frame_idx = 0
@@ -31,10 +31,11 @@ def main(show_plot):
 
         # update plot if enabled
         if plot_elements is not None:
+            com_pos = robot_model.get_com()
             zmp_pos = robot_model.get_zmp()
             left_foot_pos = robot_model.get_frame_position('left_ankle_roll_link')
             right_foot_pos = robot_model.get_frame_position('right_ankle_roll_link')
-            update_zmp_plot(plot_elements, frame_idx, zmp_pos, left_foot_pos, right_foot_pos)
+            update_com_zmp_plot(plot_elements, frame_idx, com_pos, zmp_pos, left_foot_pos, right_foot_pos)
             frame_idx += 1
 
         time.sleep(0.01)

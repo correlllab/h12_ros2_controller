@@ -9,21 +9,21 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.plot.plot_robot_record import create_zmp_plot, update_zmp_plot, clear_zmp_plot
+from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, update_com_zmp_plot, clear_com_zmp_plot
 
 def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
     '''Run the replay loop with given data and loop speed'''
     q_arr = data['q']
     time_stamp_arr = data.get('time_stamp', None)
     imu_state_arr = data.get('imu_state', None)
-    zmp_arr = data.get('zmp', None)
     com_arr = data.get('com', None)
+    zmp_arr = data.get('zmp', None)
     num_frames = len(q_arr)
 
     # create plot if requested
     plot_elements = None
     if show_plot and zmp_arr is not None:
-        plot_elements = create_zmp_plot(num_frames=num_frames)
+        plot_elements = create_com_zmp_plot(num_frames=num_frames)
 
     print(f'Replaying {num_frames} frames')
 
@@ -34,7 +34,7 @@ def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
             if loop:
                 frame_idx = 0
                 if plot_elements is not None:
-                    clear_zmp_plot(plot_elements)
+                    clear_com_zmp_plot(plot_elements)
                 print('Looping...')
             else:
                 print('Replay finished')
@@ -59,15 +59,6 @@ def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
         robot_model.update_kinematics(imu_quat=imu_quat)
         robot_model.update_visualizer()
 
-        # visualize saved ZMP
-        if zmp_arr is not None:
-            transform = np.eye(4)
-            transform[:3, 3] = zmp_arr[frame_idx]
-            viewer = robot_model.viz.viewer
-            viewer['zmp'].set_object(geo.Sphere(0.02))
-            viewer['zmp'].set_transform(transform)
-            viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))
-
         # visualize saved CoM
         if com_arr is not None:
             transform = np.eye(4)
@@ -77,12 +68,22 @@ def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
             viewer['com'].set_transform(transform)
             viewer['com'].set_property('color', (1.0, 0.0, 0.0, 0.8))
 
+        # visualize saved ZMP
+        if zmp_arr is not None:
+            transform = np.eye(4)
+            transform[:3, 3] = zmp_arr[frame_idx]
+            viewer = robot_model.viz.viewer
+            viewer['zmp'].set_object(geo.Sphere(0.02))
+            viewer['zmp'].set_transform(transform)
+            viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))
+
         # update plot if enabled
         if plot_elements is not None:
+            com_pos = com_arr[frame_idx]
             zmp_pos = zmp_arr[frame_idx]
             left_foot_pos = robot_model.get_frame_position('left_ankle_roll_link')
             right_foot_pos = robot_model.get_frame_position('right_ankle_roll_link')
-            update_zmp_plot(plot_elements, frame_idx, zmp_pos, left_foot_pos, right_foot_pos)
+            update_com_zmp_plot(plot_elements, frame_idx, com_pos, zmp_pos, left_foot_pos, right_foot_pos)
 
         # print frame info
         if frame_idx % 10 == 0:
