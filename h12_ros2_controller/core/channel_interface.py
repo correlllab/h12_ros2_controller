@@ -103,8 +103,8 @@ class CommandPublisher(ABC):
         self._publishing_thread = None
 
         # shared low_cmd object
-        self._crc = CRC()
-        self._low_cmd = LowCmd_default()
+        self._crc = None
+        self._low_cmd = None
 
         # initialize publisher-specific components
         self._init_low_cmd()
@@ -213,6 +213,8 @@ class LowCmdPublisher(CommandPublisher):
     '''Wrapper class of publisher publishing to LowCmd topic'''
     def _init_low_cmd(self):
         # initialize low command message
+        self._crc = CRC()
+        self._low_cmd = LowCmd_default()
         self._low_cmd.mode_pr = 0
         self._low_cmd.mode_machine = 6
 
@@ -237,14 +239,19 @@ class LowCmdPublisher(CommandPublisher):
 
 class ArmSDKPublisher(CommandPublisher):
     '''ARM SDK command publisher using RecurrentThread approach.'''
+    def _init_low_cmd(self):
+        # initialize low command message
+        self._crc = CRC()
+        self._low_cmd = LowCmd_default()
+
     def _init_publisher(self):
         '''Initialize ARM SDK publisher'''
-        super()._publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
-        super()._publisher.Init()
+        self._publisher = ChannelPublisher(TOPIC_ARM_SDK, LowCmd_)
+        self._publisher.Init()
 
     def _init_thread(self):
         '''Initialize threading for ARM SDK publisher'''
-        super()._publishing_thread = threading.Thread(
+        self._publishing_thread = threading.Thread(
             target=self._publish_command,
             name='arm_sdk_thread',
             daemon=True
@@ -254,7 +261,7 @@ class ArmSDKPublisher(CommandPublisher):
         '''Override to add ARM SDK specific enable logic'''
         super().enable_motors(motor_ids, init_q)
         with self.data_lock:
-            super()._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
+            self._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
 
 class HandSubscriber:
     def __init__(self):

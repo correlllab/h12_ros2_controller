@@ -34,7 +34,7 @@ class ArmController(UpperController):
         # config visualizer
         if self.visualize:
             self.robot_model.config_visualizer(
-                show_wrenches=[self.left_ee_name, self.right_ee_name]
+                wrench_frames=[self.left_ee_name, self.right_ee_name]
             )
 
     '''
