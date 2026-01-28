@@ -262,6 +262,7 @@ class ArmSDKPublisher(CommandPublisher):
         super().enable_motors(motor_ids, init_q)
         with self.data_lock:
             self._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
+            self.q[motor_ids] = init_q
 
 class HandSubscriber:
     def __init__(self):
