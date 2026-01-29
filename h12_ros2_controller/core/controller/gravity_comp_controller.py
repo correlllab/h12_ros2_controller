@@ -17,9 +17,9 @@ class GravityCompController(UpperController):
                          dt, v_lim, w_lim, dq_lim, d_min,
                          visualize, sport_mode)
 
-        # i control on dq
-        self.dq_i = np.zeros(self.robot_model.model.nv)
-        self.ki = np.zeros(self.robot_model.model.nv)
+        # i control on dq (motor-only, 27)
+        self.dq_i = np.zeros(self.robot_model.model_body.nv)
+        self.ki = np.zeros(self.robot_model.model_body.nv)
         # gain for shoulder pitch
         self.ki[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 250.0
         self.ki[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 250.0
@@ -110,10 +110,10 @@ class GravityCompController(UpperController):
         # integrate dq
         self.dq_i += self.robot_model.state['dq'] * self.dt
 
-        # compute tau for gravity compensation
+        # compute tau for gravity compensation using model_body
         tau = pin.computeGeneralizedGravity(
-            self.robot_model.model,
-            self.robot_model.data,
+            self.robot_model.model_body,
+            self.robot_model.data_body,
             self.robot_model.state['q']
         )
         # gravity comp tau + i control on dq

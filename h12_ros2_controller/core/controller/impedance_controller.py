@@ -27,12 +27,12 @@ class ImpedanceController(UpperController):
         x_target = self.left_ee_target_position
         F = kp * (x_target - x) + kd * (-dx)
 
-        # inverse dynamics
+        # inverse dynamics using model_body
         J_left = self.robot_model.get_frame_jacobian(self.left_ee_name)
         tau = J_left.T @ np.concatenate([F, np.zeros(3)])
         tau_gravity = pin.computeGeneralizedGravity(
-            self.robot_model.model,
-            self.robot_model.data,
+            self.robot_model.model_body,
+            self.robot_model.data_body,
             self.robot_model.state['q']
         )
         tau_cmd = tau + tau_gravity

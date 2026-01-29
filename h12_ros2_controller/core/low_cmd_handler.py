@@ -3,15 +3,17 @@ import time
 import threading
 import numpy as np
 from typing import Optional, List
+
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 from h12_ros2_controller.utility.robot_setting import setup_gains, JOINT_POSITION_ESTOP_LIMITS, JOINT_VELOCITY_ESTOP_LIMITS, JOINT_TORQUE_ESTOP_LIMITS
+from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
 
 class LowCmdHandler:
     def __init__(self,
-                 robot_model,
-                 checker_dt=0.001,
-                 publisher_dt=0.002,
+                 robot_model: RobotModel,
+                 checker_dt: float=0.001,
+                 publisher_dt: float=0.002,
                  sport_mode: bool=False):
         self._checker_dt = checker_dt
         self._robot_model = robot_model
@@ -146,7 +148,7 @@ class LowCmdHandler:
     def _record_state(self):
         if self._recording:
             # record center of mass
-            com = self._robot_model.get_center_of_mass()
+            com = self._robot_model.get_com()
             # get values for upper body joints only
             state = self._robot_model.state
             q = state['q'][self._record_ids]

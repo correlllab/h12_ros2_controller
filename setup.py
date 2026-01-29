@@ -4,8 +4,8 @@ from setuptools import find_packages, setup
 
 package_name = 'h12_ros2_controller'
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
+# with open('requirements.txt') as f:
+#     requirements = f.read().splitlines()
 
 data_files = [
     ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
@@ -20,7 +20,7 @@ setup(
     packages=find_packages(exclude=['test']),
     include_package_data=True,
     data_files=data_files,
-    install_requires=['setuptools'] + requirements,
+    install_requires=['setuptools'],# + requirements,
     zip_safe=True,
     maintainer='tonyzyt2000',
     maintainer_email='zhangyt2000@gmail.com',

@@ -63,6 +63,7 @@ class UpperController:
 
         if self.visualize:
             self.robot_model.init_visualizer()
+            self.robot_model.config_visualizer(show_com=True, show_zmp=True)
 
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
@@ -146,10 +147,6 @@ class UpperController:
         if self.visualize:
             self.ik_solver.update_visualizer()
             self.robot_model.update_visualizer()
-            # visualize center of mass
-            self.robot_model.visualize_com()
-            # visualize zmp
-            self.robot_model.visualize_zmp()
 
     @property
     def configuration_error(self):
@@ -208,8 +205,8 @@ class UpperController:
     def lock_configuration(self, q):
         # compute gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(q)
-        # always commanding zero velocity
-        dq = np.zeros(self.robot_model.model.nv)
+        # always commanding zero velocity (motor-only, 27)
+        dq = np.zeros(self.robot_model.model_body.nv)
         # send command to lock the robot in current configuration
         self.low_cmd_handler.set_joint_commands( q, dq, tau)
         self.update_robot_model()
@@ -250,7 +247,7 @@ class UpperController:
     def apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
-        dq = np.zeros(self.robot_model.model.nv)
+        dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(q, dq, tau)
 
     def estop(self):
@@ -262,9 +259,9 @@ class UpperController:
         self.low_cmd_handler.shutdown()
 
     def damp_mode(self, kd=3.0):
-        kp = np.zeros(self.robot_model.model.nv)
-        kd = kd * np.ones(self.robot_model.model.nv)
-        dq = np.zeros(self.robot_model.model.nv)
+        kp = np.zeros(self.robot_model.model_body.nv)
+        kd = kd * np.ones(self.robot_model.model_body.nv)
+        dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(dq=dq, kp=kp, kd=kd)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 

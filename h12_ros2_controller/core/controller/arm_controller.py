@@ -31,6 +31,12 @@ class ArmController(UpperController):
         self._left_arm_action = np.zeros(7)
         self._right_arm_action = np.zeros(7)
 
+        # config visualizer
+        if self.visualize:
+            self.robot_model.config_visualizer(
+                wrench_frames=[self.left_ee_name, self.right_ee_name]
+            )
+
     '''
     joint action for left and right arms
     '''
@@ -199,9 +205,6 @@ class ArmController(UpperController):
     def update_robot_model(self):
         # call parent update method
         super().update_robot_model()
-        # add end effector specific visualization
-        if self.visualize:
-            self.robot_model.visualize_wrench(self.left_ee_name)
 
     def apply_joint_position(self, vel):
         # call parent method

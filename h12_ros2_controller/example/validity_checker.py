@@ -13,9 +13,9 @@ def main():
                                      './assets/h1_2/h1_2_sphere_collision.srdf')
 
     while True:
-        # sample random q
-        q = np.random.uniform(low=robot_model.model.lowerPositionLimit,
-                              high=robot_model.model.upperPositionLimit)
+        # sample random q (motor-only, 27)
+        q = np.random.uniform(low=robot_model.model_body.lowerPositionLimit,
+                              high=robot_model.model_body.upperPositionLimit)
         robot_model._q = q
         robot_model.update_kinematics()
         robot_model.update_visualizer()
