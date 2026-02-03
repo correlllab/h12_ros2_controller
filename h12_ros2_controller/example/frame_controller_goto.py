@@ -61,7 +61,7 @@ def main(timeout=10.0,
                                        'assets/h1_2/h1_2_sphere.urdf',
                                        'assets/h1_2/h1_2_sphere_collision.srdf',
                                        dt=0.025,
-                                       visualize=False,
+                                       visualize=True,
                                        sport_mode=sport_mode)
     if save_filename is not None:
         frame_controller.start_recording(save_path='data/control_record',

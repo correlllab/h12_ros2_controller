@@ -30,8 +30,8 @@ class IKSolver:
         self.config_task = pink.tasks.PostureTask(cost=30.0)
 
         # center of mass task
-        self.com_task = pink.tasks.ComTask(cost=20.0)
-        self.com_task_reduced = pink.tasks.ComTask(cost=20.0)
+        self.com_task = pink.tasks.ComTask(cost=30.0)
+        self.com_task_reduced = pink.tasks.ComTask(cost=30.0)
 
         assert(self.robot_model.init_collision), 'Collision model is not initialized.'
         self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
@@ -45,7 +45,7 @@ class IKSolver:
         self.configuration = pink.Configuration(
             robot_model.model_body,
             robot_model.data_body,
-            robot_model.state['q'],
+            robot_model.state['q']
         )
         self.configuration_reduced = pink.Configuration(
             robot_model.model_body_reduced,
