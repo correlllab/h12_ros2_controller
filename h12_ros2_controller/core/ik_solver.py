@@ -30,8 +30,8 @@ class IKSolver:
         self.config_task = pink.tasks.PostureTask(cost=30.0)
 
         # center of mass task
-        self.com_task = pink.tasks.ComTask(cost=10.0)
-        self.com_task_reduced = pink.tasks.ComTask(cost=10.0)
+        self.com_task = pink.tasks.ComTask(cost=20.0)
+        self.com_task_reduced = pink.tasks.ComTask(cost=20.0)
 
         assert(self.robot_model.init_collision), 'Collision model is not initialized.'
         self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
@@ -45,12 +45,12 @@ class IKSolver:
         self.configuration = pink.Configuration(
             robot_model.model_body,
             robot_model.data_body,
-            robot_model.zero_q_body,
+            robot_model.state['q'],
         )
         self.configuration_reduced = pink.Configuration(
             robot_model.model_body_reduced,
             robot_model.data_body_reduced,
-            robot_model.zero_q_body_reduced,
+            robot_model.state_reduced['q'],
             collision_model=self.robot_model.collision_model_body_reduced,
             collision_data=self.robot_model.collision_data_body_reduced
         )
@@ -204,20 +204,24 @@ class IKSolver:
             safety_break=False
         )
 
-    def ik_step(self):
+    def ik_step(self, com=False):
         '''Solve one step of IK for all tasks and return joint velocity (motor-only, 27)'''
         self.posture_task.set_target_from_configuration(self.configuration)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
-        # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task]
+        # add com task if requested
+        if com:
+            tasks.append(self.com_task)
         return self._ik(tasks, self.dt)
 
-    def ik_step_reduced(self):
+    def ik_step_reduced(self, com=False):
         '''Solve one step of IK on reduced model for all tasks and return motor-only velocity'''
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
-        # tasks = list(self.frame_tasks.values()) + [self.posture_task, self.com_task_reduced]
-        vel = self._ik_reduced(tasks, self.dt)
+        # add com task if requested
+        if com:
+            tasks.append(self.com_task_reduced)
         # convert reduced vel to full motor vel
+        vel = self._ik_reduced(tasks, self.dt)
         vel_full = self.robot_model.zero_q_body
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full

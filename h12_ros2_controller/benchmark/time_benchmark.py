@@ -51,7 +51,7 @@ class TimeBenchmark:
             pose_times = []
             for _ in tqdm(range(self.iter), desc=f'Pose {pose_idx+1}/{len(self.target_poses)}', leave=False):
                 start_time = time.perf_counter()
-                self.arm_controller.sim_dual_arm_step()
+                self.arm_controller.sim_step_reduced()
                 end_time = time.perf_counter()
                 pose_times.append(end_time - start_time)
 

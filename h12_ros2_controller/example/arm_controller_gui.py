@@ -128,8 +128,8 @@ def main(sport_mode=False):
             ryaw = slider_ryaw.get()
             arm_controller.right_ee_target_pose = [rx, ry, rz, rr, rp, ryaw]
 
-            arm_controller.control_dual_arm_step()
-            # arm_controller.sim_dual_arm_step()
+            arm_controller.control_step_reduced()
+            # arm_controller.sim_step_reduced()
 
             # print errors
             left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])

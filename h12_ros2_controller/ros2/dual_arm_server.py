@@ -119,7 +119,7 @@ class DualArmServer(Node):
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 # control one step
-                self.controller.control_dual_arm_step()
+                self.controller.control_step_reduced()
 
                 # handle cancel event
                 if goal_handle.is_cancel_requested:

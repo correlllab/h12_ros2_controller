@@ -80,7 +80,7 @@ Controller of the h12 robot with ROS2 services
                                    sport_mode=False)
     ```
 
-- Change `arm_controller.control_dual_arm_step()` to `arm_controller.sim_dual_arm_step()`
+- Change `arm_controller.control_step_reduced()` to `arm_controller.sim_step_reduced()`
     to directly integrate the control input to the pinocchio model.
     This is useful when checking IK results without running the full dynamics in simulation
     or on real robot.

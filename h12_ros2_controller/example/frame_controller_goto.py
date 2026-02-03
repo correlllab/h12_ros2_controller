@@ -53,6 +53,7 @@ def main(timeout=10.0,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
          sport_mode=False,
+         com=False,
          save_filename=None):
     ChannelFactoryInitialize()
     # initialize upper task controller
@@ -88,15 +89,14 @@ def main(timeout=10.0,
                 # add frame task
                 frame_controller.clear_frame_tasks()
                 frame_controller.add_frame_task(task_name, frame_name, pose)
-                step_function = lambda: frame_controller.control_step_reduced()
-                # step_function = lambda: frame_controller.sim_step_reduced()
+                step_function = lambda: frame_controller.control_step_reduced(com=com)
+                # step_function = lambda: frame_controller.sim_step_reduced(com=com)
 
             # update ik solver with current state
             frame_controller.update_ik_solver()
 
             # main loop
             start_time = time.time()
-            frame_controller.start_recording()
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
                 # control one step
@@ -121,7 +121,6 @@ def main(timeout=10.0,
                 frame_start_time = time.time()
                 step_function()
                 time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
-            frame_controller.stop_recording()
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -138,12 +137,13 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--debug', action='store_true', help='Run in debug mode (sport_mode=False)')
     group.add_argument('--sport', action='store_true', help='Run in sport mode (sport_mode=True)')
+    parser.add_argument('--com', action='store_true', help='Use center of mass control')
     parser.add_argument('--save', type=str, help='Save recording to specified filename.npz in data/control_record/')
     args = parser.parse_args()
 
     if args.sport:
-        main(timeout=10.0, sport_mode=True, save_filename=args.save)
+        main(timeout=10.0, sport_mode=True, com=args.com, save_filename=args.save)
     elif args.debug:
-        main(timeout=10.0, sport_mode=False, save_filename=args.save)
+        main(timeout=10.0, sport_mode=False, com=args.com, save_filename=args.save)
     else:
         print('Invalid argument! Use --debug or --sport')

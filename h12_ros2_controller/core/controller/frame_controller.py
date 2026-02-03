@@ -62,48 +62,6 @@ class FrameController(UpperController):
         '''Clear all frame tasks'''
         self.ik_solver.clear_frame_tasks()
 
-    def control_step(self):
-        '''Solve IK for all tasks'''
-        # solve IK and apply the control
-        vel = self.ik_solver.ik_step()
-        vel = self.limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-
-    def control_step_reduced(self):
-        '''Solve IK for all tasks with the reduced model'''
-        # solve IK and apply the control
-        vel = self.ik_solver.ik_step_reduced()
-        vel = self.limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-
-    def sim_step(self):
-        # solve IK and apply the control
-        vel = self.ik_solver.ik_step()
-        vel = self.limit_joint_vel(vel)
-        # integrate IK solver
-        self.ik_solver.integrate(vel)
-        # force robot model to use local variable tracking states
-        self.robot_model.state_subscriber = None
-        self.robot_model._q = self.ik_solver.q
-        self.update_robot_model()
-
-    def sim_step_reduced(self):
-        # solve IK and apply the control
-        vel = self.ik_solver.ik_step_reduced()
-        vel = self.limit_joint_vel(vel)
-        # integrate IK solver
-        self.ik_solver.integrate(vel)
-        # force robot model to use local variable tracking states
-        self.robot_model.state_subscriber = None
-        self.robot_model._q = self.ik_solver.q
-        self.update_robot_model()
-
     def get_frame_pose(self, frame_name: str):
         '''Get current pose of a frame'''
         position = self.robot_model.get_frame_position(frame_name)

@@ -211,6 +211,48 @@ class UpperController:
         self.low_cmd_handler.set_joint_commands( q, dq, tau)
         self.update_robot_model()
 
+    def control_step(self, com=False):
+        '''Solve IK for all tasks'''
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step(com=com)
+        vel = self.limit_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
+        self.update_robot_model()
+
+    def control_step_reduced(self, com=False):
+        '''Solve IK for all tasks with the reduced model'''
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step_reduced(com=com)
+        vel = self.limit_joint_vel(vel)
+        # integrate IK solver and command the joint position
+        self.ik_solver.integrate(vel)
+        self.apply_joint_position(self.ik_solver.q)
+        self.update_robot_model()
+
+    def sim_step(self, com=False):
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step(com=com)
+        vel = self.limit_joint_vel(vel)
+        # integrate IK solver
+        self.ik_solver.integrate(vel)
+        # force robot model to use local variable tracking states
+        self.robot_model.state_subscriber = None
+        self.robot_model._q = self.ik_solver.q
+        self.update_robot_model()
+
+    def sim_step_reduced(self, com=False):
+        # solve IK and apply the control
+        vel = self.ik_solver.ik_step_reduced(com=com)
+        vel = self.limit_joint_vel(vel)
+        # integrate IK solver
+        self.ik_solver.integrate(vel)
+        # force robot model to use local variable tracking states
+        self.robot_model.state_subscriber = None
+        self.robot_model._q = self.ik_solver.q
+        self.update_robot_model()
+
     def limit_joint_vel(self, vel):
         # get end effector twist
         twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)

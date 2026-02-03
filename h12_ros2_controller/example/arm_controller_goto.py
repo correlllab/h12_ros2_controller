@@ -99,8 +99,8 @@ def main(timeout=10.0,
                 # set target poses
                 arm_controller.left_ee_target_pose = left_pose
                 arm_controller.right_ee_target_pose = right_pose
-                step_function = lambda: arm_controller.control_dual_arm_step()
-                # step_function = lambda: arm_controller.sim_dual_arm_step()
+                step_function = lambda: arm_controller.control_step_reduced()
+                # step_function = lambda: arm_controller.sim_step_reduced()
 
             # update ik solver with current state
             arm_controller.update_ik_solver()

@@ -3,8 +3,12 @@ import time
 import numpy as np
 from tqdm import tqdm
 
+from h12_ros2_controller.core.controller.arm_controller import ArmController
+
 class PrecisionBenchmark:
-    def __init__(self, arm_controller, target_poses,
+    def __init__(self,
+                 arm_controller: ArmController,
+                 target_poses,
                  timeout=5.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2):
@@ -76,9 +80,9 @@ class PrecisionBenchmark:
         for i in tqdm(range(step)):
             start_time = time.time()
             if mode == 'pin':
-                self.arm_controller.sim_dual_arm_step()
+                self.arm_controller.sim_step_reduced()
             elif mode == 'real':
-                self.arm_controller.control_dual_arm_step()
+                self.arm_controller.control_step_reduced()
 
             # get current pose
             current_pose = self.arm_controller.left_ee_pose
