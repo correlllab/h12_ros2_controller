@@ -105,6 +105,40 @@ JOINT_TORQUE_LIMITS = [
     19.0,   # right_wrist_yaw_joint
 ]
 
+JOINT_TORQUE_CLIP_SCALERS = [
+    0.95, # left_hip_yaw_joint
+    0.95, # left_hip_pitch_joint
+    0.95, # left_hip_roll_joint
+    0.95, # left_knee_joint
+    0.95, # left_ankle_pitch_joint
+    0.95, # left_ankle_roll_joint
+
+    0.95, # right_hip_yaw_joint
+    0.95, # right_hip_pitch_joint
+    0.95, # right_hip_roll_joint
+    0.95, # right_knee_joint
+    0.95, # right_ankle_pitch_joint
+    0.95, # right_ankle_roll_joint
+
+    0.95, # torso_joint
+
+    0.4, # left_shoulder_pitch_joint
+    0.4, # left_shoulder_roll_joint
+    0.4, # left_shoulder_yaw_joint
+    0.4, # left_elbow_joint
+    0.4, # left_wrist_roll_joint
+    0.4, # left_wrist_pitch_joint
+    0.4, # left_wrist_yaw_joint
+
+    0.4, # right_shoulder_pitch_joint
+    0.4, # right_shoulder_roll_joint
+    0.4, # right_shoulder_yaw_joint
+    0.4, # right_elbow_joint
+    0.4, # right_wrist_roll_joint
+    0.4, # right_wrist_pitch_joint
+    0.4, # right_wrist_yaw_joint
+]
+
 JOINT_POSITION_CLIP_LIMITS = [
     {'low': limit['low'] + 0.02, 'high': limit['high'] - 0.02} for limit in JOINT_POSITION_LIMITS
 ]
@@ -126,7 +160,7 @@ JOINT_TORQUE_CLIP_LIMITS = [
 ]
 
 JOINT_TORQUE_ESTOP_LIMITS = [
-    limit * 0.8 for limit in JOINT_TORQUE_LIMITS
+    limit * scaler for limit, scaler in zip(JOINT_TORQUE_LIMITS, JOINT_TORQUE_CLIP_SCALERS)
 ]
 
 def setup_gains(command_publisher):
