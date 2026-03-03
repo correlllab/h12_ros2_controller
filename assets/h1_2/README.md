@@ -1,8 +1,8 @@
-# Unitree H1 Description (URDF & MJCF)
+# Unitree H1_2 Description (URDF & MJCF)
 
 ## Overview
 
-This package includes a streamlined robot description (URDF & MJCF) for the [Unitree H1](https://www.unitree.com/h1/), developed by [Unitree Robotics](https://www.unitree.com/).
+This package includes a universal humanoid robot description (URDF & MJCF) for the [Unitree H1_2](https://www.unitree.com/h1), developed by [Unitree Robotics](https://www.unitree.com/).
 
 <p align="center">
   <img src="h1_2.png" width="500"/>

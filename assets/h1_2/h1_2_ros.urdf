@@ -22,14 +22,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/pelvis.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/pelvis.STL"/>
       </geometry>
     </collision>
   </link>
@@ -46,16 +46,10 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_hip_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0.02 0 0" rpy="0 1.5707963267948966192313216916398 0"/>
-      <geometry>
-        <cylinder radius="0.01" length="0.02"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="left_hip_yaw_joint" type="revolute">
     <origin xyz="0 0.0875 -0.1632" rpy="0 0 0"/>
@@ -75,14 +69,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_hip_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.2"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_hip_pitch_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -104,14 +98,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_hip_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0.06 0" rpy="1.5707963267948966192313216916398 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.01"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_hip_roll_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -133,14 +127,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_knee_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0 0 -0.2" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.2"/>
+        <cylinder radius="0.04" length="0.2"/>
       </geometry>
     </collision>
   </link>
@@ -162,16 +156,10 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_ankle_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_ankle_pitch_link.STL"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="left_ankle_pitch_joint" type="revolute">
     <origin xyz="0 0 -0.4" rpy="0 0 0"/>
@@ -191,7 +179,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_ankle_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -222,16 +210,10 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_hip_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0.02 0 0" rpy="0 1.5707963267948966192313216916398 0"/>
-      <geometry>
-        <cylinder radius="0.01" length="0.02"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="right_hip_yaw_joint" type="revolute">
     <origin xyz="0 -0.0875 -0.1632" rpy="0 0 0"/>
@@ -251,14 +233,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_hip_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.2"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_hip_pitch_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -280,14 +262,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_hip_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 -0.06 0" rpy="1.5707963267948966192313216916398 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.01"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_hip_roll_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -309,14 +291,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_knee_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0 0 -0.2" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.02" length="0.2"/>
+        <cylinder radius="0.04" length="0.2"/>
       </geometry>
     </collision>
   </link>
@@ -338,16 +320,10 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_ankle_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_ankle_pitch_link.STL"/>
-      </geometry>
-    </collision>
   </link>
   <joint name="right_ankle_pitch_joint" type="revolute">
     <origin xyz="0 0 -0.4" rpy="0 0 0"/>
@@ -367,7 +343,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_ankle_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -398,14 +374,14 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/torso_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
-      <origin xyz="0 0 0.15" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.08 0.16 0.1"/>
+        <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/torso_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -429,7 +405,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_shoulder_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -458,7 +434,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_shoulder_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -487,7 +463,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_shoulder_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -516,7 +492,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_elbow_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -546,7 +522,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_wrist_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -575,7 +551,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/left_wrist_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -603,7 +579,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/wrist_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -634,7 +610,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_shoulder_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -663,7 +639,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_shoulder_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -693,7 +669,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_shoulder_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -722,7 +698,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_elbow_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -752,7 +728,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_wrist_roll_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -781,7 +757,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/right_wrist_pitch_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -809,7 +785,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/wrist_yaw_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -835,7 +811,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/logo_link.STL"/>
       </geometry>
-      <material name="white">
+      <material>
         <color rgba="1 1 1 1"/>
       </material>
     </visual>
@@ -920,7 +896,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/L_hand_base_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -942,7 +918,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link11_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -971,7 +947,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link12_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1000,7 +976,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link13_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1030,7 +1006,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link14_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1060,7 +1036,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link15_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1089,7 +1065,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link16_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1119,7 +1095,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link17_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1148,7 +1124,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link18_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1178,7 +1154,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link19_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1207,7 +1183,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link20_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1237,7 +1213,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link21_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1266,7 +1242,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link22_L.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1303,7 +1279,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/R_hand_base_link.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1325,7 +1301,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link11_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1354,7 +1330,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link12_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1383,7 +1359,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link13_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1413,7 +1389,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link14_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1443,7 +1419,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link15_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1472,7 +1448,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link16_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1502,7 +1478,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link17_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1531,7 +1507,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link18_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1561,7 +1537,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link19_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1590,7 +1566,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link20_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1620,7 +1596,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link21_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
@@ -1649,7 +1625,7 @@
       <geometry>
         <mesh filename="package://h12_ros2_model/assets/h1_2/meshes/link22_R.STL"/>
       </geometry>
-      <material name="dark">
+      <material>
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
