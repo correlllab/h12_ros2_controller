@@ -567,11 +567,12 @@ class RobotModel:
         )
         return np.concatenate([twist.linear, twist.angular])
 
-    def get_frame_wrench(self, frame_name: str, q: np.ndarray=None):
+    def get_frame_wrench(self, frame_name: str, q: np.ndarray=None, tau: np.ndarray=None):
         q = self.state['q'] if q is None else q
+        tau = self.state['tau'] if tau is None else tau
         tau_gravity = self.get_gravity_compensation(q)
         jac = self.get_frame_jacobian(frame_name, q)
-        wrench = np.linalg.inv(jac @ jac.T) @ jac @ (self.state['tau'] - tau_gravity)
+        wrench = np.linalg.inv(jac @ jac.T) @ jac @ (tau - tau_gravity)
         return wrench
 
     def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
