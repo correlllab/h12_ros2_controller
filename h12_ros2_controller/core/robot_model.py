@@ -447,9 +447,9 @@ class RobotModel:
 
         return zmp
 
-    def get_gravity_compensation(self, q: np.ndarray=None):
+    def get_gravity_compensation(self, q: np.ndarray=None, imu_quat=None):
         q = self.state['q'] if q is None else q
-        q_full = self.full_q(q)
+        q_full = self.full_q(q, imu_quat)
         tau_full = pin.rnea(self.model,
                             self.data,
                             q_full,
@@ -506,13 +506,13 @@ class RobotModel:
         assert(self.init_reduced), 'Reduced model is not initialized.'
         return self._get_frame_transformation_reduced(frame_name, q_reduced).rotation
 
-    def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None):
+    def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None, imu_quat=None):
         '''
         Get the frame jacobian in the world frame
         q is motor-only (27), returns motor-only jacobian (6 x 27)
         '''
         if q is not None:
-            q_full = self.full_q(q)
+            q_full = self.full_q(q, imu_quat)
             data = self.model.createData()
         else:
             q_full = self.full_q(self.state['q'])
@@ -567,11 +567,12 @@ class RobotModel:
         )
         return np.concatenate([twist.linear, twist.angular])
 
-    def get_frame_wrench(self, frame_name: str, q: np.ndarray=None, tau: np.ndarray=None):
+    def get_frame_wrench(self, frame_name: str,
+                         q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
         q = self.state['q'] if q is None else q
         tau = self.state['tau'] if tau is None else tau
-        tau_gravity = self.get_gravity_compensation(q)
-        jac = self.get_frame_jacobian(frame_name, q)
+        tau_gravity = self.get_gravity_compensation(q, imu_quat)
+        jac = self.get_frame_jacobian(frame_name, q, imu_quat)
         wrench = np.linalg.inv(jac @ jac.T) @ jac @ (tau - tau_gravity)
         return wrench
 
