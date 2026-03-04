@@ -573,7 +573,7 @@ class RobotModel:
         tau = self.state['tau'] if tau is None else tau
         tau_gravity = self.get_gravity_compensation(q, imu_quat)
         jac = self.get_frame_jacobian(frame_name, q, imu_quat)
-        wrench = np.linalg.inv(jac @ jac.T) @ jac @ (tau - tau_gravity)
+        wrench = np.linalg.pinv(jac.T) @ (tau - tau_gravity)
         return wrench
 
     def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
