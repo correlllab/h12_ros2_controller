@@ -1,38 +1,42 @@
 # h12_ros2_controller
 
-Controller of the h12 robot with ROS2 services
+Controller of the h12 robot with ROS2 services.
 
 ## Installation
 
-- All the dependencies are listed in the `requirements.txt`\
-- Version numbers are determined by installing everything through pip in a separated conda environment defined in `environment.yml`.
-- Make sure you are using system-level python3, run `pip install -e .` to install all the dependencies.
-- Install the [Unitree Python SDK](https://github.com/unitreerobotics/unitree_sdk2_python/tree/master)
-  so the code can communicate with the robot.
-- This package depends on two additonal ROS2 packages that holds messages and robot description.
-    - [h12_ros2_model](https://github.com/correlllab/h12_ros2_model)
-    - [custom_ros_messages](https://github.com/correlllab/custom_ros_messages)
+- This repo depends on [Unitree Python SDK](https://github.com/unitreerobotics/unitree_sdk2_python) to communicate with the robot.
+- Download Unitree SDK under `submodules/unitree_sdk2_python` by initializing git submodules:
+
+  ```bash
+  git submodule update --init --recursive
+  ```
+
+### `uv` Installation
+
+- Easiest way to run scripts in this repo is to use [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+- Commands:
+
+    ```bash
+    uv sync # install dependencies to this repo including unitree sdk
+    uv run PATH_TO_SCRIPT
+    ```
+
+### `pip` Installation
+
+- `requirements.txt` lists dependencies that can be installed by `pip`.
+- Commands:
+
+    ```bash
+    pip install -r requirements.txt # install dependencies for this repo
+    ```
 
 ## ROS Setup
 
 - Create an empty ros worksapce and place this repo under `src`.
-- The program uses customized message definions and that part can only be built by `ament_cmake`.
-- Copy the `controller_msgs` into `src` directory as well, so ROS can build the message package separately.
+- This package depends on two additonal ROS2 packages that holds messages and robot description.
+    - [h12_ros2_model](https://github.com/correlllab/h12_ros2_model)
+    - [custom_ros_messages](https://github.com/correlllab/custom_ros_messages)
 - Run `colcon build` and then `source ./install/setup.bash` to build the project.
-
-## Python Dependencies
-
-- If using conda, create a conda environment from `environment.yml`.
-
-    ```bash
-    conda env create -f environment.yml
-    ```
-
-- If using pip (e.g. for system Python and ROS), install dependencies from `requirements.txt`.
-
-    ```bash
-    pip install -e .
-    ```
 
 ## Files
 

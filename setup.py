@@ -16,7 +16,7 @@ data_files = [
 
 setup(
     name='h12_ros2_controller',
-    version='0.0.1',
+    version='0.1.0',
     packages=find_packages(exclude=['test']),
     include_package_data=True,
     data_files=data_files,
@@ -25,7 +25,7 @@ setup(
     maintainer='tonyzyt2000',
     maintainer_email='zhangyt2000@gmail.com',
     description='ROS2 package of h12 robot controller',
-    license='TODO: License declaration',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
