@@ -17,7 +17,7 @@ Controller of the h12 robot with ROS2 services.
 - Commands:
 
     ```bash
-    uv sync # install dependencies to this repo including unitree sdk
+    uv sync # install dependencies for this repo including unitree sdk
     uv run PATH_TO_SCRIPT
     ```
 
@@ -27,7 +27,7 @@ Controller of the h12 robot with ROS2 services.
 - Commands:
 
     ```bash
-    pip install -r requirements.txt # install dependencies for this repo
+    pip install -r requirements.txt # install dependencies for this repo including unitree sdk
     ```
 
 ## ROS Setup
