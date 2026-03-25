@@ -1,3 +1,5 @@
+import warnings
+
 from geometry_msgs.msg import Pose
 
 import numpy as np
@@ -35,6 +37,12 @@ def matrix_to_pose(matrix):
     rotation_matrix = np.asarray(matrix[:3, :3], dtype=float)
 
     if not np.isfinite(rotation_matrix).all():
+        warnings.warn(
+            "matrix_to_pose: rotation matrix contains non-finite values; "
+            "falling back to identity rotation. This may indicate an upstream issue.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         rotation_matrix = np.eye(3)
     else:
         orthogonality_error = np.linalg.norm(rotation_matrix.T @ rotation_matrix - np.eye(3), ord='fro')
