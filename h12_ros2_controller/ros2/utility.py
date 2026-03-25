@@ -26,9 +26,12 @@ def pose_to_matrix(pose):
 
 def matrix_to_pose(matrix):
     pose = Pose()
-    pose.position.x = matrix[0, 3]
-    pose.position.y = matrix[1, 3]
-    pose.position.z = matrix[2, 3]
+    translation = np.asarray(matrix[0:3, 3], dtype=float)
+    if not np.isfinite(translation).all():
+        translation = np.zeros(3)
+    pose.position.x = translation[0]
+    pose.position.y = translation[1]
+    pose.position.z = translation[2]
     rotation_matrix = np.asarray(matrix[:3, :3], dtype=float)
 
     if not np.isfinite(rotation_matrix).all():
