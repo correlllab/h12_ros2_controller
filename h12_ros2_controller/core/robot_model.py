@@ -228,7 +228,7 @@ class RobotModel:
         if self.state_subscriber is not None:
             self.state_subscriber.shutdown()
             self.state_subscriber = None
-        print('RobotModel shutdown')
+        print('RobotModel shutdown', flush=True)
 
     def init_visualizer(self):
         '''Initialize meshcat visualizer'''
@@ -365,7 +365,7 @@ class RobotModel:
 
     def init_subscriber(self):
         self.state_subscriber = StateSubscriber()
-        print('StateSubscriber initialized.')
+        print('StateSubscriber initialized.', flush=True)
 
     def update_kinematics(self, imu_quat=None):
         '''update forward kinematics for all models'''
