@@ -5,6 +5,9 @@ from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation as R
 
 
+_MATRIX_TO_POSE_WARN_COUNT = 0
+
+
 def _project_to_so3(rotation):
     u, _, vh = np.linalg.svd(rotation)
     projected = u @ vh
@@ -25,6 +28,7 @@ def pose_to_matrix(pose):
     return matrix
 
 def matrix_to_pose(matrix):
+    global _MATRIX_TO_POSE_WARN_COUNT
     pose = Pose()
     pose.position.x = matrix[0, 3]
     pose.position.y = matrix[1, 3]
@@ -32,10 +36,32 @@ def matrix_to_pose(matrix):
     rotation_matrix = np.asarray(matrix[:3, :3], dtype=float)
 
     if not np.isfinite(rotation_matrix).all():
+        _MATRIX_TO_POSE_WARN_COUNT += 1
+        if _MATRIX_TO_POSE_WARN_COUNT <= 10 or _MATRIX_TO_POSE_WARN_COUNT % 100 == 0:
+            print(
+                '[WARN][matrix_to_pose] non-finite rotation block detected; '
+                f'count={_MATRIX_TO_POSE_WARN_COUNT} '
+                f'raw={np.array2string(rotation_matrix, precision=4, suppress_small=False)}',
+                flush=True,
+            )
         rotation_matrix = np.eye(3)
     else:
         orthogonality_error = np.linalg.norm(rotation_matrix.T @ rotation_matrix - np.eye(3), ord='fro')
         determinant = np.linalg.det(rotation_matrix)
+
+        severe_outlier = orthogonality_error > 1e-3 or determinant <= 0.0 or abs(determinant - 1.0) > 1e-3
+        if severe_outlier:
+            _MATRIX_TO_POSE_WARN_COUNT += 1
+            if _MATRIX_TO_POSE_WARN_COUNT <= 10 or _MATRIX_TO_POSE_WARN_COUNT % 100 == 0:
+                print(
+                    '[WARN][matrix_to_pose] severe SO(3) outlier before projection; '
+                    f'count={_MATRIX_TO_POSE_WARN_COUNT} '
+                    f'ortho_fro={orthogonality_error:.3e} '
+                    f'det={determinant:.8f} '
+                    f'raw={np.array2string(rotation_matrix, precision=4, suppress_small=False)}',
+                    flush=True,
+                )
+
         if orthogonality_error > 1e-6 or not np.isfinite(determinant) or determinant <= 0:
             rotation_matrix = _project_to_so3(rotation_matrix)
 

@@ -51,6 +51,10 @@ class RobotModel:
         # visualization configuration
         self.viz_config = {}
 
+        # debug counters for imu quaternion quality metrics
+        self._imu_debug_counter = 0
+        self._imu_debug_print_every = 200
+
     def init_reduced_model(self, enabled_joints):
         '''
         create reduced model from model_body (no free-flyer) for IK
@@ -136,6 +140,37 @@ class RobotModel:
         collision_data.enable_contact = True
         return collision_model, collision_data
 
+    @staticmethod
+    def _project_to_so3(rotation):
+        u, _, vh = np.linalg.svd(rotation)
+        projected = u @ vh
+        if np.linalg.det(projected) < 0:
+            u[:, -1] *= -1
+            projected = u @ vh
+        return projected
+
+    @staticmethod
+    def _quat_wxyz_to_rotation_raw(quat_wxyz):
+        w, x, y, z = quat_wxyz
+        return np.array([
+            [1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y - z * w), 2.0 * (x * z + y * w)],
+            [2.0 * (x * y + z * w), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z - x * w)],
+            [2.0 * (x * z - y * w), 2.0 * (y * z + x * w), 1.0 - 2.0 * (x * x + y * y)],
+        ], dtype=float)
+
+    @staticmethod
+    def _quat_angle_distance_deg(quat1_wxyz, quat2_wxyz):
+        q1 = np.asarray(quat1_wxyz, dtype=float)
+        q2 = np.asarray(quat2_wxyz, dtype=float)
+        n1 = np.linalg.norm(q1)
+        n2 = np.linalg.norm(q2)
+        if n1 < 1e-12 or n2 < 1e-12:
+            return np.nan
+        q1 = q1 / n1
+        q2 = q2 / n2
+        dot = np.clip(abs(float(np.dot(q1, q2))), -1.0, 1.0)
+        return float(np.degrees(2.0 * np.arccos(dot)))
+
     @property
     def state(self):
         # if state_subscriber exists, use its state dict
@@ -176,12 +211,42 @@ class RobotModel:
             imu_quat = self.state['imu_state'].quaternion  # unitree wxyz
 
         if imu_quat is not None:
-            imu_quat = np.asarray(imu_quat, dtype=float).reshape(4)
-            imu_norm = np.linalg.norm(imu_quat)
+            imu_quat_raw = np.asarray(imu_quat, dtype=float).reshape(4)
+            imu_norm = np.linalg.norm(imu_quat_raw)
             if imu_norm < 1e-8:
                 imu_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
             else:
-                imu_quat = imu_quat / imu_norm
+                imu_quat = imu_quat_raw / imu_norm
+
+            # debug metric: distance between original imu quaternion and projected SO(3) orientation
+            if np.isfinite(imu_quat_raw).all():
+                raw_rotation = self._quat_wxyz_to_rotation_raw(imu_quat_raw)
+                orthogonality_error = np.linalg.norm(raw_rotation.T @ raw_rotation - np.eye(3), ord='fro')
+                determinant = np.linalg.det(raw_rotation)
+                projected_rotation = self._project_to_so3(raw_rotation)
+                projected_quat = Quaternion(matrix=projected_rotation)
+                projected_wxyz = np.array([
+                    projected_quat.w,
+                    projected_quat.x,
+                    projected_quat.y,
+                    projected_quat.z,
+                ], dtype=float)
+                angle_distance_deg = self._quat_angle_distance_deg(imu_quat, projected_wxyz)
+
+                self._imu_debug_counter += 1
+                if (self._imu_debug_counter % self._imu_debug_print_every == 0 or
+                    abs(imu_norm - 1.0) > 1e-3 or
+                    orthogonality_error > 1e-6 or
+                    (np.isfinite(angle_distance_deg) and angle_distance_deg > 1e-3)):
+                    print(
+                        '[DEBUG][imu_quat] '
+                        f'norm={imu_norm:.8f} '
+                        f'|norm-1|={abs(imu_norm - 1.0):.2e} '
+                        f'ortho_fro={orthogonality_error:.2e} '
+                        f'det={determinant:.8f} '
+                        f'angle_deg={angle_distance_deg:.6f}',
+                        flush=True,
+                    )
 
             torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
             # get pelvis-to-torso transform from model_body
