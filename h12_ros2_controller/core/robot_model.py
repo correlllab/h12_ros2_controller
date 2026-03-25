@@ -176,6 +176,13 @@ class RobotModel:
             imu_quat = self.state['imu_state'].quaternion  # unitree wxyz
 
         if imu_quat is not None:
+            imu_quat = np.asarray(imu_quat, dtype=float).reshape(4)
+            imu_norm = np.linalg.norm(imu_quat)
+            if imu_norm < 1e-8:
+                imu_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+            else:
+                imu_quat = imu_quat / imu_norm
+
             torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
             # get pelvis-to-torso transform from model_body
             pin.forwardKinematics(self.model_body, self.data_body, q)
@@ -183,7 +190,7 @@ class RobotModel:
             pelvis_to_torso = self.data_body.oMf[self.model_body.getFrameId('torso_link')]
             pelvis_to_torso_quat = Quaternion(matrix=pelvis_to_torso.rotation)
             # pelvis_quat = torso_quat * inv(pelvis_to_torso_quat)
-            pelvis_quat = torso_quat * pelvis_to_torso_quat.inverse
+            pelvis_quat = (torso_quat * pelvis_to_torso_quat.inverse).normalised
             # convert to pinocchio xyzw
             full_q[FREEFLYER_QUAT] = [pelvis_quat.x, pelvis_quat.y, pelvis_quat.z, pelvis_quat.w]
         else:
