@@ -82,7 +82,7 @@ class StateSubscriber:
 
     def shutdown(self):
         self._low_state_subscriber.Close()
-        print('StateSubscriber shutdown')
+        print('StateSubscriber shutdown', flush=True)
 
 class CommandPublisher(ABC):
     '''Base class for command publishers with shared functionality.'''
@@ -111,8 +111,8 @@ class CommandPublisher(ABC):
         self._init_publisher()
         self._init_thread()
 
-        print(f'{self.__class__.__name__} initialized.')
-        print('All joints are locked in the initial position.')
+        print(f'{self.__class__.__name__} initialized.', flush=True)
+        print('All joints are locked in the initial position.', flush=True)
 
     @abstractmethod
     def _init_low_cmd(self):
@@ -199,7 +199,7 @@ class CommandPublisher(ABC):
         time.sleep(self._dt)
         self._publishing = False
         self._publisher.Close()
-        print(f'{self.__class__.__name__} shutdown.')
+        print(f'{self.__class__.__name__} shutdown.', flush=True)
 
     def estop(self):
         '''Emergency stop logic'''
@@ -310,7 +310,7 @@ class HandPublisher:
             name='hand_cmd_thread'
         )
 
-        print('HandPublisher initialized.')
+        print('HandPublisher initialized.', flush=True)
         self.hand_cmd_thread.Start()
 
     def publish_hand_cmd(self):
