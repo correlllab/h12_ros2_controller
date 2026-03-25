@@ -4,6 +4,15 @@ import numpy as np
 from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation as R
 
+
+def _project_to_so3(rotation):
+    u, _, vh = np.linalg.svd(rotation)
+    projected = u @ vh
+    if np.linalg.det(projected) < 0:
+        u[:, -1] *= -1
+        projected = u @ vh
+    return projected
+
 def pose_to_matrix(pose):
     position = pose.position
     orientation = pose.orientation
@@ -20,7 +29,17 @@ def matrix_to_pose(matrix):
     pose.position.x = matrix[0, 3]
     pose.position.y = matrix[1, 3]
     pose.position.z = matrix[2, 3]
-    rotation = Quaternion(matrix=matrix[:3, :3])
+    rotation_matrix = np.asarray(matrix[:3, :3], dtype=float)
+
+    if not np.isfinite(rotation_matrix).all():
+        rotation_matrix = np.eye(3)
+    else:
+        orthogonality_error = np.linalg.norm(rotation_matrix.T @ rotation_matrix - np.eye(3), ord='fro')
+        determinant = np.linalg.det(rotation_matrix)
+        if orthogonality_error > 1e-6 or not np.isfinite(determinant) or determinant <= 0:
+            rotation_matrix = _project_to_so3(rotation_matrix)
+
+    rotation = Quaternion(matrix=rotation_matrix)
     pose.orientation.w = rotation.w
     pose.orientation.x = rotation.x
     pose.orientation.y = rotation.y
