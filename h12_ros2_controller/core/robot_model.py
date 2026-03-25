@@ -171,6 +171,14 @@ class RobotModel:
         dot = np.clip(abs(float(np.dot(q1, q2))), -1.0, 1.0)
         return float(np.degrees(2.0 * np.arccos(dot)))
 
+    @staticmethod
+    def _try_quaternion_from_matrix(rotation):
+        try:
+            quat = Quaternion(matrix=rotation)
+            return quat, None
+        except Exception as err:
+            return None, f'{err.__class__.__name__}: {err}'
+
     @property
     def state(self):
         # if state_subscriber exists, use its state dict
@@ -221,10 +229,20 @@ class RobotModel:
             # debug metric: distance between original imu quaternion and projected SO(3) orientation
             if np.isfinite(imu_quat_raw).all():
                 raw_rotation = self._quat_wxyz_to_rotation_raw(imu_quat_raw)
-                orthogonality_error = np.linalg.norm(raw_rotation.T @ raw_rotation - np.eye(3), ord='fro')
+                orthogonality_matrix_error = raw_rotation.T @ raw_rotation - np.eye(3)
+                orthogonality_error = np.linalg.norm(orthogonality_matrix_error, ord='fro')
+                max_abs_orthogonality_error = np.max(np.abs(orthogonality_matrix_error))
                 determinant = np.linalg.det(raw_rotation)
                 projected_rotation = self._project_to_so3(raw_rotation)
-                projected_quat = Quaternion(matrix=projected_rotation)
+                _, raw_quat_error = self._try_quaternion_from_matrix(raw_rotation)
+                projected_quat, projected_quat_error = self._try_quaternion_from_matrix(projected_rotation)
+                projected_quat_ok = projected_quat_error is None
+                raw_quat_ok = raw_quat_error is None
+
+                # projected conversion should always succeed; keep behavior safe if it does not
+                if not projected_quat_ok:
+                    projected_quat = Quaternion()
+
                 projected_wxyz = np.array([
                     projected_quat.w,
                     projected_quat.x,
@@ -237,16 +255,33 @@ class RobotModel:
                 if (self._imu_debug_counter % self._imu_debug_print_every == 0 or
                     abs(imu_norm - 1.0) > 1e-3 or
                     orthogonality_error > 1e-6 or
-                    (np.isfinite(angle_distance_deg) and angle_distance_deg > 1e-3)):
+                    (np.isfinite(angle_distance_deg) and angle_distance_deg > 1e-3) or
+                    not raw_quat_ok or
+                    not projected_quat_ok):
                     print(
                         '[DEBUG][imu_quat] '
                         f'norm={imu_norm:.8f} '
                         f'|norm-1|={abs(imu_norm - 1.0):.2e} '
                         f'ortho_fro={orthogonality_error:.2e} '
+                        f'ortho_max_abs={max_abs_orthogonality_error:.2e} '
                         f'det={determinant:.8f} '
-                        f'angle_deg={angle_distance_deg:.6f}',
+                        f'angle_deg={angle_distance_deg:.6f} '
+                        f'raw_quat_ok={raw_quat_ok} '
+                        f'proj_quat_ok={projected_quat_ok}',
                         flush=True,
                     )
+                    if not raw_quat_ok:
+                        print(
+                            '[DEBUG][imu_quat] raw_matrix_quat_error='
+                            f'{raw_quat_error}',
+                            flush=True,
+                        )
+                    if not projected_quat_ok:
+                        print(
+                            '[DEBUG][imu_quat] projected_matrix_quat_error='
+                            f'{projected_quat_error}',
+                            flush=True,
+                        )
 
             torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
             # get pelvis-to-torso transform from model_body

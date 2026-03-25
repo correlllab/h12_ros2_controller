@@ -8,6 +8,14 @@ from scipy.spatial.transform import Rotation as R
 _MATRIX_TO_POSE_WARN_COUNT = 0
 
 
+def _try_quaternion_from_matrix(rotation):
+    try:
+        quat = Quaternion(matrix=rotation)
+        return quat, None
+    except Exception as err:
+        return None, f'{err.__class__.__name__}: {err}'
+
+
 def _project_to_so3(rotation):
     u, _, vh = np.linalg.svd(rotation)
     projected = u @ vh
@@ -46,26 +54,48 @@ def matrix_to_pose(matrix):
             )
         rotation_matrix = np.eye(3)
     else:
-        orthogonality_error = np.linalg.norm(rotation_matrix.T @ rotation_matrix - np.eye(3), ord='fro')
+        orthogonality_matrix_error = rotation_matrix.T @ rotation_matrix - np.eye(3)
+        orthogonality_error = np.linalg.norm(orthogonality_matrix_error, ord='fro')
+        max_abs_orthogonality_error = np.max(np.abs(orthogonality_matrix_error))
         determinant = np.linalg.det(rotation_matrix)
+        _, raw_quat_error = _try_quaternion_from_matrix(rotation_matrix)
+        raw_quat_ok = raw_quat_error is None
 
         severe_outlier = orthogonality_error > 1e-3 or determinant <= 0.0 or abs(determinant - 1.0) > 1e-3
-        if severe_outlier:
+        if severe_outlier or not raw_quat_ok:
             _MATRIX_TO_POSE_WARN_COUNT += 1
             if _MATRIX_TO_POSE_WARN_COUNT <= 10 or _MATRIX_TO_POSE_WARN_COUNT % 100 == 0:
                 print(
                     '[WARN][matrix_to_pose] severe SO(3) outlier before projection; '
                     f'count={_MATRIX_TO_POSE_WARN_COUNT} '
                     f'ortho_fro={orthogonality_error:.3e} '
+                    f'ortho_max_abs={max_abs_orthogonality_error:.3e} '
                     f'det={determinant:.8f} '
+                    f'raw_quat_ok={raw_quat_ok} '
                     f'raw={np.array2string(rotation_matrix, precision=4, suppress_small=False)}',
                     flush=True,
                 )
+                if not raw_quat_ok:
+                    print(
+                        '[WARN][matrix_to_pose] raw_matrix_quat_error='
+                        f'{raw_quat_error}',
+                        flush=True,
+                    )
 
         if orthogonality_error > 1e-6 or not np.isfinite(determinant) or determinant <= 0:
             rotation_matrix = _project_to_so3(rotation_matrix)
 
-    rotation = Quaternion(matrix=rotation_matrix)
+    rotation, projected_quat_error = _try_quaternion_from_matrix(rotation_matrix)
+    if projected_quat_error is not None:
+        _MATRIX_TO_POSE_WARN_COUNT += 1
+        if _MATRIX_TO_POSE_WARN_COUNT <= 10 or _MATRIX_TO_POSE_WARN_COUNT % 100 == 0:
+            print(
+                '[WARN][matrix_to_pose] projected_matrix_quat_error='
+                f'{projected_quat_error} ; falling back to identity quaternion',
+                flush=True,
+            )
+        rotation = Quaternion()
+
     pose.orientation.w = rotation.w
     pose.orientation.x = rotation.x
     pose.orientation.y = rotation.y
