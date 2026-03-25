@@ -177,11 +177,16 @@ class RobotModel:
 
         if imu_quat is not None:
             imu_quat = np.asarray(imu_quat, dtype=float).reshape(4)
-            imu_norm = np.linalg.norm(imu_quat)
-            if imu_norm < 1e-8:
+            # Validate IMU quaternion before normalization to avoid propagating NaN/Inf
+            if not np.isfinite(imu_quat).all():
+                # fallback to identity quaternion (wxyz) if IMU data is invalid
                 imu_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
             else:
-                imu_quat = imu_quat / imu_norm
+                imu_norm = np.linalg.norm(imu_quat)
+                if (imu_norm < 1e-8) or (not np.isfinite(imu_norm)):
+                    imu_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+                else:
+                    imu_quat = imu_quat / imu_norm
 
             torso_quat = Quaternion(imu_quat[0], imu_quat[1], imu_quat[2], imu_quat[3])
             # get pelvis-to-torso transform from model_body
