@@ -6,15 +6,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.benchmark.precision_benchmark import PrecisionBenchmark
+from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
-def run_benchmark(solver, filepath, mode):
+def run_benchmark(solver, filepath, mode, config):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
-                                   visualize=False)
+                                   visualize=False,
+                                   config=config)
     arm_controller.solver = solver
 
     target_poses = [
@@ -48,6 +48,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Solver Benchmark Script')
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save benchmark results in data/compare_solver/')
+    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
 
     # Mutually exclusive group for mode selection
     mode_group = parser.add_mutually_exclusive_group(required=True)
@@ -63,6 +64,7 @@ if __name__ == '__main__':
 
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
 
-    ChannelFactoryInitialize()
+    config_data = load_controller_config(args.config)
+    initialize_channel_factory(config_data)
     for solver in solvers:
-        run_benchmark(solver, args.save, mode)
+        run_benchmark(solver, args.save, mode, args.config)

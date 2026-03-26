@@ -10,10 +10,10 @@ class FrameController(UpperController):
                  srdf_sphere_path: str,
                  dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
                  visualize=False,
-                 sport_mode=False):
+                 config='default.yaml'):
         super().__init__(urdf_path, urdf_sphere_path, srdf_sphere_path,
                          dt, v_lim, w_lim, dq_lim, d_min,
-                         visualize, sport_mode)
+                     visualize, config)
 
     def add_frame_task(self, task_name: str, frame_name: str, target: np.ndarray = None):
         '''Add a frame task with optional pose'''

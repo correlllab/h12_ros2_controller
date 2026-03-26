@@ -5,7 +5,11 @@ import numpy as np
 from typing import Optional, List
 
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
-from h12_ros2_controller.utility.robot_setting import setup_gains, JOINT_POSITION_ESTOP_LIMITS, JOINT_VELOCITY_ESTOP_LIMITS, JOINT_TORQUE_ESTOP_LIMITS
+from h12_ros2_controller.utility.joint_limits import setup_gains
+from h12_ros2_controller.utility.controller_config import (
+    load_controller_config,
+    DEFAULT_CONFIG_NAME,
+)
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
 
@@ -14,15 +18,46 @@ class LowCmdHandler:
                  robot_model: RobotModel,
                  checker_dt: float=0.001,
                  publisher_dt: float=0.002,
-                 sport_mode: bool=False):
+                 sport_mode: bool=False,
+                 config: dict=None):
         self._checker_dt = checker_dt
         self._robot_model = robot_model
+        self._config = load_controller_config(DEFAULT_CONFIG_NAME) if config is None else config
+        limits_cfg = self._config.get('limits', {})
+
+        self._q_clip_limits = limits_cfg.get('q_clip_limits')
+        self._dq_clip_limits = limits_cfg.get('dq_clip_limits')
+        self._tau_clip_limits = limits_cfg.get('tau_clip_limits')
+        self._q_estop_limits = limits_cfg.get('q_estop_limits')
+        self._dq_estop_limits = limits_cfg.get('dq_estop_limits')
+        self._tau_estop_limits = limits_cfg.get('tau_estop_limits')
+
+        topics_cfg = self._config.get('topics', {})
+        low_cmd_topic = topics_cfg.get('low_cmd', 'rt/lowcmd')
+        clip_limits = None
+        if self._q_clip_limits is not None and self._dq_clip_limits is not None and self._tau_clip_limits is not None:
+            clip_limits = {
+                'position_clip': [
+                    {'low': float(limit[0]), 'high': float(limit[1])}
+                    for limit in self._q_clip_limits
+                ],
+                'velocity_clip': self._dq_clip_limits,
+                'torque_clip': self._tau_clip_limits,
+            }
         # intialize command publisher
         if sport_mode:
-            self._command_publisher = ArmSDKPublisher(publisher_dt)
+            self._command_publisher = ArmSDKPublisher(
+                publisher_dt,
+                arm_sdk_topic=low_cmd_topic,
+                clip_limits=clip_limits,
+            )
         else:
-            self._command_publisher = LowCmdPublisher(publisher_dt)
-        setup_gains(self._command_publisher)
+            self._command_publisher = LowCmdPublisher(
+                publisher_dt,
+                low_cmd_topic=low_cmd_topic,
+                clip_limits=clip_limits,
+            )
+        setup_gains(self._command_publisher, self._config.get('gains'))
 
         # background safety monitoring thread
         self._estopped = False
@@ -131,16 +166,16 @@ class LowCmdHandler:
             state = self._robot_model.state
             for i in range(len(state['q'])):
                 # check position limits
-                if (state['q'][i] < JOINT_POSITION_ESTOP_LIMITS[i]['low'] or
-                    state['q'][i] > JOINT_POSITION_ESTOP_LIMITS[i]['high']):
+                if (state['q'][i] < self._q_estop_limits[i][0] or
+                    state['q'][i] > self._q_estop_limits[i][1]):
                     print(f'Position limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["q"][i]:.3f} rad')
                     self.estop()
                 # check velocity limits
-                if abs(state['dq'][i]) > JOINT_VELOCITY_ESTOP_LIMITS[i]:
+                if abs(state['dq'][i]) > self._dq_estop_limits[i]:
                     print(f'Velocity limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["dq"][i]:.3f} rad/s')
                     self.estop()
                 # check torque limits
-                if abs(state['tau'][i]) > JOINT_TORQUE_ESTOP_LIMITS[i]:
+                if abs(state['tau'][i]) > self._tau_estop_limits[i]:
                     print(f'Torque limit exceeded on joint {i} {BODY_JOINTS[i]}: {state["tau"][i]:.3f} Nm')
                     self.estop()
             time.sleep(max(0, self._checker_dt - (time.time() - start_time)))

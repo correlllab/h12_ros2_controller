@@ -1,14 +1,12 @@
 import os
 import time
+import argparse
 import numpy as np
 from tqdm import tqdm
-
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
-import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
+from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 
 class TimeBenchmark:
     def __init__(self, arm_controller, target_poses,
@@ -106,13 +104,18 @@ class TimeBenchmark:
         print(f'Results saved to {filename}')
 
 if __name__ == '__main__':
-    ChannelFactoryInitialize()
+    parser = argparse.ArgumentParser(description='Timing benchmark script')
+    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    args = parser.parse_args()
+
+    config_data = load_controller_config(args.config)
+    initialize_channel_factory(config_data)
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
                                    visualize=True,
-                                   sport_mode=False)
+                                   config=args.config)
 
     target_poses = [
         np.array([0.3, 0.2, 0.2, 0, 0, 0]),

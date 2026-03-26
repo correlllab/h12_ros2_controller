@@ -2,12 +2,15 @@ import time
 import argparse
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
+from h12_ros2_controller.utility.controller_config import (
+    load_controller_config,
+    initialize_channel_factory,
+    maybe_start_controller_logging,
+)
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 def input_keyword_or_poses():
@@ -53,19 +56,17 @@ def input_pose(side):
 def main(timeout=10.0,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
-         sport_mode=False,
-         save_filename=None):
-    ChannelFactoryInitialize()
+         config='default.yaml'):
+    config_data = load_controller_config(config)
+    initialize_channel_factory(config_data)
     # initialize arm controller
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.025,
                                    visualize=True,
-                                   sport_mode=sport_mode)
-    if save_filename is not None:
-        arm_controller.start_recording(save_path='data/control_record',
-                                       filename=save_filename)
+                                              config=config)
+    maybe_start_controller_logging(arm_controller)
 
     try:
         while True:
@@ -148,15 +149,6 @@ def main(timeout=10.0,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--debug', action='store_true', help='Run in debug mode (sport_mode=False)')
-    group.add_argument('--sport', action='store_true', help='Run in sport mode (sport_mode=True)')
-    parser.add_argument('--save', type=str, help='Save recording to specified filename.npz in data/control_record/')
+    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
     args = parser.parse_args()
-
-    if args.sport:
-        main(timeout=15.0, sport_mode=True, save_filename=args.save)
-    elif args.debug:
-        main(timeout=15.0, sport_mode=False, save_filename=args.save)
-    else:
-        print('Invalid argument! Use --debug or --sport')
+    main(timeout=15.0, config=args.config)

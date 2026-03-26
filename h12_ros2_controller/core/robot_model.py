@@ -368,8 +368,8 @@ class RobotModel:
 
         return transform
 
-    def init_subscriber(self):
-        self.state_subscriber = StateSubscriber()
+    def init_subscriber(self, low_state_topic='rt/lowstate'):
+        self.state_subscriber = StateSubscriber(low_state_topic=low_state_topic)
         print('StateSubscriber initialized.', flush=True)
 
     def update_kinematics(self, imu_quat=None):

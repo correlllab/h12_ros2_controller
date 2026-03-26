@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
-from h12_ros2_controller.utility.robot_setting import setup_gains
+from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 def get_state(robot_model, command_publisher, joint_idx):

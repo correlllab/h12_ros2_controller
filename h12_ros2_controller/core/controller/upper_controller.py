@@ -5,6 +5,7 @@ import pinocchio as pin
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
+from h12_ros2_controller.utility.controller_config import load_controller_config, resolve_sport_mode
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -14,7 +15,10 @@ class UpperController:
                  srdf_sphere_path: str,
                  dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=1.0, d_min=0.02,
                  visualize=False,
-                 sport_mode=False):
+                 config='default.yaml'):
+        self.config = load_controller_config(config)
+        self.sport_mode = resolve_sport_mode(self.config)
+
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
         self.dt = dt
@@ -25,7 +29,8 @@ class UpperController:
         self.visualize = visualize
 
         # initialize subscriber in robot model
-        self.robot_model.init_subscriber()
+        low_state_topic = self.config.get('topics', {}).get('low_state', 'rt/lowstate')
+        self.robot_model.init_subscriber(low_state_topic=low_state_topic)
         time.sleep(0.5)
         self.robot_model.update_kinematics()
 
@@ -37,7 +42,8 @@ class UpperController:
 
         # intialize low cmd publisher
         self.low_cmd_handler = LowCmdHandler(self.robot_model,
-                                             sport_mode=sport_mode)
+                                             sport_mode=self.sport_mode,
+                                             config=self.config)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
