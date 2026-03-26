@@ -31,6 +31,12 @@ def generate_launch_description():
         ),
         Node(
             package=package_name,
+            executable='frame_task_server',
+            name='frame_task_server',
+            output='screen'
+        ),
+        Node(
+            package=package_name,
             executable='hand_controller_node',
             name='hand_controller_node',
             output='screen'
