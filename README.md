@@ -30,6 +30,33 @@ Controller of the h12 robot with ROS2 services.
     pip install -r requirements.txt # install dependencies for this repo
     ```
 
+## Documentation
+
+This repository includes a full documentation site under `docs/` with:
+
+- Searchable guides and operations docs
+- Architecture and end-to-end flow diagrams
+- API reference generated from source modules
+
+Build and serve docs locally:
+
+```bash
+pip install -r docs/requirements.txt
+python -m mkdocs serve
+```
+
+Build static docs site:
+
+```bash
+python -m mkdocs build
+```
+
+If your shell resolves to a system `mkdocs` binary with dependency conflicts, use:
+
+```bash
+uv run --with-requirements docs/requirements.txt python -m mkdocs build
+```
+
 ## ROS Setup
 
 - Create an empty ros worksapce and place this repo under `src`.
