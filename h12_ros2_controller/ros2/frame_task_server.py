@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 
 import time
 import threading
@@ -42,6 +42,13 @@ class FrameTaskServer(Node):
         self.frame_names_publisher = self.create_publisher(StringArray, 'frame_names', 10)
         self.frame_targets_publisher = self.create_publisher(PoseArray, 'frame_targets', 10)
         self.frame_poses_publisher = self.create_publisher(PoseArray, 'frame_poses', 10)
+
+        # convenience publishers for left and right end-effector poses
+        self.left_ee_pose_publisher = self.create_publisher(PoseStamped, 'left_ee_pose', 10)
+        self.right_ee_pose_publisher = self.create_publisher(PoseStamped, 'right_ee_pose', 10)
+        self.left_ee_target_publisher = self.create_publisher(PoseStamped, 'left_ee_target', 10)
+        self.right_ee_target_publisher = self.create_publisher(PoseStamped, 'right_ee_target', 10)
+
         self.publisher_timer = self.create_timer(1.0 / 100, self.publisher_callback)
 
         # create the action server
@@ -62,6 +69,14 @@ class FrameTaskServer(Node):
         )
         self.get_logger().info('Frame Task Server initialized')
 
+    def _stamp_pose(self, pose):
+        """Convert Pose to PoseStamped with current timestamp."""
+        pose_stamped = PoseStamped()
+        pose_stamped.header.stamp = self.get_clock().now().to_msg()
+        pose_stamped.header.frame_id = 'pelvis'
+        pose_stamped.pose = pose
+        return pose_stamped
+
     def publisher_callback(self):
         # publish frame names
         frame_names = StringArray()
@@ -80,6 +95,27 @@ class FrameTaskServer(Node):
             for name in self.frame_names
         ]
         self.frame_poses_publisher.publish(frame_poses)
+
+        # publish convenience left and right end-effector poses
+        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
+        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
+        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+
+        # publish left and right end-effector target poses if available
+        try:
+            # These properties exist in ArmController but frame_controller doesn't directly expose them
+            # We need to access them through the ik_solver frame tasks
+            left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
+            right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
+            if left_ee_task is not None:
+                left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
+                self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
+            if right_ee_task is not None:
+                right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
+                self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
+        except (AttributeError, KeyError):
+            pass
 
     def frame_task_callback(self, goal_handle):
         with self._controller_lock:

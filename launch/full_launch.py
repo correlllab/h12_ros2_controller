@@ -29,8 +29,8 @@ def generate_launch_description():
         ),
         Node(
             package=package_name,
-            executable='dual_arm_server',
-            name='dual_arm_server',
+            executable='frame_task_server',
+            name='frame_task_server',
             output='screen'
         ),
         TimerAction( # slight delay to ensure robot_description is set
