@@ -87,23 +87,24 @@ class DualArmServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
-        self.controller.update_robot_model()
-        # transform and publish the pose
-        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
-        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
-        left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
-        right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
+        with self._controller_lock:
+            self.controller.update_robot_model()
+            # transform and publish the pose
+            left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
+            right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
+            left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
+            right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
         self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
         self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
     def dual_arm_callback(self, goal_handle):
-        with self._controller_lock:
-            self.get_logger().info('Received goal')
-            goal = goal_handle.request
-            self.get_logger().info(str(goal))
+        self.get_logger().info('Received goal')
+        goal = goal_handle.request
+        self.get_logger().info(str(goal))
 
+        with self._controller_lock:
             self.get_logger().info('Going to target end-effector poses')
             # set target
             self.controller.left_ee_target_transformation = pose_to_matrix(goal.left_target)
@@ -112,107 +113,115 @@ class DualArmServer(Node):
             # update ik solver with current state
             self.controller.update_ik_solver()
 
-            # main loop
-            start_time = time.time()
-            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
-            timeout = duration if duration > 0.0 else self.timeout
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = DualArm.Result()
+                result.success = False
+                return result
+
+            with self._controller_lock:
                 # control one step
                 self.controller.control_step_reduced()
-
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = DualArm.Result()
-                    result.success = False
-                    return result
 
                 # compute errors
                 left_error_linear = np.linalg.norm(self.controller.left_ee_error[:3])
                 left_error_angular = np.linalg.norm(self.controller.left_ee_error[3:])
                 right_error_linear = np.linalg.norm(self.controller.right_ee_error[:3])
                 right_error_angular = np.linalg.norm(self.controller.right_ee_error[3:])
-                # send feedback
-                feedback_msg = DualArm.Feedback()
-                feedback_msg.left_error_linear = left_error_linear
-                feedback_msg.left_error_angular = left_error_angular
-                feedback_msg.right_error_linear = right_error_linear
-                feedback_msg.right_error_angular = right_error_angular
-                goal_handle.publish_feedback(feedback_msg)
+                controller_dt = self.controller.dt
 
-                # check if the goal is reached
-                if (left_error_linear < self.threshold_linear and
-                    right_error_linear < self.threshold_linear and
-                    left_error_angular < self.threshold_angular and
-                    right_error_angular < self.threshold_angular):
-                    self.get_logger().info('Goal reached')
-                    break
+            # send feedback
+            feedback_msg = DualArm.Feedback()
+            feedback_msg.left_error_linear = left_error_linear
+            feedback_msg.left_error_angular = left_error_angular
+            feedback_msg.right_error_linear = right_error_linear
+            feedback_msg.right_error_angular = right_error_angular
+            goal_handle.publish_feedback(feedback_msg)
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            # check if the goal is reached
+            if (left_error_linear < self.threshold_linear and
+                right_error_linear < self.threshold_linear and
+                left_error_angular < self.threshold_angular and
+                right_error_angular < self.threshold_angular):
+                self.get_logger().info('Goal reached')
+                break
 
-            goal_handle.succeed()
-            result = DualArm.Result()
-            result.success = True
-            return result
+            time.sleep(max(0.0, controller_dt - (time.time() - frame_start_time)))
+
+        goal_handle.succeed()
+        result = DualArm.Result()
+        result.success = True
+        return result
 
     def named_config_callback(self, goal_handle):
-        with self._controller_lock:
-            self.get_logger().info('Received named config goal')
-            goal = goal_handle.request
-            self.get_logger().info(str(goal))
+        self.get_logger().info('Received named config goal')
+        goal = goal_handle.request
+        self.get_logger().info(str(goal))
 
-            # check if the named config exists
-            config_name = goal.config_name
-            if config_name not in NAMED_CONFIGS:
-                self.get_logger().warn(f'Named config "{config_name}" not found')
-                goal_handle.abort()
+        # check if the named config exists
+        config_name = goal.config_name
+        if config_name not in NAMED_CONFIGS:
+            self.get_logger().warn(f'Named config "{config_name}" not found')
+            goal_handle.abort()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
+
+        self.get_logger().info(f'Going to named config: {config_name}')
+        q_reduced = NAMED_CONFIGS[config_name]
+
+        with self._controller_lock:
+            # update ik solver with current state
+            self.controller.update_ik_solver()
+
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
                 result = NamedConfig.Result()
                 result.success = False
                 return result
 
-            self.get_logger().info(f'Going to named config: {config_name}')
-            q_reduced = NAMED_CONFIGS[config_name]
-
-            # update ik solver with current state
-            self.controller.update_ik_solver()
-
-            # main loop
-            start_time = time.time()
-            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
-            timeout = duration if duration > 0.0 else self.timeout
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
+            with self._controller_lock:
                 # control one step
                 self.controller.goto_reduced_configuration(q_reduced)
 
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = NamedConfig.Result()
-                    result.success = False
-                    return result
-
                 # compute error
                 joint_error = np.max(np.abs(self.controller.reduced_configuration_error))
-                # send feedback
-                feedback_msg = NamedConfig.Feedback()
-                feedback_msg.joint_error = joint_error
-                goal_handle.publish_feedback(feedback_msg)
+                controller_dt = self.controller.dt
 
-                # check if the goal is reached
-                if joint_error < 1e-3:
-                    self.get_logger().info('Named config reached')
-                    break
+            # send feedback
+            feedback_msg = NamedConfig.Feedback()
+            feedback_msg.joint_error = joint_error
+            goal_handle.publish_feedback(feedback_msg)
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            # check if the goal is reached
+            if joint_error < 1e-3:
+                self.get_logger().info('Named config reached')
+                break
 
-            goal_handle.succeed()
-            result = NamedConfig.Result()
-            result.success = True
-            return result
+            time.sleep(max(0.0, controller_dt - (time.time() - frame_start_time)))
+
+        goal_handle.succeed()
+        result = NamedConfig.Result()
+        result.success = True
+        return result
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info('Canceling goal')

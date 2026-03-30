@@ -78,54 +78,64 @@ class FrameTaskServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
+        with self._controller_lock:
+            frame_names_data = list(self.frame_names)
+            frame_targets_data = list(self.frame_targets)
+
+            frame_poses_data = [
+                matrix_to_pose(self.controller.get_frame_transformation(name))
+                for name in frame_names_data
+            ]
+            left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
+            right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
+
+            left_ee_target = None
+            right_ee_target = None
+            try:
+                # FrameController stores targets inside IK frame tasks.
+                left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
+                right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
+                if left_ee_task is not None:
+                    left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
+                if right_ee_task is not None:
+                    right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
+            except (AttributeError, KeyError):
+                pass
+
         # publish frame names
         frame_names = StringArray()
-        frame_names.data = self.frame_names
+        frame_names.data = frame_names_data
         self.frame_names_publisher.publish(frame_names)
 
         # publish frame targets
         frame_targets = PoseArray()
-        frame_targets.poses = self.frame_targets
+        frame_targets.poses = frame_targets_data
         self.frame_targets_publisher.publish(frame_targets)
 
         # publish frame poses
         frame_poses = PoseArray()
-        frame_poses.poses = [
-            matrix_to_pose(self.controller.get_frame_transformation(name))
-            for name in self.frame_names
-        ]
+        frame_poses.poses = frame_poses_data
         self.frame_poses_publisher.publish(frame_poses)
 
         # publish convenience left and right end-effector poses
-        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
-        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
         self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
         self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
 
         # publish left and right end-effector target poses if available
-        try:
-            # These properties exist in ArmController but frame_controller doesn't directly expose them
-            # We need to access them through the ik_solver frame tasks
-            left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
-            right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
-            if left_ee_task is not None:
-                left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
-                self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-            if right_ee_task is not None:
-                right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
-                self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
-        except (AttributeError, KeyError):
-            pass
+        if left_ee_target is not None:
+            self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
+        if right_ee_target is not None:
+            self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
     def frame_task_callback(self, goal_handle):
-        with self._controller_lock:
-            self.get_logger().info('Received goal')
-            goal = goal_handle.request
+        self.get_logger().info('Received goal')
+        goal = goal_handle.request
 
+        with self._controller_lock:
             # clear existing frame tasks
             self.controller.clear_frame_tasks()
-            self.frame_names = goal.frame_names
-            self.frame_targets = goal.frame_targets
+            self.frame_names = list(goal.frame_names)
+            self.frame_targets = list(goal.frame_targets)
 
             # set frame tasks
             self.get_logger().info('Going to target frame poses')
@@ -136,22 +146,24 @@ class FrameTaskServer(Node):
             # update ik solver with current state
             self.controller.update_ik_solver()
 
-            # main loop
-            start_time = time.time()
-            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
-            timeout = duration if duration > 0.0 else self.timeout
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = FrameTask.Result()
+                result.success = False
+                return result
+
+            with self._controller_lock:
                 # control one step
                 self.controller.control_step_reduced()
-
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = FrameTask.Result()
-                    result.success = False
-                    return result
 
                 # compute errors
                 errors_linear = []
@@ -160,82 +172,88 @@ class FrameTaskServer(Node):
                     error = self.controller.get_frame_task_error(f'{frame_name}_task')
                     errors_linear.append(np.linalg.norm(error[:3]))
                     errors_angular.append(np.linalg.norm(error[3:]))
-                # send feedback
-                feedback_msg = FrameTask.Feedback()
-                feedback_msg.errors_linear = errors_linear
-                feedback_msg.errors_angular = errors_angular
-                goal_handle.publish_feedback(feedback_msg)
+                controller_dt = self.controller.dt
 
-                # check if the goal is reached
-                if len(errors_linear) > 0 and len(errors_angular) > 0:
-                    if (max(errors_linear) < self.threshold_linear and
-                        max(errors_angular) < self.threshold_angular):
-                        self.get_logger().info('Goal reached')
-                        break
+            # send feedback
+            feedback_msg = FrameTask.Feedback()
+            feedback_msg.errors_linear = errors_linear
+            feedback_msg.errors_angular = errors_angular
+            goal_handle.publish_feedback(feedback_msg)
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            # check if the goal is reached
+            if len(errors_linear) > 0 and len(errors_angular) > 0:
+                if (max(errors_linear) < self.threshold_linear and
+                    max(errors_angular) < self.threshold_angular):
+                    self.get_logger().info('Goal reached')
+                    break
 
-            # set result
-            result = FrameTask.Result()
-            result.success = True
-            goal_handle.succeed()
-            return result
+            time.sleep(max(0.0, controller_dt - (time.time() - frame_start_time)))
+
+        # set result
+        result = FrameTask.Result()
+        result.success = True
+        goal_handle.succeed()
+        return result
 
     def named_config_callback(self, goal_handle):
-        with self._controller_lock:
-            self.get_logger().info('Received named config goal')
-            goal = goal_handle.request
+        self.get_logger().info('Received named config goal')
+        goal = goal_handle.request
 
-            # check if the named config exists
-            config_name = goal.config_name
-            if config_name not in NAMED_CONFIGS:
-                self.get_logger().warn(f'Named config "{config_name}" not found')
-                goal_handle.abort()
+        # check if the named config exists
+        config_name = goal.config_name
+        if config_name not in NAMED_CONFIGS:
+            self.get_logger().warn(f'Named config "{config_name}" not found')
+            goal_handle.abort()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
+
+        self.get_logger().info(f'Going to named config: {config_name}')
+        q_reduced = NAMED_CONFIGS[config_name]
+
+        with self._controller_lock:
+            # update ik solver with current state
+            self.controller.update_ik_solver()
+
+        # main loop
+        start_time = time.time()
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        timeout = duration if duration > 0.0 else self.timeout
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
                 result = NamedConfig.Result()
                 result.success = False
                 return result
 
-            self.get_logger().info(f'Going to named config: {config_name}')
-            q_reduced = NAMED_CONFIGS[config_name]
-
-            # update ik solver with current state
-            self.controller.update_ik_solver()
-
-            # main loop
-            start_time = time.time()
-            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
-            timeout = duration if duration > 0.0 else self.timeout
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
+            with self._controller_lock:
                 # control one step
                 self.controller.goto_reduced_configuration(q_reduced)
 
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = NamedConfig.Result()
-                    result.success = False
-                    return result
-
                 # compute error
                 joint_error = np.max(np.abs(self.controller.reduced_configuration_error))
-                # send feedback
-                feedback_msg = NamedConfig.Feedback()
-                feedback_msg.joint_error = joint_error
-                goal_handle.publish_feedback(feedback_msg)
+                controller_dt = self.controller.dt
 
-                # check if the goal is reached
-                if joint_error < 1e-3:
-                    self.get_logger().info('Named config reached')
-                    break
+            # send feedback
+            feedback_msg = NamedConfig.Feedback()
+            feedback_msg.joint_error = joint_error
+            goal_handle.publish_feedback(feedback_msg)
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            # check if the goal is reached
+            if joint_error < 1e-3:
+                self.get_logger().info('Named config reached')
+                break
 
-            goal_handle.succeed()
-            result = NamedConfig.Result()
-            result.success = True
-            return result
+            time.sleep(max(0.0, controller_dt - (time.time() - frame_start_time)))
+
+        goal_handle.succeed()
+        result = NamedConfig.Result()
+        result.success = True
+        return result
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info('Canceling goal')
