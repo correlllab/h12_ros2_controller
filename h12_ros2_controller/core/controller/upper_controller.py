@@ -90,7 +90,7 @@ class UpperController:
     '''
     @property
     def left_ee_transformation(self):
-        return self.robot_model.get_frame_transformation(self.left_ee_name)
+        return self.robot_model.get_frame_transformation(self.left_ee_name, np.array([1.0, 0.0, 0.0, 0.0]))
 
     @property
     def left_ee_position(self):
@@ -118,7 +118,7 @@ class UpperController:
     '''
     @property
     def right_ee_transformation(self):
-        return self.robot_model.get_frame_transformation(self.right_ee_name)
+        return self.robot_model.get_frame_transformation(self.right_ee_name, np.array([1.0, 0.0, 0.0, 0.0]))
 
     @property
     def right_ee_position(self):
