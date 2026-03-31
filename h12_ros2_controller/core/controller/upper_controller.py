@@ -90,15 +90,15 @@ class UpperController:
     '''
     @property
     def left_ee_transformation(self):
-        return self.robot_model.get_frame_transformation(self.left_ee_name, np.array([1.0, 0.0, 0.0, 0.0]))
+        return self.robot_model.get_frame_transformation_reduced(self.left_ee_name)
 
     @property
     def left_ee_position(self):
-        return self.robot_model.get_frame_position(self.left_ee_name)
+        return self.robot_model.get_frame_position_reduced(self.left_ee_name)
 
     @property
     def left_ee_rotation(self):
-        return self.robot_model.get_frame_rotation(self.left_ee_name)
+        return self.robot_model.get_frame_rotation_reduced(self.left_ee_name)
 
     @property
     def left_ee_rpy(self):
@@ -118,15 +118,15 @@ class UpperController:
     '''
     @property
     def right_ee_transformation(self):
-        return self.robot_model.get_frame_transformation(self.right_ee_name, np.array([1.0, 0.0, 0.0, 0.0]))
+        return self.robot_model.get_frame_transformation_reduced(self.right_ee_name)
 
     @property
     def right_ee_position(self):
-        return self.robot_model.get_frame_position(self.right_ee_name)
+        return self.robot_model.get_frame_position_reduced(self.right_ee_name)
 
     @property
     def right_ee_rotation(self):
-        return self.robot_model.get_frame_rotation(self.right_ee_name)
+        return self.robot_model.get_frame_rotation_reduced(self.right_ee_name)
 
     @property
     def right_ee_rpy(self):
