@@ -21,7 +21,6 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class DualArmServer(Node):
     def __init__(self,
-                 dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2,
@@ -35,11 +34,10 @@ class DualArmServer(Node):
         config_data = load_controller_config(config)
         initialize_channel_factory(config_data)
         self.controller = ArmController(URDF_PIN_PATH,
-                                        URDF_SPHERE_PATH,
-                                        SRDF_SPHERE_PATH,
-                                        dt=dt,
-                                        visualize=False,
-                                        config=config)
+                        URDF_SPHERE_PATH,
+                        SRDF_SPHERE_PATH,
+                        visualize=False,
+                        config=config)
         maybe_start_controller_logging(self.controller)
 
         # publisher of left and right end-effector poses
@@ -229,8 +227,7 @@ def main(args=None):
     parsed_args, ros_args = parser.parse_known_args(args=args)
 
     rclpy.init(args=ros_args)
-    node = DualArmServer(dt=0.03,
-                         timeout=10.0,
+    node = DualArmServer(timeout=10.0,
                          threshold_linear=5e-3,
                          threshold_angular=2e-2,
                          config=parsed_args.config)

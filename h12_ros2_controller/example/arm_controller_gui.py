@@ -16,7 +16,6 @@ def main(config='default.yaml'):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
-                                   dt=0.025,
                                    visualize=True,
                                    config=config)
     arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]

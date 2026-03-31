@@ -143,12 +143,29 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME):
 
     topics = raw.get('topics', {})
     network = raw.get('network', {})
+    controller = raw.get('controller', {})
+    frequency = raw.get('frequency', {})
     limits = raw.get('limits', {})
     gains = raw.get('gains', {})
     logging = raw.get('logging', {})
 
+    ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
+    pub_hz = float(frequency.get('pub_hz', 500.0))
+    check_hz = float(frequency.get('check_hz', 1000.0))
+    if ctrl_hz <= 0.0:
+        raise ValueError('frequency.ctrl_hz must be positive')
+    if pub_hz <= 0.0:
+        raise ValueError('frequency.pub_hz must be positive')
+    if check_hz <= 0.0:
+        raise ValueError('frequency.check_hz must be positive')
+
     processed_limits = build_processed_limits(limits)
     processed_gains = _process_gains(gains)
+
+    v_lim = float(controller.get('v_lim', 1.0))
+    w_lim = float(controller.get('w_lim', 2.0))
+    dq_lim = float(controller.get('dq_lim', 1.0))
+    d_min = float(controller.get('d_min', 0.02))
 
     return {
         'mode': mode,
@@ -159,6 +176,17 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME):
         'network': {
             'domain_id': int(network.get('domain_id', 0)),
             'interface': None if network.get('interface') in (None, '') else str(network.get('interface')),
+        },
+        'controller': {
+            'v_lim': v_lim,
+            'w_lim': w_lim,
+            'dq_lim': dq_lim,
+            'd_min': d_min,
+        },
+        'frequency': {
+            'ctrl_hz': ctrl_hz,
+            'pub_hz': pub_hz,
+            'check_hz': check_hz,
         },
         'gains': {
             'kp': None if processed_gains['kp'] is None else processed_gains['kp'].astype(np.float32),

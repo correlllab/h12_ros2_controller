@@ -35,6 +35,7 @@ class RobotModel:
         # field variables tracking joint states (motor only, length NUM_MOTOR)
         self._q = np.zeros(NUM_MOTOR)
         self._dq = np.zeros(NUM_MOTOR)
+        self._ddq = np.zeros(NUM_MOTOR)
         self._tau = np.zeros(NUM_MOTOR)
 
         # initialize with zero joint positions
@@ -145,6 +146,7 @@ class RobotModel:
         return {
             'q': np.copy(self._q),
             'dq': np.copy(self._dq),
+            'ddq': np.copy(self._ddq),
             'tau': np.copy(self._tau),
         }
 

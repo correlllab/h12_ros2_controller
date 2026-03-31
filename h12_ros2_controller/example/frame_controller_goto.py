@@ -63,7 +63,6 @@ def main(timeout=10.0,
     frame_controller = FrameController('assets/h1_2/h1_2.urdf',
                                        'assets/h1_2/h1_2_sphere.urdf',
                                        'assets/h1_2/h1_2_sphere_collision.srdf',
-                                       dt=0.025,
                                        visualize=True,
                                        config=config)
     maybe_start_controller_logging(frame_controller)

@@ -13,19 +13,19 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=1.0, d_min=0.02,
                  visualize=False,
                  config='default.yaml'):
         self.config = load_controller_config(config)
         self.sport_mode = resolve_sport_mode(self.config)
+        controller_cfg = self.config.get('controller', {})
 
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
-        self.dt = dt
-        self.v_lim = v_lim
-        self.w_lim = w_lim
-        self.dq_lim = dq_lim
-        self.d_min = d_min
+        self.dt = 1.0 / float(self.config.get('frequency', {}).get('ctrl_hz', 50.0))
+        self.v_lim = float(controller_cfg.get('v_lim', 1.0))
+        self.w_lim = float(controller_cfg.get('w_lim', 2.0))
+        self.dq_lim = float(controller_cfg.get('dq_lim', 1.0))
+        self.d_min = float(controller_cfg.get('d_min', 0.02))
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -42,7 +42,6 @@ class UpperController:
 
         # intialize low cmd publisher
         self.low_cmd_handler = LowCmdHandler(self.robot_model,
-                                             sport_mode=self.sport_mode,
                                              config=self.config)
 
         # enable upper body motors

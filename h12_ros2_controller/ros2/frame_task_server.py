@@ -18,7 +18,6 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class FrameTaskServer(Node):
     def __init__(self,
-                 dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2,
@@ -36,11 +35,10 @@ class FrameTaskServer(Node):
 
         initialize_channel_factory(config_data)
         self.controller = FrameController(URDF_PIN_PATH,
-                                          URDF_SPHERE_PATH,
-                                          SRDF_SPHERE_PATH,
-                                          dt=dt,
-                                          visualize=False,
-                                          config=config)
+                          URDF_SPHERE_PATH,
+                          SRDF_SPHERE_PATH,
+                          visualize=False,
+                          config=config)
 
         # publisher publishing frame names and target poses
         self.frame_names_publisher = self.create_publisher(StringArray, 'frame_names', 10)

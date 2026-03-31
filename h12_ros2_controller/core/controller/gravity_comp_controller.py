@@ -9,13 +9,16 @@ class GravityCompController(UpperController):
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
                  visualize=False,
                  config='default.yaml'):
         # initialize base controller
-        super().__init__(urdf_path, urdf_sphere_path, srdf_sphere_path,
-                         dt, v_lim, w_lim, dq_lim, d_min,
-                     visualize, config)
+        super().__init__(
+            urdf_path=urdf_path,
+            urdf_sphere_path=urdf_sphere_path,
+            srdf_sphere_path=srdf_sphere_path,
+            visualize=visualize,
+            config=config,
+        )
 
         # i control on dq (motor-only, 27)
         self.dq_i = np.zeros(self.robot_model.model_body.nv)

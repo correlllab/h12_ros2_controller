@@ -9,6 +9,7 @@ from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
     DEFAULT_CONFIG_NAME,
+    resolve_sport_mode,
 )
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
@@ -16,13 +17,14 @@ from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPu
 class LowCmdHandler:
     def __init__(self,
                  robot_model: RobotModel,
-                 checker_dt: float=0.001,
-                 publisher_dt: float=0.002,
-                 sport_mode: bool=False,
                  config: dict=None):
-        self._checker_dt = checker_dt
         self._robot_model = robot_model
         self._config = load_controller_config(DEFAULT_CONFIG_NAME) if config is None else config
+        frequency_cfg = self._config.get('frequency', {})
+        checker_dt = 1.0 / float(frequency_cfg.get('check_hz', 1000.0))
+        publisher_dt = 1.0 / float(frequency_cfg.get('pub_hz', 500.0))
+
+        self._checker_dt = checker_dt
         limits_cfg = self._config.get('limits', {})
 
         self._q_clip_limits = limits_cfg.get('q_clip_limits')
@@ -44,6 +46,7 @@ class LowCmdHandler:
                 'velocity_clip': self._dq_clip_limits,
                 'torque_clip': self._tau_clip_limits,
             }
+        sport_mode = resolve_sport_mode(self._config)
         # intialize command publisher
         if sport_mode:
             self._command_publisher = ArmSDKPublisher(

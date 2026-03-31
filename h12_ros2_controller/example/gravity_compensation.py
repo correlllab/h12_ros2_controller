@@ -14,7 +14,6 @@ def main(config='default.yaml'):
     gravity_comp_controller = GravityCompController('assets/h1_2/h1_2.urdf',
                                                     'assets/h1_2/h1_2_sphere.urdf',
                                                     'assets/h1_2/h1_2_sphere_collision.srdf',
-                                                    dt=0.01,
                                                     visualize=False,
                                                     config=config)
 

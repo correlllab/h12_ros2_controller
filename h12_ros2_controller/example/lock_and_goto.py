@@ -29,7 +29,6 @@ def lock(config='default.yaml'):
     upper_controller = UpperController('assets/h1_2/h1_2.urdf',
                                        'assets/h1_2/h1_2_sphere.urdf',
                                        'assets/h1_2/h1_2_sphere_collision.srdf',
-                                       dt=0.01,
                                        visualize=True,
                                        config=config)
 
@@ -48,7 +47,6 @@ def goto(config='default.yaml'):
     upper_controller = UpperController('assets/h1_2/h1_2.urdf',
                                        'assets/h1_2/h1_2_sphere.urdf',
                                        'assets/h1_2/h1_2_sphere_collision.srdf',
-                                       dt=0.01,
                                        visualize=True,
                                        config=config)
 
