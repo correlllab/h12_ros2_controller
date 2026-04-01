@@ -12,9 +12,9 @@ from h12_ros2_controller.utility.joint_limits import (
     JOINT_TORQUE_LIMITS,
 )
 
-DEFAULT_CONFIG_NAME = 'default.yaml'
+DEFAULT_CONFIG_NAME = 'debug.yaml'
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_DIR = REPO_ROOT / 'config'
+DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open('r', encoding='utf-8') as handle:
@@ -130,9 +130,9 @@ def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def load_controller_config(config_name=DEFAULT_CONFIG_NAME):
-    config_name = config_name or DEFAULT_CONFIG_NAME
-    config_path = CONFIG_DIR / config_name
+def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
+                           config_dir=DEFAULT_CONFIG_DIR) -> dict[str, Any]:
+    config_path = config_dir / config_name
     if not config_path.exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
 

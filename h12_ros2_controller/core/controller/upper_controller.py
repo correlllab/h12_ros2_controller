@@ -5,7 +5,7 @@ import pinocchio as pin
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
-from h12_ros2_controller.utility.controller_config import load_controller_config, resolve_sport_mode
+from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -14,9 +14,8 @@ class UpperController:
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
                  visualize=False,
-                 config='default.yaml'):
-        self.config = load_controller_config(config)
-        self.sport_mode = resolve_sport_mode(self.config)
+                 config=None):
+        self.config = config if config is not None else load_controller_config()
         controller_cfg = self.config.get('controller', {})
 
         # initialize robot model
@@ -309,7 +308,8 @@ class UpperController:
         kp = np.zeros(self.robot_model.model_body.nv)
         kd = kd * np.ones(self.robot_model.model_body.nv)
         dq = np.zeros(self.robot_model.model_body.nv)
-        self.low_cmd_handler.set_joint_commands(dq=dq, kp=kp, kd=kd)
+        self.low_cmd_handler.set_joint_gains(kp=kp, kd=kd)
+        self.low_cmd_handler.set_joint_commands(dq=dq)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
     def start_recording(self, save_path, filename, record_interval=0.01):

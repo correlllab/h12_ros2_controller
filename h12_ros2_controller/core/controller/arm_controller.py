@@ -9,8 +9,8 @@ class ArmController(UpperController):
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 visualize=False,
-                 config='default.yaml'):
+                 visualize: bool=False,
+                 config: dict=None):
         # initialize base controller
         super().__init__(
             urdf_path=urdf_path,

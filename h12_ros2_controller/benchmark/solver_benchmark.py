@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Solver Benchmark Script')
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save benchmark results in data/compare_solver/')
-    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
 
     # Mutually exclusive group for mode selection
     mode_group = parser.add_mutually_exclusive_group(required=True)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
 
-    config_data = load_controller_config(args.config)
-    initialize_channel_factory(config_data)
+    config = load_controller_config(args.config)
+    initialize_channel_factory(config)
     for solver in solvers:
-        run_benchmark(solver, args.save, mode, args.config)
+        run_benchmark(solver, args.save, mode, config)

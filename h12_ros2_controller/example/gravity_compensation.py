@@ -7,10 +7,10 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 
-def main(config='default.yaml'):
+def main(config_name='debug.yaml'):
     print('Initializing GravityCompController...')
-    config_data = load_controller_config(config)
-    initialize_channel_factory(config_data)
+    config= load_controller_config(config_name)
+    initialize_channel_factory(config)
     gravity_comp_controller = GravityCompController('assets/h1_2/h1_2.urdf',
                                                     'assets/h1_2/h1_2_sphere.urdf',
                                                     'assets/h1_2/h1_2_sphere_collision.srdf',
@@ -30,6 +30,6 @@ def main(config='default.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
-    main(config=args.config)
+    main(config_name=args.config)

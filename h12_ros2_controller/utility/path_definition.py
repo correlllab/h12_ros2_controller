@@ -16,3 +16,4 @@ SRDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere_collision.srdf'
 # data path
 HOME = str(Path.home())
 LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'
+CONFIG_DIR = Path(f'{PACKAGE_PATH}/config')

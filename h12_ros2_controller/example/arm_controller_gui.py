@@ -9,9 +9,9 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 
-def main(config='default.yaml'):
-    config_data = load_controller_config(config)
-    initialize_channel_factory(config_data)
+def main(config_name='debug.yaml'):
+    config= load_controller_config(config_name)
+    initialize_channel_factory(config)
     # example usage
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
@@ -150,6 +150,6 @@ def main(config='default.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
-    main(config=args.config)
+    main(config_name=args.config)

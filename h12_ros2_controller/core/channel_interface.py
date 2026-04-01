@@ -3,6 +3,7 @@ import threading
 import numpy as np
 from abc import ABC, abstractmethod
 
+from h12_ros2_controller.utility.controller_config import get_publisher_clip_limits
 from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelPublisher
 
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorStates_, MotorCmds_, MotorCmd_
@@ -16,22 +17,18 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowState_ as LowState
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_ as LowCmd_default
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__IMUState_ as IMUState_default
 
-from h12_ros2_controller.utility.controller_config import get_publisher_clip_limits
 from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, NUM_HAND_DOF
 
-# TOPIC_LOWCMD = 'rt/lowcmd'
-# TOPIC_LOWCMD = 'rt/safety/lowcmd_in'
-TOPIC_LOWCMD = 'rt/lowcmd'
-TOPIC_LOWSTATE = 'rt/lowstate'
-TOPIC_HIGHSTATE = 'rt/sportmodestate'
+TOPIC_LOWCMD_DEFAULT = 'rt/lowcmd'
+TOPIC_LOWSTATE_DEFAULT = 'rt/lowstate'
+TOPIC_ARM_SDK_DEFAULT = 'rt/arm_sdk'
 TOPIC_HANDSTATE = 'rt/inspire/state'
 TOPIC_HANDCMD = 'rt/inspire/cmd'
-TOPIC_ARM_SDK = 'rt/arm_sdk'
 
 INDEX_NOT_USED = NUM_MOTOR
 
 class StateSubscriber:
-    def __init__(self, low_state_topic=TOPIC_LOWSTATE):
+    def __init__(self, low_state_topic=TOPIC_LOWSTATE_DEFAULT):
         # variable tracking states
         self._time_stamp = 0.0
         self._imu_state = IMUState_default()
@@ -88,7 +85,7 @@ class StateSubscriber:
 
 class CommandPublisher(ABC):
     '''Base class for command publishers with shared functionality.'''
-    def __init__(self, dt=0.005, clip_limits=None):
+    def __init__(self, dt=0.002, clip_limits=None):
         self._dt = dt
         # data fileds
         self.mode = np.zeros(NUM_MOTOR, dtype=np.int32)
@@ -108,10 +105,11 @@ class CommandPublisher(ABC):
         self._crc = None
         self._low_cmd = None
 
-        effective_clip_limits = get_publisher_clip_limits() if clip_limits is None else clip_limits
-        self._position_clip_limits = effective_clip_limits['position_clip']
-        self._velocity_clip_limits = effective_clip_limits['velocity_clip']
-        self._torque_clip_limits = effective_clip_limits['torque_clip']
+        # retrieve default clip limits if not provided
+        clip_limits = clip_limits if clip_limits is not None else get_publisher_clip_limits()
+        self._position_clip_limits = clip_limits['position_clip']
+        self._velocity_clip_limits = clip_limits['velocity_clip']
+        self._torque_clip_limits = clip_limits['torque_clip']
 
         # initialize publisher-specific components
         self._init_low_cmd()
@@ -218,7 +216,7 @@ class CommandPublisher(ABC):
 
 class LowCmdPublisher(CommandPublisher):
     '''Wrapper class of publisher publishing to LowCmd topic'''
-    def __init__(self, dt=0.005, low_cmd_topic=TOPIC_LOWCMD, clip_limits=None):
+    def __init__(self, dt=0.002, low_cmd_topic=TOPIC_LOWCMD_DEFAULT, clip_limits=None):
         self._low_cmd_topic = low_cmd_topic
         super().__init__(dt=dt, clip_limits=clip_limits)
 
@@ -250,7 +248,7 @@ class LowCmdPublisher(CommandPublisher):
 
 class ArmSDKPublisher(CommandPublisher):
     '''ARM SDK command publisher using RecurrentThread approach.'''
-    def __init__(self, dt=0.005, arm_sdk_topic=TOPIC_ARM_SDK, clip_limits=None):
+    def __init__(self, dt=0.002, arm_sdk_topic=TOPIC_ARM_SDK_DEFAULT, clip_limits=None):
         self._arm_sdk_topic = arm_sdk_topic
         super().__init__(dt=dt, clip_limits=clip_limits)
 

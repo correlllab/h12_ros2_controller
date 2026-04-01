@@ -178,5 +178,6 @@ ENABLED_JOINTS = [
     'right_wrist_yaw_joint'
 ]
 
+UPPER_BODY_INDEX = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
 LEFT_ARM_INDEX = [i for i in range(13, 20)]
 RIGHT_ARM_INDEX = [i for i in range(20, 27)]

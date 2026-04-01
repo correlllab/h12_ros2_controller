@@ -8,8 +8,8 @@ class FrameController(UpperController):
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 visualize=False,
-                 config='default.yaml'):
+                 visualize: bool=False,
+                 config: dict=None):
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,

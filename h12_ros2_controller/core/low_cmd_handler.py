@@ -8,7 +8,6 @@ from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    DEFAULT_CONFIG_NAME,
     resolve_sport_mode,
 )
 from h12_ros2_controller.core.robot_model import RobotModel
@@ -19,7 +18,7 @@ class LowCmdHandler:
                  robot_model: RobotModel,
                  config: dict=None):
         self._robot_model = robot_model
-        self._config = load_controller_config(DEFAULT_CONFIG_NAME) if config is None else config
+        self._config = config if config is not None else load_controller_config()
         frequency_cfg = self._config.get('frequency', {})
         checker_dt = 1.0 / float(frequency_cfg.get('check_hz', 1000.0))
         publisher_dt = 1.0 / float(frequency_cfg.get('pub_hz', 500.0))
@@ -112,6 +111,23 @@ class LowCmdHandler:
         # record state if recording is enabled
         if self._recording:
             self._record_state()
+
+    def set_joint_gains(self,
+                        kp: Optional[np.ndarray]=None,
+                        kd: Optional[np.ndarray]=None,
+                        joint_ids: Optional[List[int]]=None):
+        '''Set multiple joint gains atomically'''
+        with self._command_publisher.data_lock:
+            if joint_ids is None:
+                if kp is not None:
+                    self._command_publisher.kp[:] = kp
+                if kd is not None:
+                    self._command_publisher.kd[:] = kd
+            else:
+                if kp is not None:
+                    self._command_publisher.kp[joint_ids] = kp
+                if kd is not None:
+                    self._command_publisher.kd[joint_ids] = kd
 
     def enable_motors(self, motor_ids, init_q=None):
         if init_q is None:

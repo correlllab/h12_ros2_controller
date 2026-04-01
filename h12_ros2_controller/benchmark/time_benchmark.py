@@ -105,16 +105,16 @@ class TimeBenchmark:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Timing benchmark script')
-    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
 
-    config_data = load_controller_config(args.config)
-    initialize_channel_factory(config_data)
+    config= load_controller_config(args.config)
+    initialize_channel_factory(config)
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    visualize=True,
-                                   config=args.config)
+                                   config=config)
 
     target_poses = [
         np.array([0.3, 0.2, 0.2, 0, 0, 0]),

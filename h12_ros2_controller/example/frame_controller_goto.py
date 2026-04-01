@@ -56,9 +56,9 @@ def main(timeout=10.0,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
          com=False,
-         config='default.yaml'):
-    config_data = load_controller_config(config)
-    initialize_channel_factory(config_data)
+         config_name='debug.yaml'):
+    config= load_controller_config(config_name)
+    initialize_channel_factory(config)
     # initialize upper task controller
     frame_controller = FrameController('assets/h1_2/h1_2.urdf',
                                        'assets/h1_2/h1_2_sphere.urdf',
@@ -134,7 +134,7 @@ def main(timeout=10.0,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Frame Controller Goto')
-    parser.add_argument('--config', type=str, default='default.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     parser.add_argument('--com', action='store_true', help='Use center of mass control')
     args = parser.parse_args()
-    main(timeout=10.0, com=args.com, config=args.config)
+    main(timeout=10.0, com=args.com, config_name=args.config)
