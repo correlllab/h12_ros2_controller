@@ -68,6 +68,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 ## Files
 
 - `assets/` contains robot description files. Only used when running the programs without ros environment.
+- `config/` contains configurations for the controller.
 - `data/` contains saved data such as joint positions.
 - `figures` contains generated figures.
 - `h12_ros2_controller/`: contains source code.
@@ -95,9 +96,11 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - Run arm controller that prompt for target end-effector positions in command line.
 
     ```bash
-    # choose --sport or --debug depending on robot states
-    python h12_ros2_controller/arm_controller_goto.py --sport
-    python h12_ros2_controller/arm_controller_goto.py --debug
+    # choose config file depending on usage
+    uv run h12_ros2_controller/arm_controller_goto.py --config debug.yaml # default
+    uv run h12_ros2_controller/arm_controller_goto.py --config sport.yaml # sport mode
+    uv run h12_ros2_controller/arm_controller_goto.py --config safety_full.yaml # safety layer full-body mode
+    uv run h12_ros2_controller/arm_controller_goto.py --config safety_split.yaml # safety layer split mode
     ```
 
 - Change `visualize=True` when initializing the controller to have the meshcat visualization
@@ -121,3 +124,65 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
     - Launch arm controller in debug mode using `python h12_ros2_controller/arm_controller_goto.py --debug`.
 
     ![Mujoco Example](./figures/Mujoco_Example.png)
+
+## ROS Interface
+
+### Dual Arm Server & Client
+
+- Launch the server first
+
+    ```bash
+    ros2 run h12_ros2_controller dual_arm_server --config debug.yaml # default
+    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
+    ```
+
+- Then launch the client and enter either a named config goal targets for both wrists.
+
+    ```bash
+    ros2 run h12_ros2_controller dual_arm_client
+    ```
+
+- The client can send named configs from `utility/named_config.py` or interactively enter frame names and target poses
+- Press BACKSPACE to cancel the active goal
+
+### Frame Task Server & Client
+
+- Launch the server first
+
+    ```bash
+    ros2 run h12_ros2_controller frame_task_server --config debug.yaml # default
+    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
+    ```
+
+- Then launch the client and enter either a named config or manual frame targets.
+
+    ```bash
+    ros2 run h12_ros2_controller frame_task_client
+    ```
+
+- The client can send named configs from `utility/named_config.py` or interactively enter frame names and target poses
+- Press BACKSPACE to cancel the active goal
+
+### Launch Files
+
+- [desktop_launch.py](launch/desktop_launch.py) starts `rviz2` with the default RViz config after a short delay
+- [full_launch.py](launch/full_launch.py) starts `robot_state_publisher`, `joint_state_publisher`, `dual_arm_server`, and `rviz2`
+- [robot_launch.py](launch/robot_launch.py) starts `robot_state_publisher`, `joint_state_publisher`, `frame_task_server`, and `hand_controller_node`
+- [robot_safety_launch.py](launch/robot_safety_launch.py) starts `robot_state_publisher`, `joint_state_publisher`, `frame_task_server`, `h12_safety_layer/safety_node`, and `hand_controller_node`
+- [robot_tf_launch.py](launch/robot_tf_launch.py) starts `robot_state_publisher` and `joint_state_publisher` with a higher TF publish frequency
+
+- Use `ros2 launch h12_ros2_controller <launch_file>` to run any of these launch descriptions
+- `robot_launch.py` and `full_launch.py` accept `config:=...` for the controller server node, for example:
+
+    ```bash
+    ros2 launch h12_ros2_controller robot_launch.py config:=debug
+    ros2 launch h12_ros2_controller robot_launch.py config:=debug.yaml
+    ros2 launch h12_ros2_controller full_launch.py config:=config/safety_full
+    ```
+
+- `robot_safety_launch.py` accepts both `config:=...` and `safety_config:=...` with matching `_full` or `_split` suffixes:
+
+    ```bash
+    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_full safety_config:=default_safety_full
+    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_split safety_config:=default_safety_split
+    ```

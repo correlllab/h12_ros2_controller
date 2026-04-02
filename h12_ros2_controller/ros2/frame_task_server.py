@@ -1,4 +1,5 @@
 import rclpy
+import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
@@ -7,21 +8,20 @@ import time
 import threading
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 from custom_ros_messages.msg import StringArray
 from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
+from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, CONFIG_DIR
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class FrameTaskServer(Node):
     def __init__(self,
-                 dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
-                 threshold_angular=2e-2):
+                 threshold_angular=2e-2,
+                 config_name='debug.yaml'):
         super().__init__('frame_task_server')
         self.timeout = timeout
         self.threshold_linear = threshold_linear
@@ -30,13 +30,16 @@ class FrameTaskServer(Node):
         self.frame_names = []
         self.frame_targets = []
 
-        ChannelFactoryInitialize()
-        self.controller = FrameController(URDF_PIN_PATH,
-                                          URDF_SPHERE_PATH,
-                                          SRDF_SPHERE_PATH,
-                                          dt=dt,
-                                          visualize=False,
-                                          sport_mode=False)
+        config = load_controller_config(config_name, config_dir=CONFIG_DIR)
+
+        initialize_channel_factory(config)
+        self.controller = FrameController(
+            URDF_PIN_PATH,
+            URDF_SPHERE_PATH,
+            SRDF_SPHERE_PATH,
+            visualize=False,
+            config=config
+        )
 
         # publisher publishing frame names and target poses
         self.frame_names_publisher = self.create_publisher(StringArray, 'frame_names', 10)
@@ -242,8 +245,12 @@ class FrameTaskServer(Node):
         return CancelResponse.ACCEPT
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = FrameTaskServer()
+    parser = argparse.ArgumentParser(description='Frame task ROS2 action server')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parsed_args, ros_args = parser.parse_known_args(args=args)
+
+    rclpy.init(args=ros_args)
+    node = FrameTaskServer(config_name=parsed_args.config)
     try:
         rclpy.spin(node, executor=rclpy.executors.MultiThreadedExecutor())
     except KeyboardInterrupt:

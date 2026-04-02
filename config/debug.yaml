@@ -1,0 +1,147 @@
+mode: debug
+
+topics:
+  low_cmd: rt/lowcmd
+  low_state: rt/lowstate
+
+network:
+  domain_id: 0
+  interface: ''
+
+controller:
+  v_lim: 1.0
+  w_lim: 2.0
+  dq_lim: 1.0
+  d_min: 0.02
+
+frequency:
+  ctrl_hz: 50
+  pub_hz: 500
+  check_hz: 1000
+
+gains:
+  kp:
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 20.0
+    - 20.0
+    - 20.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 20.0
+    - 20.0
+    - 20.0
+  kd:
+    - 8.0
+    - 15.0
+    - 15.0
+    - 10.0
+    - 5.0
+    - 5.0
+    - 8.0
+    - 15.0
+    - 15.0
+    - 10.0
+    - 5.0
+    - 5.0
+    - 10.0
+    - 10.0
+    - 10.0
+    - 4.0
+    - 4.0
+    - 4.0
+    - 4.0
+    - 4.0
+    - 10.0
+    - 10.0
+    - 4.0
+    - 4.0
+    - 4.0
+    - 4.0
+    - 4.0
+
+limits:
+  clip:
+    position_offset: 0.05
+    velocity_ratio: 0.08
+    torque_ratio: 0.25
+  estop:
+    position_offset: 0.002
+    velocity_ratio:
+      - 0.15 # left_hip_yaw_joint
+      - 0.15 # left_hip_pitch_joint
+      - 0.20 # left_hip_roll_joint
+      - 0.45 # left_knee_joint
+      - 0.40 # left_ankle_pitch_joint
+      - 0.35 # left_ankle_roll_joint
+      - 0.15 # right_hip_yaw_joint
+      - 0.15 # right_hip_pitch_joint
+      - 0.20 # right_hip_roll_joint
+      - 0.45 # right_knee_joint
+      - 0.40 # right_ankle_pitch_joint
+      - 0.35 # right_ankle_roll_joint
+      - 0.10 # torso_joint
+      - 0.10 # left_shoulder_pitch_joint
+      - 0.10 # left_shoulder_roll_joint
+      - 0.10 # left_shoulder_yaw_joint
+      - 0.10 # left_elbow_joint
+      - 0.10 # left_wrist_roll_joint
+      - 0.10 # left_wrist_pitch_joint
+      - 0.10 # left_wrist_yaw_joint
+      - 0.10 # right_shoulder_pitch_joint
+      - 0.10 # right_shoulder_roll_joint
+      - 0.10 # right_shoulder_yaw_joint
+      - 0.10 # right_elbow_joint
+      - 0.10 # right_wrist_roll_joint
+      - 0.10 # right_wrist_pitch_joint
+      - 0.10 # right_wrist_yaw_joint
+    torque_ratio:
+      - 0.30 # left_hip_yaw_joint
+      - 0.30 # left_hip_pitch_joint
+      - 1.00 # left_hip_roll_joint
+      - 0.40 # left_knee_joint
+      - 0.90 # left_ankle_pitch_joint
+      - 0.90 # left_ankle_roll_joint
+      - 0.30 # right_hip_yaw_joint
+      - 0.30 # right_hip_pitch_joint
+      - 1.00 # right_hip_roll_joint
+      - 0.40 # right_knee_joint
+      - 0.90 # right_ankle_pitch_joint
+      - 0.90 # right_ankle_roll_joint
+      - 0.10 # torso_joint
+      - 0.50 # left_shoulder_pitch_joint
+      - 0.50 # left_shoulder_roll_joint
+      - 0.50 # left_shoulder_yaw_joint
+      - 0.70 # left_elbow_joint
+      - 0.40 # left_wrist_roll_joint
+      - 0.30 # left_wrist_pitch_joint
+      - 0.30 # left_wrist_yaw_joint
+      - 0.50 # right_shoulder_pitch_joint
+      - 0.50 # right_shoulder_roll_joint
+      - 0.50 # right_shoulder_yaw_joint
+      - 0.70 # right_elbow_joint
+      - 0.40 # right_wrist_roll_joint
+      - 0.30 # right_wrist_pitch_joint
+      - 0.30 # right_wrist_yaw_joint
+
+logging:
+  enabled: false
+  base_dir: data/control_record
+  filename: record

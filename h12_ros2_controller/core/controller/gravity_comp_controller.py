@@ -2,20 +2,23 @@ import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.controller.upper_controller import UpperController
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 
 class GravityCompController(UpperController):
     def __init__(self,
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=2.0, d_min=0.02,
-                 visualize=False,
-                 sport_mode=False):
+                 visualize: bool=False,
+                 config: dict=None):
         # initialize base controller
-        super().__init__(urdf_path, urdf_sphere_path, srdf_sphere_path,
-                         dt, v_lim, w_lim, dq_lim, d_min,
-                         visualize, sport_mode)
+        super().__init__(
+            urdf_path=urdf_path,
+            urdf_sphere_path=urdf_sphere_path,
+            srdf_sphere_path=srdf_sphere_path,
+            visualize=visualize,
+            config=config,
+        )
 
         # i control on dq (motor-only, 27)
         self.dq_i = np.zeros(self.robot_model.model_body.nv)
@@ -42,13 +45,6 @@ class GravityCompController(UpperController):
 
         # damp all joints except torso
         self.damp_mode(6.0)
-        # fix torso joint
-        torso_idx = BODY_JOINTS.index('torso_joint')
-        self.command_publisher.q[torso_idx] = 0.0
-        self.command_publisher.dq[torso_idx] = 0.0
-        self.command_publisher.tau[torso_idx] = 0.0
-        self.command_publisher.kp[torso_idx] = 200.0
-        self.command_publisher.kd[torso_idx] = 10.0
 
     def gravity_compensation_step(self):
         left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
@@ -116,7 +112,8 @@ class GravityCompController(UpperController):
             self.robot_model.data_body,
             self.robot_model.state['q']
         )
-        # gravity comp tau + i control on dq
-        self.command_publisher.tau = tau - self.ki * self.dq_i
+        # gravity comp tau + i control on upper-body joints
+        tau_cmd = tau - self.ki * self.dq_i
+        self.low_cmd_handler.set_joint_commands(tau=tau_cmd[UPPER_BODY_INDEX], joint_ids=UPPER_BODY_INDEX)
 
         self.update_robot_model()

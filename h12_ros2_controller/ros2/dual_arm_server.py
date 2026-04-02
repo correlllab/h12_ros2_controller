@@ -1,4 +1,5 @@
 import rclpy
+import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
 from geometry_msgs.msg import PoseStamped
@@ -7,35 +8,39 @@ import time
 import threading
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 from custom_ros_messages.action import DualArm, NamedConfig
 from h12_ros2_controller.core.controller.arm_controller import ArmController
+from h12_ros2_controller.utility.controller_config import (
+    load_controller_config,
+    initialize_channel_factory,
+    maybe_start_controller_logging,
+)
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, LOG_PATH
+from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, CONFIG_DIR
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class DualArmServer(Node):
     def __init__(self,
-                 dt=0.03,
                  timeout=10.0,
                  threshold_linear=5e-3,
-                 threshold_angular=2e-2):
+                 threshold_angular=2e-2,
+                 config_name='debug.yaml'):
         super().__init__('dual_arm_server')
         self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
+        self.config_name = config_name
 
-        ChannelFactoryInitialize()
-        self.controller = ArmController(URDF_PIN_PATH,
-                                        URDF_SPHERE_PATH,
-                                        SRDF_SPHERE_PATH,
-                                        dt=dt,
-                                        visualize=False,
-                                        sport_mode=False)
-        # start recording with background saving
-        save_path = f'{LOG_PATH}/control_record'
-        self.controller.start_recording(save_path=save_path, filename='record_ros2')
+        config = load_controller_config(config_name, config_dir=CONFIG_DIR)
+        initialize_channel_factory(config)
+        self.controller = ArmController(
+            URDF_PIN_PATH,
+            URDF_SPHERE_PATH,
+            SRDF_SPHERE_PATH,
+            visualize=False,
+            config=config
+        )
+        maybe_start_controller_logging(self.controller)
 
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
@@ -219,11 +224,15 @@ class DualArmServer(Node):
         return CancelResponse.ACCEPT
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = DualArmServer(dt=0.03,
-                         timeout=10.0,
+    parser = argparse.ArgumentParser(description='Dual arm ROS2 action server')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parsed_args, ros_args = parser.parse_known_args(args=args)
+
+    rclpy.init(args=ros_args)
+    node = DualArmServer(timeout=10.0,
                          threshold_linear=5e-3,
-                         threshold_angular=2e-2)
+                         threshold_angular=2e-2,
+                         config_name=parsed_args.config)
     try:
         rclpy.spin(node, executor=rclpy.executors.MultiThreadedExecutor())
     except KeyboardInterrupt:

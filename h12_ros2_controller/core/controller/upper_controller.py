@@ -5,6 +5,7 @@ import pinocchio as pin
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
+from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -12,20 +13,23 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 dt=0.02, v_lim=1.0, w_lim=2.0, dq_lim=1.0, d_min=0.02,
                  visualize=False,
-                 sport_mode=False):
+                 config=None):
+        self.config = config if config is not None else load_controller_config()
+        controller_cfg = self.config.get('controller', {})
+
         # initialize robot model
         self.robot_model = RobotModel(urdf_path)
-        self.dt = dt
-        self.v_lim = v_lim
-        self.w_lim = w_lim
-        self.dq_lim = dq_lim
-        self.d_min = d_min
+        self.dt = 1.0 / float(self.config.get('frequency', {}).get('ctrl_hz', 50.0))
+        self.v_lim = float(controller_cfg.get('v_lim', 1.0))
+        self.w_lim = float(controller_cfg.get('w_lim', 2.0))
+        self.dq_lim = float(controller_cfg.get('dq_lim', 1.0))
+        self.d_min = float(controller_cfg.get('d_min', 0.02))
         self.visualize = visualize
 
         # initialize subscriber in robot model
-        self.robot_model.init_subscriber()
+        low_state_topic = self.config.get('topics', {}).get('low_state', 'rt/lowstate')
+        self.robot_model.init_subscriber(low_state_topic=low_state_topic)
         time.sleep(0.5)
         self.robot_model.update_kinematics()
 
@@ -37,7 +41,7 @@ class UpperController:
 
         # intialize low cmd publisher
         self.low_cmd_handler = LowCmdHandler(self.robot_model,
-                                             sport_mode=sport_mode)
+                                             config=self.config)
 
         # enable upper body motors
         init_q = self.robot_model.state_reduced['q']
@@ -304,7 +308,8 @@ class UpperController:
         kp = np.zeros(self.robot_model.model_body.nv)
         kd = kd * np.ones(self.robot_model.model_body.nv)
         dq = np.zeros(self.robot_model.model_body.nv)
-        self.low_cmd_handler.set_joint_commands(dq=dq, kp=kp, kd=kd)
+        self.low_cmd_handler.set_joint_gains(kp=kp, kd=kd)
+        self.low_cmd_handler.set_joint_commands(dq=dq)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
     def start_recording(self, save_path, filename, record_interval=0.01):

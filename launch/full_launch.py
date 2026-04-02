@@ -1,4 +1,6 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import TimerAction
 
@@ -7,6 +9,7 @@ from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_ROS_P
 
 def generate_launch_description():
     package_name = 'h12_ros2_controller'
+    config = LaunchConfiguration('config')
 
     with open(URDF_ROS_PATH, 'r') as urdf_file:
         robot_description = urdf_file.read()
@@ -14,6 +17,11 @@ def generate_launch_description():
     rviz_config_path = f'{PACKAGE_PATH}/rviz/default.rviz'
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'config',
+            default_value='debug.yaml',
+            description='Controller config file name under config/'
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -31,6 +39,7 @@ def generate_launch_description():
             package=package_name,
             executable='frame_task_server',
             name='frame_task_server',
+            arguments=['--config', config],
             output='screen'
         ),
         TimerAction( # slight delay to ensure robot_description is set
