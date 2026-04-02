@@ -16,6 +16,22 @@ DEFAULT_CONFIG_NAME = 'debug.yaml'
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
 
+def _ensure_yaml_extension(config_path: Path) -> Path:
+    '''Append .yaml when config path has no suffix'''
+    if config_path.suffix:
+        return config_path
+    return config_path.with_suffix('.yaml')
+
+def _resolve_config_path(config_name: str,
+                         config_dir: Path = DEFAULT_CONFIG_DIR) -> Path:
+    '''Resolve config from either bare name or config/<name> path'''
+    config_path = _ensure_yaml_extension(Path(config_name))
+    if config_path.is_absolute():
+        return config_path
+    if config_path.parts and config_path.parts[0] == 'config':
+        return REPO_ROOT / config_path
+    return config_dir / config_path
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open('r', encoding='utf-8') as handle:
         loaded = yaml.safe_load(handle)
@@ -25,11 +41,9 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         raise ValueError('config root must be a mapping')
     return loaded
 
-
 def _validate_mode(mode):
     if mode not in ('debug', 'sport'):
         raise ValueError(f"Config mode must be 'debug' or 'sport', got: {mode}")
-
 
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
@@ -37,7 +51,6 @@ def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, list) and len(value) == NUM_MOTOR:
         return np.asarray(value, dtype=np.float64)
     raise ValueError(f'{field_name} must be a number or a list with {NUM_MOTOR} entries')
-
 
 def _derive_q_limits(position_offset: np.ndarray) -> np.ndarray:
     q_limits = np.zeros((NUM_MOTOR, 2), dtype=np.float64)
@@ -50,7 +63,6 @@ def _derive_q_limits(position_offset: np.ndarray) -> np.ndarray:
         q_limits[i, 1] = high
     return q_limits
 
-
 def _process_clip_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
     position_offset = _load_joint_config(policy.get('position_offset', 0.02), 'limits.clip.position_offset')
     velocity_ratio = _load_joint_config(policy.get('velocity_ratio', 0.08), 'limits.clip.velocity_ratio')
@@ -62,7 +74,6 @@ def _process_clip_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
         'tau_limits': np.asarray(JOINT_TORQUE_LIMITS, dtype=np.float64) * torque_ratio,
     }
 
-
 def _process_estop_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
     position_offset = _load_joint_config(policy.get('position_offset', 0.01), 'limits.estop.position_offset')
     velocity_ratio = _load_joint_config(policy.get('velocity_ratio', 0.5), 'limits.estop.velocity_ratio')
@@ -73,7 +84,6 @@ def _process_estop_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
         'dq_limits': np.asarray(JOINT_VELOCITY_LIMITS, dtype=np.float64) * velocity_ratio,
         'tau_limits': np.asarray(JOINT_TORQUE_LIMITS, dtype=np.float64) * torque_ratio,
     }
-
 
 def build_processed_limits(limits_cfg: dict[str, Any] | None = None) -> dict[str, np.ndarray]:
     limits_cfg = {} if limits_cfg is None else limits_cfg
@@ -91,7 +101,6 @@ def build_processed_limits(limits_cfg: dict[str, Any] | None = None) -> dict[str
         'dq_estop_limits': estop_limits['dq_limits'],
         'tau_estop_limits': estop_limits['tau_limits'],
     }
-
 
 def get_publisher_clip_limits(config: dict[str, Any] | None = None) -> dict[str, Any]:
     config = {} if config is None else config
@@ -116,7 +125,6 @@ def get_publisher_clip_limits(config: dict[str, Any] | None = None) -> dict[str,
         'torque_clip': tau_clip_limits,
     }
 
-
 def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
     kp = raw_gains.get('kp')
     kd = raw_gains.get('kd')
@@ -129,10 +137,9 @@ def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
         'kd': _load_joint_config(kd, 'gains.kd'),
     }
 
-
 def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
                            config_dir=DEFAULT_CONFIG_DIR) -> dict[str, Any]:
-    config_path = config_dir / config_name
+    config_path = _resolve_config_path(config_name, config_dir=Path(config_dir))
     if not config_path.exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
 
@@ -208,7 +215,6 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         },
     }
 
-
 def initialize_channel_factory(config):
     network = config.get('network', {})
     domain_id = int(network.get('domain_id', 0))
@@ -218,10 +224,8 @@ def initialize_channel_factory(config):
     else:
         ChannelFactoryInitialize(domain_id)
 
-
 def resolve_sport_mode(config):
     return config.get('mode', 'debug') == 'sport'
-
 
 def maybe_start_controller_logging(controller):
     logging_cfg = controller.config.get('logging', {})
