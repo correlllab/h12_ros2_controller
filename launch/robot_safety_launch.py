@@ -40,7 +40,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'config',
-            default_value='safety_full',
+            default_value='safety_tight_full.yaml',
             description='Controller config file name, must end with _full or _split'
         ),
         DeclareLaunchArgument(
