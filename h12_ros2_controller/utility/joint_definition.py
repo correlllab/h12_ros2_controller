@@ -179,5 +179,6 @@ ENABLED_JOINTS = [
 ]
 
 UPPER_BODY_INDEX = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
+LOWER_BODY_INDEX = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
 LEFT_ARM_INDEX = [i for i in range(13, 20)]
 RIGHT_ARM_INDEX = [i for i in range(20, 27)]
