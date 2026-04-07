@@ -8,12 +8,14 @@ class FrameController(UpperController):
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
+                 handless: bool=False,
                  visualize: bool=False,
                  config: dict=None):
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
             srdf_sphere_path=srdf_sphere_path,
+            handless=handless,
             visualize=visualize,
             config=config,
         )

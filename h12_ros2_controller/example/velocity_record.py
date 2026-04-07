@@ -13,7 +13,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 def save_data(filepath, steps=1000):
     ChannelFactoryInitialize()
     print('Initializing RobotModel...')
-    robot_model = RobotModel('assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel('assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_subscriber()
     robot_model.init_visualizer()
 

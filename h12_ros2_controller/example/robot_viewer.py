@@ -12,8 +12,9 @@ from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, upda
 def main(show_plot):
     ChannelFactoryInitialize()
     # robot_model = RobotModel('./assets/h1_2/h1_2_sphere.urdf')
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    # robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     # robot_model = RobotModel('./assets/h1_2/h1_2.xml')
+    robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_visualizer()
     robot_model.config_visualizer(show_sensors=True, show_com=True, show_zmp=True)
     robot_model.init_subscriber()

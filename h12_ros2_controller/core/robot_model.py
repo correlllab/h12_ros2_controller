@@ -11,21 +11,22 @@ import meshcat.transformations as tf
 
 from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.utility.joint_definition import (
-    ALL_JOINTS, BODY_JOINTS, NUM_MOTOR,
+    ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
     FREEFLYER_POS, FREEFLYER_QUAT
 )
 
 class RobotModel:
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, handless: bool=False):
         assert(os.path.splitext(filename)[1] == '.urdf'), \
             'Please provide a urdf file for the robot model.'
+        self.handless = handless
         # full model (free-flyer) for visualization and dynamics
-        self.model, _, self.visual_model = self._load_urdf_freeflyer(filename)
+        self.model, _, self.visual_model = self._load_urdf_freeflyer(filename, handless=self.handless)
         self.data = self.model.createData()
 
         # model without free-flyer for IK solver (motor only)
-        self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename)
+        self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename, handless=self.handless)
         self.data_body = self.model_body.createData()
 
         # placeholder for visualizer and state subscriber
@@ -79,7 +80,7 @@ class RobotModel:
         '''
         self.init_collision = True
         # load collision model without free-flyer
-        model_collision, collision_model, _ = self._load_urdf_body(urdf_path)
+        model_collision, collision_model, _ = self._load_urdf_body(urdf_path, handless=self.handless)
         self.collision_model_body, self.collision_data_body = self._process_srdf(
             model_collision, collision_model, srdf_path
         )
@@ -93,7 +94,7 @@ class RobotModel:
             )
 
     @staticmethod
-    def _load_urdf_freeflyer(urdf_path):
+    def _load_urdf_freeflyer(urdf_path, handless=False):
         '''
         Load urdf with free-flyer root joint for visualization and dynamics
         Returns full model (free-flyer) with nq=34 (7 free-flyer + 27 motor), nv=33 (6 free-flyer + 27 motor)
@@ -103,8 +104,9 @@ class RobotModel:
             package_dirs=os.path.dirname(urdf_path),
             root_joint=pin.JointModelFreeFlyer(),
         )
+        all_joints = ALL_HANDLESS_JOINTS if handless else ALL_JOINTS
         # process to keep only the body joints
-        frozen_joints = set(ALL_JOINTS) - set(BODY_JOINTS)
+        frozen_joints = set(all_joints) - set(BODY_JOINTS)
         frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
         model, [collision_model, visual_model] = pin.buildReducedModel(
             model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
@@ -112,7 +114,7 @@ class RobotModel:
         return model, collision_model, visual_model
 
     @staticmethod
-    def _load_urdf_body(urdf_path):
+    def _load_urdf_body(urdf_path, handless=False):
         '''
         Load urdf without free-flyer for IK solver
         Returns model with nq=27 (motor only), nv=27 (motor only)
@@ -121,8 +123,9 @@ class RobotModel:
             filename=urdf_path,
             package_dirs=os.path.dirname(urdf_path),
         )
+        all_joints = ALL_HANDLESS_JOINTS if handless else ALL_JOINTS
         # process to keep only the body joints
-        frozen_joints = set(ALL_JOINTS) - set(BODY_JOINTS)
+        frozen_joints = set(all_joints) - set(BODY_JOINTS)
         frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
         model, [collision_model, visual_model] = pin.buildReducedModel(
             model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)

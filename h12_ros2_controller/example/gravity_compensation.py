@@ -11,9 +11,10 @@ def main(config_name='debug.yaml'):
     print('Initializing GravityCompController...')
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
-    gravity_comp_controller = GravityCompController('assets/h1_2/h1_2.urdf',
-                                                    'assets/h1_2/h1_2_sphere.urdf',
-                                                    'assets/h1_2/h1_2_sphere_collision.srdf',
+    gravity_comp_controller = GravityCompController('assets/h1_2/h1_2_handless.urdf',
+                                                    'assets/h1_2/h1_2_handless_sphere.urdf',
+                                                    'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+                                                    handless=True,
                                                     visualize=False,
                                                     config=config)
 
@@ -29,7 +30,7 @@ def main(config_name='debug.yaml'):
         gravity_comp_controller.shutdown()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Arm Controller Goto')
+    parser = argparse.ArgumentParser(description='Gravity Compensation Controller')
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
     main(config_name=args.config)

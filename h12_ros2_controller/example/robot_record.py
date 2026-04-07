@@ -11,7 +11,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 
 def main(save_path):
     ChannelFactoryInitialize()
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_visualizer()
     robot_model.config_visualizer(show_sensors=True, show_com=True, show_zmp=True)
     robot_model.init_subscriber()

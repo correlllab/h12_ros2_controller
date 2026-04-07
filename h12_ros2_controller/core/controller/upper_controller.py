@@ -13,13 +13,14 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
+                 handless: bool=False,
                  visualize=False,
                  config=None):
         self.config = config if config is not None else load_controller_config()
         controller_cfg = self.config.get('controller', {})
 
         # initialize robot model
-        self.robot_model = RobotModel(urdf_path)
+        self.robot_model = RobotModel(urdf_path, handless=handless)
         self.dt = 1.0 / float(self.config.get('frequency', {}).get('ctrl_hz', 50.0))
         self.v_lim = float(controller_cfg.get('v_lim', 1.0))
         self.w_lim = float(controller_cfg.get('w_lim', 2.0))

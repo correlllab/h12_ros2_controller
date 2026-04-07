@@ -13,6 +13,11 @@ URDF_PIN_PATH = f'{MODEL_H12_PATH}/h1_2.urdf'
 URDF_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_ros.urdf'
 URDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere.urdf'
 SRDF_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_sphere_collision.srdf'
+# handless models
+URDF_HANDLESS_PIN_PATH = f'{MODEL_H12_PATH}/h1_2_handless.urdf'
+URDF_HANDLESS_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_handless_ros.urdf'
+URDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere.urdf'
+SRDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere_collision.srdf'
 # data path
 HOME = str(Path.home())
 LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'

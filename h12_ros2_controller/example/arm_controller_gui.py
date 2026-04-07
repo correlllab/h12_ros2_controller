@@ -13,9 +13,10 @@ def main(config_name='debug.yaml'):
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
     # example usage
-    arm_controller = ArmController('assets/h1_2/h1_2.urdf',
-                                   'assets/h1_2/h1_2_sphere.urdf',
-                                   'assets/h1_2/h1_2_sphere_collision.srdf',
+    arm_controller = ArmController('assets/h1_2/h1_2_handless.urdf',
+                                   'assets/h1_2/h1_2_handless_sphere.urdf',
+                                   'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+                                   handless=True,
                                    visualize=True,
                                    config=config)
     arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]

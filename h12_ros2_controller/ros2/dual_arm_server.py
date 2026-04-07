@@ -16,7 +16,12 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH, CONFIG_DIR
+from h12_ros2_controller.utility.path_definition import (
+    URDF_HANDLESS_PIN_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+    SRDF_HANDLESS_SPHERE_PATH,
+    CONFIG_DIR
+)
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class DualArmServer(Node):
@@ -34,9 +39,10 @@ class DualArmServer(Node):
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         initialize_channel_factory(config)
         self.controller = ArmController(
-            URDF_PIN_PATH,
-            URDF_SPHERE_PATH,
-            SRDF_SPHERE_PATH,
+            URDF_HANDLESS_PIN_PATH,
+            URDF_HANDLESS_SPHERE_PATH,
+            SRDF_HANDLESS_SPHERE_PATH,
+            handless=True,
             visualize=False,
             config=config
         )

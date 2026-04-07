@@ -16,7 +16,7 @@ def main():
     ChannelFactoryInitialize()
 
     # initialize robot model and command publisher
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_subscriber()
     command_publisher = LowCmdPublisher()
     setup_gains(command_publisher)

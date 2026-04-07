@@ -67,6 +67,36 @@ ALL_JOINTS = [
     'R_thumb_distal_joint'
 ]
 
+ALL_HANDLESS_JOINTS = [
+    'left_hip_yaw_joint',
+    'left_hip_pitch_joint',
+    'left_hip_roll_joint',
+    'left_knee_joint',
+    'left_ankle_pitch_joint',
+    'left_ankle_roll_joint',
+    'right_hip_yaw_joint',
+    'right_hip_pitch_joint',
+    'right_hip_roll_joint',
+    'right_knee_joint',
+    'right_ankle_pitch_joint',
+    'right_ankle_roll_joint',
+    'torso_joint',
+    'left_shoulder_pitch_joint',
+    'left_shoulder_roll_joint',
+    'left_shoulder_yaw_joint',
+    'left_elbow_joint',
+    'left_wrist_roll_joint',
+    'left_wrist_pitch_joint',
+    'left_wrist_yaw_joint',
+    'right_shoulder_pitch_joint',
+    'right_shoulder_roll_joint',
+    'right_shoulder_yaw_joint',
+    'right_elbow_joint',
+    'right_wrist_roll_joint',
+    'right_wrist_pitch_joint',
+    'right_wrist_yaw_joint',
+]
+
 # body joints without hand joints
 BODY_JOINTS = [
     'left_hip_yaw_joint',

@@ -60,9 +60,10 @@ def main(timeout=10.0,
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
     # initialize upper task controller
-    frame_controller = FrameController('assets/h1_2/h1_2.urdf',
-                                       'assets/h1_2/h1_2_sphere.urdf',
-                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+    frame_controller = FrameController('assets/h1_2/h1_2_handless.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+                                       handless=True,
                                        visualize=True,
                                        config=config)
     maybe_start_controller_logging(frame_controller)

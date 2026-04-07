@@ -13,7 +13,7 @@ def save(config_name='debug.yaml'):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing RobotModel...')
-    robot_model = RobotModel('assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel('assets/h1_2/h1_2_handless.urdf', handless=True)
     low_state_topic = config.get('topics', {}).get('low_state', 'rt/lowstate')
     robot_model.init_subscriber(low_state_topic=low_state_topic)
     time.sleep(3.0)
@@ -26,9 +26,10 @@ def lock(config_name='debug.yaml'):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing UpperController...')
-    upper_controller = UpperController('assets/h1_2/h1_2.urdf',
-                                       'assets/h1_2/h1_2_sphere.urdf',
-                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+    upper_controller = UpperController('assets/h1_2/h1_2_handless.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+                                       handless=True,
                                        visualize=True,
                                        config=config)
 
@@ -44,9 +45,10 @@ def goto(config_name='debug.yaml'):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing UpperController...')
-    upper_controller = UpperController('assets/h1_2/h1_2.urdf',
-                                       'assets/h1_2/h1_2_sphere.urdf',
-                                       'assets/h1_2/h1_2_sphere_collision.srdf',
+    upper_controller = UpperController('assets/h1_2/h1_2_handless.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere.urdf',
+                                       'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+                                       handless=True,
                                        visualize=True,
                                        config=config)
 
