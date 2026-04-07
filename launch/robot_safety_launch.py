@@ -3,7 +3,7 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from h12_ros2_controller.utility.path_definition import URDF_ROS_PATH
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_ROS_PATH
 
 def _config_suffix(config_name: str) -> str:
     '''Return full or split suffix from config name'''
@@ -34,7 +34,7 @@ def generate_launch_description():
     config = LaunchConfiguration('config')
     safety_config = LaunchConfiguration('safety_config')
 
-    with open(URDF_ROS_PATH, 'r') as urdf_file:
+    with open(URDF_HANDLESS_ROS_PATH, 'r') as urdf_file:
         robot_description = urdf_file.read()
 
     return LaunchDescription([

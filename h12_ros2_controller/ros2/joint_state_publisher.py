@@ -17,7 +17,7 @@ class JointStatePublisher(Node):
 
         # initialize robot model
         ChannelFactoryInitialize()
-        self.robot_model = RobotModel(URDF_HANDLESS_PIN_PATH)
+        self.robot_model = RobotModel(URDF_HANDLESS_PIN_PATH, handless=True)
         self.robot_model.init_subscriber()
         self.get_logger().info('robot_model successfully initialized')
 
