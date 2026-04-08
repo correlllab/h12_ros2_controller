@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -31,19 +31,29 @@ def generate_launch_description():
             name='joint_state_publisher',
             output='screen'
         ),
-        # Node(
-        #     package=package_name,
-        #     executable='dual_arm_server',
-        #     name='dual_arm_server',
-        #     arguments=['--config', config],
-        #     output='screen'
+        # TimerAction(
+        #     period=2.0,
+        #     actions=[
+        #         Node(
+        #             package=package_name,
+        #             executable='dual_arm_server',
+        #             name='dual_arm_server',
+        #             arguments=['--config', config],
+        #             output='screen'
+        #         ),
+        #     ]
         # ),
-        Node(
-            package=package_name,
-            executable='frame_task_server',
-            name='frame_task_server',
-            arguments=['--config', config],
-            output='screen'
+        TimerAction(
+            period=2.0,
+            actions=[
+                Node(
+                    package=package_name,
+                    executable='frame_task_server',
+                    name='frame_task_server',
+                    arguments=['--config', config],
+                    output='screen'
+                ),
+            ]
         ),
         Node(
             package=package_name,

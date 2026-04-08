@@ -2,7 +2,6 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch.actions import TimerAction
 
 import os
 from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_HANDLESS_ROS_PATH
@@ -35,12 +34,17 @@ def generate_launch_description():
             name='joint_state_publisher',
             output='screen'
         ),
-        Node(
-            package=package_name,
-            executable='frame_task_server',
-            name='frame_task_server',
-            arguments=['--config', config],
-            output='screen'
+        TimerAction(
+            period=2.0,
+            actions=[
+                Node(
+                    package=package_name,
+                    executable='frame_task_server',
+                    name='frame_task_server',
+                    arguments=['--config', config],
+                    output='screen'
+                ),
+            ]
         ),
         TimerAction( # slight delay to ensure robot_description is set
             period=1.0,
