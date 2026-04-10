@@ -586,11 +586,52 @@ class RobotModel:
 
     def get_frame_wrench(self, frame_name: str,
                          q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
+        '''
+        Estimate wrench from joint torques using a condition-aware least-squares solve
+
+        Uses adaptive damped least-squares when the Jacobian is ill-conditioned to
+        reduce sensitivity to torque noise near singular configurations
+        '''
+        cond_threshold = 10
+        base_damping = 1e-1
+        max_damping = 10
+        svd_tol = 1e-3
+
         q = self.state['q'] if q is None else q
         tau = self.state['tau'] if tau is None else tau
         tau_gravity = self.get_gravity_compensation(q, imu_quat)
         jac = self.get_frame_jacobian(frame_name, q, imu_quat)
-        wrench = np.linalg.pinv(jac.T) @ (tau - tau_gravity)
+        tau_residual = tau - tau_gravity
+
+        singular_values = np.linalg.svd(jac.T, compute_uv=False)
+        if singular_values.size == 0 or singular_values[0] < svd_tol:
+            return np.zeros(6)
+
+        cond_number = singular_values[0] / max(singular_values[-1], svd_tol)
+        if cond_number <= cond_threshold:
+            damping = 0.0
+        else:
+            # increase damping smoothly once condition number passes threshold
+            damping = base_damping * (cond_number / cond_threshold)
+            damping = np.clip(damping, base_damping, max_damping)
+
+        jj_t = jac @ jac.T
+        rhs = jac @ tau_residual
+        damping_sq = damping * damping
+        wrench = np.linalg.solve(jj_t + damping_sq * np.eye(6), rhs)
+        return wrench
+
+    def get_frame_wrench_raw(self, frame_name: str,
+                             q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
+        '''
+        Pseudo-inverse solution without damping for reference/debugging
+        '''
+        q = self.state['q'] if q is None else q
+        tau = self.state['tau'] if tau is None else tau
+        tau_gravity = self.get_gravity_compensation(q, imu_quat)
+        jac = self.get_frame_jacobian(frame_name, q, imu_quat)
+        tau_residual = tau - tau_gravity
+        wrench = np.linalg.pinv(jac.T) @ tau_residual
         return wrench
 
     def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
