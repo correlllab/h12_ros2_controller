@@ -98,9 +98,9 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
     ```bash
     # choose config file depending on usage
     uv run h12_ros2_controller/arm_controller_goto.py --config debug.yaml # default
-    uv run h12_ros2_controller/arm_controller_goto.py --config sport_tight.yaml # sport mode
-    uv run h12_ros2_controller/arm_controller_goto.py --config safety_tight_full.yaml # safety layer full-body mode
-    uv run h12_ros2_controller/arm_controller_goto.py --config safety_tight_split.yaml # safety layer split mode
+    uv run h12_ros2_controller/arm_controller_goto.py --config sport.yaml # sport mode
+    uv run h12_ros2_controller/arm_controller_goto.py --config safety_full.yaml # safety layer full-body mode
+    uv run h12_ros2_controller/arm_controller_goto.py --config safety_split.yaml # safety layer split mode
     ```
 
 - Change `visualize=True` when initializing the controller to have the meshcat visualization
@@ -133,7 +133,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
     ```bash
     ros2 run h12_ros2_controller dual_arm_server --config debug.yaml # default
-    # other available configs: sport_tight.yaml, safety_tight_full.yaml, safety_tight_split.yaml
+    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
     ```
 
 - Then launch the client and enter either a named config goal targets for both wrists.
@@ -151,7 +151,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
     ```bash
     ros2 run h12_ros2_controller frame_task_server --config debug.yaml # default
-    # other available configs: sport_tight.yaml, safety_tight_full.yaml, safety_tight_split.yaml
+    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
     ```
 
 - Then launch the client and enter either a named config or manual frame targets.
@@ -177,12 +177,12 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
     ```bash
     ros2 launch h12_ros2_controller robot_launch.py config:=debug
     ros2 launch h12_ros2_controller robot_launch.py config:=debug.yaml
-    ros2 launch h12_ros2_controller full_launch.py config:=config/safety_tight_full
+    ros2 launch h12_ros2_controller full_launch.py config:=config/safety_full
     ```
 
 - `robot_safety_launch.py` accepts both `config:=...` and `safety_config:=...` with matching `_full` or `_split` suffixes:
 
     ```bash
-    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_tight_full safety_config:=default_safety_full
-    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_tight_split safety_config:=default_safety_split
+    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_full safety_config:=default_safety_full
+    ros2 launch h12_ros2_controller robot_safety_launch.py config:=safety_split safety_config:=default_safety_split
     ```
