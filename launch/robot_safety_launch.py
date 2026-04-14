@@ -71,7 +71,7 @@ def generate_launch_description():
                 output="screen",
             ),
             TimerAction(
-                period=2.0,
+                period=5.0,
                 actions=[
                     Node(
                         package="h12_safety_layer",
@@ -95,7 +95,7 @@ def generate_launch_description():
             #     ]
             # ),
             TimerAction(
-                period=2.0,
+                period=5.0,
                 actions=[
                     Node(
                         package=package_name,
