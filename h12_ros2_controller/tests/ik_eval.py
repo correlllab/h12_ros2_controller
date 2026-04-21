@@ -429,27 +429,30 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
 # ---------------------------- limits snapshot -------------------------------
 
 
-def _real_mode_env_sanity(controller_cfg_name: str) -> None:
-    '''Print and warn about DDS env that must match the running safety node.
+def _real_mode_ros_env_sanity(controller_cfg_name: str) -> None:
+    '''Print and warn about ROS transport env that must match safety node setup.
 
-    The classic failure is a CycloneDDS iceoryx assertion (`dds_writecdr_impl_common`
-    in dds_write.c: `(wr->m_iox_pub == NULL) == (d->a.iox_chunk == NULL)`), which
-    fires when our publisher and the safety-node subscriber disagree on SHM.
-
-    Fix: export `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` and source the same ROS2
-    overlay that the safety node was launched from so CYCLONEDDS_URI matches.
+    This runner evaluates through ROS safety topics in real mode. Keep the same
+    ROS overlay / middleware settings as the safety node process to avoid transport
+    mismatches and silent non-delivery.
     '''
     rmw = os.environ.get('RMW_IMPLEMENTATION', '')
     uri = os.environ.get('CYCLONEDDS_URI', '')
+    domain = os.environ.get('ROS_DOMAIN_ID', '')
     print('[env] RMW_IMPLEMENTATION =', rmw or '(unset)')
+    print('[env] ROS_DOMAIN_ID      =', domain or '(unset)')
     print('[env] CYCLONEDDS_URI     =', uri or '(unset)')
 
     warnings = []
-    if 'cyclonedds' not in rmw.lower():
+    if not rmw:
         warnings.append(
-            'RMW_IMPLEMENTATION is not cyclonedds — safety-node process likely uses '
-            'rmw_cyclonedds_cpp. Run: `export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` '
-            'and re-source your ROS2 overlay, then rerun.'
+            'RMW_IMPLEMENTATION is unset. Ensure this shell uses the same ROS '
+            'middleware setting and overlay as the running safety node.'
+        )
+    if not domain:
+        warnings.append(
+            'ROS_DOMAIN_ID is unset. If your safety node uses a non-default domain, '
+            'set the same value here before running.'
         )
 
     # Also remind about controller/safety suffix matching (launch file enforces this).
@@ -649,7 +652,7 @@ def run(args):
     controller_cfg_name = test_cfg.get('controller_config', 'debug.yaml')
     controller_cfg = load_controller_config(controller_cfg_name)
     if args.mode == 'real':
-        _real_mode_env_sanity(controller_cfg_name)
+        _real_mode_ros_env_sanity(controller_cfg_name)
         initialize_channel_factory(controller_cfg)
         if not args.yes:
             ans = input(

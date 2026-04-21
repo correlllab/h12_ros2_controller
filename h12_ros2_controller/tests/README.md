@@ -24,16 +24,39 @@ The runner publishes commands via `LowCmdHandler`, which reads
 | `safety_full.yaml` | `rt/safety/lowcmd_in` | **yes** — full-body relay |
 | `debug.yaml` | `rt/lowcmd` | **no** — direct to robot |
 
-Because this harness only commands the upper-body reduced model,
-`safety_split.yaml` is the default. Switch to `safety_full.yaml` if you
-are running the full-body safety node instead, or pick `debug.yaml`
-**only** for pure sim runs.
+The controller config and the running safety node **must match
+suffixes** — this is the same rule enforced by
+[robot_safety_launch.py](../../launch/robot_safety_launch.py). If the
+safety node was launched with `_full`, select `safety_full.yaml`; if
+`_split`, select `safety_split.yaml`. Mismatch means no subscriber on
+the publish topic and tracking error will look catastrophic for the
+wrong reason.
+
+Pick `debug.yaml` **only** for pure sim runs (bypasses safety entirely).
 
 External E-stop is not observed by the runner itself — the safety node
 handles it. If e-stop trips mid-run the safety relay drops commands;
 the runner will record the ensuing tracking error (high `q_cmd` vs
 flat `q_actual`). Abort with Ctrl-C and the runner will call
 `controller.shutdown()` cleanly.
+
+## ROS transport environment (real mode)
+
+The real-mode evaluator runs through ROS safety topics. Before
+`python -m ... --mode real`, use the same shell environment as the
+safety node: same ROS2 overlay, same middleware settings, and same
+domain id when applicable.
+
+```bash
+source install/setup.bash          # your ROS2 overlay
+# optional but recommended for explicitness:
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export ROS_DOMAIN_ID=0             # or your robot's configured domain
+```
+
+At startup the runner prints `RMW_IMPLEMENTATION`, `ROS_DOMAIN_ID`,
+and `CYCLONEDDS_URI`, then warns (with a 2s pause) when important
+variables are missing.
 
 ## Layout
 
@@ -63,7 +86,7 @@ runs/<ts>_minimal_sim/
 # offline / pinocchio-only rollout (no hardware)
 python -m h12_ros2_controller.tests.ik_eval --config minimal.yaml --mode sim
 
-# on the real robot (requires DDS interface configured in the controller yaml)
+# on the real robot (requires ROS safety interface configured in the controller yaml)
 python -m h12_ros2_controller.tests.ik_eval --config minimal.yaml --mode real --yes
 
 # with a larger sweep matrix
