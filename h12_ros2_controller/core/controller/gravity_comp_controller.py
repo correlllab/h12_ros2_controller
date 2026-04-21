@@ -29,8 +29,8 @@ class GravityCompController(UpperController):
         self.ki[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 250.0
         self.ki[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 250.0
         # gain for shoulder roll
-        self.ki[BODY_JOINTS.index('left_shoulder_roll_joint')] = 350.0
-        self.ki[BODY_JOINTS.index('right_shoulder_roll_joint')] = 350.0
+        self.ki[BODY_JOINTS.index('left_shoulder_roll_joint')] = 250.0
+        self.ki[BODY_JOINTS.index('right_shoulder_roll_joint')] = 250.0
         # gain for shoulder yaw
         self.ki[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 100.0
         self.ki[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 100.0
@@ -59,7 +59,7 @@ class GravityCompController(UpperController):
         if left_force > 24.0:
             self.dq_i[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 0.0
         # threshold for left shoulder roll
-        if left_force > 30.0:
+        if left_force > 24.0:
             self.dq_i[BODY_JOINTS.index('left_shoulder_roll_joint')] = 0.0
         # threshold for left shoulder yaw
         if left_force > 18.0:
@@ -77,7 +77,7 @@ class GravityCompController(UpperController):
         if right_force > 24.0:
             self.dq_i[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 0.0
         # threshold for right shoulder roll
-        if right_force > 30.0:
+        if right_force > 24.0:
             self.dq_i[BODY_JOINTS.index('right_shoulder_roll_joint')] = 0.0
         # threshold for right shoulder yaw
         if right_force > 18.0:
