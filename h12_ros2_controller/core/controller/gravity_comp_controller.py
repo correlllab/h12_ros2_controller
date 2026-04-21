@@ -95,15 +95,15 @@ class GravityCompController(UpperController):
         # threshold for left shoulder yaw joints
         if left_torque > 4.0:
             self.dq_i[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.0
-        # threshold for left elbow roll joints
+        # threshold for left wrist roll joints
         if left_torque > 2.0:
-            self.dq_i[BODY_JOINTS.index('left_elbow_roll_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('left_wrist_roll_joint')] = 0.0
         # threshold for right shoulder yaw joints
         if right_torque > 4.0:
             self.dq_i[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 0.0
-        # threshold for right elbow roll joints
+        # threshold for right wrist roll joints
         if right_torque > 2.0:
-            self.dq_i[BODY_JOINTS.index('right_elbow_roll_joint')] = 0.0
+            self.dq_i[BODY_JOINTS.index('right_wrist_roll_joint')] = 0.0
 
         # integrate dq
         self.dq_i += self.robot_model.state['dq'] * self.dt
