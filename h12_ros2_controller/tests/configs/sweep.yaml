@@ -1,0 +1,61 @@
+# Full sweep scaffold. Expands to len(sweeps[position_cost]) *
+# len(sweeps[orientation_cost]) * ... trials per case.
+# Start from minimal.yaml; only override what you want to sweep.
+#
+# SAFETY: see note in minimal.yaml. safety_split.yaml is the default
+# because this harness only drives upper-body joints.
+
+controller_config: safety_split.yaml
+handless: true
+urdf:
+  body: assets/h1_2/h1_2_handless.urdf
+  sphere: assets/h1_2/h1_2_handless_sphere.urdf
+  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+
+home: home
+home_settle_timeout: 6.0
+home_tolerance: 2.0e-2
+
+trials_per_case: 3
+return_home_between: true
+
+trial:
+  step_timeout: 6.0
+  settle_steps: 50
+  linear_threshold: 5.0e-3
+  angular_threshold: 2.0e-2
+  record_ik_optimal: true
+
+orientation_units: rad
+
+cases:
+  - name: left_forward_low
+    frame: left_wrist_yaw_link
+    target_pose: [0.30, 0.20, 0.10, 0.0, 0.0, 0.0]
+  - name: left_forward_high
+    frame: left_wrist_yaw_link
+    target_pose: [0.30, 0.20, 0.30, 0.0, 0.0, 0.0]
+  - name: left_side_reach
+    frame: left_wrist_yaw_link
+    target_pose: [0.15, 0.35, 0.20, 0.0, 0.0, 0.0]
+  - name: right_forward_low
+    frame: right_wrist_yaw_link
+    target_pose: [0.30, -0.20, 0.10, 0.0, 0.0, 0.0]
+  - name: right_forward_high
+    frame: right_wrist_yaw_link
+    target_pose: [0.30, -0.20, 0.30, 0.0, 0.0, 0.0]
+  - name: right_side_reach
+    frame: right_wrist_yaw_link
+    target_pose: [0.15, -0.35, 0.20, 0.0, 0.0, 0.0]
+
+sweeps:
+  position_cost: [20.0, 50.0, 100.0]
+  orientation_cost: [10.0, 30.0]
+  lm_damping: [1.0, 3.0, 6.0]
+
+fk_roundtrip:
+  enabled: false
+  samples: 500
+  seed: 0
+  frame: left_wrist_yaw_link
+  joint_limit_margin: 0.05

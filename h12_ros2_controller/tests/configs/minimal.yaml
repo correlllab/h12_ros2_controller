@@ -1,0 +1,53 @@
+# Minimal IK eval config: one case, one sweep point, three trials.
+# Use this to establish a baseline before turning the sweep knobs.
+#
+# SAFETY: controller_config selects the publish topic. safety_split.yaml
+# publishes to rt/safety/lowcmd_upper_in so commands flow through the
+# upper-body safety relay before reaching rt/lowcmd. Use safety_full.yaml
+# if the full-body safety node is the one running. Only use debug.yaml
+# when you deliberately want to bypass the safety layer (sim only).
+
+controller_config: safety_split.yaml    # resolved by load_controller_config
+handless: true
+urdf:
+  body: assets/h1_2/h1_2_handless.urdf
+  sphere: assets/h1_2/h1_2_handless_sphere.urdf
+  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+
+home: home                        # named_config key, or list of 14 floats
+home_settle_timeout: 6.0          # s to reach home
+home_tolerance: 2.0e-2            # rad norm over reduced q
+
+trials_per_case: 3
+return_home_between: true
+
+trial:
+  step_timeout: 6.0               # s before giving up on a target
+  settle_steps: 50                # extra steps to hold after convergence
+  linear_threshold: 5.0e-3        # m, L2 position error
+  angular_threshold: 2.0e-2       # rad, L2 orientation error
+  record_ik_optimal: true         # run pink solve_ik_reduced once for reference
+
+# Orientation units for the target RPY below ('deg' or 'rad').
+orientation_units: rad
+
+cases:
+  - name: left_forward_low
+    frame: left_wrist_yaw_link
+    target_pose: [0.30, 0.20, 0.10, 0.0, 0.0, 0.0]
+
+# Sweep expansion: Cartesian product over the lists below. Default-pin by
+# using a single-element list. Leave empty ({}) to use pink defaults.
+sweeps:
+  position_cost: [50.0]
+  orientation_cost: [30.0]
+  lm_damping: [3.0]
+
+# Offline FK -> IK round-trip diagnostic. No robot needed.
+# Runs before the on-robot trials (if enabled).
+fk_roundtrip:
+  enabled: true
+  samples: 100
+  seed: 0
+  frame: left_wrist_yaw_link
+  joint_limit_margin: 0.05        # shrink per-joint range by this fraction
