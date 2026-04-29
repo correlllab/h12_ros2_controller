@@ -28,9 +28,9 @@ def print_joint_positions(robot_model, joint_groups):
                 position = state['q'][joint_idx]
                 velocity = state['dq'][joint_idx]
                 torque = state['tau'][joint_idx]
-                print(f'  {joint_name:25} | Pos: {position:8.4f} | Vel: {velocity:8.4f} | Tau: {torque:8.4f}')
+                print(f'  {joint_name:26} | Pos: {position:8.4f} | Vel: {velocity:8.4f} | Tau: {torque:8.4f}')
             except ValueError:
-                print(f'  {joint_name:25} | Joint not found in BODY_JOINTS')
+                print(f'  {joint_name:26} | Joint not found in BODY_JOINTS')
 
     print('='*80)
 
