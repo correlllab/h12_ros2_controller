@@ -4,6 +4,16 @@
 #
 # SAFETY: see note in minimal.yaml. safety_split.yaml is the default
 # because this harness only drives upper-body joints.
+#
+# Cases selected via ik_feasibility.py (2026-04-30):
+#   - left/right_forward_low  REMOVED: only 6.7 cm from home, arm barely moves
+#   - left/right_forward_high REMOVED: IK solution at joint limit (margin=0.000),
+#                                       caused estop in 20260430_134950_sweep_real
+#   - New cases replace them with verified reachable targets (disp 0.11–0.19 m,
+#     margin >= 0.07 rad) covering forward extension, elbow flex, and side motions.
+#
+# Solver params locked at position_cost=20, orientation_cost=10, lm_damping=1
+# based on 20260430_134950_sweep_real analysis (lowest null-space oscillation).
 
 controller_config: safety_split.yaml
 handless: true
@@ -28,30 +38,51 @@ trial:
 
 orientation_units: rad
 
+# IK feasibility results (home EE: left=[0.234,0.210,0.095], right=[0.234,-0.210,0.095])
+#   Name                   disp    max_jt  margin  joints moved
+#   left_forward_extend    0.116m  25.9°   0.373   shoulder_pitch(-21°), elbow(+26°)
+#   left_forward_mid       0.124m  24.8°   0.029   shoulder_pitch(-15°), wrist_pitch(+25°)
+#   left_side_reach        0.194m  29.9°   0.087   shoulder+elbow multi-joint
+#   left_side_up           0.179m  23.2°   0.074   shoulder_roll(+21°), wrist_roll(-23°)
+#   left_side_low          0.145m  16.1°   0.337   shoulder_roll(+15°), wrist_roll(-16°)
 cases:
-  - name: left_forward_low
+  - name: left_forward_extend
     frame: left_wrist_yaw_link
-    target_pose: [0.30, 0.20, 0.10, 0.0, 0.0, 0.0]
-  - name: left_forward_high
+    target_pose: [0.35, 0.20, 0.10, 0.0, 0.0, 0.0]
+  - name: left_forward_mid
     frame: left_wrist_yaw_link
-    target_pose: [0.30, 0.20, 0.30, 0.0, 0.0, 0.0]
+    target_pose: [0.30, 0.20, 0.20, 0.0, 0.0, 0.0]
   - name: left_side_reach
     frame: left_wrist_yaw_link
     target_pose: [0.15, 0.35, 0.20, 0.0, 0.0, 0.0]
-  - name: right_forward_low
+  - name: left_side_up
+    frame: left_wrist_yaw_link
+    target_pose: [0.20, 0.35, 0.20, 0.0, 0.0, 0.0]
+  - name: left_side_low
+    frame: left_wrist_yaw_link
+    target_pose: [0.20, 0.35, 0.08, 0.0, 0.0, 0.0]
+  - name: right_forward_extend
     frame: right_wrist_yaw_link
-    target_pose: [0.30, -0.20, 0.10, 0.0, 0.0, 0.0]
-  - name: right_forward_high
+    target_pose: [0.35, -0.20, 0.10, 0.0, 0.0, 0.0]
+  - name: right_forward_mid
     frame: right_wrist_yaw_link
-    target_pose: [0.30, -0.20, 0.30, 0.0, 0.0, 0.0]
+    target_pose: [0.30, -0.20, 0.20, 0.0, 0.0, 0.0]
   - name: right_side_reach
     frame: right_wrist_yaw_link
     target_pose: [0.15, -0.35, 0.20, 0.0, 0.0, 0.0]
+  - name: right_side_up
+    frame: right_wrist_yaw_link
+    target_pose: [0.20, -0.35, 0.20, 0.0, 0.0, 0.0]
+  - name: right_side_low
+    frame: right_wrist_yaw_link
+    target_pose: [0.20, -0.35, 0.08, 0.0, 0.0, 0.0]
 
+# Locked at best settings from 20260430_134950 sweep.
+# Extend this list if you want to re-evaluate solver params on the new cases.
 sweeps:
-  position_cost: [20.0, 50.0, 100.0]
-  orientation_cost: [10.0, 30.0]
-  lm_damping: [1.0, 3.0, 6.0]
+  position_cost: [20.0]
+  orientation_cost: [10.0]
+  lm_damping: [1.0]
 
 fk_roundtrip:
   enabled: false

@@ -62,8 +62,11 @@ variables are missing.
 
 ```
 h12_ros2_controller/tests/
-  ik_eval.py            main runner (FrameController driver)
-  plot_ik_eval.py       per-trial + aggregate plots
+  ik_eval_server.py     preferred runner — delegates control to a running
+                        frame_task_server, records via rt/lowstate + ROS topics
+  ik_eval.py            standalone runner (FrameController driver, sim mode only)
+  ik_feasibility.py     offline target vetting — run before editing sweep.yaml
+  plot_ik_eval.py       per-trial + aggregate plots (works with both runners)
   configs/
     minimal.yaml        single case / single sweep point / 3 trials
     sweep.yaml          full case list + weights/damping sweep scaffold
@@ -83,16 +86,17 @@ runs/<ts>_minimal_sim/
 ## Run it
 
 ```bash
-# offline / pinocchio-only rollout (no hardware)
+# ── preferred: server-based runner (requires frame_task_server already running) ──
+# Records via rt/lowstate; all motion controlled by the server (safe, proven)
+python -m h12_ros2_controller.tests.ik_eval_server --config sweep.yaml --yes
+
+# ── offline target vetting before editing sweep.yaml ─────────────────────────
+python -m h12_ros2_controller.tests.ik_feasibility
+
+# ── standalone runner, sim mode only (no hardware) ───────────────────────────
 python -m h12_ros2_controller.tests.ik_eval --config minimal.yaml --mode sim
 
-# on the real robot (requires ROS safety interface configured in the controller yaml)
-python -m h12_ros2_controller.tests.ik_eval --config minimal.yaml --mode real --yes
-
-# with a larger sweep matrix
-python -m h12_ros2_controller.tests.ik_eval --config sweep.yaml --mode real --yes
-
-# plot the most recent run
+# ── plot the most recent run (works for both runners) ─────────────────────────
 python -m h12_ros2_controller.tests.plot_ik_eval
 # or a specific dir
 python -m h12_ros2_controller.tests.plot_ik_eval runs/20260420_143000_minimal_real

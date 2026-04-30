@@ -661,6 +661,8 @@ def run(args):
             if ans != 'y':
                 print('[real] aborted by user')
                 return 1
+    else:
+        initialize_channel_factory(controller_cfg)
 
     urdf = test_cfg['urdf']
     controller = FrameController(
