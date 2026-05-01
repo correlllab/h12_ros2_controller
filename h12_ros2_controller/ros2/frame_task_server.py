@@ -184,6 +184,11 @@ class FrameTaskServer(Node):
 
                 time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
 
+            for _ in range(50):
+                frame_start_time = time.time()
+                self.controller.control_step_reduced()
+                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+
             # set result
             result = FrameTask.Result()
             result.success = True
