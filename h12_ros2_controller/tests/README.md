@@ -89,6 +89,7 @@ runs/<ts>_minimal_sim/
 # ── preferred: server-based runner (requires frame_task_server already running) ──
 # Records via rt/lowstate; all motion controlled by the server (safe, proven)
 python -m h12_ros2_controller.tests.ik_eval_server --config sweep.yaml --yes
+python -m h12_ros2_controller.tests.ik_eval_server --config sweep_tilt.yaml --yes
 
 # ── offline target vetting before editing sweep.yaml ─────────────────────────
 python -m h12_ros2_controller.tests.ik_feasibility

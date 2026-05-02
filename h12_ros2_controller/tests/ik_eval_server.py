@@ -90,6 +90,16 @@ def _rpy_from_pose(pose_msg) -> np.ndarray:
     return pin.rpy.matrixToRpy(rot)
 
 
+def _pose_error(current: np.ndarray, target: np.ndarray) -> tuple[float, float]:
+    """Return (linear_error_m, angular_error_rad) between two 6D poses."""
+    lin = float(np.linalg.norm(current[:3] - target[:3]))
+    r_cur = pin.rpy.rpyToMatrix(current[3:])
+    r_tgt = pin.rpy.rpyToMatrix(target[3:])
+    r_err = r_tgt.T @ r_cur
+    ang = float(np.linalg.norm(pin.log3(r_err)))
+    return lin, ang
+
+
 def _limits_snapshot() -> dict:
     return {
         'urdf_q_low':     np.array([JOINT_POSITION_LIMITS[i]['low']  for i in range(N_BODY)]),
@@ -135,6 +145,9 @@ class IKEvalNode(Node):
         self._rec_frame_err: list = []
         self._rec_t0:       float = 0.0
         self._active_ee:    str  = 'left'   # 'left' or 'right'
+        self._active_target: np.ndarray | None = None
+        self._feedback_seen: bool = False
+        self._active_goal_handle = None
 
     # ── subscription callbacks ────────────────────────────────────────────────
 
@@ -152,22 +165,29 @@ class IKEvalNode(Node):
         p = msg.pose.position
         self._right_ee = np.array([p.x, p.y, p.z, *_rpy_from_pose(msg.pose)])
 
-    def _snapshot(self, lin_err: float = 0.0, ang_err: float = 0.0):
+    def _snapshot(self, lin_err: float | None = None, ang_err: float | None = None):
         '''Record one timestep; call from feedback cb or settle loop.'''
         if not self._recording:
             return
         ee = self._left_ee.copy() if self._active_ee == 'left' else self._right_ee.copy()
+        if lin_err is None or ang_err is None:
+            if self._active_target is not None:
+                lin_err, ang_err = _pose_error(ee, self._active_target)
+            else:
+                lin_err, ang_err = 0.0, 0.0
         self._rec_t.append(time.monotonic() - self._rec_t0)
         self._rec_q.append(self._q.copy())
         self._rec_ee.append(ee)
         self._rec_frame_err.append([lin_err, 0., 0., ang_err, 0., 0.])
 
-    def _start_recording(self, active_ee: str):
+    def _start_recording(self, active_ee: str, target_pose: np.ndarray | None = None):
         self._active_ee = active_ee
         self._rec_t.clear(); self._rec_q.clear()
         self._rec_ee.clear(); self._rec_frame_err.clear()
         self._rec_t0 = time.monotonic()
         self._recording = True
+        self._active_target = target_pose.copy() if target_pose is not None else None
+        self._feedback_seen = False
 
     def _stop_recording(self):
         self._recording = False
@@ -214,6 +234,8 @@ class IKEvalNode(Node):
         goal = FrameTask.Goal()
         goal.frame_names   = [frame_name]
         goal.frame_targets = [list_to_pose(list(target_pose))]
+        goal.duration.sec = int(timeout)
+        goal.duration.nanosec = int((timeout - int(timeout)) * 1e9)
 
         lin_thresh = 5e-3
         ang_thresh = 2e-2
@@ -233,6 +255,7 @@ class IKEvalNode(Node):
             nonlocal convergence_step
             if convergence_step < 0 and lin < lin_thresh and ang < ang_thresh:
                 convergence_step = step_counter[0]
+            self._feedback_seen = True
             self._snapshot(lin, ang)
 
         send_future = self._ft_client.send_goal_async(
@@ -244,11 +267,30 @@ class IKEvalNode(Node):
             self.get_logger().warn('frame_task goal rejected')
             return False, -1, last_lin[0], last_ang[0]
 
+        self._active_goal_handle = gh
+
         result_future = gh.get_result_async()
-        rclpy.spin_until_future_complete(self, result_future, timeout_sec=timeout)
-        res = result_future.result()
-        success = bool(res.result.success) if res else False
+        result_timeout = timeout + 2.0
+        rclpy.spin_until_future_complete(self, result_future, timeout_sec=result_timeout)
+        if not result_future.done():
+            self.get_logger().warn(
+                f'frame_task result timeout after {result_timeout:.1f}s'
+            )
+            success = False
+        else:
+            res = result_future.result()
+            success = bool(res.result.success) if res else False
+        if not self._feedback_seen and self._active_target is not None:
+            ee = self._left_ee if 'left' in frame_name else self._right_ee
+            last_lin[0], last_ang[0] = _pose_error(ee, self._active_target)
+        self._active_goal_handle = None
         return success, convergence_step, last_lin[0], last_ang[0]
+
+    def cancel_active_goal(self):
+        if self._active_goal_handle is None:
+            return
+        self._active_goal_handle.cancel_goal_async()
+        self._active_goal_handle = None
 
 
 # ── orchestration ─────────────────────────────────────────────────────────────
@@ -313,7 +355,7 @@ def run(args):
                         print('  [home] timeout / failed', flush=True)
 
                     # ── run trial ─────────────────────────────────────────────
-                    node._start_recording(active_ee)
+                    node._start_recording(active_ee, target_pose=target)
                     t_wall_start = time.monotonic()
 
                     success, conv_step, lin_ss, ang_ss = node.send_frame_task(
@@ -325,7 +367,7 @@ def run(args):
                     for _ in range(settle_steps):
                         frame_start = time.monotonic()
                         rclpy.spin_once(node, timeout_sec=dt)
-                        node._snapshot(lin_ss, ang_ss)
+                        node._snapshot()
                         elapsed = time.monotonic() - frame_start
                         if elapsed < dt:
                             time.sleep(dt - elapsed)
@@ -343,6 +385,10 @@ def run(args):
                     # EE steady-state: mean of last 10%
                     tail  = max(1, n // 10)
                     ee_ss = arrs['ee_actual'][-tail:].mean(axis=0)
+
+                    # Override reported steady-state errors from recorded data.
+                    lin_ss = float(arrs['frame_err'][-tail:, 0].mean())
+                    ang_ss = float(arrs['frame_err'][-tail:, 3].mean())
 
                     # q_cmd not available externally — use q_actual as placeholder
                     q_actual = arrs['q_actual']
@@ -416,9 +462,11 @@ def run(args):
     except KeyboardInterrupt:
         print('\n[interrupted]', flush=True)
     finally:
+        node.cancel_active_goal()
         summary_fh.close()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
         print(f'[done] {run_dir}', flush=True)
 
     return 0
