@@ -145,43 +145,7 @@ def get_default_gains():
     kp = np.full(len(BODY_JOINTS), 50.0, dtype=np.float32)
     kd = np.full(len(BODY_JOINTS), 5.0, dtype=np.float32)
 
-    kp[BODY_JOINTS.index('left_wrist_roll_joint')] = 20.0
-    kp[BODY_JOINTS.index('left_wrist_pitch_joint')] = 20.0
-    kp[BODY_JOINTS.index('left_wrist_yaw_joint')] = 20.0
-    kp[BODY_JOINTS.index('right_wrist_roll_joint')] = 20.0
-    kp[BODY_JOINTS.index('right_wrist_pitch_joint')] = 20.0
-    kp[BODY_JOINTS.index('right_wrist_yaw_joint')] = 20.0
-
-    kd[BODY_JOINTS.index('left_hip_yaw_joint')] = 8.0
-    kd[BODY_JOINTS.index('right_hip_yaw_joint')] = 8.0
-    kd[BODY_JOINTS.index('left_hip_pitch_joint')] = 15.0
-    kd[BODY_JOINTS.index('right_hip_pitch_joint')] = 15.0
-    kd[BODY_JOINTS.index('left_hip_roll_joint')] = 15.0
-    kd[BODY_JOINTS.index('right_hip_roll_joint')] = 15.0
-    kd[BODY_JOINTS.index('left_knee_joint')] = 10.0
-    kd[BODY_JOINTS.index('right_knee_joint')] = 10.0
-    kd[BODY_JOINTS.index('left_ankle_pitch_joint')] = 5.0
-    kd[BODY_JOINTS.index('right_ankle_pitch_joint')] = 5.0
-    kd[BODY_JOINTS.index('left_ankle_roll_joint')] = 5.0
-    kd[BODY_JOINTS.index('right_ankle_roll_joint')] = 5.0
-    kd[BODY_JOINTS.index('torso_joint')] = 10.0
-    kd[BODY_JOINTS.index('left_shoulder_pitch_joint')] = 10.0
-    kd[BODY_JOINTS.index('right_shoulder_pitch_joint')] = 10.0
-    kd[BODY_JOINTS.index('left_shoulder_roll_joint')] = 10.0
-    kd[BODY_JOINTS.index('right_shoulder_roll_joint')] = 10.0
-    kd[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 4.0
-    kd[BODY_JOINTS.index('right_shoulder_yaw_joint')] = 4.0
-    kd[BODY_JOINTS.index('left_elbow_joint')] = 4.0
-    kd[BODY_JOINTS.index('right_elbow_joint')] = 4.0
-    kd[BODY_JOINTS.index('left_wrist_roll_joint')] = 4.0
-    kd[BODY_JOINTS.index('right_wrist_roll_joint')] = 4.0
-    kd[BODY_JOINTS.index('left_wrist_pitch_joint')] = 4.0
-    kd[BODY_JOINTS.index('right_wrist_pitch_joint')] = 4.0
-    kd[BODY_JOINTS.index('left_wrist_yaw_joint')] = 4.0
-    kd[BODY_JOINTS.index('right_wrist_yaw_joint')] = 4.0
-
     return kp, kd
-
 
 def setup_gains(command_publisher, gains_config=None):
     '''Configure motor gains for all joints - optimized for real robot'''
