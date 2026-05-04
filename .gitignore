@@ -29,3 +29,5 @@ Makefile
 *.DS_Store
 *.egg-info/
 *.launch.pyc
+.claude/
+.kilo/
