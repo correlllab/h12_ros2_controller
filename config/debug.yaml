@@ -142,6 +142,6 @@ limits:
       - 0.45 # right_wrist_yaw_joint
 
 logging:
-  enabled: false
+  enabled: true
   base_dir: data/control_record
-  filename: record
+  filename: record_mj_333
