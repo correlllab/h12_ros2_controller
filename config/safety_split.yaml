@@ -34,17 +34,17 @@ gains:
     - 60.0  # right_ankle_pitch_joint
     - 40.0  # right_ankle_roll_joint
     - 200.0 # torso_joint
-    - 240.0 # left_shoulder_pitch_joint
-    - 200.0 # left_shoulder_roll_joint
-    - 150.0 # left_shoulder_yaw_joint
-    - 150.0 # left_elbow_joint
+    - 300.0 # left_shoulder_pitch_joint
+    - 250.0 # left_shoulder_roll_joint
+    - 200.0 # left_shoulder_yaw_joint
+    - 180.0 # left_elbow_joint
     - 120.0 # left_wrist_roll_joint
     - 150.0 # left_wrist_pitch_joint
     - 120.0 # left_wrist_yaw_joint
-    - 240.0 # right_shoulder_pitch_joint
-    - 200.0 # right_shoulder_roll_joint
-    - 150.0 # right_shoulder_yaw_joint
-    - 150.0 # right_elbow_joint
+    - 300.0 # right_shoulder_pitch_joint
+    - 250.0 # right_shoulder_roll_joint
+    - 200.0 # right_shoulder_yaw_joint
+    - 180.0 # right_elbow_joint
     - 120.0 # right_wrist_roll_joint
     - 150.0 # right_wrist_pitch_joint
     - 120.0 # right_wrist_yaw_joint
@@ -67,14 +67,14 @@ gains:
     - 4.0  # left_shoulder_yaw_joint
     - 4.0  # left_elbow_joint
     - 2.0  # left_wrist_roll_joint
-    - 4.0  # left_wrist_pitch_joint
+    - 2.0  # left_wrist_pitch_joint
     - 2.0  # left_wrist_yaw_joint
     - 10.0 # right_shoulder_pitch_joint
     - 8.0 # right_shoulder_roll_joint
     - 4.0  # right_shoulder_yaw_joint
     - 4.0  # right_elbow_joint
     - 2.0  # right_wrist_roll_joint
-    - 4.0  # right_wrist_pitch_joint
+    - 2.0  # right_wrist_pitch_joint
     - 2.0  # right_wrist_yaw_joint
 
 limits:
