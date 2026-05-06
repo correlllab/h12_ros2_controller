@@ -53,6 +53,7 @@ def input_frame_task():
             continue
 
 def main(timeout=10.0,
+         threshold_config=1e-3,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
          com=False,
@@ -103,8 +104,16 @@ def main(timeout=10.0,
                 # control one step
                 step_function()
 
-                # print error (only for frame task mode)
-                if keyword not in NAMED_CONFIGS:
+                # check error for config task
+                if keyword in NAMED_CONFIGS:
+                    error = np.max(np.abs(frame_controller.reduced_configuration_error))
+                    print(f'Configuration Error: {error:.4f}')
+                    # early break
+                    if error < threshold_config:
+                        print('Target reached!')
+                        break
+                # check error for manual frame task
+                else:
                     error = frame_controller.get_frame_task_error(task_name)
                     linear_error = np.linalg.norm(error[:3])
                     angular_error = np.linalg.norm(error[3:])

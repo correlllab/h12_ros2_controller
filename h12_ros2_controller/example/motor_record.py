@@ -3,13 +3,15 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
+from h12_ros2_controller.utility.controller_config import (
+    load_controller_config,
+    initialize_channel_factory,
+)
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -85,9 +87,10 @@ def record_free_motion(robot_model, command_publisher, steps):
 
     return joint_states
 
-def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
+def main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name='debug.yaml'):
     # initialize channel
-    ChannelFactoryInitialize()
+    config = load_controller_config(config_name)
+    initialize_channel_factory(config)
 
     # initialize robot model and command publisher
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
@@ -107,7 +110,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath):
         save_results(states, joint_name, f'{savepath}/{joint_name}_free.npz')
 
     # setup motor gains
-    setup_gains(command_publisher)
+    setup_gains(command_publisher, config['gains'])
 
     # enable all motors at initial positions
     motor_ids = list(range(27))
@@ -177,6 +180,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Motor recording script')
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save motor recordings in data/motor_record/')
+    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
 
     # set path using command line argument
@@ -190,12 +194,12 @@ if __name__ == '__main__':
         # 'left_ankle_pitch_joint', 'right_ankle_pitch_joint',
         # 'left_ankle_roll_joint', 'right_ankle_roll_joint',
         # 'torso_joint',
-        # 'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
-        # 'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
-        # 'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
-        # 'left_elbow_joint', 'right_elbow_joint',
-        # 'left_wrist_roll_joint', 'right_wrist_roll_joint',
-        # 'left_wrist_pitch_joint', 'right_wrist_pitch_joint',
+        'left_shoulder_pitch_joint', 'right_shoulder_pitch_joint',
+        'left_shoulder_roll_joint', 'right_shoulder_roll_joint',
+        'left_shoulder_yaw_joint', 'right_shoulder_yaw_joint',
+        'left_elbow_joint', 'right_elbow_joint',
+        'left_wrist_roll_joint', 'right_wrist_roll_joint',
+        'left_wrist_pitch_joint', 'right_wrist_pitch_joint',
         'left_wrist_yaw_joint', 'right_wrist_yaw_joint',
     ]
     q_start_list = [
@@ -206,12 +210,12 @@ if __name__ == '__main__':
         # 0.0, 0.0,
         # 0.0, 0.0,
         # 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
-        # 0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0,
         0.0, 0.0,
     ]
     q_end_list = [
@@ -228,8 +232,16 @@ if __name__ == '__main__':
         # -0.5, -0.5, # elbow
         # 1.0, -1.0, # wrist roll
         # 0.3, 0.3, # wrist pitch
-        0.8, -0.8, # wrist yaw
+        # 0.8, -0.8, # wrist yaw
+        -1.5, -1.5, # shoulder pitch
+        2.0, -2.0, # shoulder roll
+        2.0, -2.0, # shoulder yaw
+        -0.8, -0.8, # elbow
+        2.0, -2.0, # wrist roll
+        0.3, 0.3, # wrist pitch
+        1.0, -1.0, # wrist yaw
     ]
-    steps = 100
+    # steps = 100
+    steps = 200
 
-    main(joint_name_list, q_start_list, q_end_list, steps, savepath)
+    main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name=args.config)

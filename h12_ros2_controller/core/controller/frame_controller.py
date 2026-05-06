@@ -57,7 +57,20 @@ class FrameController(UpperController):
         task = self.ik_solver.frame_tasks.get(task_name)
         if task is None:
             raise ValueError(f'Task {task_name} not found')
-        return task.compute_error(self.ik_solver.configuration_reduced)
+        return self.ik_solver.compute_error_reduced(
+            task,
+            self.robot_model.state_reduced['q']
+        )
+
+    def get_frame_task_errors(self):
+        '''Get errors for all frame tasks'''
+        errors = {}
+        for task_name, task in self.ik_solver.frame_tasks.items():
+            errors[task_name] = self.ik_solver.compute_error_reduced(
+                task,
+                self.robot_model.state_reduced['q']
+            )
+        return errors
 
     def remove_frame_task(self, task_name: str):
         '''Remove a frame task'''

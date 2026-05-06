@@ -1,0 +1,341 @@
+label: sweep_tilt
+mode: real
+timestamp: '20260501_180749'
+test_config:
+  controller_config: safety_split.yaml
+  handless: true
+  urdf:
+    body: assets/h1_2/h1_2_handless.urdf
+    sphere: assets/h1_2/h1_2_handless_sphere.urdf
+    srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+  home: home
+  home_settle_timeout: 8.0
+  home_tolerance: 0.02
+  trials_per_case: 3
+  return_home_between: true
+  trial:
+    step_timeout: 8.0
+    settle_steps: 50
+    linear_threshold: 0.005
+    angular_threshold: 0.02
+    record_ik_optimal: true
+  orientation_units: rad
+  _wrist_down_rpy:
+  - 0.0
+  - 1.57079632679
+  - 0.0
+  _xs:
+  - 0.3
+  - 0.35
+  _ys:
+  - 0.2
+  - 0.3
+  _zs:
+  - 0.06
+  - 0.1
+  - 0.14
+  - 0.18
+  cases:
+  - name: left_pick_x30_y20_z06
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.2
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y20_z10
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.2
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y20_z14
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.2
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y20_z18
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.2
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y30_z06
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.3
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y30_z10
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.3
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y30_z14
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.3
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x30_y30_z18
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - 0.3
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y20_z06
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.2
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y20_z10
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.2
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y20_z14
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.2
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y20_z18
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.2
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y30_z06
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.3
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y30_z10
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.3
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y30_z14
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.3
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: left_pick_x35_y30_z18
+    frame: left_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - 0.3
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y20_z06
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.2
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y20_z10
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.2
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y20_z14
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.2
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y20_z18
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.2
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y30_z06
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.3
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y30_z10
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.3
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y30_z14
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.3
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x30_y30_z18
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.3
+    - -0.3
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y20_z06
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.2
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y20_z10
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.2
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y20_z14
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.2
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y20_z18
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.2
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y30_z06
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.3
+    - 0.06
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y30_z10
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.3
+    - 0.1
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y30_z14
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.3
+    - 0.14
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  - name: right_pick_x35_y30_z18
+    frame: right_wrist_yaw_link
+    target_pose:
+    - 0.35
+    - -0.3
+    - 0.18
+    - 0.0
+    - 1.57079632679
+    - 0.0
+  sweeps:
+    position_cost:
+    - 20.0
+    orientation_cost:
+    - 10.0
+    lm_damping:
+    - 1.0
+  fk_roundtrip:
+    enabled: false
+    samples: 500
+    seed: 0
+    frame: left_wrist_yaw_link
+    joint_limit_margin: 0.05
+  __path__: /home/unitree/core_ws/src/h12_ros2_controller/h12_ros2_controller/tests/configs/sweep_tilt.yaml
+controller_config_name: safety_split.yaml

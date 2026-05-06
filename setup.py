@@ -20,6 +20,9 @@ setup(
     version='0.1.0',
     packages=find_packages(exclude=['test']),
     include_package_data=True,
+    package_data={
+        'h12_ros2_controller.tests': ['configs/*.yaml'],
+    },
     data_files=data_files,
     install_requires=['setuptools'],# + requirements,
     zip_safe=True,

@@ -1,0 +1,146 @@
+# Tilted-wrist pickup sweep. End-effector pitched down (RPY roll=0, pitch=+90deg).
+# Designed to exercise pickups at varying Z heights and xy offsets for left/right arms.
+# Verify in simulation first with the sim runner or offline feasibility check before using the server runner.
+
+controller_config: safety_split.yaml
+handless: true
+urdf:
+  body: assets/h1_2/h1_2_handless.urdf
+  sphere: assets/h1_2/h1_2_handless_sphere.urdf
+  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+
+home: home
+home_settle_timeout: 8.0
+home_tolerance: 2.0e-2
+
+trials_per_case: 3
+return_home_between: true
+
+trial:
+  step_timeout: 8.0
+  settle_steps: 50
+  linear_threshold: 5.0e-3
+  angular_threshold: 2.0e-2
+  record_ik_optimal: true
+
+orientation_units: rad
+
+# Wrist-down orientation: roll=0, pitch=-pi/2, yaw=0
+_wrist_down_rpy: [0.0, 1.57079632679, 0.0]
+
+# Base pick grid parameters (two x, two y, several z heights) per arm.
+# Left arm uses positive y, right arm uses negative y.
+_xs: [0.30, 0.35]
+_ys: [0.20, 0.30]
+_zs: [0.06, 0.10, 0.14, 0.18]
+
+cases:
+  - name: left_pick_x30_y20_z06
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.200, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y20_z10
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.200, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y20_z14
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.200, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y20_z18
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.200, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y30_z06
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.300, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y30_z10
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.300, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y30_z14
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.300, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x30_y30_z18
+    frame: left_wrist_yaw_link
+    target_pose: [0.300, 0.300, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y20_z06
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.200, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y20_z10
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.200, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y20_z14
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.200, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y20_z18
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.200, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y30_z06
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.300, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y30_z10
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.300, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y30_z14
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.300, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: left_pick_x35_y30_z18
+    frame: left_wrist_yaw_link
+    target_pose: [0.350, 0.300, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y20_z06
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.200, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y20_z10
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.200, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y20_z14
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.200, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y20_z18
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.200, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y30_z06
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.300, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y30_z10
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.300, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y30_z14
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.300, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x30_y30_z18
+    frame: right_wrist_yaw_link
+    target_pose: [0.300, -0.300, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y20_z06
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.200, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y20_z10
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.200, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y20_z14
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.200, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y20_z18
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.200, 0.180, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y30_z06
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.300, 0.060, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y30_z10
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.300, 0.100, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y30_z14
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.300, 0.140, 0.0, 1.57079632679, 0.0]
+  - name: right_pick_x35_y30_z18
+    frame: right_wrist_yaw_link
+    target_pose: [0.350, -0.300, 0.180, 0.0, 1.57079632679, 0.0]
+
+# Keep solver params locked to the validated settings from prior sweeps.
+sweeps:
+  position_cost: [20.0]
+  orientation_cost: [10.0]
+  lm_damping: [1.0]
+
+fk_roundtrip:
+  enabled: false
+  samples: 500
+  seed: 0
+  frame: left_wrist_yaw_link
+  joint_limit_margin: 0.05

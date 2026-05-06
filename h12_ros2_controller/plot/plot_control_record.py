@@ -69,10 +69,15 @@ def plot_recording(filepath, savepath):
         joint_id = ids[i]
         joint_name = BODY_JOINTS[joint_id]
 
-        plt.figure(figsize=(12, 8))
+        q_error = np.abs(q[:, i] - q_cmd[:, i])
+        error_avg = np.mean(q_error)
+        error_max = np.max(q_error)
+        error_min = np.min(q_error)
+
+        plt.figure(figsize=(12, 10))
 
         # Top panel: Position (q)
-        plt.subplot(3, 1, 1)
+        plt.subplot(4, 1, 1)
         plt.plot(q[:, i], label='q', linewidth=2)
         plt.plot(q_cmd[:, i], '--', label='q_cmd', linewidth=2)
         plt.title(f'{joint_name} - Position')
@@ -81,7 +86,7 @@ def plot_recording(filepath, savepath):
         plt.grid()
 
         # Middle panel: Velocity (dq)
-        plt.subplot(3, 1, 2)
+        plt.subplot(4, 1, 2)
         plt.plot(dq[:, i], label='dq', linewidth=2)
         plt.plot(dq_cmd[:, i], '--', label='dq_cmd', linewidth=2)
         plt.title('Velocity')
@@ -90,13 +95,22 @@ def plot_recording(filepath, savepath):
         plt.grid()
 
         # Bottom panel: Torque
-        plt.subplot(3, 1, 3)
+        plt.subplot(4, 1, 3)
         plt.plot(tau[:, i], label='tau', linewidth=2)
         plt.plot(tau_cmd[:, i], '--', label='tau_cmd', linewidth=2)
         plt.plot(torque_cmd[:, i], '-.', label='torque_cmd', linewidth=2)
         plt.title('Torque')
         plt.xlabel('Time Steps')
         plt.ylabel('Torque (Nm)')
+        plt.legend()
+        plt.grid()
+
+        # fourth panel: Joint error
+        plt.subplot(4, 1, 4)
+        plt.plot(q_error, label='|q - q_cmd|', linewidth=2)
+        plt.title(f'Joint Error, Avg {error_avg:.3f}, Max {error_max:.3f}, Min {error_min:.3f}')
+        plt.xlabel('Time Steps')
+        plt.ylabel('Error (rad)')
         plt.legend()
         plt.grid()
 

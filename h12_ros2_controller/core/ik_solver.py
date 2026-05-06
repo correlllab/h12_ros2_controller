@@ -143,8 +143,10 @@ class IKSolver:
     def update_visualizer(self):
         if self.robot_model.viz is not None:
             viewer = self.robot_model.viz.viewer
+            torso_to_world = self.robot_model.get_frame_transformation('torso_link')
             for task_name, task in self.frame_tasks.items():
-                viewer[task_name].set_transform(task.transform_target_to_world.np)
+                target_to_world = torso_to_world @ task.transform_target_to_world.np
+                viewer[task_name].set_transform(target_to_world)
                 frame_name = self.frame_tasks[task_name].frame
                 viewer[frame_name].set_transform(
                     self.robot_model.get_frame_transformation(frame_name)
