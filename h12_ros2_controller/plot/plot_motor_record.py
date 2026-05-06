@@ -13,13 +13,17 @@ def plot_recording(filename, savepath):
     dq_cmd = data['dq_cmd']  # commanded joint velocities
     tau_cmd = data['tau_cmd'] # commanded torques
     torque_cmd = data['torque_cmd'] # total torque based on equation
+    q_error = np.abs(q - q_cmd)
+    error_avg = np.mean(q_error)
+    error_max = np.max(q_error)
+    error_min = np.min(q_error)
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
 
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(12, 10))
 
-    plt.subplot(3, 1, 1)
+    plt.subplot(4, 1, 1)
     plt.plot(q, label='q')
     plt.plot(q_cmd, '--', label='q_cmd')
     plt.title(f'{joint_name} - Position')
@@ -28,7 +32,7 @@ def plot_recording(filename, savepath):
     plt.legend()
     plt.grid()
 
-    plt.subplot(3, 1, 2)
+    plt.subplot(4, 1, 2)
     plt.plot(dq, label='dq')
     plt.plot(dq_cmd, '--', label='dq_cmd')
     plt.title('Velocity')
@@ -37,13 +41,21 @@ def plot_recording(filename, savepath):
     plt.legend()
     plt.grid()
 
-    plt.subplot(3, 1, 3)
+    plt.subplot(4, 1, 3)
     plt.plot(tau, label='tau')
     plt.plot(tau_cmd, '--', label='tau_cmd')
     plt.plot(torque_cmd, '-.', label='torque_cmd')
     plt.title('Torque')
     plt.xlabel('Time')
     plt.ylabel('Torque')
+    plt.legend()
+    plt.grid()
+
+    plt.subplot(4, 1, 4)
+    plt.plot(q_error, label='|q - q_cmd|')
+    plt.title(f'Joint Error, Avg {error_avg:.3f}, Max {error_max:.3f}, Min {error_min:.3f}')
+    plt.xlabel('Time')
+    plt.ylabel('Error')
     plt.legend()
     plt.grid()
 
@@ -62,6 +74,7 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     dq_cmd_left = left_data['dq_cmd']
     tau_cmd_left = left_data['tau_cmd']
     torque_cmd_left = left_data['torque_cmd']
+    q_error_left = np.abs(q_left - q_cmd_left)
 
     q_right = right_data['q']
     dq_right = right_data['dq']
@@ -70,13 +83,19 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     dq_cmd_right = right_data['dq_cmd']
     tau_cmd_right = right_data['tau_cmd']
     torque_cmd_right = right_data['torque_cmd']
+    q_error_right = np.abs(q_right - q_cmd_right)
+
+    q_error = np.concatenate([q_error_left, q_error_right])
+    error_avg = np.mean(q_error)
+    error_max = np.max(q_error)
+    error_min = np.min(q_error)
 
     # create folder
     os.makedirs(savepath, exist_ok=True)
 
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(12, 10))
 
-    plt.subplot(3, 1, 1)
+    plt.subplot(4, 1, 1)
     plt.plot(q_left, label='Left q')
     plt.plot(q_right, label='Right q')
     plt.plot(q_cmd_left, '--', label='Left q_cmd')
@@ -87,7 +106,7 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     plt.legend()
     plt.grid()
 
-    plt.subplot(3, 1, 2)
+    plt.subplot(4, 1, 2)
     plt.plot(dq_left, label='Left dq')
     plt.plot(dq_right, label='Right dq')
     plt.plot(dq_cmd_left, '--', label='Left dq_cmd')
@@ -98,7 +117,7 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     plt.legend()
     plt.grid()
 
-    plt.subplot(3, 1, 3)
+    plt.subplot(4, 1, 3)
     plt.plot(tau_left, label='Left tau')
     plt.plot(tau_right, label='Right tau')
     plt.plot(tau_cmd_left, '--', label='Left tau_cmd')
@@ -108,6 +127,15 @@ def plot_comparison(joint_name, left_filename, right_filename, savepath):
     plt.title('Joint Torque Comparison')
     plt.xlabel('Time')
     plt.ylabel('Torque')
+    plt.legend()
+    plt.grid()
+
+    plt.subplot(4, 1, 4)
+    plt.plot(q_error_left, label='Left |q - q_cmd|')
+    plt.plot(q_error_right, label='Right |q - q_cmd|')
+    plt.title(f'Joint Error, Avg {error_avg:.3f}, Max {error_max:.3f}, Min {error_min:.3f}')
+    plt.xlabel('Time')
+    plt.ylabel('Error')
     plt.legend()
     plt.grid()
 
