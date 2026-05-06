@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import pinocchio as pin
+from tqdm import tqdm
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
@@ -26,6 +27,7 @@ class UpperController:
         self.w_lim = float(controller_cfg.get('w_lim', 2.0))
         self.dq_lim = float(controller_cfg.get('dq_lim', 1.0))
         self.d_min = float(controller_cfg.get('d_min', 0.02))
+        self.torso_q = float(controller_cfg.get('torso_q', 0.0))
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -48,8 +50,10 @@ class UpperController:
         init_q = self.robot_model.state_reduced['q']
         self.low_cmd_handler.enable_motors(self.enabled_ids, init_q)
 
-        # enable torso motor such that it's locked in place
-        self.low_cmd_handler.enable_motors([BODY_JOINTS.index('torso_joint')], [0.0])
+        # enable torso motor at its current position
+        torso_id = BODY_JOINTS.index('torso_joint')
+        torso_init = float(self.robot_model.state['q'][torso_id])
+        self.low_cmd_handler.enable_motors([torso_id], [torso_init])
 
         # enable lower body motor
         lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
@@ -58,6 +62,9 @@ class UpperController:
 
         # start publisher
         self.low_cmd_handler.start()
+
+        # move torso to neutral position gradually
+        self._move_torso_to_target(torso_id, torso_init, self.torso_q)
 
         # initialize IK solver
         self.ik_solver = IKSolver(
@@ -73,6 +80,20 @@ class UpperController:
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
+
+    def _move_torso_to_target(self, torso_id, torso_init, torso_target, steps=100, threshold=1e-3):
+        for step in tqdm(range(steps), desc='Moving torso to target', leave=False):
+            alpha = (step + 1) / steps
+            q_target = (1.0 - alpha) * torso_init + alpha * torso_target
+            self.low_cmd_handler.set_joint_commands(
+                q=np.array([q_target], dtype=np.float64),
+                joint_ids=[torso_id],
+            )
+            self.robot_model.update_kinematics()
+            torso_q = self.robot_model.state['q'][torso_id]
+            if abs(torso_q - torso_target) < threshold:
+                break
+            time.sleep(self.dt)
 
     '''
     joint position for left and right arms

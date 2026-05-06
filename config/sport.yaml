@@ -13,6 +13,7 @@ controller:
   w_lim: 2.0
   dq_lim: 1.0
   d_min: 0.02
+  torso_q: 0.0
 
 frequency:
   ctrl_hz: 50
@@ -126,20 +127,20 @@ limits:
       - 0.00 # right_ankle_pitch_joint
       - 0.00 # right_ankle_roll_joint
       - 0.20 # torso_joint
-      - 0.55 # left_shoulder_pitch_joint
-      - 0.55 # left_shoulder_roll_joint
-      - 0.55 # left_shoulder_yaw_joint
+      - 0.80 # left_shoulder_pitch_joint
+      - 0.80 # left_shoulder_roll_joint
+      - 0.80 # left_shoulder_yaw_joint
       - 0.80 # left_elbow_joint
-      - 0.45 # left_wrist_roll_joint
-      - 0.45 # left_wrist_pitch_joint
-      - 0.45 # left_wrist_yaw_joint
-      - 0.55 # right_shoulder_pitch_joint
-      - 0.55 # right_shoulder_roll_joint
-      - 0.55 # right_shoulder_yaw_joint
+      - 0.50 # left_wrist_roll_joint
+      - 0.50 # left_wrist_pitch_joint
+      - 0.50 # left_wrist_yaw_joint
+      - 0.80 # right_shoulder_pitch_joint
+      - 0.80 # right_shoulder_roll_joint
+      - 0.80 # right_shoulder_yaw_joint
       - 0.80 # right_elbow_joint
-      - 0.45 # right_wrist_roll_joint
-      - 0.45 # right_wrist_pitch_joint
-      - 0.45 # right_wrist_yaw_joint
+      - 0.50 # right_wrist_roll_joint
+      - 0.50 # right_wrist_pitch_joint
+      - 0.50 # right_wrist_yaw_joint
 
 logging:
   enabled: false
