@@ -7,6 +7,7 @@ from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.utility.controller_config import load_controller_config
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 class UpperController:
@@ -27,7 +28,7 @@ class UpperController:
         self.w_lim = float(controller_cfg.get('w_lim', 2.0))
         self.dq_lim = float(controller_cfg.get('dq_lim', 1.0))
         self.d_min = float(controller_cfg.get('d_min', 0.02))
-        self.torso_q = float(controller_cfg.get('torso_q', 0.0))
+        self.torso_target = float(controller_cfg.get('torso_target', 0.0))
         self.visualize = visualize
 
         # initialize subscriber in robot model
@@ -63,9 +64,6 @@ class UpperController:
         # start publisher
         self.low_cmd_handler.start()
 
-        # move torso to neutral position gradually
-        self._move_torso_to_target(torso_id, torso_init, self.torso_q)
-
         # initialize IK solver
         self.ik_solver = IKSolver(
             robot_model=self.robot_model,
@@ -81,7 +79,23 @@ class UpperController:
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
 
-    def _move_torso_to_target(self, torso_id, torso_init, torso_target, steps=100, threshold=1e-3):
+        # move arms home before rotating torso to avoid hand/hip scraping
+        self._startup_routine(NAMED_CONFIGS['home'], torso_init, self.torso_target)
+
+    def _startup_routine(self, config_init, torso_init, torso_target):
+        self._move_to_reduced_configuration(config_init)
+        self._move_torso_to_target(torso_init, torso_target)
+
+    def _move_to_reduced_configuration(self, q_reduced, steps=150, threshold=1e-3):
+        for _ in tqdm(range(steps), desc='Moving home', leave=False):
+            self.goto_reduced_configuration(q_reduced)
+            error = np.max(np.abs(self.robot_model.state_reduced['q'] - q_reduced))
+            if error < threshold:
+                break
+            time.sleep(self.dt)
+
+    def _move_torso_to_target(self, torso_init, torso_target, steps=150, threshold=1e-3):
+        torso_id = BODY_JOINTS.index('torso_joint')
         for step in tqdm(range(steps), desc='Moving torso to target', leave=False):
             alpha = (step + 1) / steps
             q_target = (1.0 - alpha) * torso_init + alpha * torso_target
@@ -89,9 +103,9 @@ class UpperController:
                 q=np.array([q_target], dtype=np.float64),
                 joint_ids=[torso_id],
             )
-            self.robot_model.update_kinematics()
-            torso_q = self.robot_model.state['q'][torso_id]
-            if abs(torso_q - torso_target) < threshold:
+            self.update_robot_model()
+            torso_position = self.robot_model.state['q'][torso_id]
+            if abs(torso_position - torso_target) < threshold:
                 break
             time.sleep(self.dt)
 

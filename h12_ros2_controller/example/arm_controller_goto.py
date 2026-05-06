@@ -54,6 +54,7 @@ def input_pose(side):
 
 
 def main(timeout=10.0,
+         threshold_config=1e-3,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
          config_name='debug.yaml'):
@@ -77,17 +78,6 @@ def main(timeout=10.0,
             if keyword in NAMED_CONFIGS:
                 print(f'Going to named configuration: {keyword}')
                 q_reduced = NAMED_CONFIGS[keyword]
-                # compute target end-effector poses from q_reduced
-                arm_controller.left_ee_target_transformation = (
-                    arm_controller.robot_model.get_frame_transformation_reduced(
-                        arm_controller.left_ee_name, q_reduced
-                    )
-                )
-                arm_controller.right_ee_target_transformation = (
-                    arm_controller.robot_model.get_frame_transformation_reduced(
-                        arm_controller.right_ee_name, q_reduced
-                    )
-                )
                 # use goto as step function
                 step_function = lambda: arm_controller.goto_reduced_configuration(q_reduced)
                 # step_function = lambda: arm_controller.sim_goto_reduced_configuration(q_reduced)
@@ -113,22 +103,32 @@ def main(timeout=10.0,
                 # control one step
                 step_function()
 
-                # print errors
-                left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
-                left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
-                right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
-                right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+                # check error for config task
+                if keyword in NAMED_CONFIGS:
+                    error = np.max(np.abs(arm_controller.reduced_configuration_error))
+                    print(f'Configuration Error: {error:.4f}')
+                    # early break
+                    if error < threshold_config:
+                        print('Target reached!')
+                        break
+                # check error for end-effector pose task
+                else:
+                    # print errors
+                    left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+                    left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+                    right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+                    right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
 
-                print(f'Left Error Linear: {left_error_linear:.4f}, '
-                      f'Left Error Angular: {left_error_angular:.4f}, '
-                      f'Right Error Linear: {right_error_linear:.4f}, '
-                      f'Right Error Angular: {right_error_angular:.4f}')
+                    print(f'Left Error Linear: {left_error_linear:.4f}, '
+                        f'Left Error Angular: {left_error_angular:.4f}, '
+                        f'Right Error Linear: {right_error_linear:.4f}, '
+                        f'Right Error Angular: {right_error_angular:.4f}')
 
-                # early break
-                if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
-                    left_error_angular < threshold_angular and right_error_angular < threshold_angular):
-                    print('Target reached!')
-                    break
+                    # early break
+                    if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
+                        left_error_angular < threshold_angular and right_error_angular < threshold_angular):
+                        print('Target reached!')
+                        break
 
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
 

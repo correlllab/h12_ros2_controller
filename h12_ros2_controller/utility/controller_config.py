@@ -173,7 +173,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     w_lim = float(controller.get('w_lim', 2.0))
     dq_lim = float(controller.get('dq_lim', 1.0))
     d_min = float(controller.get('d_min', 0.02))
-    torso_q = float(controller.get('torso_q', 0.0))
+    torso_target = float(controller.get('torso_target', 0.0))
 
     return {
         'mode': mode,
@@ -190,7 +190,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'w_lim': w_lim,
             'dq_lim': dq_lim,
             'd_min': d_min,
-            'torso_q': torso_q,
+            'torso_target': torso_target,
         },
         'frequency': {
             'ctrl_hz': ctrl_hz,
