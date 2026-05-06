@@ -226,14 +226,22 @@ if __name__ == '__main__':
         # -0.5, -0.5, # ankle pitch
         # 0.25, -0.25, # ankle roll
         # 1.0, # torso
-        -0.5, -0.5, # shoulder pitch
-        1.0, -1.0, # shoulder roll
-        1.0, -1.0, # shoulder yaw
-        -0.5, -0.5, # elbow
-        1.0, -1.0, # wrist roll
+        # -0.5, -0.5, # shoulder pitch
+        # 1.0, -1.0, # shoulder roll
+        # 1.0, -1.0, # shoulder yaw
+        # -0.5, -0.5, # elbow
+        # 1.0, -1.0, # wrist roll
+        # 0.3, 0.3, # wrist pitch
+        # 0.8, -0.8, # wrist yaw
+        -1.5, -1.5, # shoulder pitch
+        2.0, -2.0, # shoulder roll
+        2.0, -2.0, # shoulder yaw
+        -0.8, -0.8, # elbow
+        2.0, -2.0, # wrist roll
         0.3, 0.3, # wrist pitch
-        0.8, -0.8, # wrist yaw
+        1.0, -1.0, # wrist yaw
     ]
-    steps = 100
+    # steps = 100
+    steps = 200
 
     main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name=args.config)
