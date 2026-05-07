@@ -2,9 +2,8 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64MultiArray
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 from h12_ros2_controller.core.controller.hand_controller import HandController
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 '''
 Finger angles definition
@@ -20,7 +19,7 @@ Finger angles definition
 class HandControllerNode(Node):
     def __init__(self):
         super().__init__('hand_controller_node')
-        ChannelFactoryInitialize()
+        init_channel_factory_from_env()
         self.hand_controller = HandController()
 
         # subscribers for each hand cmd

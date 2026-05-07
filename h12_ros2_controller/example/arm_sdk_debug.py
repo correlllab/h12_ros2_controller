@@ -3,7 +3,7 @@ import numpy as np
 import tkinter as tk
 import pinocchio as pin
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -13,7 +13,7 @@ from h12_ros2_controller.core.channel_interface import ArmSDKPublisher
 from h12_ros2_controller.utility.joint_definition import LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 
 def main():
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
     time.sleep(1.0)

@@ -2,7 +2,7 @@ import time
 import numpy as np
 import tkinter as tk
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.hand_controller import HandController
 
 def main():
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     hand_controller = HandController()
 
     root = tk.Tk()
