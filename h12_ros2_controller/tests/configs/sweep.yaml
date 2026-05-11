@@ -39,41 +39,44 @@ trial:
 orientation_units: rad
 
 # IK feasibility results (home EE: left=[0.234,0.210,0.095], right=[0.234,-0.210,0.095])
-#   Name                   disp    max_jt  margin  joints moved
-#   left_forward_extend    0.116m  25.9°   0.373   shoulder_pitch(-21°), elbow(+26°)
-#   left_forward_mid       0.124m  24.8°   0.029   shoulder_pitch(-15°), wrist_pitch(+25°)
-#   left_side_reach        0.194m  29.9°   0.087   shoulder+elbow multi-joint
-#   left_side_up           0.179m  23.2°   0.074   shoulder_roll(+21°), wrist_roll(-23°)
-#   left_side_low          0.145m  16.1°   0.337   shoulder_roll(+15°), wrist_roll(-16°)
+#   Tag (in name)   disp    max_jt  margin  joints moved
+#   forward_extend  0.116m  25.9°   0.373   shoulder_pitch(-21°), elbow(+26°)
+#   forward_mid     0.124m  24.8°   0.029   shoulder_pitch(-15°), wrist_pitch(+25°)
+#   side_reach      0.194m  29.9°   0.087   shoulder+elbow multi-joint
+#   side_up         0.179m  23.2°   0.074   shoulder_roll(+21°), wrist_roll(-23°)
+#   side_low        0.145m  16.1°   0.337   shoulder_roll(+15°), wrist_roll(-16°)
+#
+# Case names follow {arm}_{tag}_x{XX}_y{YY}_z{ZZ} (cm) so analyze_deep.py can
+# parse target xyz from the name — matches sweep_tilt.yaml.
 cases:
-  - name: left_forward_extend
+  - name: left_forward_extend_x35_y20_z10
     frame: left_wrist_yaw_link
     target_pose: [0.35, 0.20, 0.10, 0.0, 0.0, 0.0]
-  - name: left_forward_mid
+  - name: left_forward_mid_x30_y20_z20
     frame: left_wrist_yaw_link
     target_pose: [0.30, 0.20, 0.20, 0.0, 0.0, 0.0]
-  - name: left_side_reach
+  - name: left_side_reach_x15_y35_z20
     frame: left_wrist_yaw_link
     target_pose: [0.15, 0.35, 0.20, 0.0, 0.0, 0.0]
-  - name: left_side_up
+  - name: left_side_up_x20_y35_z20
     frame: left_wrist_yaw_link
     target_pose: [0.20, 0.35, 0.20, 0.0, 0.0, 0.0]
-  - name: left_side_low
+  - name: left_side_low_x20_y35_z08
     frame: left_wrist_yaw_link
     target_pose: [0.20, 0.35, 0.08, 0.0, 0.0, 0.0]
-  - name: right_forward_extend
+  - name: right_forward_extend_x35_y20_z10
     frame: right_wrist_yaw_link
     target_pose: [0.35, -0.20, 0.10, 0.0, 0.0, 0.0]
-  - name: right_forward_mid
+  - name: right_forward_mid_x30_y20_z20
     frame: right_wrist_yaw_link
     target_pose: [0.30, -0.20, 0.20, 0.0, 0.0, 0.0]
-  - name: right_side_reach
+  - name: right_side_reach_x15_y35_z20
     frame: right_wrist_yaw_link
     target_pose: [0.15, -0.35, 0.20, 0.0, 0.0, 0.0]
-  - name: right_side_up
+  - name: right_side_up_x20_y35_z20
     frame: right_wrist_yaw_link
     target_pose: [0.20, -0.35, 0.20, 0.0, 0.0, 0.0]
-  - name: right_side_low
+  - name: right_side_low_x20_y35_z08
     frame: right_wrist_yaw_link
     target_pose: [0.20, -0.35, 0.08, 0.0, 0.0, 0.0]
 
