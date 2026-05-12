@@ -13,7 +13,7 @@ controller:
   w_lim: 2.0
   dq_lim: 1.0
   d_min: 0.02
-  torso_target: 0.0
+  torso_target: 1.7
 
 frequency:
   ctrl_hz: 50
