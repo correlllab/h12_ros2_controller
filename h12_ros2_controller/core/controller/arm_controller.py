@@ -211,10 +211,10 @@ class ArmController(UpperController):
         # call parent update method
         super().update_robot_model()
 
-    def apply_joint_position(self, vel):
+    def _apply_joint_position(self, q):
         # call parent method
-        super().apply_joint_position(vel)
+        super()._apply_joint_position(q)
 
         # update joint action for end effectors
-        self._left_arm_action = vel[LEFT_ARM_INDEX] * self.dt
-        self._right_arm_action = vel[RIGHT_ARM_INDEX] * self.dt
+        self._left_arm_action = q[LEFT_ARM_INDEX]
+        self._right_arm_action = q[RIGHT_ARM_INDEX]

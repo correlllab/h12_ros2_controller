@@ -132,10 +132,20 @@ def main(timeout=10.0,
 
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
 
-            for _ in range(50):
-                frame_start_time = time.time()
-                step_function()
-                time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
+            arm_controller.hold_steady_state()
+
+            if keyword in NAMED_CONFIGS:
+                error = arm_controller.reduced_configuration_error
+                print(f'Final Configuration Error: {np.max(np.abs(error)):.4f}')
+            else:
+                left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+                left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+                right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+                right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+                print(f'Final Left Error Linear: {left_error_linear:.4f}, '
+                    f'Final Left Error Angular: {left_error_angular:.4f}, '
+                    f'Final Right Error Linear: {right_error_linear:.4f}, '
+                    f'Final Right Error Angular: {right_error_angular:.4f}')
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
