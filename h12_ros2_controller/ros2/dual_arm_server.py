@@ -29,11 +29,13 @@ class DualArmServer(Node):
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2,
+                 threshold_vel=1e-3,
                  config_name='debug.yaml'):
         super().__init__('dual_arm_server')
         self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
+        self.threshold_vel = threshold_vel
         self.config_name = config_name
 
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
@@ -127,10 +129,15 @@ class DualArmServer(Node):
             start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                self.controller.control_step_reduced()
+                if not ik_converged:
+                    vel = self.controller.control_step_reduced()
+                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                else:
+                    steady_state_converged = self.controller.steady_state_step()
 
                 # handle cancel event
                 if goal_handle.is_cancel_requested:
@@ -153,20 +160,22 @@ class DualArmServer(Node):
                 feedback_msg.right_error_angular = right_error_angular
                 goal_handle.publish_feedback(feedback_msg)
 
-                # check if the goal is reached
-                if (left_error_linear < self.threshold_linear and
-                    right_error_linear < self.threshold_linear and
-                    left_error_angular < self.threshold_angular and
-                    right_error_angular < self.threshold_angular):
-                    self.get_logger().info('Goal reached')
+                if not ik_converged:
+                    if vel_error < self.threshold_vel:
+                        ik_converged = True
+                        self.controller.init_steady_state()
+                        self.get_logger().info('IK converged; entering steady-state hold')
+                elif steady_state_converged:
                     break
 
                 time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
 
-            for _ in range(50):
-                frame_start_time = time.time()
-                self.controller.control_step_reduced()
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            if not ik_converged:
+                self.get_logger().warn('Timed out before IK convergence')
+            elif not steady_state_converged:
+                self.get_logger().warn('Timed out during steady-state hold')
+            else:
+                self.get_logger().info('Goal reached')
 
             goal_handle.succeed()
             result = DualArm.Result()
@@ -198,10 +207,15 @@ class DualArmServer(Node):
             start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                self.controller.goto_reduced_configuration(q_reduced)
+                if not ik_converged:
+                    vel = self.controller.goto_reduced_configuration(q_reduced)
+                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                else:
+                    steady_state_converged = self.controller.steady_state_step()
 
                 # handle cancel event
                 if goal_handle.is_cancel_requested:
@@ -218,12 +232,22 @@ class DualArmServer(Node):
                 feedback_msg.joint_error = joint_error
                 goal_handle.publish_feedback(feedback_msg)
 
-                # check if the goal is reached
-                if joint_error < 1e-3:
-                    self.get_logger().info('Named config reached')
+                if not ik_converged:
+                    if vel_error < self.threshold_vel:
+                        ik_converged = True
+                        self.controller.init_steady_state()
+                        self.get_logger().info('IK converged; entering steady-state hold')
+                elif steady_state_converged:
                     break
 
                 time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+
+            if not ik_converged:
+                self.get_logger().warn('Timed out before IK convergence')
+            elif not steady_state_converged:
+                self.get_logger().warn('Timed out during steady-state hold')
+            else:
+                self.get_logger().info('Goal reached')
 
             goal_handle.succeed()
             result = NamedConfig.Result()

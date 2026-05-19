@@ -203,6 +203,7 @@ class UpperController:
         self.ik_solver.integrate(vel)
         self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_goto_configuration(self, q):
         # solve IK and apply control
@@ -214,6 +215,7 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.update_robot_model()
+        return vel
 
     @property
     def reduced_configuration_error(self):
@@ -230,6 +232,7 @@ class UpperController:
         self.ik_solver.integrate(vel)
         self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
@@ -241,6 +244,7 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
     def lock_configuration(self, q):
         self._apply_joint_position(q)
@@ -255,6 +259,7 @@ class UpperController:
         self.ik_solver.integrate(vel)
         self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def control_step_reduced(self, com=False):
         '''Solve IK for all tasks with the reduced model'''
@@ -265,6 +270,7 @@ class UpperController:
         self.ik_solver.integrate(vel)
         self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_step(self, com=False):
         # solve IK and apply the control
@@ -276,6 +282,7 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
     def sim_step_reduced(self, com=False):
         # solve IK and apply the control
@@ -287,40 +294,49 @@ class UpperController:
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
-    def hold_steady_state(self, steps=100, threshold=1e-3):
-        '''Hold the robot in a steady state by applying I control'''
-        # initialize state variables
-        q_cmd = np.copy(self.ik_solver.q)
-        dq_cmd = np.zeros(self.robot_model.model_body.nv)
-        tau_bias = np.zeros(self.robot_model.model_body.nv)
-        ki = np.zeros(self.robot_model.model_body.nv)
-        ki[self.upper_ids] = 60.0
+    def init_steady_state(self):
+        '''Initialize steady-state I control from the final IK command'''
+        self._steady_q_cmd = np.copy(self.ik_solver.q)
+        self._steady_dq_cmd = np.zeros(self.robot_model.model_body.nv)
+        self._steady_tau_bias = np.zeros(self.robot_model.model_body.nv)
+        self._steady_ki = np.zeros(self.robot_model.model_body.nv)
+        self._steady_ki[self.upper_ids] = 60.0
 
-        # set tau bias limit
-        tau_bias_limit = np.zeros(self.robot_model.model_body.nv)
+        self._steady_tau_bias_limit = np.zeros_like(self.robot_model.model_body.nv)
         tau_clip_limits = self.config.get('limits', {}).get('tau_clip_limits')
         if tau_clip_limits is not None:
-            tau_bias_limit = 0.2 * np.asarray(tau_clip_limits, dtype=np.float64)
-
-        for _ in tqdm(range(steps), desc='Holding steady state'):
-            # assume IK already converged and hold the final IK command fixed
-            q_error = q_cmd - self.robot_model.state['q']
-            tau_bias += ki * q_error * self.dt
-            tau_bias = np.clip(tau_bias, -tau_bias_limit, tau_bias_limit)
-
-            tau_gravity = self.robot_model.get_gravity_compensation(
-                self.robot_model.state['q']
+            self._steady_tau_bias_limit = (
+                0.3 * np.asarray(tau_clip_limits, dtype=np.float64)
             )
-            tau_cmd = tau_gravity + tau_bias
-            self.low_cmd_handler.set_joint_commands(q_cmd, dq_cmd, tau_cmd)
 
-            time.sleep(self.dt)
-            self.update_robot_model()
-            q_error = q_cmd - self.robot_model.state['q']
+    def steady_state_step(self, threshold=1e-3):
+        '''Run one steady-state I-control tick and return convergence'''
+        if not hasattr(self, '_steady_q_cmd'):
+            self.init_steady_state()
 
-            if np.max(np.abs(q_error[self.upper_ids])) < threshold:
-                break
+        q_error = self._steady_q_cmd - self.robot_model.state['q']
+        self._steady_tau_bias += self._steady_ki * q_error * self.dt
+        self._steady_tau_bias = np.clip(
+            self._steady_tau_bias,
+            -self._steady_tau_bias_limit,
+            self._steady_tau_bias_limit,
+        )
+
+        tau_gravity = self.robot_model.get_gravity_compensation(
+            self.robot_model.state['q']
+        )
+        tau_cmd = tau_gravity + self._steady_tau_bias
+        self.low_cmd_handler.set_joint_commands(
+            self._steady_q_cmd,
+            self._steady_dq_cmd,
+            tau_cmd,
+        )
+
+        self.update_robot_model()
+        q_error = self._steady_q_cmd - self.robot_model.state['q']
+        return np.max(np.abs(q_error[self.upper_ids])) < threshold
 
     def _limit_joint_vel(self, vel):
         # get end effector twist

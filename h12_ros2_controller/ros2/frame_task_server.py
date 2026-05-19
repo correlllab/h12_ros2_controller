@@ -26,11 +26,13 @@ class FrameTaskServer(Node):
                  timeout=10.0,
                  threshold_linear=5e-3,
                  threshold_angular=2e-2,
+                 threshold_vel=1e-3,
                  config_name='debug.yaml'):
         super().__init__('frame_task_server')
         self.timeout = timeout
         self.threshold_linear = threshold_linear
         self.threshold_angular = threshold_angular
+        self.threshold_vel = threshold_vel
         # lists holding frame names and frame targets
         self.frame_names = []
         self.frame_targets = []
@@ -149,10 +151,15 @@ class FrameTaskServer(Node):
             start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                self.controller.control_step_reduced()
+                if not ik_converged:
+                    vel = self.controller.control_step_reduced()
+                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                else:
+                    steady_state_converged = self.controller.steady_state_step()
 
                 # handle cancel event
                 if goal_handle.is_cancel_requested:
@@ -175,19 +182,22 @@ class FrameTaskServer(Node):
                 feedback_msg.errors_angular = errors_angular
                 goal_handle.publish_feedback(feedback_msg)
 
-                # check if the goal is reached
-                if len(errors_linear) > 0 and len(errors_angular) > 0:
-                    if (max(errors_linear) < self.threshold_linear and
-                        max(errors_angular) < self.threshold_angular):
-                        self.get_logger().info('Goal reached')
-                        break
+                if not ik_converged:
+                    if vel_error < self.threshold_vel:
+                        ik_converged = True
+                        self.controller.init_steady_state()
+                        self.get_logger().info('IK converged; entering steady-state hold')
+                elif steady_state_converged:
+                    break
 
                 time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
 
-            for _ in range(50):
-                frame_start_time = time.time()
-                self.controller.control_step_reduced()
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+            if not ik_converged:
+                self.get_logger().warn('Timed out before IK convergence')
+            elif not steady_state_converged:
+                self.get_logger().warn('Timed out during steady-state hold')
+            else:
+                self.get_logger().info('Goal reached')
 
             # set result
             result = FrameTask.Result()
@@ -219,10 +229,15 @@ class FrameTaskServer(Node):
             start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                self.controller.goto_reduced_configuration(q_reduced)
+                if not ik_converged:
+                    vel = self.controller.goto_reduced_configuration(q_reduced)
+                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                else:
+                    steady_state_converged = self.controller.steady_state_step()
 
                 # handle cancel event
                 if goal_handle.is_cancel_requested:
@@ -239,12 +254,23 @@ class FrameTaskServer(Node):
                 feedback_msg.joint_error = joint_error
                 goal_handle.publish_feedback(feedback_msg)
 
-                # check if the goal is reached
-                if joint_error < 1e-3:
+                if not ik_converged:
+                    if vel_error < self.threshold_vel:
+                        ik_converged = True
+                        self.controller.init_steady_state()
+                        self.get_logger().info('IK converged; entering steady-state hold')
+                elif steady_state_converged:
                     self.get_logger().info('Named config reached')
                     break
 
                 time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+
+            if not ik_converged:
+                self.get_logger().warn('Timed out before IK convergence')
+            elif not steady_state_converged:
+                self.get_logger().warn('Timed out during steady-state hold')
+            else:
+                self.get_logger().info('Goal reached')
 
             goal_handle.succeed()
             result = NamedConfig.Result()

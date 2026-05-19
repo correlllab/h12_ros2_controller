@@ -57,6 +57,7 @@ def main(timeout=10.0,
          threshold_config=1e-3,
          threshold_linear=5e-3,
          threshold_angular=2e-2,
+         threshold_vel=1e-3,
          config_name='debug.yaml'):
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
@@ -98,41 +99,78 @@ def main(timeout=10.0,
 
             # main loop
             start_time = time.time()
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                step_function()
+                if not ik_converged:
+                    # run IK until the command stops changing
+                    vel = step_function()
+                    vel_error = np.max(np.abs(vel[arm_controller.enabled_ids]))
 
-                # check error for config task
-                if keyword in NAMED_CONFIGS:
-                    error = np.max(np.abs(arm_controller.reduced_configuration_error))
-                    print(f'Configuration Error: {error:.4f}')
-                    # early break
-                    if error < threshold_config:
-                        print('Target reached!')
-                        break
-                # check error for end-effector pose task
+                    # print error for config task
+                    if keyword in NAMED_CONFIGS:
+                        error = np.max(
+                            np.abs(arm_controller.reduced_configuration_error)
+                        )
+                        print(
+                            f'Configuration Error: {error:.4f}, '
+                            f'IK Velocity: {vel_error:.4f}'
+                        )
+                    # print errors for end-effector pose task
+                    else:
+                        left_error_linear = np.linalg.norm(
+                            arm_controller.left_ee_error[:3]
+                        )
+                        left_error_angular = np.linalg.norm(
+                            arm_controller.left_ee_error[3:]
+                        )
+                        right_error_linear = np.linalg.norm(
+                            arm_controller.right_ee_error[:3]
+                        )
+                        right_error_angular = np.linalg.norm(
+                            arm_controller.right_ee_error[3:]
+                        )
+
+                        print(f'Left Error Linear: {left_error_linear:.4f}, '
+                            f'Left Error Angular: {left_error_angular:.4f}, '
+                            f'Right Error Linear: {right_error_linear:.4f}, '
+                            f'Right Error Angular: {right_error_angular:.4f}, '
+                            f'IK Velocity: {vel_error:.4f}')
+
+                    if vel_error < threshold_vel:
+                        ik_converged = True
+                        arm_controller.init_steady_state()
+                        print('IK converged; entering steady-state hold')
                 else:
-                    # print errors
-                    left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
-                    left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
-                    right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
-                    right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+                    steady_state_converged = arm_controller.steady_state_step(
+                        threshold_config
+                    )
+                    if keyword in NAMED_CONFIGS:
+                        error = np.max(np.abs(arm_controller.reduced_configuration_error))
+                        print(f'Configuration Error: {error:.4f}')
+                    else:
+                        left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
+                        left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
+                        right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
+                        right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
+                        print(f'Left Error Linear: {left_error_linear:.4f}, '
+                            f'Left Error Angular: {left_error_angular:.4f}, '
+                            f'Right Error Linear: {right_error_linear:.4f}, '
+                            f'Right Error Angular: {right_error_angular:.4f}')
 
-                    print(f'Left Error Linear: {left_error_linear:.4f}, '
-                        f'Left Error Angular: {left_error_angular:.4f}, '
-                        f'Right Error Linear: {right_error_linear:.4f}, '
-                        f'Right Error Angular: {right_error_angular:.4f}')
-
-                    # early break
-                    if (left_error_linear < threshold_linear and right_error_linear < threshold_linear and
-                        left_error_angular < threshold_angular and right_error_angular < threshold_angular):
-                        print('Target reached!')
+                    if steady_state_converged:
+                        print('Steady state reached!')
                         break
 
                 time.sleep(max(0.0, arm_controller.dt - (time.time() - frame_start_time)))
 
-            arm_controller.hold_steady_state()
+            if not ik_converged:
+                print('Timed out before IK convergence')
+            elif not steady_state_converged:
+                print('Timed out during steady-state hold')
+            else:
+                print('Target reached!')
 
             if keyword in NAMED_CONFIGS:
                 error = arm_controller.reduced_configuration_error
