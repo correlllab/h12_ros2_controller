@@ -186,11 +186,23 @@ class FrameTaskServer(Node):
                     if vel_error < self.threshold_vel:
                         ik_converged = True
                         self.controller.init_steady_state()
-                        self.get_logger().info('IK converged; entering steady-state hold')
-                elif steady_state_converged:
-                    break
+                        self.get_logger().info(
+                            'IK converged; entering steady-state hold'
+                        )
+                else:
+                    steady_state_converged = steady_state_converged or (
+                        len(errors_linear) > 0 and
+                        len(errors_angular) > 0 and
+                        max(errors_linear) < self.threshold_linear and
+                        max(errors_angular) < self.threshold_angular
+                    )
+                    if steady_state_converged:
+                        break
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+                time.sleep(max(
+                    0.0,
+                    self.controller.dt - (time.time() - frame_start_time)
+                ))
 
             if not ik_converged:
                 self.get_logger().warn('Timed out before IK convergence')
@@ -248,7 +260,9 @@ class FrameTaskServer(Node):
                     return result
 
                 # compute error
-                joint_error = np.max(np.abs(self.controller.reduced_configuration_error))
+                joint_error = np.max(
+                    np.abs(self.controller.reduced_configuration_error)
+                )
                 # send feedback
                 feedback_msg = NamedConfig.Feedback()
                 feedback_msg.joint_error = joint_error
@@ -258,12 +272,22 @@ class FrameTaskServer(Node):
                     if vel_error < self.threshold_vel:
                         ik_converged = True
                         self.controller.init_steady_state()
-                        self.get_logger().info('IK converged; entering steady-state hold')
-                elif steady_state_converged:
-                    self.get_logger().info('Named config reached')
-                    break
+                        self.get_logger().info(
+                            'IK converged; entering steady-state hold'
+                        )
+                else:
+                    steady_state_converged = (
+                        steady_state_converged or
+                        joint_error < 1e-3
+                    )
+                    if steady_state_converged:
+                        self.get_logger().info('Named config reached')
+                        break
 
-                time.sleep(max(0.0, self.controller.dt - (time.time() - frame_start_time)))
+                time.sleep(max(
+                    0.0,
+                    self.controller.dt - (time.time() - frame_start_time)
+                ))
 
             if not ik_converged:
                 self.get_logger().warn('Timed out before IK convergence')

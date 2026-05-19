@@ -143,6 +143,10 @@ def main(timeout=10.0,
                             np.abs(frame_controller.reduced_configuration_error)
                         )
                         print(f'Configuration Error: {error:.4f}')
+                        steady_state_converged = (
+                            steady_state_converged or
+                            error < threshold_config
+                        )
                     else:
                         error = frame_controller.get_frame_task_error(task_name)
                         linear_error = np.linalg.norm(error[:3])
@@ -151,12 +155,19 @@ def main(timeout=10.0,
                             f'Linear Error: {linear_error:.4f}, '
                             f'Angular Error: {angular_error:.4f}'
                         )
+                        steady_state_converged = steady_state_converged or (
+                            linear_error < threshold_linear and
+                            angular_error < threshold_angular
+                        )
 
                     if steady_state_converged:
                         print('Steady state reached!')
                         break
 
-                time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
+                time.sleep(max(
+                    0.0,
+                    frame_controller.dt - (time.time() - frame_start_time)
+                ))
 
             if not ik_converged:
                 print('Timed out before IK convergence')

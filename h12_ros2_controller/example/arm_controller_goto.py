@@ -133,10 +133,10 @@ def main(timeout=10.0,
                         )
 
                         print(f'Left Error Linear: {left_error_linear:.4f}, '
-                            f'Left Error Angular: {left_error_angular:.4f}, '
-                            f'Right Error Linear: {right_error_linear:.4f}, '
-                            f'Right Error Angular: {right_error_angular:.4f}, '
-                            f'IK Velocity: {vel_error:.4f}')
+                              f'Left Error Angular: {left_error_angular:.4f}, '
+                              f'Right Error Linear: {right_error_linear:.4f}, '
+                              f'Right Error Angular: {right_error_angular:.4f}, '
+                              f'IK Velocity: {vel_error:.4f}')
 
                     if vel_error < threshold_vel:
                         ik_converged = True
@@ -149,15 +149,22 @@ def main(timeout=10.0,
                     if keyword in NAMED_CONFIGS:
                         error = np.max(np.abs(arm_controller.reduced_configuration_error))
                         print(f'Configuration Error: {error:.4f}')
+                        steady_state_converged = steady_state_converged or error < threshold_config
                     else:
                         left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
                         left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
                         right_error_linear = np.linalg.norm(arm_controller.right_ee_error[:3])
                         right_error_angular = np.linalg.norm(arm_controller.right_ee_error[3:])
                         print(f'Left Error Linear: {left_error_linear:.4f}, '
-                            f'Left Error Angular: {left_error_angular:.4f}, '
-                            f'Right Error Linear: {right_error_linear:.4f}, '
-                            f'Right Error Angular: {right_error_angular:.4f}')
+                              f'Left Error Angular: {left_error_angular:.4f}, '
+                              f'Right Error Linear: {right_error_linear:.4f}, '
+                              f'Right Error Angular: {right_error_angular:.4f}')
+                        steady_state_converged = steady_state_converged or (
+                            left_error_linear < threshold_linear and
+                            left_error_angular < threshold_angular and
+                            right_error_linear < threshold_linear and
+                            right_error_angular < threshold_angular
+                        )
 
                     if steady_state_converged:
                         print('Steady state reached!')
