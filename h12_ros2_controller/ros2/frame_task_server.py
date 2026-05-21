@@ -108,13 +108,19 @@ class FrameTaskServer(Node):
         frame_names.data = self.frame_names
         self.frame_names_publisher.publish(frame_names)
 
+        stamp = self.get_clock().now().to_msg()
+
         # publish frame targets
         frame_targets = PoseArray()
+        frame_targets.header.stamp = stamp
+        frame_targets.header.frame_id = 'pelvis'
         frame_targets.poses = self.frame_targets
         self.frame_targets_publisher.publish(frame_targets)
 
         # publish frame poses
         frame_poses = PoseArray()
+        frame_poses.header.stamp = stamp
+        frame_poses.header.frame_id = 'pelvis'
         frame_poses.poses = [
             matrix_to_pose(self.controller.get_frame_transformation(name))
             for name in self.frame_names
