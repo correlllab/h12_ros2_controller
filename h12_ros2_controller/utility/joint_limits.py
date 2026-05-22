@@ -1,6 +1,6 @@
 import numpy as np
 
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 
 # Joint limits use URDF values directly
 # Functions for conservative scaling will be added later
@@ -142,14 +142,18 @@ JOINT_TORQUE_ESTOP_SCALERS = [
 ]
 
 def get_default_gains():
-    kp = np.full(len(BODY_JOINTS), 50.0, dtype=np.float32)
-    kd = np.full(len(BODY_JOINTS), 5.0, dtype=np.float32)
+    kp = np.zeros(len(BODY_JOINTS), dtype=np.float32)
+    kd = np.zeros(len(BODY_JOINTS), dtype=np.float32)
+    kp[UPPER_BODY_INDEX] = 50.0
+    kd[UPPER_BODY_INDEX] = 5.0
 
     return kp, kd
 
 def setup_gains(command_publisher, gains_config=None):
     '''Configure motor gains for all joints - optimized for real robot'''
-    if gains_config is not None and gains_config.get('kp') is not None and gains_config.get('kd') is not None:
+    if (gains_config is not None and
+        gains_config.get('kp') is not None and
+        gains_config.get('kd') is not None):
         command_publisher.kp[:] = np.asarray(gains_config['kp'], dtype=np.float32)
         command_publisher.kd[:] = np.asarray(gains_config['kd'], dtype=np.float32)
         return

@@ -8,7 +8,13 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+from h12_ros2_controller.utility.joint_definition import (
+    BODY_JOINTS,
+    ENABLED_JOINTS,
+    LEFT_ARM_INDEX,
+    RIGHT_ARM_INDEX,
+    UPPER_BODY_INDEX,
+)
 
 class UpperController:
     def __init__(self,
@@ -41,7 +47,7 @@ class UpperController:
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(urdf_sphere_path, srdf_sphere_path)
         self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
-        self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
+        self.upper_ids = UPPER_BODY_INDEX
 
         # intialize low cmd publisher
         self.low_cmd_handler = LowCmdHandler(self.robot_model,
@@ -55,11 +61,6 @@ class UpperController:
         torso_id = BODY_JOINTS.index('torso_joint')
         torso_init = float(self.robot_model.state['q'][torso_id])
         self.low_cmd_handler.enable_motors([torso_id], [torso_init])
-
-        # enable lower body motor
-        lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
-        lower_init = self.robot_model.state['q'][lower_ids]
-        self.low_cmd_handler.enable_motors(lower_ids, lower_init)
 
         # start publisher
         self.low_cmd_handler.start()
@@ -301,8 +302,11 @@ class UpperController:
         self._steady_q_cmd = np.copy(self.ik_solver.q)
         self._steady_dq_cmd = np.zeros(self.robot_model.model_body.nv)
         self._steady_tau_bias = np.zeros(self.robot_model.model_body.nv)
-        self._steady_ki = np.zeros(self.robot_model.model_body.nv)
-        self._steady_ki[self.upper_ids] = 60.0
+        ki = self.config.get('gains', {}).get('ki')
+        if ki is None:
+            self._steady_ki = np.zeros(self.robot_model.model_body.nv)
+        else:
+            self._steady_ki = np.asarray(ki, dtype=np.float64)
 
         self._steady_tau_bias_limit = np.zeros_like(self.robot_model.model_body.nv)
         tau_clip_limits = self.config.get('limits', {}).get('tau_clip_limits')
