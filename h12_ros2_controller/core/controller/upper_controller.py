@@ -311,9 +311,7 @@ class UpperController:
         self._steady_tau_bias_limit = np.zeros_like(self.robot_model.model_body.nv)
         tau_clip_limits = self.config.get('limits', {}).get('tau_clip_limits')
         if tau_clip_limits is not None:
-            self._steady_tau_bias_limit = (
-                0.3 * np.asarray(tau_clip_limits, dtype=np.float64)
-            )
+            self._steady_tau_bias_limit = np.asarray(tau_clip_limits, dtype=np.float64)
 
     def steady_state_step(self, threshold=1e-3):
         '''Run one steady-state I-control tick and return convergence'''
@@ -397,7 +395,7 @@ class UpperController:
         self.low_cmd_handler.set_joint_commands(dq=dq)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
-    def start_recording(self, save_path, filename, record_interval=0.01):
+    def start_recording(self, save_path, filename, record_interval=1.0):
         '''Start recording with background saving'''
         self.low_cmd_handler.start_recording(self.upper_ids, save_path, filename, record_interval)
 

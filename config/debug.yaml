@@ -13,12 +13,12 @@ controller:
   w_lim: 2.0
   dq_lim: 1.0
   d_min: 0.02
-  timeout: 10.0
+  timeout: 5.0
   torso_target: 0.0
-  threshold_ik: 0.001
-  threshold_joint: 0.01
+  threshold_ik: 0.0001
+  threshold_joint: 0.002
   threshold_linear: 0.002
-  threshold_angular: 0.01
+  threshold_angular: 0.005
 
 frequency:
   ctrl_hz: 50
@@ -46,14 +46,14 @@ gains:
   kd:
     - 10.0 # torso_joint
     - 10.0 # left_shoulder_pitch_joint
-    - 8.0  # left_shoulder_roll_joint
+    - 8.0 # left_shoulder_roll_joint
     - 4.0  # left_shoulder_yaw_joint
     - 4.0  # left_elbow_joint
     - 2.0  # left_wrist_roll_joint
     - 2.0  # left_wrist_pitch_joint
     - 2.0  # left_wrist_yaw_joint
     - 10.0 # right_shoulder_pitch_joint
-    - 8.0  # right_shoulder_roll_joint
+    - 8.0 # right_shoulder_roll_joint
     - 4.0  # right_shoulder_yaw_joint
     - 4.0  # right_elbow_joint
     - 2.0  # right_wrist_roll_joint
@@ -61,17 +61,17 @@ gains:
     - 2.0  # right_wrist_yaw_joint
   ki:
     - 60.0 # torso_joint
-    - 60.0 # left_shoulder_pitch_joint
-    - 60.0 # left_shoulder_roll_joint
-    - 60.0 # left_shoulder_yaw_joint
-    - 60.0 # left_elbow_joint
+    - 500.0 # left_shoulder_pitch_joint
+    - 500.0 # left_shoulder_roll_joint
+    - 300.0 # left_shoulder_yaw_joint
+    - 400.0 # left_elbow_joint
     - 60.0 # left_wrist_roll_joint
     - 60.0 # left_wrist_pitch_joint
     - 60.0 # left_wrist_yaw_joint
-    - 60.0 # right_shoulder_pitch_joint
-    - 60.0 # right_shoulder_roll_joint
-    - 60.0 # right_shoulder_yaw_joint
-    - 60.0 # right_elbow_joint
+    - 500.0 # right_shoulder_pitch_joint
+    - 500.0 # right_shoulder_roll_joint
+    - 300.0 # right_shoulder_yaw_joint
+    - 400.0 # right_elbow_joint
     - 60.0 # right_wrist_roll_joint
     - 60.0 # right_wrist_pitch_joint
     - 60.0 # right_wrist_yaw_joint
@@ -80,7 +80,7 @@ limits:
   clip:
     position_offset: 0.001
     velocity_ratio: 0.10
-    torque_ratio: 0.30
+    torque_ratio: 0.60
   estop:
     position_offset: 0.0001
     velocity_ratio:

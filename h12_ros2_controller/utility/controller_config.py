@@ -245,7 +245,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'enabled': bool(logging.get('enabled', False)),
             'base_dir': str(logging.get('base_dir', logging.get('save_path', 'data/control_record'))),
             'filename': str(logging.get('filename', logging.get('save_filename', 'record'))),
-            'record_interval': float(logging.get('record_interval', 0.01)),
+            'record_interval': float(logging.get('record_interval', 1.0)),
         },
     }
 
@@ -273,5 +273,5 @@ def maybe_start_controller_logging(controller):
     controller.start_recording(
         save_path=logging_cfg.get('base_dir', 'data/control_record'),
         filename=filename,
-        record_interval=float(logging_cfg.get('record_interval', 0.01)),
+        record_interval=float(logging_cfg.get('record_interval', 1.0)),
     )

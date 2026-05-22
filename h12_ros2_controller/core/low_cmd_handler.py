@@ -146,7 +146,7 @@ class LowCmdHandler:
         self._command_publisher.estop()
         self._estopped = True
 
-    def start_recording(self, ids, save_path, filename, record_interval=0.01):
+    def start_recording(self, ids, save_path, filename, record_interval=1.0):
         '''Start recording with background saving'''
         self._recording = True
         self._record_ids = ids
