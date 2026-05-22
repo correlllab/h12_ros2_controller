@@ -173,7 +173,12 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     w_lim = float(controller.get('w_lim', 2.0))
     dq_lim = float(controller.get('dq_lim', 1.0))
     d_min = float(controller.get('d_min', 0.02))
+    timeout = float(controller.get('timeout', 10.0))
     torso_target = float(controller.get('torso_target', 0.0))
+    threshold_ik = float(controller.get('threshold_ik', 0.001))
+    threshold_joint = float(controller.get('threshold_joint', 0.01))
+    threshold_linear = float(controller.get('threshold_linear', 0.002))
+    threshold_angular = float(controller.get('threshold_angular', 0.01))
 
     return {
         'mode': mode,
@@ -190,7 +195,12 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'w_lim': w_lim,
             'dq_lim': dq_lim,
             'd_min': d_min,
+            'timeout': timeout,
             'torso_target': torso_target,
+            'threshold_ik': threshold_ik,
+            'threshold_joint': threshold_joint,
+            'threshold_linear': threshold_linear,
+            'threshold_angular': threshold_angular,
         },
         'frequency': {
             'ctrl_hz': ctrl_hz,

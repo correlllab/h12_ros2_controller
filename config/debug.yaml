@@ -13,7 +13,12 @@ controller:
   w_lim: 2.0
   dq_lim: 1.0
   d_min: 0.02
+  timeout: 10.0
   torso_target: 0.0
+  threshold_ik: 0.001
+  threshold_joint: 0.01
+  threshold_linear: 0.002
+  threshold_angular: 0.01
 
 frequency:
   ctrl_hz: 50

@@ -9,9 +9,9 @@ class PrecisionBenchmark:
     def __init__(self,
                  arm_controller: ArmController,
                  target_poses,
-                 timeout=5.0,
-                 threshold_linear=5e-3,
-                 threshold_angular=2e-2):
+                 timeout=None,
+                 threshold_linear=None,
+                 threshold_angular=None):
         '''
         @param arm_controller: your ArmController instance
         @param target_poses: list of np.array (each pose is a vector of joint angles or end-effector pose)
@@ -25,9 +25,19 @@ class PrecisionBenchmark:
         self.neutral_pose_reduced = arm_controller.robot_model.zero_q_body_reduced
 
         # parameters
-        self.timeout = timeout
-        self.threshold_linear = threshold_linear
-        self.threshold_angular = threshold_angular
+        controller_cfg = arm_controller.config.get('controller', {})
+        self.timeout = (
+            controller_cfg.get('timeout', 10.0)
+            if timeout is None else timeout
+        )
+        self.threshold_linear = (
+            controller_cfg.get('threshold_linear', 0.002)
+            if threshold_linear is None else threshold_linear
+        )
+        self.threshold_angular = (
+            controller_cfg.get('threshold_angular', 0.01)
+            if threshold_angular is None else threshold_angular
+        )
 
         self.traj_log = []
         self.linear_error_log = []

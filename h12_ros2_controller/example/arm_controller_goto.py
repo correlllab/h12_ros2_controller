@@ -53,13 +53,17 @@ def input_pose(side):
             continue
 
 
-def main(timeout=10.0,
-         threshold_config=1e-3,
-         threshold_linear=5e-3,
-         threshold_angular=2e-2,
-         threshold_vel=1e-3,
-         config_name='debug.yaml'):
+def main(config_name='debug.yaml'):
+    # parse threshold and timeout from config
     config= load_controller_config(config_name)
+    controller_cfg = config['controller']
+    timeout = controller_cfg['timeout']
+    threshold_ik = controller_cfg['threshold_ik']
+    threshold_joint = controller_cfg['threshold_joint']
+    threshold_linear = controller_cfg['threshold_linear']
+    threshold_angular = controller_cfg['threshold_angular']
+
+    # initialize channel factory
     initialize_channel_factory(config)
     # initialize arm controller
     arm_controller = ArmController('assets/h1_2/h1_2_handless.urdf',
@@ -106,7 +110,7 @@ def main(timeout=10.0,
                 if not ik_converged:
                     # run IK until the command stops changing
                     vel = step_function()
-                    vel_error = np.max(np.abs(vel[arm_controller.enabled_ids]))
+                    vel_error = np.max(np.abs(vel))
 
                     # print error for config task
                     if keyword in NAMED_CONFIGS:
@@ -138,18 +142,18 @@ def main(timeout=10.0,
                               f'Right Error Angular: {right_error_angular:.4f}, '
                               f'IK Velocity: {vel_error:.4f}')
 
-                    if vel_error < threshold_vel:
+                    if vel_error < threshold_ik:
                         ik_converged = True
                         arm_controller.init_steady_state()
                         print('IK converged; entering steady-state hold')
                 else:
                     steady_state_converged = arm_controller.steady_state_step(
-                        threshold_config
+                        threshold_joint
                     )
                     if keyword in NAMED_CONFIGS:
                         error = np.max(np.abs(arm_controller.reduced_configuration_error))
                         print(f'Configuration Error: {error:.4f}')
-                        steady_state_converged = steady_state_converged or error < threshold_config
+                        steady_state_converged = steady_state_converged or error < threshold_joint
                     else:
                         left_error_linear = np.linalg.norm(arm_controller.left_ee_error[:3])
                         left_error_angular = np.linalg.norm(arm_controller.left_ee_error[3:])
@@ -206,4 +210,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     args = parser.parse_args()
-    main(timeout=15.0, config_name=args.config)
+    main(config_name=args.config)

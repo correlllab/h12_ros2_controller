@@ -23,21 +23,35 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 class FrameTaskServer(Node):
     def __init__(self,
-                 timeout=10.0,
-                 threshold_linear=5e-3,
-                 threshold_angular=2e-2,
-                 threshold_vel=1e-3,
+                 timeout=None,
+                 threshold_ik=None,
+                 threshold_joint=None,
+                 threshold_linear=None,
+                 threshold_angular=None,
                  config_name='debug.yaml'):
         super().__init__('frame_task_server')
-        self.timeout = timeout
-        self.threshold_linear = threshold_linear
-        self.threshold_angular = threshold_angular
-        self.threshold_vel = threshold_vel
+        config = load_controller_config(config_name, config_dir=CONFIG_DIR)
+        controller_cfg = config['controller']
+        self.timeout = controller_cfg['timeout'] if timeout is None else timeout
+        self.threshold_ik = (
+            controller_cfg['threshold_ik']
+            if threshold_ik is None else threshold_ik
+        )
+        self.threshold_joint = (
+            controller_cfg['threshold_joint']
+            if threshold_joint is None else threshold_joint
+        )
+        self.threshold_linear = (
+            controller_cfg['threshold_linear']
+            if threshold_linear is None else threshold_linear
+        )
+        self.threshold_angular = (
+            controller_cfg['threshold_angular']
+            if threshold_angular is None else threshold_angular
+        )
         # lists holding frame names and frame targets
         self.frame_names = []
         self.frame_targets = []
-
-        config = load_controller_config(config_name, config_dir=CONFIG_DIR)
 
         initialize_channel_factory(config)
         self.controller = FrameController(
@@ -157,7 +171,7 @@ class FrameTaskServer(Node):
                 frame_start_time = time.time()
                 if not ik_converged:
                     vel = self.controller.control_step_reduced()
-                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                    vel_error = np.max(np.abs(vel))
                 else:
                     steady_state_converged = self.controller.steady_state_step()
 
@@ -183,7 +197,7 @@ class FrameTaskServer(Node):
                 goal_handle.publish_feedback(feedback_msg)
 
                 if not ik_converged:
-                    if vel_error < self.threshold_vel:
+                    if vel_error < self.threshold_ik:
                         ik_converged = True
                         self.controller.init_steady_state()
                         self.get_logger().info(
@@ -247,7 +261,7 @@ class FrameTaskServer(Node):
                 frame_start_time = time.time()
                 if not ik_converged:
                     vel = self.controller.goto_reduced_configuration(q_reduced)
-                    vel_error = np.max(np.abs(vel[self.controller.enabled_ids]))
+                    vel_error = np.max(np.abs(vel))
                 else:
                     steady_state_converged = self.controller.steady_state_step()
 
@@ -269,7 +283,7 @@ class FrameTaskServer(Node):
                 goal_handle.publish_feedback(feedback_msg)
 
                 if not ik_converged:
-                    if vel_error < self.threshold_vel:
+                    if vel_error < self.threshold_ik:
                         ik_converged = True
                         self.controller.init_steady_state()
                         self.get_logger().info(
@@ -278,7 +292,7 @@ class FrameTaskServer(Node):
                 else:
                     steady_state_converged = (
                         steady_state_converged or
-                        joint_error < 1e-3
+                        joint_error < self.threshold_joint
                     )
                     if steady_state_converged:
                         self.get_logger().info('Named config reached')
