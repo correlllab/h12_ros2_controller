@@ -299,7 +299,7 @@ class UpperController:
 
     def init_steady_state(self):
         '''Initialize steady-state I control from the final IK command'''
-        self._steady_q_cmd = np.copy(self.ik_solver.q)
+        self._steady_q_cmd = np.copy(self.low_cmd_handler.q_cmd)
         self._steady_dq_cmd = np.zeros(self.robot_model.model_body.nv)
         self._steady_tau_bias = np.zeros(self.robot_model.model_body.nv)
         ki = self.config.get('gains', {}).get('ki')

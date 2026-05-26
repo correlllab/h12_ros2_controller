@@ -81,6 +81,39 @@ class LowCmdHandler:
         self._tau_cmd_arr = []
         self._torque_cmd_arr = []
 
+    @property
+    def q_cmd(self):
+        with self._command_publisher.data_lock:
+            return self._command_publisher.q.copy()
+
+    @property
+    def dq_cmd(self):
+        with self._command_publisher.data_lock:
+            return self._command_publisher.dq.copy()
+
+    @property
+    def tau_cmd(self):
+        with self._command_publisher.data_lock:
+            return self._command_publisher.tau.copy()
+
+    def _clip_q_cmd(self, q, joint_ids=None):
+        limits = self._q_clip_limits
+        if joint_ids is not None:
+            limits = limits[joint_ids]
+        return np.clip(q, limits[:, 0], limits[:, 1])
+
+    def _clip_dq_cmd(self, dq, joint_ids=None):
+        limits = self._dq_clip_limits
+        if joint_ids is not None:
+            limits = limits[joint_ids]
+        return np.clip(dq, -limits, limits)
+
+    def _clip_tau_cmd(self, tau, joint_ids=None):
+        limits = self._tau_clip_limits
+        if joint_ids is not None:
+            limits = limits[joint_ids]
+        return np.clip(tau, -limits, limits)
+
     def set_joint_commands(self,
                            q: Optional[np.ndarray]=None,
                            dq: Optional[np.ndarray]=None,
@@ -95,18 +128,18 @@ class LowCmdHandler:
         with self._command_publisher.data_lock:
             if joint_ids is None:
                 if q is not None:
-                    self._command_publisher.q[:] = q
+                    self._command_publisher.q[:] = self._clip_q_cmd(q)
                 if dq is not None:
-                    self._command_publisher.dq[:] = dq
+                    self._command_publisher.dq[:] = self._clip_dq_cmd(dq)
                 if tau is not None:
-                    self._command_publisher.tau[:] = tau
+                    self._command_publisher.tau[:] = self._clip_tau_cmd(tau)
             else:
                 if q is not None:
-                    self._command_publisher.q[joint_ids] = q
+                    self._command_publisher.q[joint_ids] = self._clip_q_cmd(q, joint_ids)
                 if dq is not None:
-                    self._command_publisher.dq[joint_ids] = dq
+                    self._command_publisher.dq[joint_ids] = self._clip_dq_cmd(dq, joint_ids)
                 if tau is not None:
-                    self._command_publisher.tau[joint_ids] = tau
+                    self._command_publisher.tau[joint_ids] = self._clip_tau_cmd(tau, joint_ids)
 
         # record state if recording is enabled
         if self._recording:
@@ -262,4 +295,3 @@ class LowCmdHandler:
                 print(f'Failed to auto-save recording: {str(e)}')
 
             time.sleep(max(0, self._record_interval - (time.time() - start_time)))
-
