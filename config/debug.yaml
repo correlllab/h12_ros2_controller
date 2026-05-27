@@ -21,7 +21,7 @@ controller:
   threshold_angular: 0.005
 
 frequency:
-  ctrl_hz: 50
+  ctrl_hz: 30
   pub_hz: 500
   check_hz: 1000
 
