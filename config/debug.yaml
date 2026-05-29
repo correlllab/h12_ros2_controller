@@ -16,9 +16,9 @@ controller:
   timeout: 5.0
   torso_target: 0.0
   threshold_ik: 0.0001
-  threshold_joint: 0.002
-  threshold_linear: 0.002
-  threshold_angular: 0.005
+  threshold_joint: 0.001
+  threshold_linear: 0.001
+  threshold_angular: 0.001
 
 frequency:
   ctrl_hz: 30
@@ -31,50 +31,50 @@ gains:
     - 160.0 # torso_joint
     - 240.0 # left_shoulder_pitch_joint
     - 200.0 # left_shoulder_roll_joint
-    - 160.0 # left_shoulder_yaw_joint
-    - 140.0 # left_elbow_joint
+    - 150.0 # left_shoulder_yaw_joint
+    - 150.0 # left_elbow_joint
     - 80.0 # left_wrist_roll_joint
     - 80.0 # left_wrist_pitch_joint
     - 80.0 # left_wrist_yaw_joint
     - 240.0 # right_shoulder_pitch_joint
     - 200.0 # right_shoulder_roll_joint
-    - 160.0 # right_shoulder_yaw_joint
-    - 140.0 # right_elbow_joint
+    - 150.0 # right_shoulder_yaw_joint
+    - 150.0 # right_elbow_joint
     - 80.0 # right_wrist_roll_joint
     - 80.0 # right_wrist_pitch_joint
     - 80.0 # right_wrist_yaw_joint
   kd:
     - 10.0 # torso_joint
     - 12.0 # left_shoulder_pitch_joint
-    - 12.0 # left_shoulder_roll_joint
-    - 8.0 # left_shoulder_yaw_joint
-    - 6.0 # left_elbow_joint
-    - 6.0 # left_wrist_roll_joint
-    - 6.0 # left_wrist_pitch_joint
-    - 6.0 # left_wrist_yaw_joint
+    - 10.0 # left_shoulder_roll_joint
+    - 10.0 # left_shoulder_yaw_joint
+    - 8.0 # left_elbow_joint
+    - 8.0 # left_wrist_roll_joint
+    - 8.0 # left_wrist_pitch_joint
+    - 8.0 # left_wrist_yaw_joint
     - 12.0 # right_shoulder_pitch_joint
-    - 12.0 # right_shoulder_roll_joint
-    - 8.0 # right_shoulder_yaw_joint
-    - 6.0 # right_elbow_joint
-    - 6.0 # right_wrist_roll_joint
-    - 6.0 # right_wrist_pitch_joint
-    - 6.0 # right_wrist_yaw_joint
+    - 10.0 # right_shoulder_roll_joint
+    - 10.0 # right_shoulder_yaw_joint
+    - 8.0 # right_elbow_joint
+    - 8.0 # right_wrist_roll_joint
+    - 8.0 # right_wrist_pitch_joint
+    - 8.0 # right_wrist_yaw_joint
   ki:
     - 60.0 # torso_joint
-    - 500.0 # left_shoulder_pitch_joint
-    - 500.0 # left_shoulder_roll_joint
-    - 300.0 # left_shoulder_yaw_joint
+    - 600.0 # left_shoulder_pitch_joint
+    - 600.0 # left_shoulder_roll_joint
+    - 400.0 # left_shoulder_yaw_joint
     - 400.0 # left_elbow_joint
-    - 60.0 # left_wrist_roll_joint
-    - 60.0 # left_wrist_pitch_joint
-    - 60.0 # left_wrist_yaw_joint
-    - 500.0 # right_shoulder_pitch_joint
-    - 500.0 # right_shoulder_roll_joint
-    - 300.0 # right_shoulder_yaw_joint
+    - 100.0 # left_wrist_roll_joint
+    - 100.0 # left_wrist_pitch_joint
+    - 100.0 # left_wrist_yaw_joint
+    - 600.0 # right_shoulder_pitch_joint
+    - 600.0 # right_shoulder_roll_joint
+    - 400.0 # right_shoulder_yaw_joint
     - 400.0 # right_elbow_joint
-    - 60.0 # right_wrist_roll_joint
-    - 60.0 # right_wrist_pitch_joint
-    - 60.0 # right_wrist_yaw_joint
+    - 100.0 # right_wrist_roll_joint
+    - 100.0 # right_wrist_pitch_joint
+    - 100.0 # right_wrist_yaw_joint
 
 limits:
   clip:
