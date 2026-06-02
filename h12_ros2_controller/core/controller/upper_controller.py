@@ -8,7 +8,13 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS, ENABLED_JOINTS, LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+from h12_ros2_controller.utility.joint_definition import (
+    BODY_JOINTS,
+    ENABLED_JOINTS,
+    LEFT_ARM_INDEX,
+    RIGHT_ARM_INDEX,
+    UPPER_BODY_INDEX,
+)
 
 class UpperController:
     def __init__(self,
@@ -41,7 +47,7 @@ class UpperController:
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(urdf_sphere_path, srdf_sphere_path)
         self.enabled_ids = [BODY_JOINTS.index(joint) for joint in ENABLED_JOINTS]
-        self.upper_ids = [BODY_JOINTS.index(joint) for joint in UPPER_BODY_JOINTS]
+        self.upper_ids = UPPER_BODY_INDEX
 
         # intialize low cmd publisher
         self.low_cmd_handler = LowCmdHandler(self.robot_model,
@@ -55,11 +61,6 @@ class UpperController:
         torso_id = BODY_JOINTS.index('torso_joint')
         torso_init = float(self.robot_model.state['q'][torso_id])
         self.low_cmd_handler.enable_motors([torso_id], [torso_init])
-
-        # enable lower body motor
-        lower_ids = [BODY_JOINTS.index(joint) for joint in LOWER_BODY_JOINTS]
-        lower_init = self.robot_model.state['q'][lower_ids]
-        self.low_cmd_handler.enable_motors(lower_ids, lower_init)
 
         # start publisher
         self.low_cmd_handler.start()
@@ -198,22 +199,24 @@ class UpperController:
     def goto_configuration(self, q):
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver and command the joint position
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
+        self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_goto_configuration(self, q):
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver
         self.ik_solver.integrate(vel)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.robot_model.state['q'] + vel * self.dt
         self.update_robot_model()
+        return vel
 
     @property
     def reduced_configuration_error(self):
@@ -225,75 +228,119 @@ class UpperController:
     def goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver and command the joint position
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
+        self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver
         self.ik_solver.integrate(vel)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
     def lock_configuration(self, q):
-        # compute gravity compensation torque
-        tau = self.robot_model.get_gravity_compensation(q)
-        # always commanding zero velocity (motor-only, 27)
-        dq = np.zeros(self.robot_model.model_body.nv)
-        # send command to lock the robot in current configuration
-        self.low_cmd_handler.set_joint_commands( q, dq, tau)
+        self._apply_joint_position(q)
         self.update_robot_model()
 
     def control_step(self, com=False):
         '''Solve IK for all tasks'''
         # solve IK and apply the control
         vel = self.ik_solver.ik_step(com=com)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver and command the joint position
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
+        self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def control_step_reduced(self, com=False):
         '''Solve IK for all tasks with the reduced model'''
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced(com=com)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver and command the joint position
         self.ik_solver.integrate(vel)
-        self.apply_joint_position(self.ik_solver.q)
+        self._apply_joint_position(self.ik_solver.q)
         self.update_robot_model()
+        return vel
 
     def sim_step(self, com=False):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step(com=com)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver
         self.ik_solver.integrate(vel)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
     def sim_step_reduced(self, com=False):
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced(com=com)
-        vel = self.limit_joint_vel(vel)
+        vel = self._limit_joint_vel(vel)
         # integrate IK solver
         self.ik_solver.integrate(vel)
         # force robot model to use local variable tracking states
         self.robot_model.state_subscriber = None
         self.robot_model._q = self.ik_solver.q
         self.update_robot_model()
+        return vel
 
-    def limit_joint_vel(self, vel):
+    def init_steady_state(self):
+        '''Initialize steady-state I control from the final IK command'''
+        self._steady_q_cmd = np.copy(self.low_cmd_handler.q_cmd)
+        self._steady_dq_cmd = np.zeros(self.robot_model.model_body.nv)
+        self._steady_tau_bias = np.zeros(self.robot_model.model_body.nv)
+        ki = self.config.get('gains', {}).get('ki')
+        if ki is None:
+            self._steady_ki = np.zeros(self.robot_model.model_body.nv)
+        else:
+            self._steady_ki = np.asarray(ki, dtype=np.float64)
+
+        self._steady_tau_bias_limit = np.zeros_like(self.robot_model.model_body.nv)
+        tau_clip_limits = self.config.get('limits', {}).get('tau_clip_limits')
+        if tau_clip_limits is not None:
+            self._steady_tau_bias_limit = np.asarray(tau_clip_limits, dtype=np.float64)
+
+    def steady_state_step(self, threshold=1e-3):
+        '''Run one steady-state I-control tick and return convergence'''
+        if not hasattr(self, '_steady_q_cmd'):
+            self.init_steady_state()
+
+        q_error = self._steady_q_cmd - self.robot_model.state['q']
+        self._steady_tau_bias += self._steady_ki * q_error * self.dt
+        self._steady_tau_bias = np.clip(
+            self._steady_tau_bias,
+            -self._steady_tau_bias_limit,
+            self._steady_tau_bias_limit,
+        )
+
+        tau_gravity = self.robot_model.get_gravity_compensation(
+            self.robot_model.state['q']
+        )
+        tau_cmd = tau_gravity + self._steady_tau_bias
+        self.low_cmd_handler.set_joint_commands(
+            self._steady_q_cmd,
+            self._steady_dq_cmd,
+            tau_cmd,
+        )
+
+        self.update_robot_model()
+        q_error = self._steady_q_cmd - self.robot_model.state['q']
+        return np.max(np.abs(q_error[self.upper_ids])) < threshold
+
+    def _limit_joint_vel(self, vel):
         # get end effector twist
         twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)
         twist_right = self.robot_model.compute_frame_twist(self.right_ee_name, vel)
@@ -326,7 +373,7 @@ class UpperController:
 
         return vel_scaled
 
-    def apply_joint_position(self, q):
+    def _apply_joint_position(self, q):
         # get gravity compensation torque
         tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
         dq = np.zeros(self.robot_model.model_body.nv)
@@ -348,7 +395,7 @@ class UpperController:
         self.low_cmd_handler.set_joint_commands(dq=dq)
         print(f'Set kp to zero, kd to {kd} and dq to 0')
 
-    def start_recording(self, save_path, filename, record_interval=0.01):
+    def start_recording(self, save_path, filename, record_interval=1.0):
         '''Start recording with background saving'''
         self.low_cmd_handler.start_recording(self.upper_ids, save_path, filename, record_interval)
 

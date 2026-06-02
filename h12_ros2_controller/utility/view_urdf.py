@@ -13,7 +13,7 @@ def view_urdf(filename):
         package_dirs=model_path
     )
     viz = MeshcatVisualizer(model, visual, collision)
-    viz.initViewer(open=True)
+    viz.initViewer()
     viz.loadViewerModel()
 
     while True:

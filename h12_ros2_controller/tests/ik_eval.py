@@ -363,6 +363,14 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
     converged = False
     convergence_step = -1
 
+    # Read PD gains once — used to compute actual motor torque each step.
+    # dq/tau from rt/lowstate are unreliable in safety_split mode, so we derive
+    # them: dq from successive q differences, tau from gravity + PD feedback.
+    pub = controller.low_cmd_handler._command_publisher
+    with pub.data_lock:
+        kp_gains = np.copy(pub.kp)
+        kd_gains = np.copy(pub.kd)
+
     while time.time() - start_wall < step_timeout:
         frame_start = time.time()
         # snapshot BEFORE step (state reflects last commanded)
@@ -370,6 +378,9 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
         pre_state_reduced = controller.robot_model.state_reduced
 
         step_function()
+
+        # post-step state — q is updated (from ik_solver in sim, hardware in real)
+        post_state = controller.robot_model.state
 
         # post-step captures
         q_cmd_full = np.copy(controller.ik_solver.q)
@@ -383,9 +394,15 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
                 controller.robot_model.get_frame_rotation_reduced(frame)
             ),
         ])
-        twist = controller.robot_model.compute_frame_twist(
-            frame, pre_state['dq']
-        )
+
+        # dq from successive q readings (reliable in both sim and real mode)
+        dq_actual = (post_state['q'] - pre_state['q']) / dt
+        # full motor torque: gravity feedforward + PD feedback
+        tau_actual = (tau_cmd_full
+                      + kp_gains * (q_cmd_full - pre_state['q'])
+                      - kd_gains * dq_actual)
+
+        twist = controller.robot_model.compute_frame_twist(frame, dq_actual)
 
         rec.push(
             t=np.array([step * dt]),
@@ -393,8 +410,8 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
             ee_actual=ee_actual,
             q_actual=pre_state['q'],
             q_cmd=q_cmd_full,
-            dq_actual=pre_state['dq'],
-            tau_actual=pre_state['tau'],
+            dq_actual=dq_actual,
+            tau_actual=tau_actual,
             tau_cmd=tau_cmd_full,
             twist=twist,
         )

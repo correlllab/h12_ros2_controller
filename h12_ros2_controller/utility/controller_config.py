@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
-from h12_ros2_controller.utility.joint_definition import NUM_MOTOR
+from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, UPPER_BODY_INDEX
 from h12_ros2_controller.utility.joint_limits import (
     JOINT_POSITION_LIMITS,
     JOINT_VELOCITY_LIMITS,
@@ -50,7 +50,27 @@ def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
     if isinstance(value, list) and len(value) == NUM_MOTOR:
         return np.asarray(value, dtype=np.float64)
-    raise ValueError(f'{field_name} must be a number or a list with {NUM_MOTOR} entries')
+    if isinstance(value, list) and len(value) == len(UPPER_BODY_INDEX):
+        values = np.zeros((NUM_MOTOR,), dtype=np.float64)
+        values[UPPER_BODY_INDEX] = np.asarray(value, dtype=np.float64)
+        return values
+    raise ValueError(
+        f'{field_name} must be a number, a list with {NUM_MOTOR} entries, '
+        f'or a list with {len(UPPER_BODY_INDEX)} upper-body entries'
+    )
+
+def _load_upper_body_gain_config(value: Any, field_name: str) -> np.ndarray:
+    gains = np.zeros((NUM_MOTOR,), dtype=np.float64)
+    if isinstance(value, (int, float)):
+        gains[UPPER_BODY_INDEX] = float(value)
+        return gains
+    if isinstance(value, list) and len(value) == len(UPPER_BODY_INDEX):
+        gains[UPPER_BODY_INDEX] = np.asarray(value, dtype=np.float64)
+        return gains
+    raise ValueError(
+        f'{field_name} must be a number or a list with '
+        f'{len(UPPER_BODY_INDEX)} upper-body entries'
+    )
 
 def _derive_q_limits(position_offset: np.ndarray) -> np.ndarray:
     q_limits = np.zeros((NUM_MOTOR, 2), dtype=np.float64)
@@ -64,8 +84,8 @@ def _derive_q_limits(position_offset: np.ndarray) -> np.ndarray:
     return q_limits
 
 def _process_clip_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
-    position_offset = _load_joint_config(policy.get('position_offset', 0.02), 'limits.clip.position_offset')
-    velocity_ratio = _load_joint_config(policy.get('velocity_ratio', 0.08), 'limits.clip.velocity_ratio')
+    position_offset = _load_joint_config(policy.get('position_offset', 0.001), 'limits.clip.position_offset')
+    velocity_ratio = _load_joint_config(policy.get('velocity_ratio', 0.10), 'limits.clip.velocity_ratio')
     torque_ratio = _load_joint_config(policy.get('torque_ratio', 0.25), 'limits.clip.torque_ratio')
 
     return {
@@ -128,13 +148,14 @@ def get_publisher_clip_limits(config: dict[str, Any] | None = None) -> dict[str,
 def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
     kp = raw_gains.get('kp')
     kd = raw_gains.get('kd')
-    if kp is None and kd is None:
-        return {'kp': None, 'kd': None}
-    if kp is None or kd is None:
-        raise ValueError('gains.kp and gains.kd must be provided together')
+    ki = raw_gains.get('ki')
+    if kp is None or kd is None or ki is None:
+        raise ValueError('gains.kp, gains.kd, and gains.ki must be provided')
+
     return {
-        'kp': _load_joint_config(kp, 'gains.kp'),
-        'kd': _load_joint_config(kd, 'gains.kd'),
+        'kp': _load_upper_body_gain_config(kp, 'gains.kp'),
+        'kd': _load_upper_body_gain_config(kd, 'gains.kd'),
+        'ki': _load_upper_body_gain_config(ki, 'gains.ki'),
     }
 
 def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
@@ -173,7 +194,12 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     w_lim = float(controller.get('w_lim', 2.0))
     dq_lim = float(controller.get('dq_lim', 1.0))
     d_min = float(controller.get('d_min', 0.02))
+    timeout = float(controller.get('timeout', 10.0))
     torso_target = float(controller.get('torso_target', 0.0))
+    threshold_ik = float(controller.get('threshold_ik', 0.001))
+    threshold_joint = float(controller.get('threshold_joint', 0.01))
+    threshold_linear = float(controller.get('threshold_linear', 0.002))
+    threshold_angular = float(controller.get('threshold_angular', 0.01))
 
     return {
         'mode': mode,
@@ -190,7 +216,12 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'w_lim': w_lim,
             'dq_lim': dq_lim,
             'd_min': d_min,
+            'timeout': timeout,
             'torso_target': torso_target,
+            'threshold_ik': threshold_ik,
+            'threshold_joint': threshold_joint,
+            'threshold_linear': threshold_linear,
+            'threshold_angular': threshold_angular,
         },
         'frequency': {
             'ctrl_hz': ctrl_hz,
@@ -200,6 +231,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'gains': {
             'kp': None if processed_gains['kp'] is None else processed_gains['kp'].astype(np.float32),
             'kd': None if processed_gains['kd'] is None else processed_gains['kd'].astype(np.float32),
+            'ki': None if processed_gains['ki'] is None else processed_gains['ki'].astype(np.float32),
         },
         'limits': {
             'q_clip_limits': processed_limits['q_clip_limits'],
@@ -213,7 +245,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'enabled': bool(logging.get('enabled', False)),
             'base_dir': str(logging.get('base_dir', logging.get('save_path', 'data/control_record'))),
             'filename': str(logging.get('filename', logging.get('save_filename', 'record'))),
-            'record_interval': float(logging.get('record_interval', 0.01)),
+            'record_interval': float(logging.get('record_interval', 1.0)),
         },
     }
 
@@ -241,5 +273,5 @@ def maybe_start_controller_logging(controller):
     controller.start_recording(
         save_path=logging_cfg.get('base_dir', 'data/control_record'),
         filename=filename,
-        record_interval=float(logging_cfg.get('record_interval', 0.01)),
+        record_interval=float(logging_cfg.get('record_interval', 1.0)),
     )

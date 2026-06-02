@@ -245,7 +245,7 @@ class RobotModel:
         try:
             self.viz = MeshcatVisualizer(self.model, visual_model=self.visual_model,
                                          copy_models=False, data=self.data)
-            self.viz.initViewer(open=True)
+            self.viz.initViewer()
             self.viz.loadViewerModel('unitree_h1_2')
 
             # store visualization configuration

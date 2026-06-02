@@ -10,6 +10,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
+    get_publisher_clip_limits,
     initialize_channel_factory,
 )
 from h12_ros2_controller.utility.joint_limits import setup_gains
@@ -33,25 +34,37 @@ def get_state(robot_model, command_publisher, joint_idx):
     full_state = {**feedback_state, **cmd_state}
     return full_state
 
-def record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps):
+def duration_to_steps(duration, dt):
+    return max(1, int(round(duration / dt)))
+
+def record_linear_motion(robot_model,
+                         command_publisher,
+                         joint_name,
+                         q_end,
+                         duration,
+                         dt):
     # get joint index
     joint_idx = BODY_JOINTS.index(joint_name)
     # empty array for recording states
     state_arr = []
 
     q_start = robot_model.state['q'][joint_idx]
+    steps = duration_to_steps(duration, dt)
 
     for step in range(steps):
+        start_time = time.time()
         # linear interpolation
         alpha = (step + 1) / steps
         q_target = (1 - alpha) * q_start + alpha * q_end
         # command positional control with gravity compensation
         command_publisher.q[joint_idx] = q_target
-        command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
+        command_publisher.tau[joint_idx] = (
+            robot_model.get_gravity_compensation()[joint_idx]
+        )
 
         # record state
         state_arr.append(get_state(robot_model, command_publisher, joint_idx))
-        time.sleep(0.01)
+        time.sleep(max(0.0, dt - (time.time() - start_time)))
 
     # fix on final state
     command_publisher.q[joint_idx] = q_end
@@ -60,42 +73,65 @@ def record_linear_motion(robot_model, command_publisher, joint_name, q_end, step
 
     return state_arr
 
-def record_static_motion(robot_model, command_publisher, joint_name, steps):
+def record_static_motion(robot_model,
+                         command_publisher,
+                         joint_name,
+                         duration,
+                         dt):
     # get joint index
     joint_idx = BODY_JOINTS.index(joint_name)
     # empty array for recording states
     state_arr = []
+    steps = duration_to_steps(duration, dt)
 
     for _ in range(steps):
+        start_time = time.time()
         # command gravity compensation only
-        command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
+        command_publisher.tau[joint_idx] = (
+            robot_model.get_gravity_compensation()[joint_idx]
+        )
 
         # record state
         state_arr.append(get_state(robot_model, command_publisher, joint_idx))
-        time.sleep(0.01)
+        time.sleep(max(0.0, dt - (time.time() - start_time)))
 
     return state_arr
 
-def record_free_motion(robot_model, command_publisher, steps):
+def record_free_motion(robot_model, command_publisher, duration, dt):
     # empty array for recording states
     joint_states = [[] for _ in range(len(BODY_JOINTS))]
+    steps = duration_to_steps(duration, dt)
 
     for _ in range(steps):
+        start_time = time.time()
         for joint_idx in range(len(BODY_JOINTS)):
-            joint_states[joint_idx].append(get_state(robot_model, command_publisher, joint_idx))
-        time.sleep(0.01)
+            joint_states[joint_idx].append(
+                get_state(robot_model, command_publisher, joint_idx)
+            )
+        time.sleep(max(0.0, dt - (time.time() - start_time)))
 
     return joint_states
 
-def main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name='debug.yaml'):
+def main(joint_name_list,
+         q_start_list,
+         q_end_list,
+         savepath,
+         duration=5.0,
+         config_name='debug.yaml'):
     # initialize channel
     config = load_controller_config(config_name)
+    dt = 1.0 / float(config['frequency']['ctrl_hz'])
+    publisher_dt = 1.0 / float(config['frequency']['pub_hz'])
     initialize_channel_factory(config)
 
     # initialize robot model and command publisher
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
-    robot_model.init_subscriber()
-    command_publisher = LowCmdPublisher()
+    robot_model.init_subscriber(low_state_topic=config['topics']['low_state'])
+    command_publisher = LowCmdPublisher(
+        dt=publisher_dt,
+        low_cmd_topic=config['topics']['low_cmd'],
+        clip_limits=get_publisher_clip_limits(config),
+    )
 
     # wait for initial state
     time.sleep(1.0)
@@ -103,7 +139,7 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name
 
     # record free motion
     print('Recording free motion noise...')
-    joint_states = record_free_motion(robot_model, command_publisher, 200)
+    joint_states = record_free_motion(robot_model, command_publisher, duration, dt)
     for joint_name in joint_name_list:
         joint_idx = BODY_JOINTS.index(joint_name)
         states = joint_states[joint_idx]
@@ -120,22 +156,81 @@ def main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name
 
     # move elbow to 0 position
     print('Moving elbows to 0 position...')
-    record_linear_motion(robot_model, command_publisher, 'left_elbow_joint', 0.0, steps)
-    record_linear_motion(robot_model, command_publisher, 'right_elbow_joint', 0.0, steps)
+    record_linear_motion(
+        robot_model,
+        command_publisher,
+        'left_elbow_joint',
+        0.0,
+        duration,
+        dt,
+    )
+    record_linear_motion(
+        robot_model,
+        command_publisher,
+        'right_elbow_joint',
+        0.0,
+        duration,
+        dt,
+    )
 
     joint_data = list(zip(joint_name_list, q_start_list, q_end_list))
     for joint_name, q_start, q_end in tqdm(joint_data):
         # move to start position
-        _ = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
-        _ = record_static_motion(robot_model, command_publisher, joint_name, steps)
+        _ = record_linear_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            q_start,
+            duration,
+            dt,
+        )
+        _ = record_static_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            duration,
+            dt,
+        )
         # record linear motion
-        states_go = record_linear_motion(robot_model, command_publisher, joint_name, q_end, steps)
-        states_go_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
+        states_go = record_linear_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            q_end,
+            duration,
+            dt,
+        )
+        states_go_static = record_static_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            duration,
+            dt,
+        )
         time.sleep(3.0)
-        states_static = record_static_motion(robot_model, command_publisher, joint_name, 200)
+        states_static = record_static_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            duration,
+            dt,
+        )
         # go back to start
-        states_back = record_linear_motion(robot_model, command_publisher, joint_name, q_start, steps)
-        states_back_static = record_static_motion(robot_model, command_publisher, joint_name, steps)
+        states_back = record_linear_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            q_start,
+            duration,
+            dt,
+        )
+        states_back_static = record_static_motion(
+            robot_model,
+            command_publisher,
+            joint_name,
+            duration,
+            dt,
+        )
 
         # combine state arrays
         states = states_go + states_go_static + states_back + states_back_static
@@ -181,6 +276,8 @@ if __name__ == '__main__':
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save motor recordings in data/motor_record/')
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--time', type=float, default=1.0,
+                        help='Action duration in seconds for each segment')
     args = parser.parse_args()
 
     # set path using command line argument
@@ -241,7 +338,9 @@ if __name__ == '__main__':
         0.3, 0.3, # wrist pitch
         1.0, -1.0, # wrist yaw
     ]
-    # steps = 100
-    steps = 200
-
-    main(joint_name_list, q_start_list, q_end_list, steps, savepath, config_name=args.config)
+    main(joint_name_list,
+         q_start_list,
+         q_end_list,
+         savepath,
+         duration=args.time,
+         config_name=args.config)

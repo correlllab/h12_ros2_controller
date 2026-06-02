@@ -9,6 +9,7 @@ Aggregates:
   <run>/plots/repeatability/<case>.png     steady-state EE scatter across trials
   <run>/plots/sweep_summary.png            steady-state lin/ang error vs sweep combo
   <run>/plots/fk_roundtrip.png             offline IK residuals histogram (if present)
+  <run>/plots/deep_analysis/figN_*.png     deep characterization (analyze_deep.py)
 
 Usage:
   python -m h12_ros2_controller.tests.plot_ik_eval <run_dir>
@@ -322,9 +323,30 @@ def _plot_fk_roundtrip(run_dir: Path, out_dir: Path):
 # ---- entry point ------------------------------------------------------------
 
 
+def _plot_deep_analysis(run_dir: Path):
+    '''Run the deep-analysis figure set (analyze_deep.run_deep_analysis).
+
+    Imported lazily because it pulls in pandas, which we don't want to require
+    for the basic per-trial plots.
+    '''
+    try:
+        from h12_ros2_controller.tests.analyze_deep import run_deep_analysis
+    except ImportError:
+        try:
+            from .analyze_deep import run_deep_analysis  # type: ignore
+        except ImportError as e:
+            print(f'[plot] skipping deep analysis (import failed: {e})')
+            return
+    try:
+        run_deep_analysis(run_dir)
+    except Exception as e:
+        print(f'[plot] deep analysis failed: {e}')
+
+
 def plot_run(run_dir: Path):
     out_dir = run_dir / 'plots'
     out_dir.mkdir(parents=True, exist_ok=True)
+    _plot_deep_analysis(run_dir)
     trials_dir = run_dir / 'trials'
     trial_files = sorted(trials_dir.glob('*.npz'))
     if not trial_files:

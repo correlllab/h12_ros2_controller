@@ -52,13 +52,15 @@ def input_frame_task():
             print('Invalid input. Make sure all 6 values are numeric.')
             continue
 
-def main(timeout=10.0,
-         threshold_config=1e-3,
-         threshold_linear=5e-3,
-         threshold_angular=2e-2,
-         com=False,
+def main(com=False,
          config_name='debug.yaml'):
     config= load_controller_config(config_name)
+    controller_cfg = config['controller']
+    timeout = controller_cfg['timeout']
+    threshold_ik = controller_cfg['threshold_ik']
+    threshold_joint = controller_cfg['threshold_joint']
+    threshold_linear = controller_cfg['threshold_linear']
+    threshold_angular = controller_cfg['threshold_angular']
     initialize_channel_factory(config)
     # initialize upper task controller
     frame_controller = FrameController('assets/h1_2/h1_2_handless.urdf',
@@ -99,38 +101,91 @@ def main(timeout=10.0,
 
             # main loop
             start_time = time.time()
+            ik_converged = False
+            steady_state_converged = False
             while time.time() - start_time < timeout:
                 frame_start_time = time.time()
-                # control one step
-                step_function()
+                if not ik_converged:
+                    # run IK until the command stops changing
+                    vel = step_function()
+                    vel_error = np.max(np.abs(vel))
 
-                # check error for config task
-                if keyword in NAMED_CONFIGS:
-                    error = np.max(np.abs(frame_controller.reduced_configuration_error))
-                    print(f'Configuration Error: {error:.4f}')
-                    # early break
-                    if error < threshold_config:
-                        print('Target reached!')
-                        break
-                # check error for manual frame task
+                    # print error for config task
+                    if keyword in NAMED_CONFIGS:
+                        error = np.max(
+                            np.abs(frame_controller.reduced_configuration_error)
+                        )
+                        print(
+                            f'Configuration Error: {error:.4f}, '
+                            f'IK Velocity: {vel_error:.4f}'
+                        )
+                    # print error for manual frame task
+                    else:
+                        error = frame_controller.get_frame_task_error(task_name)
+                        linear_error = np.linalg.norm(error[:3])
+                        angular_error = np.linalg.norm(error[3:])
+
+                        print(
+                            f'Linear Error: {linear_error:.4f}, '
+                            f'Angular Error: {angular_error:.4f}, '
+                            f'IK Velocity: {vel_error:.4f}'
+                        )
+
+                    if vel_error < threshold_ik:
+                        ik_converged = True
+                        frame_controller.init_steady_state()
+                        print('IK converged; entering steady-state hold')
                 else:
-                    error = frame_controller.get_frame_task_error(task_name)
-                    linear_error = np.linalg.norm(error[:3])
-                    angular_error = np.linalg.norm(error[3:])
+                    steady_state_converged = frame_controller.steady_state_step(
+                        threshold_joint
+                    )
+                    if keyword in NAMED_CONFIGS:
+                        error = np.max(
+                            np.abs(frame_controller.reduced_configuration_error)
+                        )
+                        print(f'Configuration Error: {error:.4f}')
+                        steady_state_converged = (
+                            steady_state_converged or
+                            error < threshold_joint
+                        )
+                    else:
+                        error = frame_controller.get_frame_task_error(task_name)
+                        linear_error = np.linalg.norm(error[:3])
+                        angular_error = np.linalg.norm(error[3:])
+                        print(
+                            f'Linear Error: {linear_error:.4f}, '
+                            f'Angular Error: {angular_error:.4f}'
+                        )
+                        steady_state_converged = steady_state_converged or (
+                            linear_error < threshold_linear and
+                            angular_error < threshold_angular
+                        )
 
-                    print(f'Linear Error: {linear_error:.4f}, Angular Error: {angular_error:.4f}')
-
-                    # early break
-                    if linear_error < threshold_linear and angular_error < threshold_angular:
-                        print('Target reached!')
+                    if steady_state_converged:
+                        print('Steady state reached!')
                         break
 
-                time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
+                time.sleep(max(
+                    0.0,
+                    frame_controller.dt - (time.time() - frame_start_time)
+                ))
 
-            for _ in range(50):
-                frame_start_time = time.time()
-                step_function()
-                time.sleep(max(0.0, frame_controller.dt - (time.time() - frame_start_time)))
+            if not ik_converged:
+                print('Timed out before IK convergence')
+            elif not steady_state_converged:
+                print('Timed out during steady-state hold')
+            else:
+                print('Target reached!')
+
+            if keyword in NAMED_CONFIGS:
+                error = frame_controller.reduced_configuration_error
+                print(f'Final Configuration Error: {np.max(np.abs(error)):.4f}')
+            else:
+                error = frame_controller.get_frame_task_error(task_name)
+                linear_error = np.linalg.norm(error[:3])
+                angular_error = np.linalg.norm(error[3:])
+                print(f'Final Linear Error: {linear_error:.4f}, '
+                    f'Final Angular Error: {angular_error:.4f}')
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -147,4 +202,4 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     parser.add_argument('--com', action='store_true', help='Use center of mass control')
     args = parser.parse_args()
-    main(timeout=10.0, com=args.com, config_name=args.config)
+    main(com=args.com, config_name=args.config)
