@@ -33,12 +33,13 @@ Controller of the h12 robot with ROS2 services.
 ## Commanding the Arms (Student Quick Start)
 
 New to the stack and just want to drive the arms — including **joint-space
-commands** and **streaming joint setpoints** (e.g. piping the output of your own
+commands** and **streaming setpoints** (e.g. piping the output of your own
 IK / collision-avoidance policy), not only end-effector frame targets? See
 [COMMANDING_JOINTS.md](COMMANDING_JOINTS.md) for a step-by-step guide covering
 building the needed packages, starting the controller (with or without the
 safety layer), sending one-off joint goals via the `NamedConfig` action, and
-streaming setpoints over ROS or straight Unitree DDS via `joint_stream_server`.
+streaming joint (ROS + straight Unitree DDS) or frame (ROS) setpoints via
+`stream_server`.
 
 ## Documentation
 
@@ -173,23 +174,27 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - The client can send named configs from `utility/named_config.py` or interactively enter frame names and target poses
 - Press BACKSPACE to cancel the active goal
 
-### Joint Stream Server
+### Stream Server
 
-- For streaming joint setpoints at a fixed rate (e.g. the output of an external
+- For streaming setpoints at a fixed rate (e.g. the output of an external
   IK / collision-avoidance policy), launch the streaming server instead of the
   action servers:
 
     ```bash
-    ros2 run h12_ros2_controller joint_stream_server --config debug.yaml # default
+    ros2 run h12_ros2_controller stream_server --config debug.yaml # default
     # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
     ```
 
-- A single control loop tracks the latest 14-dim setpoint (`ENABLED_JOINTS`
-  order) at `ctrl_hz`, keeping the IK self-collision barrier and joint/velocity
-  limits on. Setpoints arrive over either transport:
-    - ROS: `std_msgs/Float64MultiArray` on `joint_stream`
-    - DDS: `unitree_go/MotorCmds_` on `rt/joint_stream`
-- See [COMMANDING_JOINTS.md](COMMANDING_JOINTS.md#5-streaming-joint-setpoints-ros-or-dds)
+- A single control loop tracks the latest setpoint at `ctrl_hz`, keeping the IK
+  self-collision barrier and joint/velocity limits on. It runs in **joint** or
+  **frame** mode, selected by whichever setpoint type was last received:
+    - Joint (14-dim, `ENABLED_JOINTS` order):
+        - ROS: `std_msgs/Float64MultiArray` on `joint_stream`
+        - DDS: `unitree_go/MotorCmds_` on `rt/joint_stream`
+    - Frame (end-effector pose, ROS only):
+        - ROS: `geometry_msgs/PoseStamped` on `frame_stream` (`header.frame_id`
+          names the frame, e.g. `left_ee` / `right_ee`)
+- See [COMMANDING_JOINTS.md](COMMANDING_JOINTS.md#5-streaming-setpoints-joint-or-frame)
   for publisher examples and the design rationale.
 
 ### Launch Files

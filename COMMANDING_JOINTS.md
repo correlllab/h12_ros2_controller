@@ -7,9 +7,10 @@ computer. It covers three things:
    `h12_ros2_model`, `h12_ros2_controller`).
 2. Sending one-off **joint commands** (target joint angles) to the arms — not
    just end-effector frame targets.
-3. **Streaming joint setpoints** at a fixed rate over ROS *or* straight Unitree
-   DDS — for piping the output of your own IK / collision-avoidance policy into
-   our control pipeline ([jump to section 5](#5-streaming-joint-setpoints-ros-or-dds)).
+3. **Streaming setpoints** at a fixed rate — joint targets (over ROS *or*
+   straight Unitree DDS) or end-effector frame targets (over ROS) — for piping
+   the output of your own IK / collision-avoidance policy into our control
+   pipeline ([jump to section 5](#5-streaming-setpoints-joint-or-frame)).
 
 > ⚠️ **Safety first.** These commands move a real robot. Always have the
 > physical e-stop within reach, keep clear of the arms, and start with small
@@ -131,8 +132,8 @@ that the controller drives to using `goto_reduced_configuration`.
 > until the arms converge, so it's meant for discrete, occasional moves. If you
 > want to send a continuous stream of setpoints (e.g. the output of your own IK
 > controller at ~10 Hz), use the
-> [joint stream server](#5-streaming-joint-setpoints-ros-or-dds) instead — do
-> **not** spam `NamedConfig`/`FrameTask` goals.
+> [stream server](#5-streaming-setpoints-joint-or-frame) instead — do **not**
+> spam `NamedConfig`/`FrameTask` goals.
 
 ### The 14 controllable arm joints
 
@@ -229,63 +230,68 @@ ros2 topic echo /joint_states --once
 
 ---
 
-## 5. Streaming joint setpoints (ROS or DDS)
+## 5. Streaming setpoints (joint or frame)
 
 This is the interface to use when you have your **own controller producing
-joint targets** — for example a QP-based IK / collision-avoidance policy — and
-want to feed its output into our pipeline at a steady rate.
+targets** — for example a QP-based IK / collision-avoidance policy — and want
+to feed its output into our pipeline at a steady rate. It streams either
+**joint** configurations or **end-effector frame** poses.
 
 ### How it works
 
-`joint_stream_server` runs **one persistent control loop** at the controller
-rate (`ctrl_hz`, 50 Hz by default). It always tracks the *latest* setpoint you
-sent:
+`stream_server` runs **one persistent control loop** at the controller rate
+(`ctrl_hz`, 50 Hz by default). It always tracks the *latest* setpoint you sent,
+in whichever mode matches your most recent message:
 
 ```
-your policy (~10 Hz) ──► setpoint ──► 50 Hz control loop ──► IK QP ──► robot
-                          ▲
-              ROS topic  ─┤  (std_msgs/Float64MultiArray on "joint_stream")
-              DDS channel ┘  (unitree_go/MotorCmds_ on "rt/joint_stream")
+                          ┌─ JOINT mode (goto_reduced_configuration) ─┐
+your policy (~10 Hz) ──► setpoint ──► 50 Hz loop ──► same PINK QP ──► robot
+                          ├─ ROS:  Float64MultiArray on "joint_stream"
+                          ├─ DDS:  MotorCmds_       on "rt/joint_stream"
+                          └─ FRAME mode (control_step_reduced)
+                             ROS:  PoseStamped      on "frame_stream"
 ```
 
 Key properties:
 
+- **Two modes, one loop.** The mode flips automatically to match the last
+  setpoint received: a joint message → JOINT mode, a frame message → FRAME mode.
+  Switching to JOINT mode clears any active frame tasks. Pick one mode per
+  streaming session; don't interleave the two.
 - **Rate decoupling.** You can publish slower than the control loop (e.g.
   10 Hz). The 50 Hz loop keeps tracking the most recent setpoint, so motion
   stays smooth between your updates. Newer setpoints simply overwrite older
   ones — there is no queue to fall behind.
-- **Collision avoidance stays on.** Each control tick is a single
-  differential-IK step (`goto_reduced_configuration`) through the same PINK QP
-  used everywhere else, with the **self-collision barrier and joint/velocity
-  limits enabled**. If your own collision avoidance is also a QP-IK, the two
-  compose cleanly — yours shapes the target, ours guarantees self-collision and
-  limit safety on the executed motion. (Your policy should still own
+- **Collision avoidance stays on.** *Both* modes solve through the same PINK
+  reduced-model QP, with the **self-collision barrier and joint/velocity limits
+  enabled** (JOINT mode is a config task; FRAME mode is frame tasks + a posture
+  task). If your own collision avoidance is also a QP-IK, the two compose
+  cleanly — yours shapes the target, ours guarantees self-collision and limit
+  safety on the executed motion. (Your policy should still own
   *environment/obstacle* avoidance; the server only knows about the robot's own
   geometry.)
-- **Holds on startup.** The setpoint is initialized to the current joint
-  configuration, so the arms stay put until your first message arrives.
+- **Holds on startup.** Starts in JOINT mode with the setpoint initialized to
+  the current configuration, so the arms stay put until your first message.
 - **Safety relay still applies.** Launch with `--config safety_full.yaml` (and
   the safety node, see [section 3](#running-with-the-safety-layer)) and the
   stream is clipped/e-stopped by the safety layer exactly like every other
   command path.
 
-> Run `joint_stream_server` **instead of** `frame_task_server` /
-> `dual_arm_server` — they all command the same motors, so only one controller
-> server should run at a time.
+> Run `stream_server` **instead of** `frame_task_server` / `dual_arm_server` —
+> they all command the same motors, so only one controller server should run at
+> a time.
 
 ### Start the server
 
 ```bash
-ros2 run h12_ros2_controller joint_stream_server --config debug.yaml
+ros2 run h12_ros2_controller stream_server --config debug.yaml
 ```
 
-The setpoint vector is the same **14 arm joints in `ENABLED_JOINTS` order** as
-in [section 4](#the-14-controllable-arm-joints), in radians.
+### Joint mode — stream over ROS
 
-### Option A — stream over ROS
-
-The server subscribes to `std_msgs/Float64MultiArray` on **`joint_stream`** (14
-values). Quick smoke test from the shell:
+The server subscribes to `std_msgs/Float64MultiArray` on **`joint_stream`**: the
+same **14 arm joints in `ENABLED_JOINTS` order** as in
+[section 4](#the-14-controllable-arm-joints), in radians. Quick smoke test:
 
 ```bash
 ros2 topic pub -r 10 /joint_stream std_msgs/Float64MultiArray \
@@ -310,7 +316,7 @@ class PolicyStreamer(Node):
         self.pub.publish(Float64MultiArray(data=list(q_target)))
 ```
 
-### Option B — stream over straight DDS (no ROS)
+### Joint mode — stream over straight DDS (no ROS)
 
 If your code doesn't run inside ROS, publish a `unitree_go/MotorCmds_` message
 on the Unitree DDS channel **`rt/joint_stream`**. The server reads the `.q`
@@ -337,6 +343,41 @@ while running:
 > Make sure the DDS **domain id** (and network interface) match the controller's
 > `network:` config block, or the messages won't be delivered.
 
+### Frame mode — stream over ROS
+
+If your policy outputs **end-effector poses** instead of joint configurations,
+publish `geometry_msgs/PoseStamped` on **`frame_stream`**. The
+**`header.frame_id`** names the frame to drive (e.g. `left_ee`, `right_ee`, or
+any frame in the URDF); the `pose` is the target in the `pelvis` frame. The
+server adds/updates an IK frame task for that frame and tracks it.
+
+```python
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import PoseStamped
+
+class FrameStreamer(Node):
+    def __init__(self):
+        super().__init__('frame_streamer')
+        self.pub = self.create_publisher(PoseStamped, 'frame_stream', 10)
+        self.timer = self.create_timer(0.1, self.tick)  # 10 Hz
+
+    def tick(self):
+        msg = PoseStamped()
+        msg.header.frame_id = 'left_ee'     # which frame to drive
+        msg.pose = my_pose_policy_step()    # geometry_msgs/Pose target (in pelvis)
+        self.pub.publish(msg)
+```
+
+To track **both arms** at once, stream `left_ee` and `right_ee` messages
+(alternating is fine) — each frame keeps its own task until you switch to JOINT
+mode.
+
+> **Frame streaming is ROS-only.** Unitree's DDS IDL has no SE(3)/pose message
+> type, so there is no clean straight-DDS carrier for poses. Joint targets map
+> onto `MotorCmds_`; poses do not. If you need pose streaming without ROS, talk
+> to the maintainers — it would require a custom DDS IDL.
+
 ### Tuning notes
 
 - Keep per-update steps **small**. The loop limits joint/Cartesian velocity, so
@@ -346,7 +387,8 @@ while running:
   controller config under `controller: {v_lim, w_lim, dq_lim}`.
 - There is currently **no feedback channel** on this interface. Read joint
   state from `/joint_states` (ROS) or `rt/lowstate` (DDS) to close your own
-  loop.
+  loop; for frame mode, current frame poses are available via TF (run a launch
+  file that starts `robot_state_publisher`).
 
 ---
 
@@ -387,12 +429,15 @@ ros2 launch h12_ros2_controller robot_launch.py config:=debug.yaml
 ros2 action send_goal /named_config custom_ros_messages/action/NamedConfig \
     "{config_name: 'home', duration: {sec: 5, nanosec: 0}}" --feedback
 
-# --- OR: stream joint setpoints (run instead of the action server) ---
-ros2 run h12_ros2_controller joint_stream_server --config debug.yaml
-# ROS setpoints (14 floats, ENABLED_JOINTS order):
+# --- OR: stream setpoints (run instead of the action server) ---
+ros2 run h12_ros2_controller stream_server --config debug.yaml
+# JOINT setpoints over ROS (14 floats, ENABLED_JOINTS order):
 ros2 topic pub -r 10 /joint_stream std_msgs/Float64MultiArray \
     "{data: [0,0,0,0.78,0,0,0, 0,0,0,0.78,0,0,0]}"
 # (or publish unitree_go/MotorCmds_ on the DDS channel rt/joint_stream)
+# FRAME setpoints over ROS (header.frame_id names the frame):
+ros2 topic pub -r 10 /frame_stream geometry_msgs/PoseStamped \
+    "{header: {frame_id: 'left_ee'}, pose: {position: {x: 0.3, y: 0.2, z: 0.1}}}"
 
 # Read current joint angles
 ros2 topic echo /joint_states --once
