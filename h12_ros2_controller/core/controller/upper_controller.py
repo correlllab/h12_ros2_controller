@@ -373,11 +373,7 @@ class UpperController:
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
         vel = self._limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self._apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-        return vel
+        return self._apply_velocity_command(vel)
 
     def sim_goto_configuration(self, q):
         # solve IK and apply control
@@ -406,11 +402,7 @@ class UpperController:
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self._limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self._apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-        return vel
+        return self._apply_velocity_command(vel)
 
     def sim_goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
@@ -433,22 +425,14 @@ class UpperController:
         # solve IK and apply the control
         vel = self.ik_solver.ik_step(com=com)
         vel = self._limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self._apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-        return vel
+        return self._apply_velocity_command(vel)
 
     def control_step_reduced(self, com=False):
         '''Solve IK for all tasks with the reduced model'''
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced(com=com)
         vel = self._limit_joint_vel(vel)
-        # integrate IK solver and command the joint position
-        self.ik_solver.integrate(vel)
-        self._apply_joint_position(self.ik_solver.q)
-        self.update_robot_model()
-        return vel
+        return self._apply_velocity_command(vel)
 
     def sim_step(self, com=False):
         # solve IK and apply the control
@@ -598,6 +582,12 @@ class UpperController:
         tau = self.robot_model.dynamics.get_gravity_compensation(self.robot_model.state['q'])
         dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(q, dq, tau)
+
+    def _apply_velocity_command(self, vel):
+        self.ik_solver.integrate(vel)
+        self._apply_joint_position(self.ik_solver.q)
+        self.update_robot_model()
+        return vel
 
     def estop(self):
         self.low_cmd_handler.estop()
