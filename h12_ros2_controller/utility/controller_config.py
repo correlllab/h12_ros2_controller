@@ -177,6 +177,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     logging = raw.get('logging', {})
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
+    momentum_ddp = raw.get('momentum_ddp', {})
 
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
@@ -249,6 +250,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'filename': str(logging.get('filename', logging.get('save_filename', 'record'))),
             'record_interval': float(logging.get('record_interval', 1.0)),
         },
+        'momentum_ddp': momentum_ddp,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:

@@ -1,10 +1,11 @@
 import time
+from dataclasses import dataclass
 
 import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.utility.joint_definition import (
-    NUM_MOTOR, FREEFLYER_NV,
+    BODY_JOINTS, NUM_MOTOR, FREEFLYER_NV,
     LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 )
 
@@ -17,12 +18,48 @@ class RobotDynamics:
         self._wrench_ddq = np.zeros(NUM_MOTOR)
         self._wrench_filtered = {}
 
+    def create_momentum_ddp(self, dt=None, config=None, arm='left'):
+        '''Create a Crocoddyl momentum planner for one arm'''
+        return MomentumDDP(self.robot_model, dt=dt, config=config, arm=arm)
+
     def get_com(self, q: np.ndarray=None):
         robot = self.robot_model
         q = robot.state['q'] if q is None else q
         q_full = robot.full_q(q)
         com = pin.centerOfMass(robot.model, robot.data, q_full)
         return com
+
+    def get_com_velocity(self, q: np.ndarray=None, dq: np.ndarray=None):
+        '''Get center of mass velocity for the full model'''
+        robot = self.robot_model
+        q = robot.state['q'] if q is None else q
+        dq = robot.state['dq'] if dq is None else dq
+        pin.centerOfMass(robot.model, robot.data, robot.full_q(q), robot.full_v(dq))
+        return np.copy(robot.data.vcom[0])
+
+    def get_angular_centroidal_momentum_matrix(self,
+                                               q: np.ndarray=None,
+                                               joint_ids=None):
+        '''Get the motor-joint angular centroidal momentum matrix'''
+        robot = self.robot_model
+        q = robot.state['q'] if q is None else q
+        pin.computeCentroidalMap(robot.model, robot.data, robot.full_q(q))
+        angular_map = robot.data.Ag[3:, FREEFLYER_NV:]
+        if joint_ids is None:
+            return np.copy(angular_map)
+        return np.copy(angular_map[:, joint_ids])
+
+    def get_angular_centroidal_momentum(self,
+                                        q: np.ndarray=None,
+                                        dq: np.ndarray=None,
+                                        joint_ids=None):
+        '''Get motor-joint angular centroidal momentum'''
+        robot = self.robot_model
+        dq = robot.state['dq'] if dq is None else dq
+        angular_map = self.get_angular_centroidal_momentum_matrix(q, joint_ids)
+        if joint_ids is None:
+            return angular_map @ dq
+        return angular_map @ dq[joint_ids]
 
     def get_com_reduced(self, q_reduced: np.ndarray=None):
         '''Get center of mass for the reduced model (model_body_reduced)'''
@@ -322,3 +359,257 @@ class RobotDynamics:
         jac = self.get_frame_jacobian(frame_name)
         twist = jac @ dq
         return twist
+
+
+@dataclass
+class MomentumPlan:
+    '''Crocoddyl momentum trajectory and solver state'''
+
+    solved: bool
+    xs: np.ndarray
+    us: np.ndarray
+    solver: object
+    arm_ids: list[int]
+    q_ref: np.ndarray
+    target_momentum: np.ndarray
+    momenta: np.ndarray
+    peak_momentum: np.ndarray
+    final_posture_error: float
+
+    def body_velocity_at(self, index, nv):
+        velocity = np.zeros(nv, dtype=np.float64)
+        if len(self.us):
+            velocity[self.arm_ids] = self.us[min(index, len(self.us) - 1)]
+        return velocity
+
+
+class MomentumDDP:
+    '''Crocoddyl DDP planner for selected-arm angular momentum'''
+
+    def __init__(self, robot_model, dt=None, config=None, arm='left'):
+        try:
+            import crocoddyl
+        except ImportError as err:
+            raise ImportError(
+                'MomentumDDP requires the optional crocoddyl dependency'
+            ) from err
+
+        self._crocoddyl = crocoddyl
+        self.robot_model = robot_model
+        ddp_cfg = (config or {}).get('momentum_ddp', {})
+        self.enabled = bool(ddp_cfg.get('enabled', False))
+        self.arm = ddp_cfg.get('arm', arm)
+        self.dt = float(ddp_cfg.get('dt', dt if dt is not None else 0.04))
+        self.hold_duration = float(ddp_cfg.get('hold_duration', 0.16))
+        self.momentum_duration = float(ddp_cfg.get('momentum_duration', 0.36))
+        self.return_duration = float(ddp_cfg.get('return_duration', 0.56))
+        self.maxiter = int(ddp_cfg.get('maxiter', 2))
+        self.w_momentum = float(ddp_cfg.get('w_momentum', 120.0))
+        self.w_u = float(ddp_cfg.get('w_u', 2e-3))
+        self.w_limit = float(ddp_cfg.get('w_limit', 100.0))
+        self.max_velocity = float(ddp_cfg.get('max_velocity', 8.0))
+        self.arm_ids = self._arm_ids(self.arm)
+        self.arm_model = self._build_arm_model()
+
+    def solve(self, target_momentum, q_ref=None):
+        '''Solve a hold-swing-return arm momentum trajectory'''
+        target_momentum = np.asarray(target_momentum, dtype=np.float64)
+        q_ref = self.current_arm_q() if q_ref is None else np.asarray(q_ref, dtype=np.float64)
+        running_models, terminal_model = self._build_phase_models(q_ref, target_momentum)
+        problem = self._crocoddyl.ShootingProblem(q_ref, running_models, terminal_model)
+        solver = self._crocoddyl.SolverDDP(problem)
+        solved = solver.solve(*self._warm_start(q_ref, target_momentum), self.maxiter)
+        xs = np.asarray(solver.xs, dtype=np.float64)
+        us = np.asarray(solver.us, dtype=np.float64)
+        momenta = self._trajectory_momenta(xs, us)
+        return MomentumPlan(
+            solved=bool(solved),
+            xs=xs,
+            us=us,
+            solver=solver,
+            arm_ids=self.arm_ids,
+            q_ref=np.copy(q_ref),
+            target_momentum=np.copy(target_momentum),
+            momenta=momenta,
+            peak_momentum=self._peak_useful_momentum(momenta, target_momentum),
+            final_posture_error=float(np.linalg.norm(pin.difference(self.arm_model, q_ref, xs[-1]))),
+        )
+
+    def current_arm_q(self):
+        '''Return the selected arm configuration'''
+        return np.copy(self.robot_model.state['q'][self.arm_ids])
+
+    def angular_momentum(self, q, velocity):
+        '''Return the reduced arm model angular centroidal momentum'''
+        data = self.arm_model.createData()
+        pin.ccrba(self.arm_model, data, q, velocity)
+        return np.asarray(data.hg.angular, dtype=np.float64)
+
+    def _trajectory_momenta(self, xs, us):
+        return np.array([
+            self.angular_momentum(q, us[min(index, len(us) - 1)])
+            for index, q in enumerate(xs[:-1])
+        ]) if len(us) else np.empty((0, 3), dtype=np.float64)
+
+    @staticmethod
+    def _peak_useful_momentum(momenta, target_momentum):
+        if not len(momenta):
+            return np.zeros(3, dtype=np.float64)
+        target_norm = np.linalg.norm(target_momentum)
+        if target_norm > 1e-9:
+            direction = target_momentum / target_norm
+            return np.copy(momenta[np.argmax(momenta @ direction)])
+        return np.copy(momenta[np.argmax(np.linalg.norm(momenta, axis=1))])
+
+    def _build_phase_models(self, q_ref, target_momentum):
+        action_model = self._make_action_model_class()
+        hold_steps, momentum_steps, return_steps = self._phase_steps()
+        phases = (
+            [(np.zeros(3), 20.0, 60.0, self.w_u)] * hold_steps
+            + [(target_momentum, self.w_momentum, 0.5, self.w_u)] * momentum_steps
+            + [(np.zeros(3), 10.0, 100.0, self.w_u)] * return_steps
+        )
+        running_models = [
+            self._crocoddyl.ActionModelNumDiff(action_model(
+                self.arm_model, q_ref, momentum, self.dt, w_momentum,
+                w_q, w_u, self.w_limit, self.max_velocity,
+            ))
+            for momentum, w_momentum, w_q, w_u in phases
+        ]
+        terminal = action_model(
+            self.arm_model, q_ref, np.zeros(3), self.dt, 20.0, 250.0,
+            0.0, self.w_limit, self.max_velocity, is_terminal=True,
+        )
+        return running_models, self._crocoddyl.ActionModelNumDiff(terminal)
+
+    def _warm_start(self, q_ref, target_momentum):
+        hold_steps, momentum_steps, return_steps = self._phase_steps()
+        q = np.copy(q_ref)
+        velocity_zero = np.zeros(self.arm_model.nv, dtype=np.float64)
+        velocity_seed = self._target_joint_velocity(q_ref, target_momentum)
+        xs = [np.copy(q_ref) for _ in range(hold_steps)]
+        us = [np.copy(velocity_zero) for _ in range(hold_steps)]
+        for _ in range(momentum_steps):
+            xs.append(np.copy(q))
+            us.append(np.copy(velocity_seed))
+            q = self._integrate_bounded(q, velocity_seed)
+        for index in range(return_steps):
+            velocity_return = pin.difference(self.arm_model, q, q_ref)
+            velocity_return /= max(1, return_steps - index) * self.dt
+            velocity_return = np.clip(
+                velocity_return, -self._velocity_limits(), self._velocity_limits()
+            )
+            xs.append(np.copy(q))
+            us.append(velocity_return)
+            q = self._integrate_bounded(q, velocity_return)
+        xs.append(np.copy(q_ref))
+        return xs, us
+
+    def _integrate_bounded(self, q, velocity):
+        return np.clip(
+            pin.integrate(self.arm_model, q, self.dt * velocity),
+            self.arm_model.lowerPositionLimit,
+            self.arm_model.upperPositionLimit,
+        )
+
+    def _target_joint_velocity(self, q_ref, target_momentum):
+        data = self.arm_model.createData()
+        pin.ccrba(self.arm_model, data, q_ref, np.zeros(self.arm_model.nv))
+        angular_map = np.asarray(data.Ag[3:6, :], dtype=np.float64)
+        velocity = angular_map.T @ np.linalg.solve(
+            angular_map @ angular_map.T + 1e-4 * np.eye(3), target_momentum
+        )
+        return np.clip(velocity, -self._velocity_limits(), self._velocity_limits())
+
+    def _velocity_limits(self):
+        limits = np.asarray(self.arm_model.velocityLimit, dtype=np.float64).copy()
+        limits[~np.isfinite(limits) | (limits <= 0.0)] = self.max_velocity
+        return np.minimum(limits, self.max_velocity)
+
+    def _phase_steps(self):
+        return tuple(max(1, int(np.round(duration / self.dt))) for duration in (
+            self.hold_duration, self.momentum_duration, self.return_duration,
+        ))
+
+    def _build_arm_model(self):
+        arm_joint_names = self._arm_joint_names(self.arm)
+        frozen_joints = [
+            self.robot_model.model_body.getJointId(name)
+            for name in BODY_JOINTS if name not in arm_joint_names
+        ]
+        model = pin.buildReducedModel(
+            self.robot_model.model_body,
+            frozen_joints,
+            np.copy(self.robot_model.state['q']),
+        )
+        model.gravity.linear = np.array([0.0, 0.0, -9.81])
+        return model
+
+    @staticmethod
+    def _arm_ids(arm):
+        if arm == 'left':
+            return LEFT_ARM_INDEX
+        if arm == 'right':
+            return RIGHT_ARM_INDEX
+        raise ValueError('arm must be "left" or "right"')
+
+    @staticmethod
+    def _arm_joint_names(arm):
+        return [BODY_JOINTS[index] for index in MomentumDDP._arm_ids(arm)]
+
+    def _make_action_model_class(self):
+        crocoddyl = self._crocoddyl
+
+        class MomentumActionModel(crocoddyl.ActionModelAbstract):
+            def __init__(self, model, q_ref, target_momentum, dt, w_momentum,
+                         w_q, w_u, w_limit, max_velocity, is_terminal=False):
+                self.model = model
+                self.q_ref = np.asarray(q_ref, dtype=np.float64)
+                self.target_momentum = np.asarray(target_momentum, dtype=np.float64)
+                self.dt = float(dt)
+                self.w_momentum = float(w_momentum)
+                self.w_q = float(w_q)
+                self.w_u = float(w_u)
+                self.w_limit = float(w_limit)
+                self.is_terminal = is_terminal
+                self.velocity_limit = np.minimum(
+                    np.where(
+                        np.isfinite(model.velocityLimit) & (model.velocityLimit > 0.0),
+                        model.velocityLimit,
+                        max_velocity,
+                    ),
+                    max_velocity,
+                )
+                super().__init__(crocoddyl.StateVector(model.nq), 0 if is_terminal else model.nv)
+
+            def calc(self, data, x, u=None):
+                q = np.asarray(x, dtype=np.float64)
+                raw_velocity = np.zeros(self.model.nv) if self.is_terminal or u is None else np.asarray(u)
+                velocity = np.clip(raw_velocity, -self.velocity_limit, self.velocity_limit)
+                if not np.isfinite(q).all():
+                    data.xnext = np.copy(q)
+                    data.cost = 1e12
+                    return
+                try:
+                    pin.ccrba(self.model, data.pin_data, q, velocity)
+                    momentum_error = data.pin_data.hg.angular - self.target_momentum
+                    posture_error = pin.difference(self.model, self.q_ref, q)
+                    lower = np.maximum(self.model.lowerPositionLimit - q, 0.0)
+                    upper = np.maximum(q - self.model.upperPositionLimit, 0.0)
+                    cost = 0.5 * self.w_momentum * momentum_error.dot(momentum_error)
+                    cost += 0.5 * self.w_q * posture_error.dot(posture_error)
+                    cost += 0.5 * self.w_limit * (lower + upper).dot(lower + upper)
+                    data.xnext = np.copy(q) if self.is_terminal else pin.integrate(
+                        self.model, q, self.dt * velocity
+                    )
+                    data.cost = cost if self.is_terminal else cost + 0.5 * self.w_u * raw_velocity.dot(raw_velocity)
+                except Exception:
+                    data.xnext = np.copy(q)
+                    data.cost = 1e12
+
+            def createData(self):
+                data = crocoddyl.ActionDataAbstract(self)
+                data.pin_data = self.model.createData()
+                return data
+
+        return MomentumActionModel

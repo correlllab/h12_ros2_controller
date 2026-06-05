@@ -42,6 +42,7 @@ class RobotModel:
         pin.updateFramePlacements(self.model, self.data)
         pin.forwardKinematics(self.model_body, self.data_body, self.zero_q_body)
         pin.updateFramePlacements(self.model_body, self.data_body)
+        self.total_mass = pin.computeTotalMass(self.model)
 
         # flags for additional initialization
         self.init_reduced = False
