@@ -181,6 +181,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
     momentum_ddp = raw.get('momentum_ddp', {})
+    zmp = raw.get('zmp', {})
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
@@ -254,6 +255,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'record_interval': float(logging.get('record_interval', 1.0)),
         },
         'momentum_ddp': momentum_ddp,
+        'zmp': zmp,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
