@@ -4,7 +4,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 import os
-from h12_ros2_controller.utility.path_definition import PACKAGE_PATH, URDF_HANDLESS_ROS_PATH
+from h12_ros2_controller.utility.path_definition_ros import PACKAGE_PATH, URDF_HANDLESS_ROS_PATH
 
 def generate_launch_description():
     package_name = 'h12_ros2_controller'

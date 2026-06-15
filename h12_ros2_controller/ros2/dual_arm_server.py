@@ -16,7 +16,7 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import (
+from h12_ros2_controller.utility.path_definition_ros import (
     URDF_HANDLESS_PIN_PATH,
     URDF_HANDLESS_SPHERE_PATH,
     SRDF_HANDLESS_SPHERE_PATH,

@@ -9,7 +9,7 @@ from std_srvs.srv import SetBool
 
 from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
+from h12_ros2_controller.utility.path_definition_ros import URDF_PIN_PATH, URDF_SPHERE_PATH, SRDF_SPHERE_PATH
 
 
 class GravityCompServer(Node):

@@ -13,7 +13,7 @@ from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
-from h12_ros2_controller.utility.path_definition import (
+from h12_ros2_controller.utility.path_definition_ros import (
     URDF_HANDLESS_PIN_PATH,
     URDF_HANDLESS_SPHERE_PATH,
     SRDF_HANDLESS_SPHERE_PATH,

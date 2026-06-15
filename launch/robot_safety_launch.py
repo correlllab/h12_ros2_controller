@@ -3,7 +3,7 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_ROS_PATH
+from h12_ros2_controller.utility.path_definition_ros import URDF_HANDLESS_ROS_PATH
 
 
 def _config_suffix(config_name: str) -> str:

@@ -7,7 +7,7 @@ import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PIN_PATH
+from h12_ros2_controller.utility.path_definition_ros import URDF_HANDLESS_PIN_PATH
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 class JointStatePublisher(Node):
