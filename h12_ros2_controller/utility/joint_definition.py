@@ -8,11 +8,14 @@ FREEFLYER_NV = 6  # linear vel (3) + angular vel (3)
 FREEFLYER_POS = slice(0, 3)   # [x, y, z]
 FREEFLYER_QUAT = slice(3, 7)  # [qx, qy, qz, qw]
 
-# motor and hand degrees of freedom
+# Motor degrees of freedom on the Unitree DDS lowstate/cmd path.
+# Magpie grippers are NOT on this path — they are driven via custom_ros_messages
+# (SetGripperPosition / SetGripperForce / DeliGrasp) through magpie_hand_bridge.
 NUM_MOTOR = 27
-NUM_HAND_DOF = 12
+NUM_HAND_DOF = 0
 
-# all joints defined in the URDF
+# All joints the controller observes. Magpie hinge joints in the URDF are
+# visualization-only (driven by the bridge directly), so this matches BODY_JOINTS.
 ALL_JOINTS = [
     'left_hip_yaw_joint',
     'left_hip_pitch_joint',
@@ -34,18 +37,6 @@ ALL_JOINTS = [
     'left_wrist_roll_joint',
     'left_wrist_pitch_joint',
     'left_wrist_yaw_joint',
-    'L_index_proximal_joint',
-    'L_index_intermediate_joint',
-    'L_middle_proximal_joint',
-    'L_middle_intermediate_joint',
-    'L_pinky_proximal_joint',
-    'L_pinky_intermediate_joint',
-    'L_ring_proximal_joint',
-    'L_ring_intermediate_joint',
-    'L_thumb_proximal_yaw_joint',
-    'L_thumb_proximal_pitch_joint',
-    'L_thumb_intermediate_joint',
-    'L_thumb_distal_joint',
     'right_shoulder_pitch_joint',
     'right_shoulder_roll_joint',
     'right_shoulder_yaw_joint',
@@ -53,18 +44,6 @@ ALL_JOINTS = [
     'right_wrist_roll_joint',
     'right_wrist_pitch_joint',
     'right_wrist_yaw_joint',
-    'R_index_proximal_joint',
-    'R_index_intermediate_joint',
-    'R_middle_proximal_joint',
-    'R_middle_intermediate_joint',
-    'R_pinky_proximal_joint',
-    'R_pinky_intermediate_joint',
-    'R_ring_proximal_joint',
-    'R_ring_intermediate_joint',
-    'R_thumb_proximal_yaw_joint',
-    'R_thumb_proximal_pitch_joint',
-    'R_thumb_intermediate_joint',
-    'R_thumb_distal_joint'
 ]
 
 ALL_HANDLESS_JOINTS = [
@@ -161,32 +140,7 @@ UPPER_BODY_JOINTS = [
     'right_wrist_yaw_joint'
 ]
 
-HAND_JOINTS = [
-    'L_index_proximal_joint',
-    'L_index_intermediate_joint',
-    'L_middle_proximal_joint',
-    'L_middle_intermediate_joint',
-    'L_pinky_proximal_joint',
-    'L_pinky_intermediate_joint',
-    'L_ring_proximal_joint',
-    'L_ring_intermediate_joint',
-    'L_thumb_proximal_yaw_joint',
-    'L_thumb_proximal_pitch_joint',
-    'L_thumb_intermediate_joint',
-    'L_thumb_distal_joint',
-    'R_index_proximal_joint',
-    'R_index_intermediate_joint',
-    'R_middle_proximal_joint',
-    'R_middle_intermediate_joint',
-    'R_pinky_proximal_joint',
-    'R_pinky_intermediate_joint',
-    'R_ring_proximal_joint',
-    'R_ring_intermediate_joint',
-    'R_thumb_proximal_yaw_joint',
-    'R_thumb_proximal_pitch_joint',
-    'R_thumb_intermediate_joint',
-    'R_thumb_distal_joint'
-]
+HAND_JOINTS = []
 
 ENABLED_JOINTS = [
     # 'torso_joint',

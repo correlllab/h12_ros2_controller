@@ -1,7 +1,7 @@
 import time
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -13,7 +13,7 @@ from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 def main():
     # initialize channel
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
 
     # initialize robot model and command publisher
     robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)

@@ -1,7 +1,7 @@
 import time
 import argparse
 import numpy as np
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -48,7 +48,7 @@ def setup_low_damping(command_publisher, damping_value=0.5):
 
 def main(damping_value, update_rate):
     # initialize channel
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
 
     # initialize robot model
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')

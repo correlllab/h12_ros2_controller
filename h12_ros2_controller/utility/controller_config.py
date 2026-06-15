@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -251,7 +252,15 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
 
 def initialize_channel_factory(config):
     network = config.get('network', {})
-    domain_id = int(network.get('domain_id', 0))
+    # Prefer $ROS_DOMAIN_ID when set so the controller shares a DDS domain
+    # with everything else in the launch (joint_state_publisher's dds_init,
+    # the magpie_hand_bridge in MuJoCo, the slider_debugger via rclpy).
+    # Fall back to the YAML's network.domain_id only when the env is unset
+    # — typical of bare real-hardware runs where the operator hasn't
+    # exported it.
+    env_domain = os.environ.get('ROS_DOMAIN_ID')
+    domain_id = int(env_domain) if env_domain is not None \
+                else int(network.get('domain_id', 0))
     interface = network.get('interface')
     if interface:
         ChannelFactoryInitialize(domain_id, interface)

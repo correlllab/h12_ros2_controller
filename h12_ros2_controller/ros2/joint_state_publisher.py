@@ -5,9 +5,8 @@ from std_msgs.msg import Header
 
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PIN_PATH
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -16,7 +15,7 @@ class JointStatePublisher(Node):
         super().__init__('joint_state_publisher')
 
         # initialize robot model
-        ChannelFactoryInitialize()
+        init_channel_factory_from_env()
         self.robot_model = RobotModel(URDF_HANDLESS_PIN_PATH, handless=True)
         self.robot_model.init_subscriber()
         self.get_logger().info('robot_model successfully initialized')

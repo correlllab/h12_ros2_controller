@@ -1,7 +1,7 @@
 import time
 import argparse
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -10,7 +10,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, update_com_zmp_plot
 
 def main(show_plot):
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     # robot_model = RobotModel('./assets/h1_2/h1_2_sphere.urdf')
     # robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     # robot_model = RobotModel('./assets/h1_2/h1_2.xml')

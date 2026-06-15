@@ -2,7 +2,7 @@ import time
 import argparse
 import numpy as np
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 
 def main(save_path):
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_visualizer()
     robot_model.config_visualizer(show_sensors=True, show_com=True, show_zmp=True)

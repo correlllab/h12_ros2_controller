@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 
 def save_data(filepath, steps=1000):
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     print('Initializing RobotModel...')
     robot_model = RobotModel('assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_subscriber()

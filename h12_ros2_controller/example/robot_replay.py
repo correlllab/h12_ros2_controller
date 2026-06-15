@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import meshcat.geometry as geo
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 import os
 import sys
@@ -111,7 +111,7 @@ def main(load_path, loop, replay_speed, show_plot):
         return
 
     # initialize robot model and visualizer
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
     robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
     robot_model.init_visualizer()
 

@@ -4,7 +4,7 @@ import time
 import curses
 import argparse
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
@@ -226,7 +226,7 @@ def run_tui(robot_model, joint_groups, limits, update_rate, damping_value, warn_
 
 
 def main(damping_value, update_rate, warn_threshold, crit_threshold):
-    ChannelFactoryInitialize()
+    init_channel_factory_from_env()
 
     robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
     robot_model.init_subscriber()
