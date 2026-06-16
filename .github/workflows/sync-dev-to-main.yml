@@ -1,0 +1,141 @@
+name: Sync dev to main
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-dev-to-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Generate main from dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Configure Git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate main and regenerate dependency files
+        run: |
+          set -euo pipefail
+
+          # Preserve the SDK from dev at the path used by Humanoid Simulation packaging.
+          if [ ! -f submodules/unitree_sdk2_python/pyproject.toml ]; then
+            echo "submodules/unitree_sdk2_python was not initialized correctly" >&2
+            exit 1
+          fi
+          rm -rf ../../../unitree_sdk2_python
+          cp -a submodules/unitree_sdk2_python ../../../unitree_sdk2_python
+
+          # Fetch main so --force-with-lease can verify it was not updated concurrently.
+          git fetch origin main
+
+          # main should not ship submodule config, gitlinks, or the submodules directory.
+          mapfile -t submodule_paths < <(python3 - <<'PY'
+          from configparser import ConfigParser
+          from pathlib import Path
+
+          path = Path('.gitmodules')
+          if not path.exists():
+              raise SystemExit
+
+          config = ConfigParser()
+          config.read(path)
+          for section in config.sections():
+              submodule_path = config.get(section, 'path', fallback='')
+              if submodule_path:
+                  print(submodule_path)
+          PY
+          )
+
+          for submodule_path in "${submodule_paths[@]}"; do
+            if git ls-files --error-unmatch "$submodule_path" >/dev/null 2>&1; then
+              git submodule deinit -f "$submodule_path" || true
+              git rm -f "$submodule_path"
+            fi
+            rm -rf ".git/modules/$submodule_path" "$submodule_path"
+          done
+          rm -f .gitmodules
+          rm -rf submodules
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('pyproject.toml')
+          text = path.read_text()
+          old = '[tool.uv.workspace]\nmembers = [\n    "submodules/unitree_sdk2_python",\n]'
+          new = '[tool.uv.workspace]\nmembers = [\n    "../../../unitree_sdk2_python",\n]'
+          if old in text:
+              path.write_text(text.replace(old, new))
+          elif new not in text:
+              raise SystemExit('Expected [tool.uv.workspace] members block was not found')
+
+          path = Path('README.md')
+          text = path.read_text()
+          old = (
+              '- Download both dependencies under `submodules/` by initializing git submodules:\n\n'
+              '  ```bash\n'
+              '  git submodule update --init --recursive\n'
+              '  ```'
+          )
+          new = (
+              '- The main branch is meant to be compatible with Humanoid Simulation, '
+              'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
+              'at `/home/code/CL_Assets`\n'
+              '- The [dev](https://github.com/correlllab/h12_ros2_controller/tree/dev) '
+              'branch is for local testing.'
+          )
+          if old in text:
+              path.write_text(text.replace(old, new))
+          elif new not in text:
+              raise SystemExit('Expected README submodule installation block was not found')
+
+          path = Path('h12_ros2_controller/utility/path_definition.py')
+          lines = path.read_text().splitlines()
+          for index, line in enumerate(lines):
+              if line.startswith('ASSETS_PATH = '):
+                  lines[index] = "ASSETS_PATH = '/home/code/CL_Assets'"
+                  break
+          else:
+              raise SystemExit('Expected ASSETS_PATH definition was not found')
+          path.write_text('\n'.join(lines) + '\n')
+          PY
+
+          uv sync
+          uv export --format requirements-txt --no-hashes -o requirements.txt
+
+          git add -A .gitmodules submodules pyproject.toml uv.lock requirements.txt README.md \
+            h12_ros2_controller/utility/path_definition.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit on main."
+            exit 0
+          fi
+
+          git commit -m "Sync dev to main"
+          git push --force-with-lease origin HEAD:main
