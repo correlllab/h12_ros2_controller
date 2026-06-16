@@ -5,7 +5,9 @@ Controller of the h12 robot with ROS2 services.
 ## Installation
 
 - This repo depends on [Unitree Python SDK](https://github.com/unitreerobotics/unitree_sdk2_python) to communicate with the robot.
-- Download Unitree SDK under `submodules/unitree_sdk2_python` by initializing git submodules:
+- We rely on this [fork](https://github.com/Oya-Tomo/unitree_sdk2_python) for easy integration with uv.
+- This repo depends on this set of [assets](https://github.com/correlllab/CL_Assets/tree/main) for robot description.
+- Download both dependencies under `submodules/` by initializing git submodules:
 
   ```bash
   git submodule update --init --recursive
