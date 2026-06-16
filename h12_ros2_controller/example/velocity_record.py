@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 import os
 import sys
@@ -13,7 +14,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 def save_data(filepath, steps=1000):
     init_channel_factory_from_env()
     print('Initializing RobotModel...')
-    robot_model = RobotModel('assets/h1_2/h1_2_handless.urdf', handless=True)
+    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_subscriber()
     robot_model.init_visualizer()
 

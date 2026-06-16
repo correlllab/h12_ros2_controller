@@ -8,14 +8,19 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.path_definition import (
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+    SRDF_HANDLESS_SPHERE_PATH,
+)
 
 def main(config_name='debug.yaml'):
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
     # example usage
-    arm_controller = ArmController('assets/h1_2/h1_2_handless.urdf',
-                                   'assets/h1_2/h1_2_handless_sphere.urdf',
-                                   'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+    arm_controller = ArmController(URDF_HANDLESS_PATH,
+                                   URDF_HANDLESS_SPHERE_PATH,
+                                   SRDF_HANDLESS_SPHERE_PATH,
                                    handless=True,
                                    visualize=True,
                                    config=config)

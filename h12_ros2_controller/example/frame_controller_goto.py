@@ -13,6 +13,11 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.path_definition import (
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+    SRDF_HANDLESS_SPHERE_PATH,
+)
 
 def input_keyword_or_frame_task():
     '''
@@ -63,9 +68,9 @@ def main(com=False,
     threshold_angular = controller_cfg['threshold_angular']
     initialize_channel_factory(config)
     # initialize upper task controller
-    frame_controller = FrameController('assets/h1_2/h1_2_handless.urdf',
-                                       'assets/h1_2/h1_2_handless_sphere.urdf',
-                                       'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+    frame_controller = FrameController(URDF_HANDLESS_PATH,
+                                       URDF_HANDLESS_SPHERE_PATH,
+                                       SRDF_HANDLESS_SPHERE_PATH,
                                        handless=True,
                                        visualize=True,
                                        config=config)

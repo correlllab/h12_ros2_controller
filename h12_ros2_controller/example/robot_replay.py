@@ -4,6 +4,7 @@ import numpy as np
 import meshcat.geometry as geo
 
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 import os
 import sys
@@ -112,7 +113,7 @@ def main(load_path, loop, replay_speed, show_plot):
 
     # initialize robot model and visualizer
     init_channel_factory_from_env()
-    robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
+    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_visualizer()
 
     print(f'Starting replay from: {load_path}')

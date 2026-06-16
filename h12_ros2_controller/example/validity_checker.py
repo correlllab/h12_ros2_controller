@@ -5,12 +5,17 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.utility.path_definition import (
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+    SRDF_HANDLESS_SPHERE_PATH,
+)
 
 def main():
-    robot_model = RobotModel('./assets/h1_2/h1_2_handless.urdf', handless=True)
+    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_visualizer()
-    robot_model.init_collision_model('./assets/h1_2/h1_2_handless_sphere.urdf',
-                                     './assets/h1_2/h1_2_handless_sphere_collision.srdf')
+    robot_model.init_collision_model(URDF_HANDLESS_SPHERE_PATH,
+                                     SRDF_HANDLESS_SPHERE_PATH)
 
     while True:
         # sample random q (motor-only, 27)

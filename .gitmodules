@@ -1,3 +1,6 @@
 [submodule "submodules/unitree_sdk2_python"]
 	path = submodules/unitree_sdk2_python
 	url = git@github.com:Oya-Tomo/unitree_sdk2_python.git
+[submodule "submodules/CL_Assets"]
+	path = submodules/CL_Assets
+	url = git@github.com:correlllab/CL_Assets.git

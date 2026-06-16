@@ -15,6 +15,7 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
+from h12_ros2_controller.utility.path_definition import URDF_REGULAR_PATH
 
 def get_state(robot_model, command_publisher, joint_idx):
     state = robot_model.state
@@ -125,7 +126,7 @@ def main(joint_name_list,
     initialize_channel_factory(config)
 
     # initialize robot model and command publisher
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel(URDF_REGULAR_PATH)
     robot_model.init_subscriber(low_state_topic=config['topics']['low_state'])
     command_publisher = LowCmdPublisher(
         dt=publisher_dt,

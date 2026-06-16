@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS
+from h12_ros2_controller.utility.path_definition import URDF_REGULAR_PATH
 
 def print_joint_positions(robot_model, joint_groups):
     '''Print joint positions in an organized format by groups'''
@@ -51,7 +52,7 @@ def main(damping_value, update_rate):
     init_channel_factory_from_env()
 
     # initialize robot model
-    robot_model = RobotModel('./assets/h1_2/h1_2.urdf')
+    robot_model = RobotModel(URDF_REGULAR_PATH)
     robot_model.init_subscriber()
 
     # wait for initial state
