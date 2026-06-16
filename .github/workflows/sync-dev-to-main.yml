@@ -57,24 +57,7 @@ jobs:
           git fetch origin main
 
           # main should not ship submodule config, gitlinks, or the submodules directory.
-          mapfile -t submodule_paths < <(python3 - <<'PY'
-          from configparser import ConfigParser
-          from pathlib import Path
-
-          path = Path('.gitmodules')
-          if not path.exists():
-              raise SystemExit
-
-          config = ConfigParser()
-          config.read(path)
-          for section in config.sections():
-              submodule_path = config.get(section, 'path', fallback='')
-              if submodule_path:
-                  print(submodule_path)
-          PY
-          )
-
-          for submodule_path in "${submodule_paths[@]}"; do
+          for submodule_path in submodules/unitree_sdk2_python submodules/CL_Assets; do
             if git ls-files --error-unmatch "$submodule_path" >/dev/null 2>&1; then
               git submodule deinit -f "$submodule_path" || true
               git rm -f "$submodule_path"
@@ -130,8 +113,7 @@ jobs:
           uv sync
           uv export --format requirements-txt --no-hashes -o requirements.txt
 
-          git add -A .gitmodules submodules pyproject.toml uv.lock requirements.txt README.md \
-            h12_ros2_controller/utility/path_definition.py
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit on main."
             exit 0
