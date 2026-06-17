@@ -2,12 +2,11 @@ import time
 import numpy as np
 import tkinter as tk
 
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.hand_controller import HandController
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 
 def main():
     init_channel_factory_from_env()

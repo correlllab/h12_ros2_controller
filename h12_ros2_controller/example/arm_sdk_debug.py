@@ -3,19 +3,18 @@ import numpy as np
 import tkinter as tk
 import pinocchio as pin
 
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import ArmSDKPublisher
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
 from h12_ros2_controller.utility.joint_definition import LEFT_ARM_INDEX, RIGHT_ARM_INDEX
-from h12_ros2_controller.utility.path_definition import URDF_REGULAR_PATH
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 def main():
     init_channel_factory_from_env()
-    robot_model = RobotModel(URDF_REGULAR_PATH)
+    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_subscriber()
     time.sleep(1.0)
     robot_model.update_kinematics()

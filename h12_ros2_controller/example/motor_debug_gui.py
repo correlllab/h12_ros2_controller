@@ -14,7 +14,7 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
-from h12_ros2_controller.utility.path_definition import URDF_REGULAR_PATH
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 class MotorDebugGUI:
     '''GUI interface for motor debugging'''
@@ -156,7 +156,7 @@ def main(config_name='debug.yaml'):
     initialize_channel_factory(config)
 
     # initialize robot model and command publisher
-    robot_model = RobotModel(URDF_REGULAR_PATH)
+    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_subscriber()
     command_publisher = LowCmdPublisher()
 

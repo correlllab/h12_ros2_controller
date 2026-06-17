@@ -3,13 +3,12 @@ import argparse
 import numpy as np
 import meshcat.geometry as geo
 
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, update_com_zmp_plot, clear_com_zmp_plot
 
 def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):

@@ -2,13 +2,12 @@ import time
 import argparse
 import numpy as np
 
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 def main(save_path):
     init_channel_factory_from_env()
