@@ -195,7 +195,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        head_camera_link:
+        camera_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -272,7 +272,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        lidar_link:
+        livox_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false

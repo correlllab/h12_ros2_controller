@@ -289,17 +289,17 @@ class RobotModel:
 
         # initialize frame visualizations
         if show_sensors:
-            meshcat_shapes.frame(self.viz.viewer['lidar_frame'], opacity=1.0)
-            meshcat_shapes.frame(self.viz.viewer['head_camera_frame'], opacity=1.0)
+            meshcat_shapes.frame(self.viz.viewer['livox_frame'], opacity=1.0)
+            meshcat_shapes.frame(self.viz.viewer['camera_frame'], opacity=1.0)
 
     def _visualize_sensors(self):
         '''Update sensor frame visualizations (lidar and head camera)'''
         viewer = self.viz.viewer
-        viewer['lidar_frame'].set_transform(
-            self.get_frame_transformation('lidar_link')
+        viewer['livox_frame'].set_transform(
+            self.get_frame_transformation('livox_link')
         )
-        viewer['head_camera_frame'].set_transform(
-            self.get_frame_transformation('head_camera_link')
+        viewer['camera_frame'].set_transform(
+            self.get_frame_transformation('camera_link')
         )
 
     def _visualize_com(self):
