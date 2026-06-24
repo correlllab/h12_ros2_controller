@@ -232,8 +232,9 @@ class FrameTaskServer(Node):
                 self.get_logger().info('Goal reached')
 
             # set result
+            success = ik_converged and steady_state_converged
             result = FrameTask.Result()
-            result.success = True
+            result.success = success
             goal_handle.succeed()
             return result
 
@@ -318,7 +319,7 @@ class FrameTaskServer(Node):
 
             goal_handle.succeed()
             result = NamedConfig.Result()
-            result.success = True
+            result.success = ik_converged and steady_state_converged
             return result
 
     def cancel_callback(self, goal_handle):

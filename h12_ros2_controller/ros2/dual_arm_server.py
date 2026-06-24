@@ -214,7 +214,7 @@ class DualArmServer(Node):
 
             goal_handle.succeed()
             result = DualArm.Result()
-            result.success = True
+            result.success = ik_converged and steady_state_converged
             return result
 
     def named_config_callback(self, goal_handle):
@@ -298,7 +298,7 @@ class DualArmServer(Node):
 
             goal_handle.succeed()
             result = NamedConfig.Result()
-            result.success = True
+            result.success = ik_converged and steady_state_converged
             return result
 
     def cancel_callback(self, goal_handle):
