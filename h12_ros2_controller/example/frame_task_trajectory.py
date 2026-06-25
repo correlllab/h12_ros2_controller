@@ -158,6 +158,16 @@ def max_frame_error(controller, frame_names):
     return max(linear_errors), max(angular_errors)
 
 
+def apply_scaled_velocity_step(controller, vel, speed_scale):
+    '''Scale the IK command before sending it to the robot'''
+    # keep the motion slower without changing the underlying solver
+    vel = controller._limit_joint_vel(speed_scale * vel)
+    controller.ik_solver.integrate(vel)
+    controller._apply_joint_position(controller.ik_solver.q)
+    controller.update_robot_model()
+    return vel
+
+
 def run_control_loop(controller, controller_cfg, step_fn, error_fn, timeout):
     '''Run IK convergence followed by steady-state hold'''
     threshold_ik = controller_cfg['threshold_ik']
@@ -189,13 +199,15 @@ def run_control_loop(controller, controller_cfg, step_fn, error_fn, timeout):
     return ik_converged and steady_state_converged
 
 
-def execute_config_waypoint(controller, controller_cfg, waypoint, timeout):
+def execute_config_waypoint(controller, controller_cfg, waypoint, timeout,
+                            speed_scale=1.0):
     '''Move controller to one named config waypoint'''
     q_reduced = NAMED_CONFIGS[waypoint.config_name]
     controller.update_ik_solver()
 
     def step_fn():
-        return controller.goto_reduced_configuration(q_reduced)
+        vel = controller.ik_solver.goto_reduced_configuration(q_reduced)
+        return apply_scaled_velocity_step(controller, vel, speed_scale)
 
     def error_fn():
         error = np.max(np.abs(controller.reduced_configuration_error))
@@ -205,13 +217,15 @@ def execute_config_waypoint(controller, controller_cfg, waypoint, timeout):
     return run_control_loop(controller, controller_cfg, step_fn, error_fn, timeout)
 
 
-def execute_frame_waypoint(controller, controller_cfg, waypoint, timeout, com=False):
+def execute_frame_waypoint(controller, controller_cfg, waypoint, timeout,
+                           com=False, speed_scale=1.0):
     '''Move controller to one multi-frame waypoint'''
     add_frame_waypoint_tasks(controller, waypoint)
     controller.update_ik_solver()
 
     def step_fn():
-        return controller.control_step_reduced(com=com)
+        vel = controller.ik_solver.ik_step_reduced(com=com)
+        return apply_scaled_velocity_step(controller, vel, speed_scale)
 
     def error_fn():
         linear_error, angular_error = max_frame_error(controller, waypoint.frame_names)
@@ -225,13 +239,19 @@ def execute_frame_waypoint(controller, controller_cfg, waypoint, timeout, com=Fa
 
 
 def run_trajectory(controller, controller_cfg, waypoints, duration=0.0,
-                   pause=0.0, com=False):
+                   pause=0.0, com=False, speed_scale=1.0):
     '''Execute every waypoint in order'''
     timeout = duration if duration > 0.0 else controller_cfg['timeout']
     for idx, waypoint in enumerate(waypoints, start=1):
         if waypoint.is_config:
             print(f'Waypoint {idx}: named config {waypoint.config_name}')
-            success = execute_config_waypoint(controller, controller_cfg, waypoint, timeout)
+            success = execute_config_waypoint(
+                controller,
+                controller_cfg,
+                waypoint,
+                timeout,
+                speed_scale=speed_scale,
+            )
         else:
             print(f'Waypoint {idx}: frames {waypoint.frame_names}')
             success = execute_frame_waypoint(
@@ -240,6 +260,7 @@ def run_trajectory(controller, controller_cfg, waypoints, duration=0.0,
                 waypoint,
                 timeout,
                 com=com,
+                speed_scale=speed_scale,
             )
 
         if not success:
@@ -251,7 +272,7 @@ def run_trajectory(controller, controller_cfg, waypoints, duration=0.0,
 
 
 def main(traj, config_name='debug.yaml', duration=0.0,
-         pause=0.0, com=False, visualize=True):
+         pause=0.0, com=False, speed_scale=0.4, visualize=True):
     # load trajectory before commanding the robot
     traj_path = resolve_trajectory_path(traj)
     waypoints = load_trajectory(traj_path)
@@ -268,6 +289,7 @@ def main(traj, config_name='debug.yaml', duration=0.0,
             duration=duration,
             pause=pause,
             com=com,
+            speed_scale=speed_scale,
         )
     finally:
         print('Shutting down...')
@@ -299,6 +321,12 @@ if __name__ == '__main__':
         default=0.0,
         help='Pause between waypoints in seconds',
     )
+    parser.add_argument(
+        '--speed-scale',
+        type=float,
+        default=0.4,
+        help='Scale IK motion commands for slower tracking',
+    )
     parser.add_argument('--com', action='store_true', help='Use center of mass control')
     parser.add_argument('--no-viz', action='store_true', help='Disable controller visualizer')
     args = parser.parse_args()
@@ -309,5 +337,6 @@ if __name__ == '__main__':
         duration=args.duration,
         pause=args.pause,
         com=args.com,
+        speed_scale=args.speed_scale,
         visualize=not args.no_viz,
     )
