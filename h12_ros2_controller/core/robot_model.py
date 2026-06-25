@@ -13,7 +13,8 @@ from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.utility.joint_definition import (
     ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
-    FREEFLYER_POS, FREEFLYER_QUAT
+    FREEFLYER_POS, FREEFLYER_QUAT,
+    LEFT_ARM_INDEX, RIGHT_ARM_INDEX
 )
 
 class RobotModel:
@@ -587,6 +588,24 @@ class RobotModel:
     def get_frame_wrench(self, frame_name: str,
                          q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
         '''
+        Estimate frame wrench with arm-only dynamics compensation and SVD damping
+
+        This keeps bad configurations quiet by damping weak Jacobian directions
+        instead of amplifying torque noise into large force readings
+        '''
+        q = self.state['q'] if q is None else q
+        tau = self.state['tau'] if tau is None else tau
+        dq = self.state['dq']
+
+        joint_idx = self._get_frame_wrench_joint_indices(frame_name)
+        tau_model = self.get_motion_compensation(q, dq, imu_quat)
+        tau_residual = tau[joint_idx] - tau_model[joint_idx]
+        jac = self.get_frame_jacobian(frame_name, q, imu_quat)[:, joint_idx]
+        return self._solve_damped_svd_wrench(jac, tau_residual)
+
+    def get_frame_wrench_damped(self, frame_name: str,
+                                q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
+        '''
         Estimate wrench from joint torques using a condition-aware least-squares solve
 
         Uses adaptive damped least-squares when the Jacobian is ill-conditioned to
@@ -620,6 +639,48 @@ class RobotModel:
         damping_sq = damping * damping
         wrench = np.linalg.solve(jj_t + damping_sq * np.eye(6), rhs)
         return wrench
+
+    def _get_frame_wrench_joint_indices(self, frame_name: str):
+        '''Select the arm joints that should explain a wrist wrench'''
+        if frame_name.startswith('left_'):
+            return LEFT_ARM_INDEX
+        if frame_name.startswith('right_'):
+            return RIGHT_ARM_INDEX
+        return np.arange(NUM_MOTOR)
+
+    def get_motion_compensation(self, q: np.ndarray=None,
+                                dq: np.ndarray=None, imu_quat=None):
+        '''Estimate model torque for steady motion, excluding external contact'''
+        q = self.state['q'] if q is None else q
+        dq = self.state['dq'] if dq is None else dq
+        q_full = self.full_q(q, imu_quat)
+        dq_full = self.full_v(dq)
+        tau_full = pin.rnea(
+            self.model,
+            self.data,
+            q_full,
+            dq_full,
+            np.zeros(self.model.nv),
+        )
+        return tau_full[FREEFLYER_NV:]
+
+    @staticmethod
+    def _solve_damped_svd_wrench(jac: np.ndarray, tau_residual: np.ndarray):
+        '''Solve jac.T * wrench = tau while suppressing weak directions'''
+        damping = 1e-1
+        svd_floor = 5e-2
+        a = jac.T
+        u, singular_values, vt = np.linalg.svd(a, full_matrices=False)
+        if singular_values.size == 0 or singular_values[0] < svd_floor:
+            return np.zeros(6)
+
+        gains = singular_values / (singular_values * singular_values + damping * damping)
+        gains[singular_values < svd_floor] = 0.0
+        wrench = vt.T @ (gains * (u.T @ tau_residual))
+
+        # fade the whole reading near singular poses so bad estimates look ignorable
+        quality = np.clip(singular_values[-1] / svd_floor, 0.0, 1.0)
+        return quality * wrench
 
     def get_frame_wrench_raw(self, frame_name: str,
                              q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):

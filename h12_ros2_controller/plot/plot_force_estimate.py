@@ -14,41 +14,41 @@ from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 def create_overlay_plot(time_s, joint_name, joint_data, quantity, output_path):
     fig, axes = plt.subplots(4, 1, figsize=(14, 10), sharex=True)
     components = [('x', 0), ('y', 1), ('z', 2)]
+    methods = [
+        ('robust', 1.8, '-'),
+        ('damped', 1.2, '--'),
+        ('raw', 1.0, ':'),
+    ]
 
-    damped = np.asarray(joint_data[f'{quantity}_damped'])
-    raw = np.asarray(joint_data[f'{quantity}_raw'])
-    n = min(len(time_s), len(damped), len(raw))
+    series = {
+        name: np.asarray(joint_data[f'{quantity}_{name}'])
+        for name, _, _ in methods
+    }
+    n = min([len(time_s)] + [len(data) for data in series.values()])
     if n == 0:
         plt.close(fig)
         return
 
     t = np.asarray(time_s[:n])
-    damped = damped[:n]
-    raw = raw[:n]
+    series = {name: data[:n] for name, data in series.items()}
 
-    damped_mag = np.linalg.norm(damped, axis=1)
-    raw_mag = np.linalg.norm(raw, axis=1)
-    axes[0].plot(t, damped_mag, label='damped', linewidth=1.6)
-    axes[0].plot(t, raw_mag, label='raw', linewidth=1.0, linestyle='--')
+    for name, linewidth, linestyle in methods:
+        magnitude = np.linalg.norm(series[name], axis=1)
+        axes[0].plot(t, magnitude, label=name, linewidth=linewidth, linestyle=linestyle)
 
     for axis_idx, (axis_name, comp_idx) in enumerate(components, start=1):
-        axes[axis_idx].plot(
-            t,
-            damped[:, comp_idx],
-            label='damped',
-            linewidth=1.6,
-        )
-        axes[axis_idx].plot(
-            t,
-            raw[:, comp_idx],
-            label='raw',
-            linewidth=1.0,
-            linestyle='--',
-        )
+        for name, linewidth, linestyle in methods:
+            axes[axis_idx].plot(
+                t,
+                series[name][:, comp_idx],
+                label=name,
+                linewidth=linewidth,
+                linestyle=linestyle,
+            )
         axes[axis_idx].set_ylabel(axis_name)
 
     axes[0].set_ylabel('magnitude')
-    axes[0].set_title(f'{joint_name} {quantity}: damped vs raw')
+    axes[0].set_title(f'{joint_name} {quantity}: robust vs damped vs raw')
     axes[-1].set_xlabel('time [s]')
 
     for ax in axes:
@@ -73,8 +73,10 @@ def main(save_folder):
 
     recorded = {
         joint_name: {
+            'force_robust': [],
             'force_damped': [],
             'force_raw': [],
+            'torque_robust': [],
             'torque_damped': [],
             'torque_raw': [],
         }
@@ -95,11 +97,14 @@ def main(save_folder):
             now = time.time() - start_time
 
             for joint_name in joint_names:
-                wrench_damped = robot_model.get_frame_wrench(joint_name)
+                wrench_robust = robot_model.get_frame_wrench(joint_name)
+                wrench_damped = robot_model.get_frame_wrench_damped(joint_name)
                 wrench_raw = robot_model.get_frame_wrench_raw(joint_name)
 
+                recorded[joint_name]['force_robust'].append(wrench_robust[:3].copy())
                 recorded[joint_name]['force_damped'].append(wrench_damped[:3].copy())
                 recorded[joint_name]['force_raw'].append(wrench_raw[:3].copy())
+                recorded[joint_name]['torque_robust'].append(wrench_robust[3:].copy())
                 recorded[joint_name]['torque_damped'].append(wrench_damped[3:].copy())
                 recorded[joint_name]['torque_raw'].append(wrench_raw[3:].copy())
 

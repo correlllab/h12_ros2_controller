@@ -1,0 +1,4 @@
+# three waypoint example, then home at the end
+way point 1 {left_wrist_yaw_link: 0.3 0.2 0.0 0 30 0, right_wrist_yaw_link: 0.4 -0.3 0.3 0 -30 0}
+way point 2 {left_wrist_yaw_link: 0.3 0.3 0.0 0 30 0, right_wrist_yaw_link: 0.4 -0.3 0.1 0 0 0}
+home
