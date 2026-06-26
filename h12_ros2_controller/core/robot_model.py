@@ -13,8 +13,7 @@ from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.utility.joint_definition import (
     ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
-    FREEFLYER_POS, FREEFLYER_QUAT,
-    LEFT_ARM_INDEX, RIGHT_ARM_INDEX
+    FREEFLYER_POS, FREEFLYER_QUAT
 )
 
 class RobotModel:
@@ -39,6 +38,9 @@ class RobotModel:
         self._dq = np.zeros(NUM_MOTOR)
         self._ddq = np.zeros(NUM_MOTOR)
         self._tau = np.zeros(NUM_MOTOR)
+
+        from h12_ros2_controller.core.robot_dynamics import RobotDynamics
+        self.dynamics = RobotDynamics(self)
 
         # initialize with zero joint positions
         pin.forwardKinematics(self.model, self.data, self.zero_q)
@@ -305,7 +307,7 @@ class RobotModel:
 
     def _visualize_com(self):
         '''Update center of mass visualization'''
-        com_pos = self.get_com()
+        com_pos = self.dynamics.get_com()
         transform = np.eye(4)
         transform[:3, 3] = com_pos
         viewer = self.viz.viewer
@@ -315,7 +317,7 @@ class RobotModel:
 
     def _visualize_zmp(self):
         '''Update zero moment point visualization'''
-        zmp_pos = self.get_zmp()
+        zmp_pos = self.dynamics.get_zmp()
         transform = np.eye(4)
         transform[:3, 3] = zmp_pos
         viewer = self.viz.viewer
@@ -325,7 +327,7 @@ class RobotModel:
 
     def _visualize_wrench(self, link_name):
         # get frame position and wrench
-        wrench = self.get_frame_wrench(link_name)
+        wrench = self.dynamics.get_frame_wrench(link_name)
 
         # create cyclinder to represent force
         force = wrench[0:3]
@@ -410,71 +412,16 @@ class RobotModel:
                 self._visualize_wrench(frame_name)
 
     def get_com(self, q: np.ndarray=None):
-        q = self.state['q'] if q is None else q
-        q_full = self.full_q(q)
-        com = pin.centerOfMass(self.model, self.data, q_full)
-        return com
+        return self.dynamics.get_com(q)
 
     def get_com_reduced(self, q_reduced: np.ndarray=None):
-        '''Get center of mass for the reduced model (model_body_reduced)'''
-        q_reduced = self.state_reduced['q'] if q_reduced is None else q_reduced
-        com = pin.centerOfMass(self.model_body_reduced, self.data_body_reduced, q_reduced)
-        return com
+        return self.dynamics.get_com_reduced(q_reduced)
 
     def get_zmp(self, q: np.ndarray=None):
-        q = self.state['q'] if q is None else q
-        com = self.get_com(q)
-
-        # find reference support plane
-        left_foot_pos = self.get_frame_position('left_ankle_roll_link', q)
-        right_foot_pos = self.get_frame_position('right_ankle_roll_link', q)
-        ground_point = 0.5 * (left_foot_pos + right_foot_pos)
-        ground_height = ground_point[2]
-
-        # centroidal momentum time derivative
-        q_full = self.full_q(q)
-        dq_full = self.full_v(self.state['dq'])
-        ddq_full = self.full_v(self.state['ddq'])
-        pin.computeCentroidalMomentumTimeVariation(
-            self.model, self.data, q_full, dq_full, ddq_full
-        )
-        dhg = self.data.dhg
-
-        F_com = dhg.linear
-        tau_com = dhg.angular
-
-        # gravity force
-        g = np.array([0, 0, -9.81])
-        m = pin.computeTotalMass(self.model)
-        F_g = m * g
-
-        # isolate contact resultant force
-        F_contact = F_com - F_g
-        # shift torque from CoM -> support_plane_point on the plane
-        tau_contact = tau_com + np.cross(com - ground_point, F_contact)
-
-        eps = 1e-6
-        # TODO gate ZMP when contact is unreliable (low Fz / contact loss)
-        if abs(F_contact[2]) < eps:
-            return np.zeros(3)
-
-        # ZMP on support plane
-        zmp_x = ground_point[0] - tau_contact[1] / F_contact[2]
-        zmp_y = ground_point[1] + tau_contact[0] / F_contact[2]
-        zmp = np.array([zmp_x, zmp_y, ground_height])
-
-        return zmp
+        return self.dynamics.get_zmp(q)
 
     def get_gravity_compensation(self, q: np.ndarray=None, imu_quat=None):
-        q = self.state['q'] if q is None else q
-        q_full = self.full_q(q, imu_quat)
-        tau_full = pin.rnea(self.model,
-                            self.data,
-                            q_full,
-                            np.zeros(self.model.nv),
-                            np.zeros(self.model.nv))
-        # return motor-only torques (skip free-flyer)
-        return tau_full[FREEFLYER_NV:]
+        return self.dynamics.get_gravity_compensation(q, imu_quat)
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
@@ -525,180 +472,33 @@ class RobotModel:
         return self._get_frame_transformation_reduced(frame_name, q_reduced).rotation
 
     def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None, imu_quat=None):
-        '''
-        Get the frame jacobian in the world frame
-        q is motor-only (27), returns motor-only jacobian (6 x 27)
-        '''
-        if q is not None:
-            q_full = self.full_q(q, imu_quat)
-            data = self.model.createData()
-        else:
-            q_full = self.full_q(self.state['q'])
-            data = self.data
-        # update kinematics
-        pin.forwardKinematics(self.model, data, q_full)
-        pin.updateFramePlacements(self.model, data)
-        # compute jacobian
-        frame_id = self.model.getFrameId(frame_name)
-        jacobian_full = pin.computeFrameJacobian(
-            self.model,
-            data,
-            q_full,
-            frame_id,
-            pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
-        )
-        # return motor-only columns (skip free-flyer columns)
-        return jacobian_full[:, FREEFLYER_NV:]
+        return self.dynamics.get_frame_jacobian(frame_name, q, imu_quat)
 
     def get_joint_jacobian(self, joint_name: str, q: np.ndarray=None):
-        '''
-        Get the joint jacobian in the local frame of the joint
-        q is motor-only (27), returns motor-only jacobian (6 x 27)
-        '''
-        if q is not None:
-            q_full = self.full_q(q)
-            data = self.model.createData()
-        else:
-            q_full = self.full_q(self.state['q'])
-            data = self.data
-        # update kinematics
-        pin.forwardKinematics(self.model, data, q_full)
-        pin.updateFramePlacements(self.model, data)
-        # compute jacobian
-        joint_id = self.model.getJointId(joint_name)
-        jacobian_full = pin.computeJointJacobian(
-            self.model,
-            data,
-            q_full,
-            joint_id
-        )
-        # return motor-only columns (skip free-flyer columns)
-        return jacobian_full[:, FREEFLYER_NV:]
+        return self.dynamics.get_joint_jacobian(joint_name, q)
 
     def get_frame_twist(self, frame_name: str):
-        frame_id = self.model.getFrameId(frame_name)
-        twist = pin.getFrameVelocity(
-            self.model,
-            self.data,
-            frame_id,
-            pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
-        )
-        return np.concatenate([twist.linear, twist.angular])
+        return self.dynamics.get_frame_twist(frame_name)
 
     def get_frame_wrench(self, frame_name: str,
                          q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        '''
-        Estimate frame wrench with arm-only dynamics compensation and SVD damping
-
-        This keeps bad configurations quiet by damping weak Jacobian directions
-        instead of amplifying torque noise into large force readings
-        '''
-        q = self.state['q'] if q is None else q
-        tau = self.state['tau'] if tau is None else tau
-        dq = self.state['dq']
-
-        joint_idx = self._get_frame_wrench_joint_indices(frame_name)
-        tau_model = self.get_motion_compensation(q, dq, imu_quat)
-        tau_residual = tau[joint_idx] - tau_model[joint_idx]
-        jac = self.get_frame_jacobian(frame_name, q, imu_quat)[:, joint_idx]
-        return self._solve_damped_svd_wrench(jac, tau_residual)
+        return self.dynamics.get_frame_wrench(frame_name, q, tau, imu_quat)
 
     def get_frame_wrench_damped(self, frame_name: str,
                                 q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        '''
-        Estimate wrench from joint torques using a condition-aware least-squares solve
-
-        Uses adaptive damped least-squares when the Jacobian is ill-conditioned to
-        reduce sensitivity to torque noise near singular configurations
-        '''
-        cond_threshold = 10
-        base_damping = 1e-1
-        max_damping = 10
-        svd_tol = 1e-3
-
-        q = self.state['q'] if q is None else q
-        tau = self.state['tau'] if tau is None else tau
-        tau_gravity = self.get_gravity_compensation(q, imu_quat)
-        jac = self.get_frame_jacobian(frame_name, q, imu_quat)
-        tau_residual = tau - tau_gravity
-
-        singular_values = np.linalg.svd(jac.T, compute_uv=False)
-        if singular_values.size == 0 or singular_values[0] < svd_tol:
-            return np.zeros(6)
-
-        cond_number = singular_values[0] / max(singular_values[-1], svd_tol)
-        if cond_number <= cond_threshold:
-            damping = 0.0
-        else:
-            # increase damping smoothly once condition number passes threshold
-            damping = base_damping * (cond_number / cond_threshold)
-            damping = np.clip(damping, base_damping, max_damping)
-
-        jj_t = jac @ jac.T
-        rhs = jac @ tau_residual
-        damping_sq = damping * damping
-        wrench = np.linalg.solve(jj_t + damping_sq * np.eye(6), rhs)
-        return wrench
-
-    def _get_frame_wrench_joint_indices(self, frame_name: str):
-        '''Select the arm joints that should explain a wrist wrench'''
-        if frame_name.startswith('left_'):
-            return LEFT_ARM_INDEX
-        if frame_name.startswith('right_'):
-            return RIGHT_ARM_INDEX
-        return np.arange(NUM_MOTOR)
+        return self.dynamics.get_frame_wrench_damped(frame_name, q, tau, imu_quat)
 
     def get_motion_compensation(self, q: np.ndarray=None,
-                                dq: np.ndarray=None, imu_quat=None):
-        '''Estimate model torque for steady motion, excluding external contact'''
-        q = self.state['q'] if q is None else q
-        dq = self.state['dq'] if dq is None else dq
-        q_full = self.full_q(q, imu_quat)
-        dq_full = self.full_v(dq)
-        tau_full = pin.rnea(
-            self.model,
-            self.data,
-            q_full,
-            dq_full,
-            np.zeros(self.model.nv),
-        )
-        return tau_full[FREEFLYER_NV:]
-
-    @staticmethod
-    def _solve_damped_svd_wrench(jac: np.ndarray, tau_residual: np.ndarray):
-        '''Solve jac.T * wrench = tau while suppressing weak directions'''
-        damping = 1e-1
-        svd_floor = 5e-2
-        a = jac.T
-        u, singular_values, vt = np.linalg.svd(a, full_matrices=False)
-        if singular_values.size == 0 or singular_values[0] < svd_floor:
-            return np.zeros(6)
-
-        gains = singular_values / (singular_values * singular_values + damping * damping)
-        gains[singular_values < svd_floor] = 0.0
-        wrench = vt.T @ (gains * (u.T @ tau_residual))
-
-        # fade the whole reading near singular poses so bad estimates look ignorable
-        quality = np.clip(singular_values[-1] / svd_floor, 0.0, 1.0)
-        return quality * wrench
+                                dq: np.ndarray=None, imu_quat=None,
+                                ddq: np.ndarray=None):
+        return self.dynamics.get_motion_compensation(q, dq, imu_quat, ddq)
 
     def get_frame_wrench_raw(self, frame_name: str,
                              q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        '''
-        Pseudo-inverse solution without damping for reference/debugging
-        '''
-        q = self.state['q'] if q is None else q
-        tau = self.state['tau'] if tau is None else tau
-        tau_gravity = self.get_gravity_compensation(q, imu_quat)
-        jac = self.get_frame_jacobian(frame_name, q, imu_quat)
-        tau_residual = tau - tau_gravity
-        wrench = np.linalg.pinv(jac.T) @ tau_residual
-        return wrench
+        return self.dynamics.get_frame_wrench_raw(frame_name, q, tau, imu_quat)
 
     def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
-        jac = self.get_frame_jacobian(frame_name)
-        twist = jac @ dq
-        return twist
+        return self.dynamics.compute_frame_twist(frame_name, dq)
 
     def check_valid(self, q):
         '''
