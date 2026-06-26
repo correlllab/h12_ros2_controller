@@ -1,9 +1,9 @@
-name: Sync dev to main
+name: Sync main to dev
 
 on:
   push:
     branches:
-      - dev
+      - main
   workflow_dispatch:
 
 permissions:
@@ -15,15 +15,15 @@ concurrency:
 
 jobs:
   sync:
-    name: Generate main from dev
+    name: Generate dev from main
     if: github.event_name == 'workflow_dispatch' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout dev
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: main
           fetch-depth: 0
 
       - name: Set up uv
@@ -41,60 +41,56 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Generate main and regenerate dependency files
+      - name: Generate dev and regenerate dependency files
         run: |
           set -euo pipefail
-          source_dev="$(git rev-parse HEAD)"
+          source_main="$(git rev-parse HEAD)"
 
+          # Fetch dev so --force-with-lease can verify it was not updated concurrently,
+          # and so the dev-only submodule metadata can be restored.
+          git fetch origin dev
+
+          for submodule_path in submodules/unitree_sdk2_python submodules/CL_Assets; do
+            if [ -z "$(git ls-tree origin/dev "$submodule_path")" ]; then
+              echo "origin/dev does not contain $submodule_path" >&2
+              exit 1
+            fi
+          done
+          if [ -z "$(git ls-tree origin/dev .gitmodules)" ]; then
+            echo "origin/dev does not contain .gitmodules" >&2
+            exit 1
+          fi
+
+          git checkout origin/dev -- .gitmodules submodules/unitree_sdk2_python submodules/CL_Assets
           # GitHub-hosted runners do not have SSH credentials for submodules.
           git config -f .gitmodules submodule.submodules/unitree_sdk2_python.url https://github.com/Oya-Tomo/unitree_sdk2_python.git
           git config -f .gitmodules submodule.submodules/CL_Assets.url https://github.com/correlllab/CL_Assets.git
           git submodule sync --recursive
-          git submodule update --init --recursive submodules/unitree_sdk2_python
-
-          # Preserve the SDK from dev at the path used by HAMS packaging.
+          git submodule update --init --recursive
           if [ ! -f submodules/unitree_sdk2_python/pyproject.toml ]; then
             echo "submodules/unitree_sdk2_python was not initialized correctly" >&2
             exit 1
           fi
-          rm -rf ../../../unitree_sdk2_python
-          cp -a submodules/unitree_sdk2_python ../../../unitree_sdk2_python
-
-          # Fetch main so --force-with-lease can verify it was not updated concurrently.
-          git fetch origin main
-
-          # main should not ship submodule config, gitlinks, or the submodules directory.
-          for submodule_path in submodules/unitree_sdk2_python submodules/CL_Assets; do
-            if git ls-files --error-unmatch "$submodule_path" >/dev/null 2>&1; then
-              git submodule deinit -f "$submodule_path" || true
-              git rm -f "$submodule_path"
-            fi
-            rm -rf ".git/modules/$submodule_path" "$submodule_path"
-          done
-          rm -f .gitmodules
-          rm -rf submodules
+          if [ ! -d submodules/CL_Assets/ros_assets ]; then
+            echo "submodules/CL_Assets was not initialized correctly" >&2
+            exit 1
+          fi
 
           python3 - <<'PY'
           from pathlib import Path
 
           path = Path('pyproject.toml')
           text = path.read_text()
-          old = '[tool.uv.workspace]\nmembers = [\n    "submodules/unitree_sdk2_python",\n]'
-          new = '[tool.uv.workspace]\nmembers = [\n    "../../../unitree_sdk2_python",\n]'
-          if old in text:
-              path.write_text(text.replace(old, new))
-          elif new not in text:
+          main = '[tool.uv.workspace]\nmembers = [\n    "../../../unitree_sdk2_python",\n]'
+          dev = '[tool.uv.workspace]\nmembers = [\n    "submodules/unitree_sdk2_python",\n]'
+          if main in text:
+              path.write_text(text.replace(main, dev))
+          elif dev not in text:
               raise SystemExit('Expected [tool.uv.workspace] members block was not found')
 
           path = Path('README.md')
           text = path.read_text()
-          old = (
-              '- Download both dependencies under `submodules/` by initializing git submodules:\n\n'
-              '  ```bash\n'
-              '  git submodule update --init --recursive\n'
-              '  ```'
-          )
-          new = (
+          main = (
               '- The `main` branch is meant to be compatible with '
               '[HAMS](https://github.com/correlllab/HAMS), '
               'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
@@ -102,16 +98,20 @@ jobs:
               '- The [dev branch](https://github.com/correlllab/h12_ros2_controller/tree/dev) '
               'is for local testing.'
           )
-          if old in text:
-              path.write_text(text.replace(old, new))
-          elif new not in text:
-              raise SystemExit('Expected README submodule installation block was not found')
+          dev = (
+              '- Download both dependencies under `submodules/` by initializing git submodules:\n\n'
+              '  ```bash\n'
+              '  git submodule update --init --recursive\n'
+              '  ```'
+          )
+          if main in text:
+              path.write_text(text.replace(main, dev))
 
           path = Path('h12_ros2_controller/utility/path_definition.py')
           lines = path.read_text().splitlines()
           for index, line in enumerate(lines):
               if line.startswith('ASSETS_PATH = '):
-                  lines[index] = "ASSETS_PATH = '/home/code/CL_Assets'"
+                  lines[index] = "ASSETS_PATH = str(PROJECT_ROOT / 'submodules' / 'CL_Assets')"
                   break
           else:
               raise SystemExit('Expected ASSETS_PATH definition was not found')
@@ -121,11 +121,11 @@ jobs:
           uv sync
           uv export --format requirements-txt --no-hashes -o requirements.txt
 
-          git add -A
+          git add -A .gitmodules submodules/unitree_sdk2_python submodules/CL_Assets pyproject.toml uv.lock requirements.txt README.md h12_ros2_controller/utility/path_definition.py
           if git diff --cached --quiet; then
-            echo "No changes to commit on main."
+            echo "No changes to commit on dev."
             exit 0
           fi
 
-          git commit -m "Sync dev to main" -m "Source-dev: ${source_dev}"
-          git push --force-with-lease origin HEAD:main
+          git commit -m "Sync main to dev" -m "Source-main: ${source_main}"
+          git push --force-with-lease origin HEAD:dev
