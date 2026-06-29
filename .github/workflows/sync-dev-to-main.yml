@@ -46,9 +46,6 @@ jobs:
           set -euo pipefail
           source_dev="$(git rev-parse HEAD)"
 
-          # GitHub-hosted runners do not have SSH credentials for submodules.
-          git config -f .gitmodules submodule.submodules/unitree_sdk2_python.url https://github.com/Oya-Tomo/unitree_sdk2_python.git
-          git config -f .gitmodules submodule.submodules/CL_Assets.url https://github.com/correlllab/CL_Assets.git
           git submodule sync --recursive
           git submodule update --init --recursive submodules/unitree_sdk2_python
 
