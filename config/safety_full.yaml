@@ -82,7 +82,7 @@ limits:
     velocity_ratio: 0.10
     torque_ratio: 0.60
   estop:
-    position_offset: 0.0001
+    position_offset: 0.0
     velocity_ratio:
       - 0.30 # torso_joint
       - 0.60 # left_shoulder_pitch_joint
