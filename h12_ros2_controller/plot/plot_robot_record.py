@@ -226,7 +226,7 @@ def plot_com_zmp_loop(robot_model, data):
         robot_model.update_kinematics(imu_quat=imu_quat)
 
         # get positions
-        com_pos = com_arr[frame_idx] if com_arr is not None else robot_model.get_com()
+        com_pos = com_arr[frame_idx] if com_arr is not None else robot_model.dynamics.get_com()
         zmp_pos = zmp_arr[frame_idx]
         left_foot_pos = robot_model.get_frame_position('left_ankle_roll_link')
         right_foot_pos = robot_model.get_frame_position('right_ankle_roll_link')

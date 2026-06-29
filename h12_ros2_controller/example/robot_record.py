@@ -32,8 +32,8 @@ def main(save_path):
 
             # record state information
             state_arr.append(robot_model.state)
-            com_arr.append(robot_model.get_com())
-            zmp_arr.append(robot_model.get_zmp())
+            com_arr.append(robot_model.dynamics.get_com())
+            zmp_arr.append(robot_model.dynamics.get_zmp())
 
             time.sleep(0.01)
 

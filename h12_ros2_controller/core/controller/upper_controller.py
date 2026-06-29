@@ -326,7 +326,7 @@ class UpperController:
             self._steady_tau_bias_limit,
         )
 
-        tau_gravity = self.robot_model.get_gravity_compensation(
+        tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
             self.robot_model.state['q']
         )
         tau_cmd = tau_gravity + self._steady_tau_bias
@@ -342,8 +342,8 @@ class UpperController:
 
     def _limit_joint_vel(self, vel):
         # get end effector twist
-        twist_left = self.robot_model.compute_frame_twist(self.left_ee_name, vel)
-        twist_right = self.robot_model.compute_frame_twist(self.right_ee_name, vel)
+        twist_left = self.robot_model.dynamics.compute_frame_twist(self.left_ee_name, vel)
+        twist_right = self.robot_model.dynamics.compute_frame_twist(self.right_ee_name, vel)
         # compute end effector velocity and angular velocity
         v_left, w_left = twist_left[:3], twist_left[3:]
         v_right, w_right = twist_right[:3], twist_right[3:]
@@ -375,7 +375,7 @@ class UpperController:
 
     def _apply_joint_position(self, q):
         # get gravity compensation torque
-        tau = self.robot_model.get_gravity_compensation(self.robot_model.state['q'])
+        tau = self.robot_model.dynamics.get_gravity_compensation(self.robot_model.state['q'])
         dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(q, dq, tau)
 

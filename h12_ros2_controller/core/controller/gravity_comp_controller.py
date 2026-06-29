@@ -49,8 +49,8 @@ class GravityCompController(UpperController):
         self.damp_mode(6.0)
 
     def gravity_compensation_step(self):
-        left_wrench = self.robot_model.get_frame_wrench(self.left_ee_name)
-        right_wrench = self.robot_model.get_frame_wrench(self.right_ee_name)
+        left_wrench = self.robot_model.dynamics.get_frame_wrench(self.left_ee_name)
+        right_wrench = self.robot_model.dynamics.get_frame_wrench(self.right_ee_name)
         left_force = np.linalg.norm(left_wrench[:3])
         right_force = np.linalg.norm(right_wrench[:3])
         left_torque = np.linalg.norm(left_wrench[3:])

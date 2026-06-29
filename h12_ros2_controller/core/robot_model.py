@@ -13,7 +13,7 @@ from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.utility.joint_definition import (
     ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
-    FREEFLYER_POS, FREEFLYER_QUAT
+    FREEFLYER_QUAT
 )
 
 class RobotModel:
@@ -411,18 +411,6 @@ class RobotModel:
             for frame_name in self.viz_config.get('wrench_frames', []):
                 self._visualize_wrench(frame_name)
 
-    def get_com(self, q: np.ndarray=None):
-        return self.dynamics.get_com(q)
-
-    def get_com_reduced(self, q_reduced: np.ndarray=None):
-        return self.dynamics.get_com_reduced(q_reduced)
-
-    def get_zmp(self, q: np.ndarray=None):
-        return self.dynamics.get_zmp(q)
-
-    def get_gravity_compensation(self, q: np.ndarray=None, imu_quat=None):
-        return self.dynamics.get_gravity_compensation(q, imu_quat)
-
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
         if q is not None:
@@ -470,35 +458,6 @@ class RobotModel:
     def get_frame_rotation_reduced(self, frame_name: str, q_reduced: np.ndarray=None):
         assert(self.init_reduced), 'Reduced model is not initialized.'
         return self._get_frame_transformation_reduced(frame_name, q_reduced).rotation
-
-    def get_frame_jacobian(self, frame_name: str, q: np.ndarray=None, imu_quat=None):
-        return self.dynamics.get_frame_jacobian(frame_name, q, imu_quat)
-
-    def get_joint_jacobian(self, joint_name: str, q: np.ndarray=None):
-        return self.dynamics.get_joint_jacobian(joint_name, q)
-
-    def get_frame_twist(self, frame_name: str):
-        return self.dynamics.get_frame_twist(frame_name)
-
-    def get_frame_wrench(self, frame_name: str,
-                         q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        return self.dynamics.get_frame_wrench(frame_name, q, tau, imu_quat)
-
-    def get_frame_wrench_damped(self, frame_name: str,
-                                q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        return self.dynamics.get_frame_wrench_damped(frame_name, q, tau, imu_quat)
-
-    def get_motion_compensation(self, q: np.ndarray=None,
-                                dq: np.ndarray=None, imu_quat=None,
-                                ddq: np.ndarray=None):
-        return self.dynamics.get_motion_compensation(q, dq, imu_quat, ddq)
-
-    def get_frame_wrench_raw(self, frame_name: str,
-                             q: np.ndarray=None, tau: np.ndarray=None, imu_quat=None):
-        return self.dynamics.get_frame_wrench_raw(frame_name, q, tau, imu_quat)
-
-    def compute_frame_twist(self, frame_name: str, dq: np.ndarray):
-        return self.dynamics.compute_frame_twist(frame_name, dq)
 
     def check_valid(self, q):
         '''

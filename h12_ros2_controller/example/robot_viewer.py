@@ -29,8 +29,8 @@ def main(show_plot):
 
         # update plot if enabled
         if plot_elements is not None:
-            com_pos = robot_model.get_com()
-            zmp_pos = robot_model.get_zmp()
+            com_pos = robot_model.dynamics.get_com()
+            zmp_pos = robot_model.dynamics.get_zmp()
             left_foot_pos = robot_model.get_frame_position('left_ankle_roll_link')
             right_foot_pos = robot_model.get_frame_position('right_ankle_roll_link')
             update_com_zmp_plot(plot_elements, frame_idx, com_pos, zmp_pos, left_foot_pos, right_foot_pos)

@@ -24,7 +24,7 @@ class ImpedanceController(UpperController):
     def impedance_step(self, x_target):
         # get states in Cartesian space
         x = self.left_ee_position
-        dx = self.robot_model.get_frame_twist(self.left_ee_name)[0:3]
+        dx = self.robot_model.dynamics.get_frame_twist(self.left_ee_name)[0:3]
 
         # spring damper
         kp = np.array([100.0, 100.0, 100.0])
@@ -33,7 +33,7 @@ class ImpedanceController(UpperController):
         F = kp * (x_target - x) + kd * (-dx)
 
         # inverse dynamics using model_body
-        J_left = self.robot_model.get_frame_jacobian(self.left_ee_name)
+        J_left = self.robot_model.dynamics.get_frame_jacobian(self.left_ee_name)
         tau = J_left.T @ np.concatenate([F, np.zeros(3)])
         tau_gravity = pin.computeGeneralizedGravity(
             self.robot_model.model_body,

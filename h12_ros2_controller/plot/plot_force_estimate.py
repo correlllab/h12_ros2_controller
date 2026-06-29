@@ -97,9 +97,9 @@ def main(save_folder):
             now = time.time() - start_time
 
             for joint_name in joint_names:
-                wrench_robust = robot_model.get_frame_wrench(joint_name)
-                wrench_damped = robot_model.get_frame_wrench_damped(joint_name)
-                wrench_raw = robot_model.get_frame_wrench_raw(joint_name)
+                wrench_robust = robot_model.dynamics.get_frame_wrench(joint_name)
+                wrench_damped = robot_model.dynamics.get_frame_wrench_damped(joint_name)
+                wrench_raw = robot_model.dynamics.get_frame_wrench_raw(joint_name)
 
                 recorded[joint_name]['force_robust'].append(wrench_robust[:3].copy())
                 recorded[joint_name]['force_damped'].append(wrench_damped[:3].copy())
@@ -111,7 +111,7 @@ def main(save_folder):
             time_s.append(now)
 
             if frame_idx % 100 == 0:
-                jac = robot_model.get_frame_jacobian(joint_names[0])
+                jac = robot_model.dynamics.get_frame_jacobian(joint_names[0])
                 cond_num = np.linalg.cond(jac)
                 print(f'frame={frame_idx:6d} cond({joint_names[0]})={cond_num:.2f}')
 

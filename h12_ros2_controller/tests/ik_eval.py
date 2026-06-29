@@ -385,7 +385,7 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
         # post-step captures
         q_cmd_full = np.copy(controller.ik_solver.q)
         tau_cmd_full = np.copy(
-            controller.robot_model.get_gravity_compensation(pre_state['q'])
+            controller.robot_model.dynamics.get_gravity_compensation(pre_state['q'])
         )
         err = controller.get_frame_task_error(task_name)
         ee_actual = np.concatenate([
@@ -402,7 +402,7 @@ def _run_single_trial(controller: FrameController, case_cfg: dict,
                       + kp_gains * (q_cmd_full - pre_state['q'])
                       - kd_gains * dq_actual)
 
-        twist = controller.robot_model.compute_frame_twist(frame, dq_actual)
+        twist = controller.robot_model.dynamics.compute_frame_twist(frame, dq_actual)
 
         rec.push(
             t=np.array([step * dt]),

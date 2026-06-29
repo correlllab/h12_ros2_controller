@@ -60,7 +60,7 @@ def record_linear_motion(robot_model,
         # command positional control with gravity compensation
         command_publisher.q[joint_idx] = q_target
         command_publisher.tau[joint_idx] = (
-            robot_model.get_gravity_compensation()[joint_idx]
+            robot_model.dynamics.get_gravity_compensation()[joint_idx]
         )
 
         # record state
@@ -70,7 +70,7 @@ def record_linear_motion(robot_model,
     # fix on final state
     command_publisher.q[joint_idx] = q_end
     command_publisher.dq[joint_idx] = 0.0
-    command_publisher.tau[joint_idx] = robot_model.get_gravity_compensation()[joint_idx]
+    command_publisher.tau[joint_idx] = robot_model.dynamics.get_gravity_compensation()[joint_idx]
 
     return state_arr
 
@@ -89,7 +89,7 @@ def record_static_motion(robot_model,
         start_time = time.time()
         # command gravity compensation only
         command_publisher.tau[joint_idx] = (
-            robot_model.get_gravity_compensation()[joint_idx]
+            robot_model.dynamics.get_gravity_compensation()[joint_idx]
         )
 
         # record state

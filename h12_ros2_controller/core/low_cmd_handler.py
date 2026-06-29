@@ -236,7 +236,7 @@ class LowCmdHandler:
     def _record_state(self):
         if self._recording:
             # record center of mass
-            com = self._robot_model.get_com()
+            com = self._robot_model.dynamics.get_com()
             # get values for upper body joints only
             state = self._robot_model.state
             q = state['q'][self._record_ids]
