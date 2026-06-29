@@ -84,37 +84,37 @@ limits:
   estop:
     position_offset: 0.0001
     velocity_ratio:
-      - 0.20 # torso_joint
-      - 0.50 # left_shoulder_pitch_joint
-      - 0.50 # left_shoulder_roll_joint
-      - 0.50 # left_shoulder_yaw_joint
-      - 0.30 # left_elbow_joint
-      - 0.30 # left_wrist_roll_joint
-      - 0.30 # left_wrist_pitch_joint
-      - 0.30 # left_wrist_yaw_joint
-      - 0.50 # right_shoulder_pitch_joint
-      - 0.50 # right_shoulder_roll_joint
-      - 0.50 # right_shoulder_yaw_joint
-      - 0.30 # right_elbow_joint
-      - 0.30 # right_wrist_roll_joint
-      - 0.30 # right_wrist_pitch_joint
-      - 0.30 # right_wrist_yaw_joint
+      - 0.30 # torso_joint
+      - 0.60 # left_shoulder_pitch_joint
+      - 0.60 # left_shoulder_roll_joint
+      - 0.60 # left_shoulder_yaw_joint
+      - 0.60 # left_elbow_joint
+      - 0.60 # left_wrist_roll_joint
+      - 0.60 # left_wrist_pitch_joint
+      - 0.60 # left_wrist_yaw_joint
+      - 0.60 # right_shoulder_pitch_joint
+      - 0.60 # right_shoulder_roll_joint
+      - 0.60 # right_shoulder_yaw_joint
+      - 0.60 # right_elbow_joint
+      - 0.60 # right_wrist_roll_joint
+      - 0.60 # right_wrist_pitch_joint
+      - 0.60 # right_wrist_yaw_joint
     torque_ratio:
-      - 0.20 # torso_joint
-      - 0.80 # left_shoulder_pitch_joint
-      - 0.80 # left_shoulder_roll_joint
-      - 0.80 # left_shoulder_yaw_joint
-      - 0.80 # left_elbow_joint
-      - 0.50 # left_wrist_roll_joint
-      - 0.50 # left_wrist_pitch_joint
-      - 0.50 # left_wrist_yaw_joint
-      - 0.80 # right_shoulder_pitch_joint
-      - 0.80 # right_shoulder_roll_joint
-      - 0.80 # right_shoulder_yaw_joint
-      - 0.80 # right_elbow_joint
-      - 0.50 # right_wrist_roll_joint
-      - 0.50 # right_wrist_pitch_joint
-      - 0.50 # right_wrist_yaw_joint
+      - 0.30 # torso_joint
+      - 0.95 # left_shoulder_pitch_joint
+      - 0.95 # left_shoulder_roll_joint
+      - 0.95 # left_shoulder_yaw_joint
+      - 0.95 # left_elbow_joint
+      - 0.95 # left_wrist_roll_joint
+      - 0.95 # left_wrist_pitch_joint
+      - 0.95 # left_wrist_yaw_joint
+      - 0.95 # right_shoulder_pitch_joint
+      - 0.95 # right_shoulder_roll_joint
+      - 0.95 # right_shoulder_yaw_joint
+      - 0.95 # right_elbow_joint
+      - 0.95 # right_wrist_roll_joint
+      - 0.95 # right_wrist_pitch_joint
+      - 0.95 # right_wrist_yaw_joint
 
 logging:
   enabled: false
