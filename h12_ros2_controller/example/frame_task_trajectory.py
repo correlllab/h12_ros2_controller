@@ -18,9 +18,9 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.path_definition import (
     PROJECT_ROOT,
-    URDF_HANDLESS_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
 )
 
 
@@ -128,10 +128,10 @@ def init_frame_controller(config_name, visualize=True):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     controller = FrameController(
-        URDF_HANDLESS_PATH,
-        URDF_HANDLESS_SPHERE_PATH,
-        SRDF_HANDLESS_SPHERE_PATH,
-        handless=True,
+        URDF_MAGPIE_PATH,
+        URDF_MAGPIE_SPHERE_PATH,
+        SRDF_MAGPIE_SPHERE_PATH,
+        handless=False,
         visualize=visualize,
         config=config,
     )

@@ -8,11 +8,11 @@
 # when you deliberately want to bypass the safety layer (sim only).
 
 controller_config: safety_split.yaml    # resolved by load_controller_config
-handless: true
+handless: false
 urdf:
-  body: assets/h1_2/h1_2_handless.urdf
-  sphere: assets/h1_2/h1_2_handless_sphere.urdf
-  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+  body: assets/h1_2/h1_2_magpie.urdf
+  sphere: assets/h1_2/h1_2_magpie_sphere.urdf
+  srdf: assets/h1_2/h1_2_magpie_sphere_collision.srdf
 
 home: home                        # named_config key, or list of 14 floats
 home_settle_timeout: 6.0          # s to reach home

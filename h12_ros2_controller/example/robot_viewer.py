@@ -6,12 +6,12 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
+from h12_ros2_controller.utility.path_definition import URDF_MAGPIE_PATH
 from h12_ros2_controller.plot.plot_robot_record import create_com_zmp_plot, update_com_zmp_plot
 
 def main(show_plot):
     init_channel_factory_from_env()
-    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
+    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
     robot_model.init_visualizer()
     robot_model.config_visualizer(show_sensors=True, show_com=True, show_zmp=True)
     robot_model.init_subscriber()

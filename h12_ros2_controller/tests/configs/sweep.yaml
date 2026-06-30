@@ -16,11 +16,11 @@
 # based on 20260430_134950_sweep_real analysis (lowest null-space oscillation).
 
 controller_config: safety_split.yaml
-handless: true
+handless: false
 urdf:
-  body: assets/h1_2/h1_2_handless.urdf
-  sphere: assets/h1_2/h1_2_handless_sphere.urdf
-  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+  body: assets/h1_2/h1_2_magpie.urdf
+  sphere: assets/h1_2/h1_2_magpie_sphere.urdf
+  srdf: assets/h1_2/h1_2_magpie_sphere_collision.srdf
 
 home: home
 home_settle_timeout: 6.0

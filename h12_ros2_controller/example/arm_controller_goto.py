@@ -13,9 +13,9 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import (
-    URDF_HANDLESS_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
 )
 
 def input_keyword_or_poses():
@@ -71,10 +71,10 @@ def main(config_name='debug.yaml'):
     # initialize channel factory
     initialize_channel_factory(config)
     # initialize arm controller
-    arm_controller = ArmController(URDF_HANDLESS_PATH,
-                                   URDF_HANDLESS_SPHERE_PATH,
-                                   SRDF_HANDLESS_SPHERE_PATH,
-                                   handless=True,
+    arm_controller = ArmController(URDF_MAGPIE_PATH,
+                                   URDF_MAGPIE_SPHERE_PATH,
+                                   SRDF_MAGPIE_SPHERE_PATH,
+                                   handless=False,
                                    visualize=True,
                                    config=config)
     maybe_start_controller_logging(arm_controller)

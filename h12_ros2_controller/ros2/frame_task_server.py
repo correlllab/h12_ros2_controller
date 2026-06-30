@@ -14,9 +14,9 @@ from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 from h12_ros2_controller.utility.path_definition_ros import (
-    URDF_HANDLESS_PIN_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PIN_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
     CONFIG_DIR
 )
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
@@ -55,10 +55,10 @@ class FrameTaskServer(Node):
 
         initialize_channel_factory(config)
         self.controller = FrameController(
-            URDF_HANDLESS_PIN_PATH,
-            URDF_HANDLESS_SPHERE_PATH,
-            SRDF_HANDLESS_SPHERE_PATH,
-            handless=True,
+            URDF_MAGPIE_PIN_PATH,
+            URDF_MAGPIE_SPHERE_PATH,
+            SRDF_MAGPIE_SPHERE_PATH,
+            handless=False,
             visualize=False,
             config=config
         )

@@ -10,6 +10,7 @@ import meshcat.geometry as geo
 import meshcat.transformations as tf
 
 from h12_ros2_controller.core.channel_interface import StateSubscriber
+from h12_ros2_controller.core.robot_dynamics import RobotDynamics
 from h12_ros2_controller.utility.joint_definition import (
     ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
@@ -39,7 +40,6 @@ class RobotModel:
         self._ddq = np.zeros(NUM_MOTOR)
         self._tau = np.zeros(NUM_MOTOR)
 
-        from h12_ros2_controller.core.robot_dynamics import RobotDynamics
         self.dynamics = RobotDynamics(self)
 
         # initialize with zero joint positions
@@ -111,6 +111,7 @@ class RobotModel:
         # process to keep only the body joints
         frozen_joints = set(all_joints) - set(BODY_JOINTS)
         frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
+        frozen_ids = list(dict.fromkeys(frozen_ids))
         model, [collision_model, visual_model] = pin.buildReducedModel(
             model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
         )
@@ -130,6 +131,7 @@ class RobotModel:
         # process to keep only the body joints
         frozen_joints = set(all_joints) - set(BODY_JOINTS)
         frozen_ids = [model.getJointId(joint_name) for joint_name in frozen_joints]
+        frozen_ids = list(dict.fromkeys(frozen_ids))
         model, [collision_model, visual_model] = pin.buildReducedModel(
             model, [collision_model, visual_model], frozen_ids, np.zeros(model.nq)
         )

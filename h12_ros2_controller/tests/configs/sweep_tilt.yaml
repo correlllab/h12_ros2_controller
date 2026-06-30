@@ -3,11 +3,11 @@
 # Verify in simulation first with the sim runner or offline feasibility check before using the server runner.
 
 controller_config: safety_split.yaml
-handless: true
+handless: false
 urdf:
-  body: assets/h1_2/h1_2_handless.urdf
-  sphere: assets/h1_2/h1_2_handless_sphere.urdf
-  srdf: assets/h1_2/h1_2_handless_sphere_collision.srdf
+  body: assets/h1_2/h1_2_magpie.urdf
+  sphere: assets/h1_2/h1_2_magpie_sphere.urdf
+  srdf: assets/h1_2/h1_2_magpie_sphere_collision.srdf
 
 home: home
 home_settle_timeout: 8.0

@@ -6,16 +6,16 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.path_definition import (
-    URDF_HANDLESS_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
 )
 
 def main():
-    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
+    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
     robot_model.init_visualizer()
-    robot_model.init_collision_model(URDF_HANDLESS_SPHERE_PATH,
-                                     SRDF_HANDLESS_SPHERE_PATH)
+    robot_model.init_collision_model(URDF_MAGPIE_SPHERE_PATH,
+                                     SRDF_MAGPIE_SPHERE_PATH)
 
     while True:
         # sample random q (motor-only, 27)

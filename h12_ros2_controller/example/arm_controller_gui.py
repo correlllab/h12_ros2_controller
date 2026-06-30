@@ -9,19 +9,19 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 from h12_ros2_controller.utility.path_definition import (
-    URDF_HANDLESS_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
 )
 
 def main(config_name='debug.yaml'):
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
     # example usage
-    arm_controller = ArmController(URDF_HANDLESS_PATH,
-                                   URDF_HANDLESS_SPHERE_PATH,
-                                   SRDF_HANDLESS_SPHERE_PATH,
-                                   handless=True,
+    arm_controller = ArmController(URDF_MAGPIE_PATH,
+                                   URDF_MAGPIE_SPHERE_PATH,
+                                   SRDF_MAGPIE_SPHERE_PATH,
+                                   handless=False,
                                    visualize=True,
                                    config=config)
     arm_controller.left_ee_target_pose = [0.3, 0.2, 0.1, 0.0, 0.0, 0.0]

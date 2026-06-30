@@ -14,8 +14,8 @@ FREEFLYER_QUAT = slice(3, 7)  # [qx, qy, qz, qw]
 NUM_MOTOR = 27
 NUM_HAND_DOF = 0
 
-# All joints the controller observes. Magpie hinge joints in the URDF are
-# visualization-only (driven by the bridge directly), so this matches BODY_JOINTS.
+# All joints the controller observes. Magpie gripper joints are included so
+# they can be frozen out during model initialization.
 ALL_JOINTS = [
     'left_hip_yaw_joint',
     'left_hip_pitch_joint',
@@ -44,6 +44,28 @@ ALL_JOINTS = [
     'right_wrist_roll_joint',
     'right_wrist_pitch_joint',
     'right_wrist_yaw_joint',
+    'left_grasp_frame_joint',
+    'left_graspgenx_frame_joint',
+    'right_grasp_frame_joint',
+    'right_graspgenx_frame_joint',
+    'lg_mount_joint',
+    'lg_base_bot_joint',
+    'lg_base_top_joint',
+    'lg_left_hinge_1',
+    'lg_left_hinge_2',
+    'lg_left_hinge_3',
+    'lg_right_hinge_1',
+    'lg_right_hinge_2',
+    'lg_right_hinge_3',
+    'rg_mount_joint',
+    'rg_base_bot_joint',
+    'rg_base_top_joint',
+    'rg_left_hinge_1',
+    'rg_left_hinge_2',
+    'rg_left_hinge_3',
+    'rg_right_hinge_1',
+    'rg_right_hinge_2',
+    'rg_right_hinge_3',
 ]
 
 ALL_HANDLESS_JOINTS = [

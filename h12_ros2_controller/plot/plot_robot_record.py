@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
+from h12_ros2_controller.utility.path_definition import URDF_MAGPIE_PATH
 
 def create_com_zmp_plot(num_frames=None, window_size=500):
     '''
@@ -252,7 +252,7 @@ def main(load_path):
         return
 
     # initialize robot model (no visualizer needed)
-    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
+    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
     print(f'Plotting from: {load_path}')
 
     # run plot loop

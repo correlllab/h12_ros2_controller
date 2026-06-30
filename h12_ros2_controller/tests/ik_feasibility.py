@@ -23,9 +23,9 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 
 # ── model paths (same as sweep.yaml) ─────────────────────────────────────────
-_URDF       = str(REPO_ROOT / 'assets/h1_2/h1_2_handless.urdf')
-_URDF_SPHERE = str(REPO_ROOT / 'assets/h1_2/h1_2_handless_sphere.urdf')
-_SRDF       = str(REPO_ROOT / 'assets/h1_2/h1_2_handless_sphere_collision.srdf')
+_URDF       = str(REPO_ROOT / 'assets/h1_2/h1_2_magpie.urdf')
+_URDF_SPHERE = str(REPO_ROOT / 'assets/h1_2/h1_2_magpie_sphere.urdf')
+_SRDF       = str(REPO_ROOT / 'assets/h1_2/h1_2_magpie_sphere_collision.srdf')
 
 # ── IK convergence thresholds (match sweep.yaml) ─────────────────────────────
 _LIN_THRESH = 5e-3   # m
@@ -68,7 +68,7 @@ CANDIDATES = [
 
 
 def _build_model():
-    rm = RobotModel(_URDF, handless=True)
+    rm = RobotModel(_URDF, handless=False)
     rm.init_reduced_model(ENABLED_JOINTS)
     rm.init_collision_model(_URDF_SPHERE, _SRDF)
     return rm

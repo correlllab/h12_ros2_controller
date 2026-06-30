@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
-from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
+from h12_ros2_controller.utility.path_definition import URDF_MAGPIE_PATH
 
 
 def create_overlay_plot(time_s, joint_name, joint_data, quantity, output_path):
@@ -63,7 +63,7 @@ def create_overlay_plot(time_s, joint_name, joint_data, quantity, output_path):
 def main(save_folder):
     init_channel_factory_from_env()
     joint_names = ['left_wrist_yaw_link', 'right_wrist_yaw_link']
-    robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
+    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
     robot_model.init_visualizer()
     robot_model.config_visualizer(show_sensors=True, show_com=False, show_zmp=False)
     robot_model.init_subscriber()

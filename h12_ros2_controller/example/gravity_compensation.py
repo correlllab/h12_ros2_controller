@@ -7,19 +7,19 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
 from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
 from h12_ros2_controller.utility.path_definition import (
-    URDF_HANDLESS_PATH,
-    URDF_HANDLESS_SPHERE_PATH,
-    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_MAGPIE_PATH,
+    URDF_MAGPIE_SPHERE_PATH,
+    SRDF_MAGPIE_SPHERE_PATH,
 )
 
 def main(config_name='debug.yaml'):
     print('Initializing GravityCompController...')
     config= load_controller_config(config_name)
     initialize_channel_factory(config)
-    gravity_comp_controller = GravityCompController(URDF_HANDLESS_PATH,
-                                                    URDF_HANDLESS_SPHERE_PATH,
-                                                    SRDF_HANDLESS_SPHERE_PATH,
-                                                    handless=True,
+    gravity_comp_controller = GravityCompController(URDF_MAGPIE_PATH,
+                                                    URDF_MAGPIE_SPHERE_PATH,
+                                                    SRDF_MAGPIE_SPHERE_PATH,
+                                                    handless=False,
                                                     visualize=False,
                                                     config=config)
 
