@@ -21,6 +21,7 @@ def main(config_name='debug.yaml'):
     arm_controller = ArmController(URDF_MAGPIE_PATH,
                                    URDF_MAGPIE_SPHERE_PATH,
                                    SRDF_MAGPIE_SPHERE_PATH,
+                                   init=True,
                                    handless=False,
                                    visualize=True,
                                    config=config)

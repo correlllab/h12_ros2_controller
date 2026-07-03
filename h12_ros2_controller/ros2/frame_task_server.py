@@ -58,9 +58,10 @@ class FrameTaskServer(Node):
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
             SRDF_MAGPIE_SPHERE_PATH,
+            init=True,
             handless=False,
             visualize=False,
-            config=config
+            config=config,
         )
 
         # publisher publishing frame names and target poses

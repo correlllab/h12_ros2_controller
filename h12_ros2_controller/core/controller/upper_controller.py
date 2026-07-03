@@ -21,6 +21,7 @@ class UpperController:
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
+                 init: bool=True,
                  handless: bool=False,
                  visualize=False,
                  config=None):
@@ -80,8 +81,9 @@ class UpperController:
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
 
-        # move arms home before rotating torso to avoid hand/hip scraping
-        self._startup_routine(NAMED_CONFIGS['home'], torso_init, self.torso_target)
+        if init:
+            # move arms home before rotating torso to avoid hand/hip scraping
+            self._startup_routine(NAMED_CONFIGS['home'], torso_init, self.torso_target)
 
     def _startup_routine(self, config_init, torso_init, torso_target):
         self._move_to_reduced_configuration(config_init)

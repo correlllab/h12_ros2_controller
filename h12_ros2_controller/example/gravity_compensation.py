@@ -19,6 +19,7 @@ def main(config_name='debug.yaml'):
     gravity_comp_controller = GravityCompController(URDF_MAGPIE_PATH,
                                                     URDF_MAGPIE_SPHERE_PATH,
                                                     SRDF_MAGPIE_SPHERE_PATH,
+                                                    init=True,
                                                     handless=False,
                                                     visualize=False,
                                                     config=config)

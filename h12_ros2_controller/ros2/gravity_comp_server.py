@@ -21,6 +21,7 @@ class GravityCompServer(Node):
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
             SRDF_MAGPIE_SPHERE_PATH,
+            init=True,
             dt=dt,
             visualize=False,
             sport_mode=False,

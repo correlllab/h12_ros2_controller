@@ -686,6 +686,7 @@ def run(args):
         urdf_path=urdf['body'],
         urdf_sphere_path=urdf['sphere'],
         srdf_sphere_path=urdf['srdf'],
+        init=True,
         handless=bool(test_cfg.get('handless', False)),
         visualize=bool(args.visualize),
         config=controller_cfg,

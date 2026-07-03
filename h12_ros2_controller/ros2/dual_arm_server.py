@@ -59,9 +59,10 @@ class DualArmServer(Node):
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
             SRDF_MAGPIE_SPHERE_PATH,
+            init=True,
             handless=False,
             visualize=False,
-            config=config
+            config=config,
         )
         maybe_start_controller_logging(self.controller)
 

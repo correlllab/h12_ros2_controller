@@ -131,6 +131,7 @@ def init_frame_controller(config_name, visualize=True):
         URDF_MAGPIE_PATH,
         URDF_MAGPIE_SPHERE_PATH,
         SRDF_MAGPIE_SPHERE_PATH,
+        init=True,
         handless=False,
         visualize=visualize,
         config=config,

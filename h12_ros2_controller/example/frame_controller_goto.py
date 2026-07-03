@@ -71,6 +71,7 @@ def main(com=False,
     frame_controller = FrameController(URDF_MAGPIE_PATH,
                                        URDF_MAGPIE_SPHERE_PATH,
                                        SRDF_MAGPIE_SPHERE_PATH,
+                                       init=True,
                                        handless=False,
                                        visualize=True,
                                        config=config)

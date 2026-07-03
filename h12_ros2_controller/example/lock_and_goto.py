@@ -14,7 +14,14 @@ from h12_ros2_controller.utility.path_definition import (
     SRDF_MAGPIE_SPHERE_PATH,
 )
 
-def save(config_name='debug.yaml'):
+DEFAULT_CONFIGURATION_NAME = 'h12_configuration.npy'
+
+def configuration_path(name):
+    if not name.endswith('.npy'):
+        name = f'{name}.npy'
+    return os.path.join('./data', name)
+
+def save(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing RobotModel...')
@@ -23,42 +30,47 @@ def save(config_name='debug.yaml'):
     robot_model.init_subscriber(low_state_topic=low_state_topic)
     time.sleep(3.0)
     robot_model.update_kinematics()
-    print('Saving current configuration...')
+    path = configuration_path(name)
+    print(f'Saving current configuration to {path}...')
     q = robot_model.state['q']
-    np.save('./data/h12_configuration.npy', q)
+    np.save(path, q)
 
-def lock(config_name='debug.yaml'):
+def lock(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing UpperController...')
     upper_controller = UpperController(URDF_MAGPIE_PATH,
                                        URDF_MAGPIE_SPHERE_PATH,
                                        SRDF_MAGPIE_SPHERE_PATH,
+                                       init=False,
                                        handless=False,
                                        visualize=True,
                                        config=config)
 
     print('Lock robot in current configuration')
     q = upper_controller.robot_model.state['q']
-    np.save('./data/h12_configuration.npy', q)
+    path = configuration_path(name)
+    np.save(path, q)
 
     while True:
         upper_controller.lock_configuration(q)
         time.sleep(upper_controller.dt)
 
-def goto(config_name='debug.yaml'):
+def goto(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     initialize_channel_factory(config)
     print('Initializing UpperController...')
     upper_controller = UpperController(URDF_MAGPIE_PATH,
                                        URDF_MAGPIE_SPHERE_PATH,
                                        SRDF_MAGPIE_SPHERE_PATH,
+                                       init=False,
                                        handless=False,
                                        visualize=True,
                                        config=config)
 
-    print('Goto saved configuration')
-    q = np.load('./data/h12_configuration.npy')
+    path = configuration_path(name)
+    print(f'Goto saved configuration from {path}')
+    q = np.load(path)
 
     while True:
         upper_controller.goto_configuration(q)
@@ -72,12 +84,13 @@ if __name__ == "__main__":
     group.add_argument("--lock", action="store_true", help="Call the lock() function")
     group.add_argument("--goto", action="store_true", help="Call the goto() function")
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--name', type=str, default=DEFAULT_CONFIGURATION_NAME, help='Saved configuration file name under data/')
 
     args = parser.parse_args()
 
     if args.lock:
-        lock(config_name=args.config)
+        lock(config_name=args.config, name=args.name)
     elif args.goto:
-        goto(config_name=args.config)
+        goto(config_name=args.config, name=args.name)
     elif args.save:
-        save(config_name=args.config)
+        save(config_name=args.config, name=args.name)
