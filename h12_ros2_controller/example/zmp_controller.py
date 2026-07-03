@@ -3,36 +3,60 @@ import sys
 import time
 import argparse
 
-sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
+REPO_ROOT = os.path.abspath(
+    os.path.join(__file__, '../../..')
+)
+sys.path.append(REPO_ROOT)
 
-from h12_ros2_controller.core.controller.zmp_controller import ZmpController
-from h12_ros2_controller.utility.controller_config import (
+from h12_ros2_controller.core.controller.zmp import (  # noqa: E402
+    format_vector,
+)
+from h12_ros2_controller.core.controller.zmp_controller import (  # noqa: E402
+    ZmpController,
+)
+from h12_ros2_controller.utility.controller_config import (  # noqa: E402
     load_controller_config,
     initialize_channel_factory,
     maybe_start_controller_logging,
 )
 
 
-def print_zmp_status(controller):
-    print(f'zmp: {controller.latest_zmp}')
-    print(f'zmp target: {controller.latest_zmp_target}')
-    print(f'zmp error: {controller.latest_zmp_error}')
-    print(f'momentum target: {controller.latest_momentum_target}')
-    plan = controller.latest_plan
-    if plan is None:
-        print('no momentum plan generated')
-        return
-    print(f'solved: {plan.solved}')
-    print(f'cost: {plan.solver.cost:.6f}')
-    print(f'iterations: {plan.solver.iter}')
+def format_array(value):
+    if value is None:
+        return 'None'
+    return format_vector(value)
 
 
-def main(config_name='balance_debug.yaml', status_interval=1.0):
+def print_status(controller, last_summary):
+    perturbation = controller.latest_perturbation_state
+
+    active = False if perturbation is None else perturbation.active
+    reasons = [] if perturbation is None else perturbation.reasons
+    reason_text = ','.join(reasons) if reasons else '-'
+    target = format_array(controller.latest_target_momentum)
+    print(
+        f'active={active} reasons={reason_text} target={target} '
+        f'actuator={controller.latest_actuator_state} '
+        f'plan_idx={controller.latest_actuator_plan_index} '
+        f'response={controller.latest_response_status} '
+        f'raw_norm={controller.latest_raw_command_norm:.3f} '
+        f'applied_norm={controller.latest_applied_command_norm:.3f} '
+        f'plan_dt={controller.latest_plan_duration:.3f}s'
+    )
+
+    summary = controller.latest_response_summary
+    if summary and summary != last_summary:
+        print(f'  {summary}')
+        return summary
+    return last_summary
+
+
+def main(config_name='balance_safety_split.yaml', status_interval=1.0):
     config = load_controller_config(config_name)
-    config.setdefault('momentum_ddp', {})['enabled'] = True
     config.setdefault('zmp', {})['enabled'] = True
 
     initialize_channel_factory(config)
+
     controller = ZmpController(
         'assets/h1_2/h1_2_handless.urdf',
         'assets/h1_2/h1_2_handless_sphere.urdf',
@@ -43,27 +67,22 @@ def main(config_name='balance_debug.yaml', status_interval=1.0):
     )
     maybe_start_controller_logging(controller)
 
-    print('ZMP controller ready')
-    print('running continuously; press ctrl-c to stop')
+    print('ZMP balance controller ready')
+    print(f'config: {config_name}')
+    print('press Ctrl-C to stop')
 
+    next_status_time = 0.0
+    last_summary = ''
     try:
-        next_status_time = 0.0
         while True:
             start_time = time.time()
-            previous_plan = controller.latest_plan
-            controller.execute_zmp_step()
-            if controller.latest_plan is not previous_plan:
-                print_zmp_status(controller)
-                print()
+            controller.control_step_reduced()
+
+            if start_time >= next_status_time:
+                last_summary = print_status(controller, last_summary)
                 next_status_time = start_time + status_interval
-            elif start_time >= next_status_time:
-                print_zmp_status(controller)
-                print()
-                next_status_time = start_time + status_interval
-            time.sleep(max(
-                0.0,
-                controller.dt - (time.time() - start_time),
-            ))
+
+            time.sleep(max(0.0, controller.dt - (time.time() - start_time)))
     except KeyboardInterrupt:
         print()
         print('interrupted')
@@ -76,11 +95,11 @@ def main(config_name='balance_debug.yaml', status_interval=1.0):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Interactive ZMP controller demo'
+        description='ZMP balance controller runner'
     )
     parser.add_argument('--config',
                         type=str,
-                        default='balance_debug.yaml',
+                        default='balance_safety_split.yaml',
                         help='YAML file name under config/')
     parser.add_argument('--status-interval',
                         type=float,
@@ -88,4 +107,7 @@ if __name__ == '__main__':
                         help='Seconds between status prints')
     args = parser.parse_args()
 
-    main(config_name=args.config, status_interval=args.status_interval)
+    main(
+        config_name=args.config,
+        status_interval=args.status_interval,
+    )

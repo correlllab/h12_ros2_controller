@@ -35,21 +35,72 @@ momentum_ddp:
 
 zmp:
   enabled: false
-  response_time: 0.25
-  min_error: 0.005
-  support_offset:
-    - 0.0
-    - 0.0
-  k_zmp:
-    - 0.5
-    - 0.5
-  k_com_velocity:
-    - 0.0
-    - 0.0
-  max_momentum:
-    - 4.0
-    - 4.0
-    - 0.0
+  mode: both_arm_balance
+  assist_arm: right
+  thresholds:
+    zmp_error: 0.02
+    support_margin: 0.03
+    center_shift: 0.03
+    com_velocity: 0.08
+    angular_velocity: 0.15
+    angular_acceleration: 1.0
+    force_proxy: 20.0
+  target:
+    response_time: 0.10
+    max_momentum:
+      - 1.0
+      - 1.0
+      - 0.0
+  hysteresis:
+    enter_cycles: 2
+    exit_cycles: 5
+  observer:
+    center_reference_alpha: 0.02
+    angular_acceleration_alpha: 0.35
+    com_acceleration_alpha: 0.20
+    support_offset:
+      - 0.0
+      - 0.0
+    support_half_extents:
+      - 0.12
+      - 0.06
+  blending:
+    interrupt_ticks: 3
+  execution:
+    limit_ddp_velocity: false
+  gains:
+    zmp:
+      - 1.0
+      - 1.0
+    center:
+      - 0.5
+      - 0.5
+    com_velocity:
+      - 0.4
+      - 0.4
+    angular_acceleration:
+      - 0.0
+      - 0.0
+  allocation:
+    left_weight: 0.5
+    right_weight: 0.5
+  ddp:
+    hold_duration: 0.0
+    momentum_duration: 0.24
+    return_duration: 0.32
+    return_timeout: 0.6
+    min_replan_interval: 0.06
+    maxiter: 2
+    w_momentum: 100.0
+    w_u: 0.002
+    w_limit: 100.0
+    max_velocity: 8.0
+  solver_failure:
+    allow_single_arm_success: true
+    accept_best_effort: true
+    min_alignment: 0.2
+    min_useful_momentum: 0.1
+    suppressed_warning_interval: 1.0
 
 frequency:
   ctrl_hz: 30
