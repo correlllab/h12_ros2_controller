@@ -1,16 +1,29 @@
 import numpy as np
 
-from h12_ros2_controller.core.controller.momentum_controller import MomentumController
+from h12_ros2_controller.core.controller.upper_controller import (
+    UpperController,
+)
+from h12_ros2_controller.core.controller.zmp import (
+    BalanceActuator,
+    BalanceObserver,
+    MomentumAllocator,
+    MomentumTargetEstimator,
+    PerturbationDetector,
+)
+from h12_ros2_controller.utility.joint_definition import (
+    LEFT_ARM_INDEX,
+    RIGHT_ARM_INDEX,
+)
 
 
-class ZmpController(MomentumController):
+class ZmpController(UpperController):
     def __init__(self,
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
-                 handless: bool=False,
-                 visualize: bool=False,
-                 config: dict=None):
+                 handless: bool = False,
+                 visualize: bool = False,
+                 config: dict = None):
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
@@ -19,87 +32,153 @@ class ZmpController(MomentumController):
             visualize=visualize,
             config=config,
         )
-        zmp_cfg = self.config.get('zmp', {})
-        self.zmp_enabled = bool(zmp_cfg.get('enabled', False))
-        self.zmp_response_time = float(zmp_cfg.get('response_time', 0.25))
-        self.zmp_min_error = float(zmp_cfg.get('min_error', 0.005))
-        self.zmp_support_offset = self._as_xy(
-            zmp_cfg.get('support_offset', [0.0, 0.0]),
-            'support_offset',
-        )
-        self.zmp_k = self._as_xy(zmp_cfg.get('k_zmp', [0.5, 0.5]), 'k_zmp')
-        self.zmp_k_com_velocity = self._as_xy(
-            zmp_cfg.get('k_com_velocity', [0.0, 0.0]),
-            'k_com_velocity',
-        )
-        self.zmp_max_momentum = self._as_xyz(
-            zmp_cfg.get('max_momentum', [4.0, 4.0, 0.0]),
-            'max_momentum',
-        )
-        self.latest_zmp = None
-        self.latest_zmp_target = None
-        self.latest_zmp_error = None
-        self.latest_momentum_target = None
+        self.zmp_config = self.config.get('zmp', {})
+        self.zmp_enabled = bool(self.zmp_config.get('enabled', False))
 
-    def estimate_zmp_target(self):
-        '''Estimate angular momentum target from current ZMP error'''
+        self.observer = BalanceObserver(self.robot_model, self.dt, self.config)
+        self.detector = PerturbationDetector(self.config)
+        self.target_estimator = MomentumTargetEstimator(
+            self.robot_model,
+            self.config,
+        )
+        self.allocator = MomentumAllocator(self.config)
+        self.actuator = BalanceActuator(
+            self.robot_model,
+            self.dt,
+            self.config,
+        )
+
+        self.latest_balance_state = None
+        self.latest_perturbation_state = None
+        self.latest_target_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_arm_targets = {}
+        self.latest_arm_achieved_momentum = {}
+        self.latest_combined_achieved_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_solver_statuses = {}
+        self.latest_plan_duration = 0.0
+        self.latest_response_status = 'idle'
+        self.latest_response_summary = ''
+        self.latest_best_effort_used = False
+        execution_cfg = self.zmp_config.get('execution', {})
+        self.limit_ddp_velocity = bool(
+            execution_cfg.get('limit_ddp_velocity', False)
+        )
+        self.latest_raw_command_norm = 0.0
+        self.latest_applied_command_norm = 0.0
+        self.latest_raw_max_arm_velocity = {'left': 0.0, 'right': 0.0}
+        self.latest_applied_max_arm_velocity = {'left': 0.0, 'right': 0.0}
+        self.latest_integrated_q_delta = {'left': 0.0, 'right': 0.0}
+        self.latest_actuator_state = self.actuator.state
+        self.latest_actuator_plan_index = self.actuator.plan_index
+
+    def control_step(self, com=False):
+        '''Run one ZMP balance control tick'''
+        del com
+        if not self.zmp_enabled:
+            self.update_robot_model()
+            return np.zeros(self.robot_model.model_body.nv, dtype=np.float64)
+
         self.update_robot_model()
-        zmp = self.robot_model.get_zmp()
-        zmp_target = self._support_center() + self.zmp_support_offset
-        zmp_error = zmp[:2] - zmp_target
-        com_velocity = self.robot_model.get_com_velocity()[:2]
+        self.update_ik_solver()
+        self._update_balance_state()
+        raw_command = self.actuator.step()
+        if self.limit_ddp_velocity:
+            applied_command = self._limit_joint_vel(raw_command)
+        else:
+            applied_command = raw_command
+        self._update_execution_diagnostics(raw_command, applied_command)
+        if np.linalg.norm(applied_command) <= 1e-12:
+            return applied_command
+        return self._apply_velocity_command(applied_command)
 
-        # map horizontal zmp correction into roll/pitch angular impulse
-        correction = self.zmp_k * zmp_error
-        correction += self.zmp_k_com_velocity * com_velocity
-        fz = self.robot_model.total_mass * 9.81
-        h_target = self.zmp_response_time * np.array(
-            [-fz * correction[1], fz * correction[0], 0.0],
-            dtype=np.float64,
+    def control_step_reduced(self, com=False):
+        '''Run one ZMP balance control tick for reduced-control callers'''
+        return self.control_step(com=com)
+
+    def _update_balance_state(self):
+        freeze_reference = self._reference_should_freeze()
+        balance_state = self.observer.observe(
+            freeze_center_reference=freeze_reference,
         )
-        h_target = np.clip(
-            h_target,
-            -self.zmp_max_momentum,
-            self.zmp_max_momentum,
+        perturbation_state = self.detector.update(balance_state)
+        target_momentum = self.target_estimator.estimate(
+            balance_state,
+            perturbation_state,
         )
 
-        self.latest_zmp = np.copy(zmp)
-        self.latest_zmp_target = np.copy(zmp_target)
-        self.latest_zmp_error = np.copy(zmp_error)
-        self.latest_momentum_target = np.copy(h_target)
-        return h_target
+        active_arms = self._balance_arms()
+        arm_targets = self.allocator.allocate(target_momentum, active_arms)
+        if self.actuator.can_start_response(
+            perturbation_state,
+            target_momentum,
+        ):
+            self.actuator.maybe_start_response(arm_targets, perturbation_state)
 
-    def plan_zmp(self, force=False):
-        '''Plan one momentum trajectory from current ZMP error'''
-        if not self.zmp_enabled and not force:
-            return None
+        self.latest_balance_state = balance_state
+        self.latest_perturbation_state = perturbation_state
+        self.latest_target_momentum = np.copy(target_momentum)
+        self.latest_arm_targets = {
+            target.arm: np.copy(target.target_momentum)
+            for target in arm_targets
+        }
+        self.latest_arm_achieved_momentum = {
+            arm: np.copy(momentum)
+            for arm, momentum in self.actuator.latest_per_arm_achieved.items()
+        }
+        self.latest_combined_achieved_momentum = np.copy(
+            self.actuator.latest_combined_achieved
+        )
+        self.latest_solver_statuses = dict(
+            self.actuator.latest_solver_statuses
+        )
+        self.latest_plan_duration = float(self.actuator.latest_plan_duration)
+        self.latest_response_status = self.actuator.latest_response_status
+        self.latest_response_summary = self.actuator.latest_response_summary
+        self.latest_best_effort_used = self.actuator.latest_best_effort_used
 
-        target_momentum = self.estimate_zmp_target()
-        if not force and np.linalg.norm(self.latest_zmp_error) < self.zmp_min_error:
-            return None
-        return self.plan_momentum(target_momentum)
-
-    def execute_zmp_step(self):
-        '''Continuously monitor ZMP and execute one control step'''
-        if self.plan_done:
-            self.plan_zmp()
-        return self.execute_plan_step()
-
-    def _support_center(self):
-        left_foot = self.robot_model.get_frame_position('left_ankle_roll_link')
-        right_foot = self.robot_model.get_frame_position('right_ankle_roll_link')
-        return 0.5 * (left_foot[:2] + right_foot[:2])
+    def _update_execution_diagnostics(self, raw_command, applied_command):
+        self.latest_raw_command_norm = float(np.linalg.norm(raw_command))
+        self.latest_applied_command_norm = float(
+            np.linalg.norm(applied_command)
+        )
+        self.latest_raw_max_arm_velocity = {
+            'left': self._max_abs(raw_command, LEFT_ARM_INDEX),
+            'right': self._max_abs(raw_command, RIGHT_ARM_INDEX),
+        }
+        self.latest_applied_max_arm_velocity = {
+            'left': self._max_abs(applied_command, LEFT_ARM_INDEX),
+            'right': self._max_abs(applied_command, RIGHT_ARM_INDEX),
+        }
+        self.latest_integrated_q_delta = {
+            'left': self.dt * self._max_abs(applied_command, LEFT_ARM_INDEX),
+            'right': self.dt * self._max_abs(applied_command, RIGHT_ARM_INDEX),
+        }
+        self.latest_actuator_state = self.actuator.state
+        self.latest_actuator_plan_index = self.actuator.plan_index
 
     @staticmethod
-    def _as_xy(value, name):
-        vector = np.asarray(value, dtype=np.float64)
-        if vector.shape != (2,):
-            raise ValueError(f'zmp.{name} must have length 2')
-        return vector
+    def _max_abs(values, indices):
+        values = np.asarray(values, dtype=np.float64)
+        if values.size == 0:
+            return 0.0
+        return float(np.max(np.abs(values[indices])))
 
-    @staticmethod
-    def _as_xyz(value, name):
-        vector = np.asarray(value, dtype=np.float64)
-        if vector.shape != (3,):
-            raise ValueError(f'zmp.{name} must have length 3')
-        return vector
+    def _reference_should_freeze(self):
+        if self.latest_perturbation_state is None:
+            return bool(self.detector.entering)
+        return bool(
+            self.latest_perturbation_state.active
+            or self.latest_perturbation_state.raw_perturbed
+            or self.detector.entering
+        )
+
+    def _balance_arms(self):
+        mode = self.zmp_config.get('mode', 'both_arm_balance')
+        if mode == 'both_arm_balance':
+            return ['left', 'right']
+        if mode == 'single_arm_task_balance':
+            return [self.zmp_config.get('assist_arm', 'right')]
+        raise ValueError(f'unsupported zmp.mode: {mode}')
+
+
+__all__ = ['ZmpController']

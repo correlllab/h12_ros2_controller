@@ -375,11 +375,23 @@ class MomentumPlan:
     momenta: np.ndarray
     peak_momentum: np.ndarray
     final_posture_error: float
+    phase_lengths: tuple[int, int, int]
+
+    @property
+    def first_velocity(self):
+        return self.velocity_at(0)
+
+    def first_body_velocity(self, nv):
+        return self.body_velocity_at(0, nv)
+
+    def velocity_at(self, index):
+        if not len(self.us):
+            return np.zeros(len(self.arm_ids), dtype=np.float64)
+        return np.copy(self.us[min(index, len(self.us) - 1)])
 
     def body_velocity_at(self, index, nv):
         velocity = np.zeros(nv, dtype=np.float64)
-        if len(self.us):
-            velocity[self.arm_ids] = self.us[min(index, len(self.us) - 1)]
+        velocity[self.arm_ids] = self.velocity_at(index)
         return velocity
 
 
@@ -433,6 +445,7 @@ class MomentumDDP:
             momenta=momenta,
             peak_momentum=self._peak_useful_momentum(momenta, target_momentum),
             final_posture_error=float(np.linalg.norm(pin.difference(self.arm_model, q_ref, xs[-1]))),
+            phase_lengths=self._phase_steps(),
         )
 
     def current_arm_q(self):
@@ -527,9 +540,14 @@ class MomentumDDP:
         return np.minimum(limits, self.max_velocity)
 
     def _phase_steps(self):
-        return tuple(max(1, int(np.round(duration / self.dt))) for duration in (
-            self.hold_duration, self.momentum_duration, self.return_duration,
-        ))
+        hold_steps = 0 if self.hold_duration <= 0.0 else max(
+            1, int(np.round(self.hold_duration / self.dt))
+        )
+        return (
+            hold_steps,
+            max(1, int(np.round(self.momentum_duration / self.dt))),
+            max(1, int(np.round(self.return_duration / self.dt))),
+        )
 
     def _build_arm_model(self):
         arm_joint_names = self._arm_joint_names(self.arm)
