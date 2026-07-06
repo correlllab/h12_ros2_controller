@@ -6,6 +6,7 @@ from tqdm import tqdm
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
+from h12_ros2_controller.core.planner import PlannerConfig, ReducedJointPlanner
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -72,6 +73,10 @@ class UpperController:
             dt=self.dt,
             d_min=self.d_min
         )
+        self.planner = ReducedJointPlanner(
+            self.robot_model,
+            config=self._load_planner_config(),
+        )
 
         if self.visualize:
             self.robot_model.init_visualizer()
@@ -105,6 +110,33 @@ class UpperController:
             if error < threshold:
                 break
             time.sleep(self.dt)
+
+    def _load_planner_config(self):
+        '''Load OMPL planner config from controller config'''
+        # merge optional yaml planner settings with dataclass defaults
+        cfg = self.config.get('planner', {})
+        defaults = PlannerConfig()
+        return PlannerConfig(
+            planner=cfg.get('planner', defaults.planner),
+            timeout=float(cfg.get('timeout', defaults.timeout)),
+            range=float(cfg.get('range', defaults.range)),
+            try_direct=bool(cfg.get('try_direct', defaults.try_direct)),
+            simplify=bool(cfg.get('simplify', defaults.simplify)),
+            interpolation_steps=int(
+                cfg.get('interpolation_steps', defaults.interpolation_steps)
+            ),
+            validity_resolution=float(
+                cfg.get('validity_resolution', defaults.validity_resolution)
+            ),
+            constraint_check_steps=int(
+                cfg.get('constraint_check_steps', defaults.constraint_check_steps)
+            ),
+            frame_names=tuple(cfg.get('frame_names', defaults.frame_names)),
+            min_frame_z=cfg.get('min_frame_z', defaults.min_frame_z),
+            frame_z_tolerance=float(
+                cfg.get('frame_z_tolerance', defaults.frame_z_tolerance)
+            ),
+        )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
         torso_id = BODY_JOINTS.index('torso_joint')
@@ -195,6 +227,97 @@ class UpperController:
     def update_ik_solver(self):
         # update IK solver with the latest robot configuration
         self.ik_solver.update_configurations()
+
+    def _as_reduced_path(self, path):
+        # normalize path input and enforce reduced-model waypoint shape
+        path = np.asarray(path, dtype=float)
+        if path.ndim == 1:
+            path = path.reshape(1, -1)
+        nq = self.robot_model.model_body_reduced.nq
+        if path.ndim != 2 or path.shape[1] != nq:
+            raise ValueError(f'Path must have shape (N, {nq})')
+        if not np.all(np.isfinite(path)):
+            raise ValueError('Path must contain only finite values')
+        return path
+
+    def _path_or_raise(self, result):
+        if not result.success:
+            raise RuntimeError(f'Planning failed: {result.reason}')
+        return result.path
+
+    def plan_to_configuration(self, q_reduced, start=None,
+                              keep_grasp_height=False, z_margin=0.0):
+        '''Plan from current reduced state to a reduced joint target'''
+        if start is None:
+            start = self.robot_model.state_reduced['q']
+        q_reduced = np.asarray(q_reduced, dtype=float)
+
+        # try direct motion first; optionally block downward grasp-frame dips
+        if keep_grasp_height:
+            self.planner.set_grasp_floor_from_endpoints(
+                start,
+                q_reduced,
+                margin=z_margin,
+            )
+        try:
+            result = self.planner.plan(start, q_reduced)
+            return self._path_or_raise(result)
+        finally:
+            if keep_grasp_height:
+                self.planner.clear_workspace_constraints()
+
+    def plan_to_ik_target(self, start=None,
+                          ik_timeout=1.0, ik_alpha=0.1,
+                          keep_grasp_height=False, z_margin=0.0):
+        '''Solve current IK tasks, then plan to the IK joint solution'''
+        # subclasses own task setup; this only resolves existing IK targets
+        self.update_ik_solver()
+        ik_result = self.ik_solver.solve_ik_reduced(
+            alpha=ik_alpha,
+            timeout=ik_timeout,
+        )
+        if not ik_result['success']:
+            raise RuntimeError('IK failed to resolve current targets')
+
+        # solve_ik_reduced returns full motor q; planner needs reduced q
+        q_goal = ik_result['q'][self.robot_model.reduced_mask]
+        return self.plan_to_configuration(
+            q_goal,
+            start=start,
+            keep_grasp_height=keep_grasp_height,
+            z_margin=z_margin,
+        )
+
+    def visualize_path(self, path):
+        '''Draw a reduced joint-space path with Meshcat'''
+        if self.robot_model.viz is None:
+            self.robot_model.init_visualizer()
+        self.robot_model.visualize_reduced_path(path)
+
+    def play_path(self, path, delay=0.05):
+        '''Animate a reduced joint-space path with Meshcat'''
+        if self.robot_model.viz is None:
+            self.robot_model.init_visualizer()
+        self.robot_model.play_reduced_path(path, delay=delay)
+
+    def execute_path(self, path, validate=True):
+        '''Execute reduced joint waypoints as direct position commands'''
+        path = self._as_reduced_path(path)
+
+        # apply each reduced waypoint as a direct full motor position command
+        for q_reduced in tqdm(path, desc='Executing path', leave=False):
+            if validate:
+                # keep execution guarded by the same reduced validity checks
+                if not self.robot_model.check_within_limits_reduced(q_reduced):
+                    raise ValueError('Path waypoint is outside joint limits')
+                if not self.robot_model.check_collision_free_reduced(q_reduced):
+                    raise ValueError('Path waypoint is in self-collision')
+
+            q = np.copy(self.robot_model.state['q'])
+            q[self.robot_model.reduced_mask] = q_reduced
+            self._apply_joint_position(q)
+            self.update_robot_model()
+            time.sleep(self.dt)
 
     def update_robot_model(self):
         # update kinematics

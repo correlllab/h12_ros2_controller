@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pinocchio as pin
 from pyquaternion import Quaternion
@@ -412,6 +413,79 @@ class RobotModel:
                 self._visualize_zmp()
             for frame_name in self.viz_config.get('wrench_frames', []):
                 self._visualize_wrench(frame_name)
+
+    def _as_reduced_path(self, path):
+        '''Convert path input to a reduced waypoint array'''
+        path = np.asarray(path, dtype=float)
+        if path.ndim == 1:
+            path = path.reshape(1, -1)
+        if path.ndim != 2 or path.shape[1] != self.model_body_reduced.nq:
+            raise ValueError(
+                f'Path must have shape (N, {self.model_body_reduced.nq})'
+            )
+        return path
+
+    def _reduced_path_frame_transforms(self, path, frame_name):
+        '''Get full-model frame transforms for a reduced path'''
+        q = np.copy(self.state['q'])
+        transforms = []
+        for q_reduced in path:
+            q[self.reduced_mask] = q_reduced
+            transforms.append(self._get_frame_transformation(frame_name, q))
+        return transforms
+
+    def visualize_reduced_path(self, path,
+                               frame_names=('left_grasp_frame', 'right_grasp_frame')):
+        '''Draw reduced path traces and frame samples in Meshcat'''
+        assert self.viz is not None, 'Visualizer must be initialized first.'
+        assert self.init_reduced, 'Reduced model is not initialized.'
+        path = self._as_reduced_path(path)
+
+        # draw a path trace and sampled frames for each grasp frame
+        frame_colors = {
+            'left_grasp_frame': 0xff00ff,
+            'right_grasp_frame': 0x00ffff,
+        }
+        frame_names = tuple(frame_names)
+        for frame_name in frame_names:
+            transforms = self._reduced_path_frame_transforms(path, frame_name)
+            points = np.asarray(
+                [transform.translation for transform in transforms],
+                dtype=float,
+            ).T
+            prefix = f'planned_path/{frame_name}'
+            self.viz.viewer[prefix].delete()
+            self.viz.viewer[f'{prefix}/line'].set_object(
+                geo.Line(
+                    geo.PointsGeometry(points),
+                    geo.LineBasicMaterial(
+                        color=frame_colors.get(frame_name, 0xffffff),
+                        linewidth=4.0,
+                    ),
+                )
+            )
+
+            sample_count = min(3, max(0, len(path) - 2))
+            if sample_count == 0:
+                continue
+            indices = np.linspace(1, len(path) - 2, sample_count).astype(int)
+            for sample_idx, path_idx in enumerate(indices):
+                viewer = self.viz.viewer[f'{prefix}/frame_{sample_idx}']
+                meshcat_shapes.frame(viewer, opacity=0.8)
+                viewer.set_transform(transforms[path_idx].np)
+
+    def play_reduced_path(self, path, delay=0.05):
+        '''Animate a reduced joint-space path in Meshcat'''
+        assert self.viz is not None, 'Visualizer must be initialized first.'
+        assert self.init_reduced, 'Reduced model is not initialized.'
+        path = self._as_reduced_path(path)
+
+        # display each reduced waypoint inside the full free-flyer model
+        q = np.copy(self.state['q'])
+        for q_reduced in path:
+            q[self.reduced_mask] = q_reduced
+            self.viz.display(self.full_q(q))
+            time.sleep(delay)
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)

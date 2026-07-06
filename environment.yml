@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10.12
+  - ompl
   - pip
   - pip:
     # common libs

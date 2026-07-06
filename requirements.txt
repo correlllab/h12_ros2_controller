@@ -270,6 +270,8 @@ numpy==2.3.5 ; python_full_version >= '3.11'
     #   scs
     #   sip-python
     #   unitree-sdk2py
+ompl==2.0.1
+    # via h12-ros2-controller
 open3d==0.19.0
     # via h12-ros2-controller
 opencv-python==4.13.0.92

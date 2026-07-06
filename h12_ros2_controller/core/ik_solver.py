@@ -228,8 +228,8 @@ class IKSolver:
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
 
-    def solve_ik(self, alpha=0.1,
-                 timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
+    def solve_ik(self, alpha=0.1, timeout=1.0,
+                 linear_threshold=1e-3, angular_threshold=1e-2):
         '''Solve IK to convergence and return motor-only q (27)'''
         # reset configuration to zero position
         self.configuration.update(self.robot_model.zero_q_body)
@@ -258,8 +258,8 @@ class IKSolver:
             'success': False
         }
 
-    def solve_ik_reduced(self, alpha=0.1,
-                         timeout=1.0, linear_threshold=5e-3, angular_threshold=2e-2):
+    def solve_ik_reduced(self, alpha=0.1, timeout=1.0,
+                         linear_threshold=1e-3, angular_threshold=1e-2):
         '''Solve IK on reduced model to convergence and return motor-only q (27)'''
         # reset configuration to zero position
         self.configuration_reduced.update(self.robot_model.zero_q_body_reduced)
