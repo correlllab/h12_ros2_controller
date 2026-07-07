@@ -70,13 +70,12 @@ def plan_goal(frame_controller, keyword, frame_name, pose, ik_timeout, ik_alpha,
     '''Plan one named config or frame-task goal'''
     start_time = time.perf_counter()
 
-    # named configs plan directly in reduced joint space
+    # named configs plan directly in reduced joint space without z constraints,
+    # since the user explicitly chose the target configuration
     if keyword in NAMED_CONFIGS:
         print(f'Planning to named configuration: {keyword}')
         path = frame_controller.plan_to_configuration(
             NAMED_CONFIGS[keyword],
-            keep_grasp_height=keep_grasp_height,
-            z_margin=z_margin,
         )
     elif keyword != '':
         raise ValueError(f'Unknown named configuration: {keyword}')
@@ -95,9 +94,28 @@ def plan_goal(frame_controller, keyword, frame_name, pose, ik_timeout, ik_alpha,
     return path, planning_time
 
 
+def hold_steady_state(frame_controller, timeout, threshold):
+    '''Run steady-state I control until convergence or timeout'''
+    frame_controller.init_steady_state()
+    start_time = time.time()
+    converged = False
+    while time.time() - start_time < timeout:
+        step_start = time.time()
+        converged = frame_controller.steady_state_step(threshold)
+        if converged:
+            print('Steady state reached!')
+            break
+        time.sleep(max(0.0, frame_controller.dt - (time.time() - step_start)))
+    if not converged:
+        print('Timed out during steady-state hold')
+
+
 def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
          allow_grasp_dip=False, z_margin=0.0):
     frame_controller = init_frame_controller(config_name)
+    controller_cfg = frame_controller.config['controller']
+    steady_timeout = controller_cfg['timeout']
+    threshold_joint = controller_cfg['threshold_joint']
 
     try:
         while True:
@@ -125,6 +143,9 @@ def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
             input('Press ENTER to execute the plan...')
             frame_controller.execute_path(path)
             print('Plan execution finished')
+
+            # hold the final configuration with steady-state I control
+            hold_steady_state(frame_controller, steady_timeout, threshold_joint)
 
             cont = input('Do you want to send another goal? (y/n): ').lower()
             if cont != 'y':

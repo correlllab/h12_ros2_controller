@@ -1,3 +1,4 @@
+import sys
 import time
 import numpy as np
 import pinocchio as pin
@@ -67,6 +68,10 @@ class UpperController:
         # start publisher
         self.low_cmd_handler.start()
 
+        # tighten GIL switch interval so the 500Hz publisher thread is not
+        # starved during OMPL planning (default 5ms interval causes 5-10ms gaps)
+        sys.setswitchinterval(0.001)
+
         # initialize IK solver
         self.ik_solver = IKSolver(
             robot_model=self.robot_model,
@@ -122,6 +127,8 @@ class UpperController:
             range=float(cfg.get('range', defaults.range)),
             try_direct=bool(cfg.get('try_direct', defaults.try_direct)),
             simplify=bool(cfg.get('simplify', defaults.simplify)),
+            simplify_time=float(cfg.get('simplify_time', defaults.simplify_time)),
+            shortcut=bool(cfg.get('shortcut', defaults.shortcut)),
             interpolation_steps=int(
                 cfg.get('interpolation_steps', defaults.interpolation_steps)
             ),
@@ -136,6 +143,7 @@ class UpperController:
             frame_z_tolerance=float(
                 cfg.get('frame_z_tolerance', defaults.frame_z_tolerance)
             ),
+            frame_z_headroom=cfg.get('frame_z_headroom', defaults.frame_z_headroom),
         )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
@@ -246,7 +254,8 @@ class UpperController:
         return result.path
 
     def plan_to_configuration(self, q_reduced, start=None,
-                              keep_grasp_height=False, z_margin=0.0):
+                              keep_grasp_height=False, z_margin=0.0,
+                              active_mask=None):
         '''Plan from current reduced state to a reduced joint target'''
         if start is None:
             start = self.robot_model.state_reduced['q']
@@ -260,7 +269,7 @@ class UpperController:
                 margin=z_margin,
             )
         try:
-            result = self.planner.plan(start, q_reduced)
+            result = self.planner.plan(start, q_reduced, active_mask=active_mask)
             return self._path_or_raise(result)
         finally:
             if keep_grasp_height:
@@ -281,12 +290,40 @@ class UpperController:
 
         # solve_ik_reduced returns full motor q; planner needs reduced q
         q_goal = ik_result['q'][self.robot_model.reduced_mask]
+
+        # restrict planning to joints supporting the active tasks so that
+        # untasked limbs (e.g. the other arm) never move during the plan
+        active_mask = self._active_task_mask()
+
         return self.plan_to_configuration(
             q_goal,
             start=start,
             keep_grasp_height=keep_grasp_height,
             z_margin=z_margin,
+            active_mask=active_mask,
         )
+
+    def _active_task_mask(self):
+        '''Reduced joint mask supporting all active frame tasks'''
+        mask = np.zeros(self.robot_model.model_body_reduced.nq, dtype=bool)
+        for task in self.ik_solver.frame_tasks.values():
+            mask |= self._reduced_support_mask(task.frame)
+        return mask
+
+    def _reduced_support_mask(self, frame_name):
+        '''Reduced joint mask supporting a frame in the kinematic chain'''
+        model = self.robot_model.model_body_reduced
+        frame_id = model.getFrameId(frame_name)
+        joint_id = model.frames[frame_id].parentJoint
+
+        # walk up the tree to the root, marking supporting joints
+        mask = np.zeros(model.nq, dtype=bool)
+        while joint_id > 0:
+            idx_q = model.joints[joint_id].idx_q
+            nq = model.joints[joint_id].nq
+            mask[idx_q:idx_q + nq] = True
+            joint_id = model.parents[joint_id]
+        return mask
 
     def visualize_path(self, path):
         '''Draw a reduced joint-space path with Meshcat'''

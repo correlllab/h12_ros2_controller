@@ -56,6 +56,8 @@ class RobotModel:
         self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
         # visualization configuration
         self.viz_config = {}
+        # stored planned-path frame samples for per-cycle redraw
+        self._path_frame_samples = []
 
     def init_reduced_model(self, enabled_joints):
         '''
@@ -414,6 +416,9 @@ class RobotModel:
             for frame_name in self.viz_config.get('wrench_frames', []):
                 self._visualize_wrench(frame_name)
 
+            # refresh planned path samples with the current base orientation
+            self._update_path_frames()
+
     def _as_reduced_path(self, path):
         '''Convert path input to a reduced waypoint array'''
         path = np.asarray(path, dtype=float)
@@ -447,6 +452,7 @@ class RobotModel:
             'right_grasp_frame': 0x00ffff,
         }
         frame_names = tuple(frame_names)
+        self._path_frame_samples = []
         for frame_name in frame_names:
             transforms = self._reduced_path_frame_transforms(path, frame_name)
             points = np.asarray(
@@ -470,9 +476,31 @@ class RobotModel:
                 continue
             indices = np.linspace(1, len(path) - 2, sample_count).astype(int)
             for sample_idx, path_idx in enumerate(indices):
-                viewer = self.viz.viewer[f'{prefix}/frame_{sample_idx}']
-                meshcat_shapes.frame(viewer, opacity=0.8)
-                viewer.set_transform(transforms[path_idx].np)
+                path_name = f'{prefix}/frame_{sample_idx}'
+                meshcat_shapes.frame(self.viz.viewer[path_name], opacity=0.8)
+                # store reduced waypoint so the frame can be redrawn each cycle
+                self._path_frame_samples.append((path_name, frame_name,
+                                                  np.copy(path[path_idx])))
+        self._update_path_frames()
+
+    def clear_path_visualization(self):
+        '''Remove planned path lines and frame samples from Meshcat'''
+        self._path_frame_samples = []
+        if self.viz is not None:
+            self.viz.viewer['planned_path'].delete()
+
+    def _update_path_frames(self):
+        '''Redraw stored path frames using current base orientation'''
+        samples = getattr(self, '_path_frame_samples', None)
+        if not samples:
+            return
+
+        # recompute each sampled frame like the IK solver frame markers
+        q = np.copy(self.state['q'])
+        for path_name, frame_name, q_reduced in samples:
+            q[self.reduced_mask] = q_reduced
+            transform = self._get_frame_transformation(frame_name, q)
+            self.viz.viewer[path_name].set_transform(transform.np)
 
     def play_reduced_path(self, path, delay=0.05):
         '''Animate a reduced joint-space path in Meshcat'''
