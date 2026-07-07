@@ -1,4 +1,3 @@
-import sys
 import time
 import numpy as np
 import pinocchio as pin
@@ -67,10 +66,6 @@ class UpperController:
 
         # start publisher
         self.low_cmd_handler.start()
-
-        # tighten GIL switch interval so the 500Hz publisher thread is not
-        # starved during OMPL planning (default 5ms interval causes 5-10ms gaps)
-        sys.setswitchinterval(0.001)
 
         # initialize IK solver
         self.ik_solver = IKSolver(
@@ -280,10 +275,21 @@ class UpperController:
                           keep_grasp_height=False, z_margin=0.0):
         '''Solve current IK tasks, then plan to the IK joint solution'''
         # subclasses own task setup; this only resolves existing IK targets
+        update_start = time.perf_counter()
         self.update_ik_solver()
+        update_time = time.perf_counter() - update_start
+        solve_start = time.perf_counter()
         ik_result = self.ik_solver.solve_ik_reduced(
             alpha=ik_alpha,
             timeout=ik_timeout,
+        )
+        solve_time = time.perf_counter() - solve_start
+        print(
+            'IK timing: '
+            f'update={update_time * 1000.0:.1f}ms, '
+            f'solve={solve_time * 1000.0:.1f}ms, '
+            f'success={ik_result["success"]}',
+            flush=True,
         )
         if not ik_result['success']:
             raise RuntimeError('IK failed to resolve current targets')

@@ -3,12 +3,63 @@
 # torque guards. The defaults in controller_config.py and debug.yaml are
 # tuned for hardware safety; sim has no hardware to protect, so we let
 # MuJoCo's physical limits be the only boundary.
-# All other settings (mode, gains, frequency, topics) inherit defaults.
+# All omitted settings inherit defaults from controller_config.py.
 mode: debug
 
 topics:
   low_cmd: rt/safety/lowcmd_upper_in
   low_state: rt/lowstate
+
+controller:
+  v_lim: 1.0
+  w_lim: 2.0
+  dq_lim: 1.0
+  d_min: 0.02
+  timeout: 5.0
+  torso_target: 0.0
+  threshold_ik: 0.0001
+  threshold_joint: 0.001
+  threshold_linear: 0.001
+  threshold_angular: 0.002
+
+planner:
+  planner: RRTConnect
+  # Example RRT* tuning: replace the active values with this when comparing
+  # higher-quality paths against planning time.
+  # planner: RRTstar
+  # timeout: 3.0
+  # range: 0.15
+  timeout: 1.0
+  # Maximum planner extension length in joint-space radians. 0.0 lets OMPL
+  # choose a planner-specific default.
+  range: 0.0
+  try_direct: true
+  simplify: true
+  simplify_time: 1.0
+  shortcut: true
+  # Number of waypoints after interpolation. This also affects execution
+  # duration because execute_path sends one waypoint per controller tick.
+  interpolation_steps: 200
+  # Fraction of the joint-space extent between sampled validity checks. Lower
+  # values catch collisions more densely but slow planning.
+  validity_resolution: 0.0025
+  # Extra linear samples checked between returned waypoints for workspace
+  # constraints such as grasp-frame z limits.
+  constraint_check_steps: 10
+  frame_names:
+    - left_grasp_frame
+    - right_grasp_frame
+  # Optional z floor for frame_names. Use null to disable the static floor.
+  # A mapping can set per-frame floors, for example:
+  # min_frame_z:
+  #   left_grasp_frame: 0.35
+  #   right_grasp_frame: 0.35
+  min_frame_z: null
+  # Tolerance applied when checking frame z floors and ceilings.
+  frame_z_tolerance: 0.001
+  # Allowed z overshoot above the higher endpoint when keep_grasp_height is on.
+  # Use null to disable the endpoint-derived ceiling.
+  frame_z_headroom: 0.1
 
 gains:
   # upper-body gains only; lower-body gains default to 0

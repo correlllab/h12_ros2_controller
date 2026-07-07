@@ -1,5 +1,4 @@
 import time
-import threading
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -48,7 +47,6 @@ class ReducedJointPlanner:
 
         self.nq = int(self.robot_model.model_body_reduced.nq)
         self.validity_checks = 0
-        self.last_invalid_reason = ''
         self.min_frame_z = self.config.min_frame_z
         self.frame_names = tuple(self.config.frame_names)
         self.frame_min_z = self._make_frame_floor_map(self.min_frame_z)
@@ -182,15 +180,8 @@ class ReducedJointPlanner:
 
     def _is_state_valid(self, state):
         self.validity_checks += 1
-        # yield GIL checkpoint so publisher/safety threads are not starved
-        time.sleep(0)
         q = self._state_to_array(state)
-        try:
-            reason = self._validity_failure(q, 'state')
-        except Exception as exc:
-            self.last_invalid_reason = f'validity exception: {exc}'
-            return False
-        self.last_invalid_reason = reason
+        reason = self._validity_failure(q, 'state')
         return reason == ''
 
     def _validity_failure(self, q, name):
@@ -224,13 +215,6 @@ class ReducedJointPlanner:
             if max_z is not None and z - tol > max_z:
                 return f'{name} moves {frame_name} above z={max_z:.4f}'
         return ''
-
-    def set_frame_floor(self, min_z, frame_names=None):
-        '''Constrain selected frames above a horizontal plane'''
-        self.min_frame_z = float(min_z)
-        if frame_names is not None:
-            self.frame_names = tuple(frame_names)
-        self.frame_min_z = self._make_frame_floor_map(self.min_frame_z)
 
     def set_grasp_floor_from_endpoints(self, start, goal, margin=0.0,
                                        headroom=None):
@@ -302,6 +286,7 @@ class ReducedJointPlanner:
         goal = self._project_inactive(goal)
 
         # reject invalid endpoints before OMPL does any sampling
+        self.validity_checks = 0
         for name, q in [('start', start), ('goal', goal)]:
             reason = self._validity_failure(q, name)
             if reason:
@@ -310,6 +295,7 @@ class ReducedJointPlanner:
                     path=self._empty_path(),
                     reason=reason,
                     planner_name=self.config.planner,
+                    metadata={'validity_checks': self.validity_checks},
                 )
 
         self.validity_checks = 0
@@ -346,17 +332,12 @@ class ReducedJointPlanner:
             self._make_state(goal),
         )
 
-        # run OMPL solve in a worker thread so the GIL is released periodically,
-        # allowing the 500Hz publisher thread to keep sending low_cmd packets
-        start_time = time.perf_counter()
-        solved = self._solve_threaded(float(self.config.timeout))
-        planning_time = time.perf_counter() - start_time
+        solved = self.ss.solve(float(self.config.timeout))
         if not bool(solved):
             return PlanResult(
                 success=False,
                 path=self._empty_path(),
                 reason=self._timeout_reason(direct_failure),
-                planning_time=planning_time,
                 planner_name=self.config.planner,
                 metadata={'validity_checks': self.validity_checks},
             )
@@ -387,7 +368,6 @@ class ReducedJointPlanner:
                     success=False,
                     path=path_array,
                     reason=reason,
-                    planning_time=planning_time,
                     planner_name=self.config.planner,
                     metadata={'validity_checks': self.validity_checks},
                 )
@@ -396,10 +376,21 @@ class ReducedJointPlanner:
             success=True,
             path=path_array,
             reason='success',
-            planning_time=planning_time,
             planner_name=self.config.planner,
             metadata={'validity_checks': self.validity_checks},
         )
+
+    def _ompl_endpoint_failure(self, start, goal):
+        for name, q in [('start', start), ('goal', goal)]:
+            if not self._is_state_valid(self._make_state(q)):
+                return f'{name} rejected by OMPL validity checker'
+        return ''
+
+    def _timeout_reason(self, direct_failure):
+        reason = 'OMPL failed to find a solution before timeout'
+        if direct_failure:
+            reason = f'{reason}; direct path failed: {direct_failure}'
+        return reason
 
     def _path_to_array(self, path):
         # convert OMPL state objects into a dense numpy waypoint array
@@ -450,31 +441,3 @@ class ReducedJointPlanner:
             # b-spline smoothing can overshoot into collision; keep optional
             if smooth:
                 simplifier.smoothBSpline(path)
-
-    def _solve_threaded(self, timeout):
-        '''Run OMPL solve in a worker thread to yield GIL to publisher threads'''
-        done = threading.Event()
-        result = [None]
-
-        def worker():
-            result[0] = self.ss.solve(timeout)
-            done.set()
-
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-        # waiting on Event releases the GIL so publisher/safety threads run
-        done.wait()
-        return result[0]
-
-    def _ompl_endpoint_failure(self, start, goal):
-        for name, q in [('start', start), ('goal', goal)]:
-            if not self._is_state_valid(self._make_state(q)):
-                reason = self.last_invalid_reason or 'unknown invalid state'
-                return f'{name} rejected by OMPL validity checker: {reason}'
-        return ''
-
-    def _timeout_reason(self, direct_failure):
-        reason = 'OMPL failed to find a solution before timeout'
-        if direct_failure:
-            reason = f'{reason}; direct path failed: {direct_failure}'
-        return reason

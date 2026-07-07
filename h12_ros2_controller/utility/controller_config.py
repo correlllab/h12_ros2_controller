@@ -173,10 +173,13 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     topics = raw.get('topics', {})
     network = raw.get('network', {})
     controller = raw.get('controller', {})
+    planner = raw.get('planner', {})
     frequency = raw.get('frequency', {})
     limits = raw.get('limits', {})
     gains = raw.get('gains', {})
     logging = raw.get('logging', {})
+    if not isinstance(planner, dict):
+        raise ValueError('planner must be a mapping')
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
@@ -224,6 +227,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_linear': threshold_linear,
             'threshold_angular': threshold_angular,
         },
+        'planner': dict(planner),
         'frequency': {
             'ctrl_hz': ctrl_hz,
             'pub_hz': pub_hz,
