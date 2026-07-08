@@ -137,11 +137,16 @@ class UpperController:
                 cfg.get('constraint_check_steps', defaults.constraint_check_steps)
             ),
             frame_names=tuple(cfg.get('frame_names', defaults.frame_names)),
-            min_frame_z=cfg.get('min_frame_z', defaults.min_frame_z),
-            frame_z_tolerance=float(
-                cfg.get('frame_z_tolerance', defaults.frame_z_tolerance)
+            frame_z_min=cfg.get('frame_z_min', defaults.frame_z_min),
+            frame_z_min_margin=float(
+                cfg.get('frame_z_min_margin', defaults.frame_z_min_margin)
             ),
-            frame_z_headroom=cfg.get('frame_z_headroom', defaults.frame_z_headroom),
+            frame_z_corridor_margin=float(
+                cfg.get(
+                    'frame_z_corridor_margin',
+                    defaults.frame_z_corridor_margin,
+                )
+            ),
         )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):

@@ -22,10 +22,9 @@ class PlannerConfig:
     validity_resolution: float = 0.0025
     constraint_check_steps: int = 10
     frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
-    min_frame_z: float = None
-    frame_z_tolerance: float = 1e-3
-    # ceiling headroom above the configured z floor; None disables the ceiling
-    frame_z_headroom: float = 0.1
+    frame_z_min: float = None
+    frame_z_min_margin: float = 1e-3
+    frame_z_corridor_margin: float = 0.05
 
 
 @dataclass
@@ -49,11 +48,8 @@ class ReducedJointPlanner:
         self.nq = int(self.robot_model.model_body_reduced.nq)
         self.validity_checks = 0
         self.frame_names = tuple(self.config.frame_names)
-        self.frame_min_z = self._make_frame_floor_map(self.config.min_frame_z)
-        self.frame_max_z = self._make_frame_ceiling_map(
-            self.frame_min_z,
-            self.config.frame_z_headroom,
-        )
+        self.frame_min_z = self._make_frame_floor_map(self.config.frame_z_min)
+        self.corridor_min_z = {}
         # active joint mask and pinned values for inactive joints
         self.active_mask = np.ones(self.nq, dtype=bool)
         self.pinned_q = np.zeros(self.nq)
@@ -203,20 +199,20 @@ class ReducedJointPlanner:
         return q
 
     def _workspace_constraint_failure(self, q_reduced, name):
-        if not self.frame_min_z and not self.frame_max_z:
+        if not self.frame_min_z and not self.corridor_min_z:
             return ''
 
-        # keep selected frames within their configured global z slab
-        tol = self.config.frame_z_tolerance
+        # keep selected frames above the configured and endpoint-derived floors
+        margin = self.config.frame_z_min_margin
         q = self._motor_q(q_reduced)
         for frame_name in self.frame_names:
             z = self.robot_model.get_frame_position(frame_name, q)[2]
             min_z = self.frame_min_z.get(frame_name)
-            if min_z is not None and z + tol < min_z:
+            corridor_z = self.corridor_min_z.get(frame_name)
+            if corridor_z is not None:
+                min_z = corridor_z if min_z is None else max(min_z, corridor_z)
+            if min_z is not None and z + margin < min_z:
                 return f'{name} moves {frame_name} below z={min_z:.4f}'
-            max_z = self.frame_max_z.get(frame_name)
-            if max_z is not None and z - tol > max_z:
-                return f'{name} moves {frame_name} above z={max_z:.4f}'
         return ''
 
     def _make_frame_floor_map(self, min_z):
@@ -226,13 +222,24 @@ class ReducedJointPlanner:
             return {name: float(z) for name, z in min_z.items()}
         return {name: float(min_z) for name in self.frame_names}
 
-    def _make_frame_ceiling_map(self, frame_min_z, headroom):
-        if not frame_min_z or headroom is None:
-            return {}
-        return {
-            frame_name: z + float(headroom)
-            for frame_name, z in frame_min_z.items()
-        }
+    def _set_workspace_corridor(self, start, goal):
+        self.corridor_min_z = {}
+        if not hasattr(self.robot_model, 'get_frame_position'):
+            return
+
+        margin = float(self.config.frame_z_corridor_margin)
+        for frame_name in self.frame_names:
+            start_pos = self.robot_model.get_frame_position(
+                frame_name,
+                self._motor_q(start),
+            )
+            goal_pos = self.robot_model.get_frame_position(
+                frame_name,
+                self._motor_q(goal),
+            )
+            self.corridor_min_z[frame_name] = (
+                min(start_pos[2], goal_pos[2]) - margin
+            )
 
     def _path_validity_failure(self, path):
         for idx, q in enumerate(path):
@@ -240,12 +247,13 @@ class ReducedJointPlanner:
             if reason:
                 return reason
 
-        # only extra-sample the global z slab between returned waypoints
+        # only extra-sample the state-valid z floor between returned waypoints
         steps = max(1, int(self.config.constraint_check_steps))
         for idx in range(len(path) - 1):
             for sub_idx in range(1, steps):
-                alpha = sub_idx / steps
-                q = (1.0 - alpha) * path[idx] + alpha * path[idx + 1]
+                segment_alpha = sub_idx / steps
+                q = (1.0 - segment_alpha) * path[idx]
+                q += segment_alpha * path[idx + 1]
                 reason = self._workspace_constraint_failure(
                     q,
                     f'path segment {idx}',
@@ -275,6 +283,7 @@ class ReducedJointPlanner:
         # restrict planning to active joints; pin the rest to the start value
         self._set_active_mask(active_mask, start)
         goal = self._project_inactive(goal)
+        self._set_workspace_corridor(start, goal)
 
         # reject invalid endpoints before OMPL does any sampling
         self.validity_checks = 0

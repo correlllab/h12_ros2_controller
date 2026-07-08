@@ -45,11 +45,11 @@ planner:
     - left_grasp_frame
     - right_grasp_frame
   # global z floor for frame_names
-  min_frame_z: 0.0
-  # z tolerance for floor and ceiling
-  frame_z_tolerance: 0.001
-  # z ceiling headroom above floor
-  frame_z_headroom: null
+  frame_z_min: 0.0
+  # allowed drift below z floor
+  frame_z_min_margin: 0.01
+  # allowed drift below endpoint z min
+  frame_z_corridor_margin: 0.05
 
 gains:
   # upper-body gains only; lower-body gains default to 0

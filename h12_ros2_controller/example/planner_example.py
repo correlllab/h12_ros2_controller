@@ -87,7 +87,8 @@ def parse_args():
     parser.add_argument('--interpolation-steps', type=int, default=200)
     parser.add_argument('--validity-resolution', type=float, default=0.0025)
     parser.add_argument('--constraint-check-steps', type=int, default=10)
-    parser.add_argument('--frame-z-tolerance', type=float, default=1e-3)
+    parser.add_argument('--frame-z-min-margin', type=float, default=1e-3)
+    parser.add_argument('--frame-z-corridor-margin', type=float, default=0.05)
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--visualize-delay', type=float, default=0.05)
     return parser.parse_args()
@@ -107,7 +108,8 @@ def main():
         interpolation_steps=args.interpolation_steps,
         validity_resolution=args.validity_resolution,
         constraint_check_steps=args.constraint_check_steps,
-        frame_z_tolerance=args.frame_z_tolerance,
+        frame_z_min_margin=args.frame_z_min_margin,
+        frame_z_corridor_margin=args.frame_z_corridor_margin,
     )
     planner = ReducedJointPlanner(robot_model, config=config)
     result = planner.plan(start, goal)
