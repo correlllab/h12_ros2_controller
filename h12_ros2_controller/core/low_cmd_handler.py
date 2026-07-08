@@ -222,6 +222,7 @@ class LowCmdHandler:
                 if (state['q'][i] < self._q_estop_limits[i][0] or
                     state['q'][i] > self._q_estop_limits[i][1]):
                     print(f'Position limit exceeded on joint {i} {joint_name}: {state["q"][i]:.3f} rad')
+                    print(f'q cmd at {i} {self.q_cmd[i]}')
                     self.estop()
                 # check velocity limits
                 if abs(state['dq'][i]) > self._dq_estop_limits[i]:

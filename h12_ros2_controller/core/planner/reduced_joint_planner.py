@@ -5,6 +5,9 @@ from dataclasses import dataclass, field
 
 _ARM_REDUCED_NQ = 14
 _ARM_MOVE_TOL = 2e-2
+_LENGTH_ESTIMATE_STEPS = 50
+# approximate grasp radius for converting rotation to swept arc length
+_FRAME_ROTATION_RADIUS = 0.20
 
 
 @dataclass
@@ -18,7 +21,10 @@ class PlannerConfig:
     simplify: bool = True
     simplify_time: float = 1.0
     shortcut: bool = True
-    interpolation_steps: int = 200
+    moving_speed: float = 0.25
+    dt: float = 1.0 / 30.0
+    min_interpolation_steps: int = 2
+    max_interpolation_steps: int = 300
     validity_resolution: float = 0.0025
     constraint_check_steps: int = 10
     frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
@@ -44,6 +50,7 @@ class ReducedJointPlanner:
         self.robot_model = robot_model
         self.config = config if config is not None else PlannerConfig()
         self._check_robot_model_ready()
+        self._check_planner_config()
 
         self.nq = int(self.robot_model.model_body_reduced.nq)
         self.validity_checks = 0
@@ -69,6 +76,22 @@ class ReducedJointPlanner:
             raise ValueError('RobotModel reduced model is not initialized')
         if not getattr(self.robot_model, 'init_collision', False):
             raise ValueError('RobotModel collision model is not initialized')
+
+    def _check_planner_config(self):
+        if self.config.moving_speed <= 0.0:
+            raise ValueError('Planner moving_speed must be positive')
+        if self.config.dt <= 0.0:
+            raise ValueError('Planner dt must be positive')
+        if self.config.min_interpolation_steps < 2:
+            raise ValueError('Planner min_interpolation_steps must be at least 2')
+        if (
+            self.config.max_interpolation_steps <
+            self.config.min_interpolation_steps
+        ):
+            raise ValueError(
+                'Planner max_interpolation_steps must be at least '
+                'min_interpolation_steps'
+            )
 
     def _make_space(self):
         # copy Pinocchio reduced joint limits into an OMPL real-vector space
@@ -198,6 +221,115 @@ class ReducedJointPlanner:
         q[self.robot_model.reduced_mask] = q_reduced
         return q
 
+    def _sample_path_for_length(self, path):
+        if len(path) < 2 or len(path) >= _LENGTH_ESTIMATE_STEPS:
+            return path
+
+        # sample sparse joint paths before measuring end-effector motion
+        segment_lengths = np.linalg.norm(np.diff(path, axis=0), axis=1)
+        distance = np.concatenate([[0.0], np.cumsum(segment_lengths)])
+        if distance[-1] <= 0.0:
+            return path
+
+        sample_distance = np.linspace(0.0, distance[-1], _LENGTH_ESTIMATE_STEPS)
+        return np.asarray([
+            np.interp(sample_distance, distance, path[:, idx])
+            for idx in range(path.shape[1])
+        ]).T
+
+    def _rotation_angle(self, rotation_a, rotation_b):
+        rotation_delta = rotation_a.T @ rotation_b
+        cos_angle = 0.5 * (np.trace(rotation_delta) - 1.0)
+        return float(np.arccos(np.clip(cos_angle, -1.0, 1.0)))
+
+    def _frame_path_length(self, path, frame_name):
+        if len(path) < 2:
+            return 0.0, 0.0, 0.0
+
+        motor_path = [self._motor_q(q) for q in path]
+        positions = np.asarray(
+            [self.robot_model.get_frame_position(frame_name, q) for q in motor_path]
+        )
+        deltas = np.diff(positions, axis=0)
+        translation_length = float(np.sum(np.linalg.norm(deltas, axis=1)))
+
+        rotation_length = 0.0
+        if hasattr(self.robot_model, 'get_frame_rotation'):
+            rotations = [
+                self.robot_model.get_frame_rotation(frame_name, q)
+                for q in motor_path
+            ]
+            rotation_angle = sum(
+                self._rotation_angle(rotations[idx], rotations[idx + 1])
+                for idx in range(len(rotations) - 1)
+            )
+            # convert frame rotation to equivalent swept arc length
+            rotation_length = _FRAME_ROTATION_RADIUS * rotation_angle
+
+        return (
+            translation_length + rotation_length,
+            translation_length,
+            rotation_length,
+        )
+
+    def _interpolation_metadata(self, path):
+        sample_path = self._sample_path_for_length(path)
+        frame_lengths = {
+            frame_name: self._frame_path_length(sample_path, frame_name)
+            for frame_name in self.frame_names
+        }
+        lengths = {
+            frame_name: values[0]
+            for frame_name, values in frame_lengths.items()
+        }
+        translation_lengths = {
+            frame_name: values[1]
+            for frame_name, values in frame_lengths.items()
+        }
+        rotation_lengths = {
+            frame_name: values[2]
+            for frame_name, values in frame_lengths.items()
+        }
+        path_length = max(lengths.values(), default=0.0)
+
+        speed = float(self.config.moving_speed)
+        dt = float(self.config.dt)
+        # path duration comes from the longer grasp-frame trajectory
+        steps = int(np.ceil(path_length / speed / dt)) + 1
+
+        steps = max(int(self.config.min_interpolation_steps), steps)
+        steps = min(int(self.config.max_interpolation_steps), steps)
+        duration = max(steps - 1, 1) * dt
+        metadata = {
+            'waypoint_count': steps,
+            'duration': duration,
+            'effective_speed': path_length / duration,
+            'path_length': path_length,
+            'frame_path_lengths': lengths,
+            'frame_translation_lengths': translation_lengths,
+            'frame_rotation_lengths': rotation_lengths,
+            'length_estimate_samples': len(sample_path),
+        }
+        return metadata
+
+    def _print_interpolation_metadata(self, metadata, label):
+        frame_lengths = ', '.join(
+            f'{name}={length:.4f}m '
+            f'(pos={metadata["frame_translation_lengths"][name]:.4f}, '
+            f'rot={metadata["frame_rotation_lengths"][name]:.4f})'
+            for name, length in metadata['frame_path_lengths'].items()
+        )
+        print(
+            f'[planner] {label}: '
+            f'waypoints={metadata["waypoint_count"]}, '
+            f'duration={metadata["duration"]:.3f}s, '
+            f'effective_speed={metadata["effective_speed"]:.4f}m/s, '
+            f'path_length={metadata["path_length"]:.4f}m, '
+            f'samples={metadata["length_estimate_samples"]}, '
+            f'{frame_lengths}',
+            flush=True,
+        )
+
     def _workspace_constraint_failure(self, q_reduced, name):
         if not self.frame_min_z and not self.corridor_min_z:
             return ''
@@ -301,15 +433,16 @@ class ReducedJointPlanner:
         self.validity_checks = 0
         direct_failure = ''
         if self.config.try_direct:
-            path = self._direct_path(start, goal)
+            path, metadata = self._direct_path(start, goal)
             direct_failure = self._path_validity_failure(path)
             if not direct_failure:
+                metadata['validity_checks'] = self.validity_checks
                 return PlanResult(
                     success=True,
                     path=path,
                     reason='direct path',
                     planner_name=self.config.planner,
-                    metadata={'validity_checks': self.validity_checks},
+                    metadata=metadata,
                 )
 
         # reset OMPL state; collapse inactive joint bounds to pin them
@@ -336,18 +469,23 @@ class ReducedJointPlanner:
         # simplify once, then validate the final candidate path
         path = self.ss.getSolutionPath()
         self._shorten_path(path)
-        if self.config.interpolation_steps > 0:
-            steps = max(2, int(self.config.interpolation_steps))
-            path.interpolate(steps)
+        sparse_path = self._path_to_array(path, cap=False)
+        metadata = self._interpolation_metadata(sparse_path)
+        self._print_interpolation_metadata(metadata, 'ompl path')
+        steps = max(metadata['waypoint_count'], sparse_path.shape[0])
+        path.interpolate(steps)
         path_array = self._path_to_array(path)
+        path_array = self._smooth_path_timing(path_array)
+        metadata['actual_waypoints'] = path_array.shape[0]
         reason = self._path_validity_failure(path_array)
+        metadata['validity_checks'] = self.validity_checks
         if reason:
             return PlanResult(
                 success=False,
                 path=path_array,
                 reason=reason,
                 planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
+                metadata=metadata,
             )
 
         return PlanResult(
@@ -355,7 +493,7 @@ class ReducedJointPlanner:
             path=path_array,
             reason='success',
             planner_name=self.config.planner,
-            metadata={'validity_checks': self.validity_checks},
+            metadata=metadata,
         )
 
     def _timeout_reason(self, direct_failure):
@@ -364,19 +502,35 @@ class ReducedJointPlanner:
             reason = f'{reason}; direct path failed: {direct_failure}'
         return reason
 
-    def _path_to_array(self, path):
+    def _path_to_array(self, path, cap=True):
         # convert OMPL state objects into a dense numpy waypoint array
         states = path.getStates()
         path_array = np.asarray(
             [self._state_to_array(state) for state in states],
             dtype=float,
         )
-        max_steps = int(self.config.interpolation_steps)
-        if max_steps > 1 and path_array.shape[0] > max_steps:
+        max_steps = int(self.config.max_interpolation_steps)
+        if cap and max_steps > 1 and path_array.shape[0] > max_steps:
             indices = np.linspace(0, path_array.shape[0] - 1, max_steps)
             indices = np.unique(indices.astype(int))
             path_array = path_array[indices]
         return path_array
+
+    def _smooth_path_timing(self, path):
+        if len(path) < 3:
+            return path
+
+        t = np.linspace(0.0, 1.0, len(path))
+        alpha = self._smoothstep(len(path))
+        return np.asarray([
+            np.interp(alpha, t, path[:, idx])
+            for idx in range(path.shape[1])
+        ]).T
+
+    def _smoothstep(self, steps):
+        # slow start and stop while preserving path endpoints
+        t = np.linspace(0.0, 1.0, steps)
+        return t * t * (3.0 - 2.0 * t)
 
     def _set_active_mask(self, active_mask, start):
         '''Configure which joints may move and pin the rest to start'''
@@ -390,12 +544,16 @@ class ReducedJointPlanner:
         self.pinned_q = np.array(start, dtype=float)
 
     def _direct_path(self, start, goal):
-        steps = max(2, int(self.config.interpolation_steps))
-        alpha = np.linspace(0.0, 1.0, steps).reshape(-1, 1)
+        coarse_path = np.vstack([start, goal])
+        metadata = self._interpolation_metadata(coarse_path)
+        steps = metadata['waypoint_count']
+        alpha = self._smoothstep(steps).reshape(-1, 1)
         path = (1.0 - alpha) * start + alpha * goal
         # pin inactive joints exactly to the start along the whole path
         path[:, ~self.active_mask] = self.pinned_q[~self.active_mask]
-        return path
+        metadata['actual_waypoints'] = path.shape[0]
+        self._print_interpolation_metadata(metadata, 'direct path')
+        return path, metadata
 
     def _shorten_path(self, path, smooth=True):
         '''Shortcut and smooth an OMPL path to prefer efficient motion'''

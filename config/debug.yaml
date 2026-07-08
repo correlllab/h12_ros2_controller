@@ -33,8 +33,10 @@ planner:
   simplify: true
   simplify_time: 1.0
   shortcut: true
-  # waypoints after interpolation
-  interpolation_steps: 100
+  # target grasp-frame Cartesian speed in m/s
+  moving_speed: 0.30
+  min_interpolation_steps: 30
+  max_interpolation_steps: 300
   # sampled validity spacing in joint space
   validity_resolution: 0.0025
   # extra samples between returned waypoints
@@ -62,32 +64,32 @@ gains:
     - 200.0 # left_shoulder_roll_joint
     - 150.0 # left_shoulder_yaw_joint
     - 150.0 # left_elbow_joint
-    - 80.0 # left_wrist_roll_joint
-    - 80.0 # left_wrist_pitch_joint
-    - 80.0 # left_wrist_yaw_joint
+    - 120.0 # left_wrist_roll_joint
+    - 120.0 # left_wrist_pitch_joint
+    - 120.0 # left_wrist_yaw_joint
     - 240.0 # right_shoulder_pitch_joint
     - 200.0 # right_shoulder_roll_joint
     - 150.0 # right_shoulder_yaw_joint
     - 150.0 # right_elbow_joint
-    - 80.0 # right_wrist_roll_joint
-    - 80.0 # right_wrist_pitch_joint
-    - 80.0 # right_wrist_yaw_joint
+    - 120.0 # right_wrist_roll_joint
+    - 120.0 # right_wrist_pitch_joint
+    - 120.0 # right_wrist_yaw_joint
   kd:
     - 10.0 # torso_joint
     - 12.0 # left_shoulder_pitch_joint
-    - 10.0 # left_shoulder_roll_joint
-    - 10.0 # left_shoulder_yaw_joint
-    - 8.0 # left_elbow_joint
-    - 8.0 # left_wrist_roll_joint
-    - 8.0 # left_wrist_pitch_joint
-    - 8.0 # left_wrist_yaw_joint
+    - 12.0 # left_shoulder_roll_joint
+    - 12.0 # left_shoulder_yaw_joint
+    - 12.0 # left_elbow_joint
+    - 12.0 # left_wrist_roll_joint
+    - 12.0 # left_wrist_pitch_joint
+    - 12.0 # left_wrist_yaw_joint
     - 12.0 # right_shoulder_pitch_joint
-    - 10.0 # right_shoulder_roll_joint
-    - 10.0 # right_shoulder_yaw_joint
-    - 8.0 # right_elbow_joint
-    - 8.0 # right_wrist_roll_joint
-    - 8.0 # right_wrist_pitch_joint
-    - 8.0 # right_wrist_yaw_joint
+    - 12.0 # right_shoulder_roll_joint
+    - 12.0 # right_shoulder_yaw_joint
+    - 12.0 # right_elbow_joint
+    - 12.0 # right_wrist_roll_joint
+    - 12.0 # right_wrist_pitch_joint
+    - 12.0 # right_wrist_yaw_joint
   ki:
     - 60.0 # torso_joint
     - 600.0 # left_shoulder_pitch_joint
@@ -107,7 +109,7 @@ gains:
 
 limits:
   clip:
-    position_offset: 0.001
+    position_offset: 0.005
     velocity_ratio: 0.10
     torque_ratio: 0.60
   estop:

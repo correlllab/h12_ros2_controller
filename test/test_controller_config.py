@@ -42,7 +42,10 @@ def test_load_controller_config_preserves_planner_section(tmp_path):
               planner: RRTstar
               timeout: 2.5
               range: 0.15
-              interpolation_steps: 150
+              moving_speed: 0.2
+              dt: 0.02
+              min_interpolation_steps: 3
+              max_interpolation_steps: 250
               frame_names:
                 - left_grasp_frame
             '''
@@ -55,7 +58,10 @@ def test_load_controller_config_preserves_planner_section(tmp_path):
         'planner': 'RRTstar',
         'timeout': 2.5,
         'range': 0.15,
-        'interpolation_steps': 150,
+        'moving_speed': 0.2,
+        'dt': 0.02,
+        'min_interpolation_steps': 3,
+        'max_interpolation_steps': 250,
         'frame_names': ['left_grasp_frame'],
     }
 

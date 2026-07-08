@@ -127,8 +127,19 @@ class UpperController:
             simplify=bool(cfg.get('simplify', defaults.simplify)),
             simplify_time=float(cfg.get('simplify_time', defaults.simplify_time)),
             shortcut=bool(cfg.get('shortcut', defaults.shortcut)),
-            interpolation_steps=int(
-                cfg.get('interpolation_steps', defaults.interpolation_steps)
+            moving_speed=float(cfg.get('moving_speed', defaults.moving_speed)),
+            dt=float(cfg.get('dt', self.dt)),
+            min_interpolation_steps=int(
+                cfg.get(
+                    'min_interpolation_steps',
+                    defaults.min_interpolation_steps,
+                )
+            ),
+            max_interpolation_steps=int(
+                cfg.get(
+                    'max_interpolation_steps',
+                    defaults.max_interpolation_steps,
+                )
             ),
             validity_resolution=float(
                 cfg.get('validity_resolution', defaults.validity_resolution)
@@ -475,32 +486,75 @@ class UpperController:
         if tau_clip_limits is not None:
             self._steady_tau_bias_limit = np.asarray(tau_clip_limits, dtype=np.float64)
 
+        self._steady_q_clip_limits = None
+        q_clip_limits = self.config.get('limits', {}).get('q_clip_limits')
+        if q_clip_limits is not None:
+            self._steady_q_clip_limits = np.asarray(q_clip_limits, dtype=np.float64)
+
+    def _steady_state_hits_position_clip(self, q_state, tau_bias_increment, threshold):
+        if self._steady_q_clip_limits is None:
+            return False
+
+        q_limits = self._steady_q_clip_limits[self.upper_ids]
+        q_state = q_state[self.upper_ids]
+        tau_bias_increment = tau_bias_increment[self.upper_ids]
+
+        near_upper = q_state >= (q_limits[:, 1] - threshold)
+        near_lower = q_state <= (q_limits[:, 0] + threshold)
+        push_upper = tau_bias_increment > 0.0
+        push_lower = tau_bias_increment < 0.0
+
+        return bool(np.any((near_upper & push_upper) | (near_lower & push_lower)))
+
     def steady_state_step(self, threshold=1e-3):
         '''Run one steady-state I-control tick and return convergence'''
         if not hasattr(self, '_steady_q_cmd'):
             self.init_steady_state()
 
-        q_error = self._steady_q_cmd - self.robot_model.state['q']
-        self._steady_tau_bias += self._steady_ki * q_error * self.dt
-        self._steady_tau_bias = np.clip(
-            self._steady_tau_bias,
-            -self._steady_tau_bias_limit,
-            self._steady_tau_bias_limit,
-        )
+        # get positional error
+        q_state = self.robot_model.state['q']
+        q_error = self._steady_q_cmd - q_state
+        tau_bias_increment = self._steady_ki * q_error * self.dt
+        # close to clipping limit
+        if self._steady_state_hits_position_clip(
+            q_state,
+            tau_bias_increment,
+            threshold,
+        ):
+            tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
+                self.robot_model.state['q']
+            )
+            tau_cmd = tau_gravity + self._steady_tau_bias
+            self.low_cmd_handler.set_joint_commands(
+                self._steady_q_cmd,
+                self._steady_dq_cmd,
+                tau_cmd,
+            )
+            self.update_robot_model()
+            return True
+        else:
+            self._steady_tau_bias += tau_bias_increment
+            self._steady_tau_bias = np.clip(
+                self._steady_tau_bias,
+                -self._steady_tau_bias_limit,
+                self._steady_tau_bias_limit,
+            )
 
-        tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
-            self.robot_model.state['q']
-        )
-        tau_cmd = tau_gravity + self._steady_tau_bias
-        self.low_cmd_handler.set_joint_commands(
-            self._steady_q_cmd,
-            self._steady_dq_cmd,
-            tau_cmd,
-        )
+            # compute total torque to command
+            tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
+                self.robot_model.state['q']
+            )
+            tau_cmd = tau_gravity + self._steady_tau_bias
+            self.low_cmd_handler.set_joint_commands(
+                self._steady_q_cmd,
+                self._steady_dq_cmd,
+                tau_cmd,
+            )
 
-        self.update_robot_model()
-        q_error = self._steady_q_cmd - self.robot_model.state['q']
-        return np.max(np.abs(q_error[self.upper_ids])) < threshold
+            # check convergence
+            self.update_robot_model()
+            q_error = self._steady_q_cmd - self.robot_model.state['q']
+            return np.max(np.abs(q_error[self.upper_ids])) < threshold
 
     def _limit_joint_vel(self, vel):
         # get end effector twist

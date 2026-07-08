@@ -84,7 +84,10 @@ def parse_args():
     )
     parser.add_argument('--planner', default='RRTConnect')
     parser.add_argument('--timeout', type=float, default=1.0)
-    parser.add_argument('--interpolation-steps', type=int, default=200)
+    parser.add_argument('--moving-speed', type=float, default=0.25)
+    parser.add_argument('--dt', type=float, default=1.0 / 30.0)
+    parser.add_argument('--min-interpolation-steps', type=int, default=2)
+    parser.add_argument('--max-interpolation-steps', type=int, default=300)
     parser.add_argument('--validity-resolution', type=float, default=0.0025)
     parser.add_argument('--constraint-check-steps', type=int, default=10)
     parser.add_argument('--frame-z-min-margin', type=float, default=1e-3)
@@ -105,7 +108,10 @@ def main():
     config = PlannerConfig(
         planner=args.planner,
         timeout=args.timeout,
-        interpolation_steps=args.interpolation_steps,
+        moving_speed=args.moving_speed,
+        dt=args.dt,
+        min_interpolation_steps=args.min_interpolation_steps,
+        max_interpolation_steps=args.max_interpolation_steps,
         validity_resolution=args.validity_resolution,
         constraint_check_steps=args.constraint_check_steps,
         frame_z_min_margin=args.frame_z_min_margin,

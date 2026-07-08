@@ -111,7 +111,7 @@ def test_plan_between_fake_valid_states():
     pytest.importorskip('ompl')
     planner = ReducedJointPlanner(
         FakeRobotModel(),
-        config=PlannerConfig(timeout=0.2, interpolation_steps=10),
+        config=PlannerConfig(timeout=0.2, max_interpolation_steps=10),
     )
 
     result = planner.plan([0.0, 0.0], [0.5, 0.5])
@@ -129,7 +129,7 @@ def test_plan_pins_idle_right_arm_with_home_tolerance():
     upper = np.ones(14)
     planner = ReducedJointPlanner(
         FakeRobotModel(lower=lower, upper=upper),
-        config=PlannerConfig(timeout=0.2, interpolation_steps=10),
+        config=PlannerConfig(timeout=0.2, max_interpolation_steps=10),
     )
     start = np.zeros(14)
     goal = np.zeros(14)
@@ -225,7 +225,7 @@ def test_plan_between_named_configs_smoke():
 
     planner = ReducedJointPlanner(
         robot_model,
-        config=PlannerConfig(timeout=1.0, interpolation_steps=25),
+        config=PlannerConfig(timeout=1.0, max_interpolation_steps=25),
     )
     result = None
     for start_name, goal_name in valid_pairs:
