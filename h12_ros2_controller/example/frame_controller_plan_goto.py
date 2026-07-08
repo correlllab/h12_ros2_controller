@@ -22,7 +22,9 @@ from h12_ros2_controller.utility.path_definition import (
 def input_keyword_or_frame_task():
     '''Ask user for a named config or one manual frame task'''
     print(f'Available named configs: {list(NAMED_CONFIGS.keys())}')
-    choice = input('Enter named config (or press Enter for frame task): ').strip()
+    choice = input(
+        'Enter named config (or press Enter for frame task): '
+    ).strip()
     if choice:
         return choice, None, None
 
@@ -65,13 +67,19 @@ def init_frame_controller(config_name):
     return frame_controller
 
 
-def plan_goal(frame_controller, keyword, frame_name, pose, ik_timeout, ik_alpha,
-              keep_grasp_height, z_margin):
+def plan_goal(
+    frame_controller,
+    keyword,
+    frame_name,
+    pose,
+    ik_timeout,
+    ik_alpha,
+):
     '''Plan one named config or frame-task goal'''
     start_time = time.perf_counter()
 
-    # named configs plan directly in reduced joint space without z constraints,
-    # since the user explicitly chose the target configuration
+    # named configs plan directly in reduced joint space; the planner still
+    # applies the global z constraint from config
     if keyword in NAMED_CONFIGS:
         print(f'Planning to named configuration: {keyword}')
         path = frame_controller.plan_to_configuration(
@@ -87,8 +95,6 @@ def plan_goal(frame_controller, keyword, frame_name, pose, ik_timeout, ik_alpha,
         path = frame_controller.plan_to_ik_target(
             ik_timeout=ik_timeout,
             ik_alpha=ik_alpha,
-            keep_grasp_height=keep_grasp_height,
-            z_margin=z_margin,
         )
     planning_time = time.perf_counter() - start_time
     return path, planning_time
@@ -110,8 +116,7 @@ def hold_steady_state(frame_controller, timeout, threshold):
         print('Timed out during steady-state hold')
 
 
-def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
-         allow_grasp_dip=False, z_margin=0.0):
+def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1):
     frame_controller = init_frame_controller(config_name)
     controller_cfg = frame_controller.config['controller']
     steady_timeout = controller_cfg['timeout']
@@ -129,8 +134,6 @@ def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
                     pose,
                     ik_timeout=ik_timeout,
                     ik_alpha=ik_alpha,
-                    keep_grasp_height=not allow_grasp_dip,
-                    z_margin=z_margin,
                 )
             except Exception as err:
                 print(f'Planning failed: {err}')
@@ -144,8 +147,12 @@ def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
             frame_controller.execute_path(path)
             print('Plan execution finished')
 
-            # hold the final configuration with steady-state I control
-            hold_steady_state(frame_controller, steady_timeout, threshold_joint)
+            # hold the final config with steady-state I control
+            hold_steady_state(
+                frame_controller,
+                steady_timeout,
+                threshold_joint,
+            )
 
             cont = input('Do you want to send another goal? (y/n): ').lower()
             if cont != 'y':
@@ -167,13 +174,9 @@ if __name__ == '__main__':
     )
     parser.add_argument('--ik-timeout', type=float, default=1.0)
     parser.add_argument('--ik-alpha', type=float, default=0.1)
-    parser.add_argument('--allow-grasp-dip', action='store_true')
-    parser.add_argument('--grasp-z-margin', type=float, default=0.0)
     args = parser.parse_args()
     main(
         config_name=args.config,
         ik_timeout=args.ik_timeout,
         ik_alpha=args.ik_alpha,
-        allow_grasp_dip=args.allow_grasp_dip,
-        z_margin=args.grasp_z_margin,
     )

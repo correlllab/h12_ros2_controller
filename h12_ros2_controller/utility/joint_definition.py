@@ -8,9 +8,8 @@ FREEFLYER_NV = 6  # linear vel (3) + angular vel (3)
 FREEFLYER_POS = slice(0, 3)   # [x, y, z]
 FREEFLYER_QUAT = slice(3, 7)  # [qx, qy, qz, qw]
 
-# Motor degrees of freedom on the Unitree DDS lowstate/cmd path.
-# Magpie grippers are NOT on this path — they are driven via custom_ros_messages
-# (SetGripperPosition / SetGripperForce / DeliGrasp) through magpie_hand_bridge.
+# motor degrees of freedom on the Unitree DDS lowstate/cmd path.
+# magpie grippers are not on this path.
 NUM_MOTOR = 27
 NUM_HAND_DOF = 0
 

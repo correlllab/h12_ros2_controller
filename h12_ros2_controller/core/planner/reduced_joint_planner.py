@@ -1,9 +1,10 @@
-import time
-from dataclasses import dataclass, field
-
 import numpy as np
 from ompl import base as ob
 from ompl import geometric as og
+from dataclasses import dataclass, field
+
+_ARM_REDUCED_NQ = 14
+_ARM_MOVE_TOL = 2e-2
 
 
 @dataclass
@@ -23,7 +24,7 @@ class PlannerConfig:
     frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
     min_frame_z: float = None
     frame_z_tolerance: float = 1e-3
-    # ceiling headroom above endpoint max z; None disables the ceiling
+    # ceiling headroom above the configured z floor; None disables the ceiling
     frame_z_headroom: float = 0.1
 
 
@@ -47,10 +48,12 @@ class ReducedJointPlanner:
 
         self.nq = int(self.robot_model.model_body_reduced.nq)
         self.validity_checks = 0
-        self.min_frame_z = self.config.min_frame_z
         self.frame_names = tuple(self.config.frame_names)
-        self.frame_min_z = self._make_frame_floor_map(self.min_frame_z)
-        self.frame_max_z = {}
+        self.frame_min_z = self._make_frame_floor_map(self.config.min_frame_z)
+        self.frame_max_z = self._make_frame_ceiling_map(
+            self.frame_min_z,
+            self.config.frame_z_headroom,
+        )
         # active joint mask and pinned values for inactive joints
         self.active_mask = np.ones(self.nq, dtype=bool)
         self.pinned_q = np.zeros(self.nq)
@@ -203,7 +206,7 @@ class ReducedJointPlanner:
         if not self.frame_min_z and not self.frame_max_z:
             return ''
 
-        # keep selected frames within their configured z slab
+        # keep selected frames within their configured global z slab
         tol = self.config.frame_z_tolerance
         q = self._motor_q(q_reduced)
         for frame_name in self.frame_names:
@@ -216,42 +219,6 @@ class ReducedJointPlanner:
                 return f'{name} moves {frame_name} above z={max_z:.4f}'
         return ''
 
-    def set_grasp_floor_from_endpoints(self, start, goal, margin=0.0,
-                                       headroom=None):
-        '''Constrain grasp frames to a z slab derived from the endpoints'''
-        # collect per-frame endpoint z extremes
-        z_min = {}
-        z_max = {}
-        for q_reduced in [start, goal]:
-            q = self._motor_q(q_reduced)
-            for frame_name in self.frame_names:
-                z = self.robot_model.get_frame_position(frame_name, q)[2]
-                z_min[frame_name] = min(z_min.get(frame_name, z), z)
-                z_max[frame_name] = max(z_max.get(frame_name, z), z)
-
-        # floor keeps frames above the lower endpoint minus a margin
-        self.frame_min_z = {
-            frame_name: z - float(margin)
-            for frame_name, z in z_min.items()
-        }
-        # ceiling limits how high above the endpoints the path may reach
-        headroom = self.config.frame_z_headroom if headroom is None else headroom
-        if headroom is None:
-            self.frame_max_z = {}
-        else:
-            self.frame_max_z = {
-                frame_name: z + float(headroom)
-                for frame_name, z in z_max.items()
-            }
-        self.min_frame_z = None
-
-    def clear_workspace_constraints(self):
-        '''Clear workspace constraints for future plans'''
-        self.min_frame_z = self.config.min_frame_z
-        self.frame_names = tuple(self.config.frame_names)
-        self.frame_min_z = self._make_frame_floor_map(self.min_frame_z)
-        self.frame_max_z = {}
-
     def _make_frame_floor_map(self, min_z):
         if min_z is None:
             return {}
@@ -259,27 +226,51 @@ class ReducedJointPlanner:
             return {name: float(z) for name, z in min_z.items()}
         return {name: float(min_z) for name in self.frame_names}
 
+    def _make_frame_ceiling_map(self, frame_min_z, headroom):
+        if not frame_min_z or headroom is None:
+            return {}
+        return {
+            frame_name: z + float(headroom)
+            for frame_name, z in frame_min_z.items()
+        }
+
     def _path_validity_failure(self, path):
         for idx, q in enumerate(path):
             reason = self._validity_failure(q, f'path waypoint {idx}')
             if reason:
                 return reason
 
-        # check extra samples between returned waypoints for z constraints
+        # only extra-sample the global z slab between returned waypoints
         steps = max(1, int(self.config.constraint_check_steps))
         for idx in range(len(path) - 1):
             for sub_idx in range(1, steps):
                 alpha = sub_idx / steps
                 q = (1.0 - alpha) * path[idx] + alpha * path[idx + 1]
-                reason = self._validity_failure(q, f'path segment {idx}')
+                reason = self._workspace_constraint_failure(
+                    q,
+                    f'path segment {idx}',
+                )
                 if reason:
                     return reason
         return ''
+
+    def _infer_active_mask(self, start, goal):
+        if self.nq != _ARM_REDUCED_NQ:
+            return None
+
+        mask = np.zeros(self.nq, dtype=bool)
+        if np.max(np.abs(start[:7] - goal[:7])) > _ARM_MOVE_TOL:
+            mask[:7] = True
+        if np.max(np.abs(start[7:] - goal[7:])) > _ARM_MOVE_TOL:
+            mask[7:] = True
+        return mask
 
     def plan(self, start, goal, active_mask=None):
         '''Plan a collision-free path between reduced joint configurations'''
         start = self._as_reduced_array(start, 'start')
         goal = self._as_reduced_array(goal, 'goal')
+        if active_mask is None:
+            active_mask = self._infer_active_mask(start, goal)
 
         # restrict planning to active joints; pin the rest to the start value
         self._set_active_mask(active_mask, start)
@@ -318,15 +309,6 @@ class ReducedJointPlanner:
         )
         self._apply_active_bounds()
         self.ss.clear()
-        reason = self._ompl_endpoint_failure(start, goal)
-        if reason:
-            return PlanResult(
-                success=False,
-                path=self._empty_path(),
-                reason=reason,
-                planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
-            )
         self.ss.setStartAndGoalStates(
             self._make_state(start),
             self._make_state(goal),
@@ -342,35 +324,22 @@ class ReducedJointPlanner:
                 metadata={'validity_checks': self.validity_checks},
             )
 
-        # shorten and smooth first; fall back to less smoothing if it breaks
-        path_array = None
-        for smooth in (True, False):
-            path = self.ss.getSolutionPath()
-            self._shorten_path(path, smooth=smooth)
-            if self.config.interpolation_steps > 0:
-                steps = max(2, int(self.config.interpolation_steps))
-                path.interpolate(steps)
-            candidate = self._path_to_array(path)
-            reason = self._path_validity_failure(candidate)
-            if not reason:
-                path_array = candidate
-                break
-
-        # last resort: use the raw solution path without extra smoothing
-        if path_array is None:
-            path = self.ss.getSolutionPath()
-            if self.config.interpolation_steps > 0:
-                path.interpolate(max(2, int(self.config.interpolation_steps)))
-            path_array = self._path_to_array(path)
-            reason = self._path_validity_failure(path_array)
-            if reason:
-                return PlanResult(
-                    success=False,
-                    path=path_array,
-                    reason=reason,
-                    planner_name=self.config.planner,
-                    metadata={'validity_checks': self.validity_checks},
-                )
+        # simplify once, then validate the final candidate path
+        path = self.ss.getSolutionPath()
+        self._shorten_path(path)
+        if self.config.interpolation_steps > 0:
+            steps = max(2, int(self.config.interpolation_steps))
+            path.interpolate(steps)
+        path_array = self._path_to_array(path)
+        reason = self._path_validity_failure(path_array)
+        if reason:
+            return PlanResult(
+                success=False,
+                path=path_array,
+                reason=reason,
+                planner_name=self.config.planner,
+                metadata={'validity_checks': self.validity_checks},
+            )
 
         return PlanResult(
             success=True,
@@ -379,12 +348,6 @@ class ReducedJointPlanner:
             planner_name=self.config.planner,
             metadata={'validity_checks': self.validity_checks},
         )
-
-    def _ompl_endpoint_failure(self, start, goal):
-        for name, q in [('start', start), ('goal', goal)]:
-            if not self._is_state_valid(self._make_state(q)):
-                return f'{name} rejected by OMPL validity checker'
-        return ''
 
     def _timeout_reason(self, direct_failure):
         reason = 'OMPL failed to find a solution before timeout'

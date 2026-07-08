@@ -88,8 +88,6 @@ def parse_args():
     parser.add_argument('--validity-resolution', type=float, default=0.0025)
     parser.add_argument('--constraint-check-steps', type=int, default=10)
     parser.add_argument('--frame-z-tolerance', type=float, default=1e-3)
-    parser.add_argument('--keep-grasp-height', action='store_true')
-    parser.add_argument('--grasp-z-margin', type=float, default=0.0)
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--visualize-delay', type=float, default=0.05)
     return parser.parse_args()
@@ -112,12 +110,6 @@ def main():
         frame_z_tolerance=args.frame_z_tolerance,
     )
     planner = ReducedJointPlanner(robot_model, config=config)
-    if args.keep_grasp_height:
-        planner.set_grasp_floor_from_endpoints(
-            start,
-            goal,
-            margin=args.grasp_z_margin,
-        )
     result = planner.plan(start, goal)
 
     print(f'Planner: {result.planner_name}')

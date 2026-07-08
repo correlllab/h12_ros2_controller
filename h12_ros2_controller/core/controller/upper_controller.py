@@ -6,7 +6,7 @@ from tqdm import tqdm
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
-from h12_ros2_controller.core.planner import PlannerConfig, ReducedJointPlanner
+from h12_ros2_controller.core.planner import PlannerConfig, PlannerClient
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -73,9 +73,12 @@ class UpperController:
             dt=self.dt,
             d_min=self.d_min
         )
-        self.planner = ReducedJointPlanner(
-            self.robot_model,
-            config=self._load_planner_config(),
+        self.planner = PlannerClient(
+            urdf_path=urdf_path,
+            urdf_sphere_path=urdf_sphere_path,
+            srdf_sphere_path=srdf_sphere_path,
+            planner_config=self._load_planner_config(),
+            handless=handless,
         )
 
         if self.visualize:
@@ -248,64 +251,37 @@ class UpperController:
             raise RuntimeError(f'Planning failed: {result.reason}')
         return result.path
 
-    def plan_to_configuration(self, q_reduced, start=None,
-                              keep_grasp_height=False, z_margin=0.0,
-                              active_mask=None):
+    def plan_to_configuration(self, q_reduced, start=None, active_mask=None):
         '''Plan from current reduced state to a reduced joint target'''
         if start is None:
             start = self.robot_model.state_reduced['q']
         q_reduced = np.asarray(q_reduced, dtype=float)
+        result = self.planner.plan_configuration(
+            current_q=self.robot_model.state['q'],
+            start=start,
+            goal=q_reduced,
+            active_mask=active_mask,
+        )
+        return self._path_or_raise(result)
 
-        # try direct motion first; optionally block downward grasp-frame dips
-        if keep_grasp_height:
-            self.planner.set_grasp_floor_from_endpoints(
-                start,
-                q_reduced,
-                margin=z_margin,
-            )
-        try:
-            result = self.planner.plan(start, q_reduced, active_mask=active_mask)
-            return self._path_or_raise(result)
-        finally:
-            if keep_grasp_height:
-                self.planner.clear_workspace_constraints()
-
-    def plan_to_ik_target(self, start=None,
-                          ik_timeout=1.0, ik_alpha=0.1,
-                          keep_grasp_height=False, z_margin=0.0):
+    def plan_to_ik_target(self, start=None, ik_timeout=1.0, ik_alpha=0.1):
         '''Solve current IK tasks, then plan to the IK joint solution'''
-        # subclasses own task setup; this only resolves existing IK targets
-        update_start = time.perf_counter()
+        # restrict planning to joints supporting the active tasks so that
+        # untasked limbs (e.g. the other arm) never move during the plan
+        active_mask = self._active_task_mask()
         self.update_ik_solver()
-        update_time = time.perf_counter() - update_start
-        solve_start = time.perf_counter()
         ik_result = self.ik_solver.solve_ik_reduced(
             alpha=ik_alpha,
             timeout=ik_timeout,
         )
-        solve_time = time.perf_counter() - solve_start
-        print(
-            'IK timing: '
-            f'update={update_time * 1000.0:.1f}ms, '
-            f'solve={solve_time * 1000.0:.1f}ms, '
-            f'success={ik_result["success"]}',
-            flush=True,
-        )
         if not ik_result['success']:
             raise RuntimeError('IK failed to resolve current targets')
 
-        # solve_ik_reduced returns full motor q; planner needs reduced q
         q_goal = ik_result['q'][self.robot_model.reduced_mask]
-
-        # restrict planning to joints supporting the active tasks so that
-        # untasked limbs (e.g. the other arm) never move during the plan
-        active_mask = self._active_task_mask()
-
+        start_q = start if start is not None else self.robot_model.state_reduced['q']
         return self.plan_to_configuration(
             q_goal,
-            start=start,
-            keep_grasp_height=keep_grasp_height,
-            z_margin=z_margin,
+            start=start_q,
             active_mask=active_mask,
         )
 
@@ -565,6 +541,7 @@ class UpperController:
 
     def shutdown(self):
         self.stop_recording()
+        self.planner.shutdown()
         self.robot_model.shutdown()
         self.low_cmd_handler.shutdown()
 

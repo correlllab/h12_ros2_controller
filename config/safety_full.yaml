@@ -22,42 +22,32 @@ controller:
 
 planner:
   planner: RRTConnect
-  # Example RRT* tuning: replace the active values with this when comparing
-  # higher-quality paths against planning time.
+  timeout: 1.0
+  # example RRT* tuning
   # planner: RRTstar
   # timeout: 3.0
   # range: 0.15
-  timeout: 1.0
-  # Maximum planner extension length in joint-space radians. 0.0 lets OMPL
-  # choose a planner-specific default.
+  # planner extension length in joint space
   range: 0.0
   try_direct: true
   simplify: true
   simplify_time: 1.0
   shortcut: true
-  # Number of waypoints after interpolation. This also affects execution
-  # duration because execute_path sends one waypoint per controller tick.
-  interpolation_steps: 200
-  # Fraction of the joint-space extent between sampled validity checks. Lower
-  # values catch collisions more densely but slow planning.
+  # waypoints after interpolation
+  interpolation_steps: 100
+  # sampled validity spacing in joint space
   validity_resolution: 0.0025
-  # Extra linear samples checked between returned waypoints for workspace
-  # constraints such as grasp-frame z limits.
+  # extra samples between returned waypoints
   constraint_check_steps: 10
   frame_names:
     - left_grasp_frame
     - right_grasp_frame
-  # Optional z floor for frame_names. Use null to disable the static floor.
-  # A mapping can set per-frame floors, for example:
-  # min_frame_z:
-  #   left_grasp_frame: 0.35
-  #   right_grasp_frame: 0.35
-  min_frame_z: null
-  # Tolerance applied when checking frame z floors and ceilings.
+  # global z floor for frame_names
+  min_frame_z: 0.0
+  # z tolerance for floor and ceiling
   frame_z_tolerance: 0.001
-  # Allowed z overshoot above the higher endpoint when keep_grasp_height is on.
-  # Use null to disable the endpoint-derived ceiling.
-  frame_z_headroom: 0.1
+  # z ceiling headroom above floor
+  frame_z_headroom: null
 
 frequency:
   ctrl_hz: 30
@@ -139,21 +129,21 @@ limits:
       - 0.60 # right_wrist_pitch_joint
       - 0.60 # right_wrist_yaw_joint
     torque_ratio:
-      - 0.30 # torso_joint
-      - 0.95 # left_shoulder_pitch_joint
-      - 0.95 # left_shoulder_roll_joint
-      - 0.95 # left_shoulder_yaw_joint
-      - 0.95 # left_elbow_joint
-      - 0.95 # left_wrist_roll_joint
-      - 0.95 # left_wrist_pitch_joint
-      - 0.95 # left_wrist_yaw_joint
-      - 0.95 # right_shoulder_pitch_joint
-      - 0.95 # right_shoulder_roll_joint
-      - 0.95 # right_shoulder_yaw_joint
-      - 0.95 # right_elbow_joint
-      - 0.95 # right_wrist_roll_joint
-      - 0.95 # right_wrist_pitch_joint
-      - 0.95 # right_wrist_yaw_joint
+      - 0.50 # torso_joint
+      - 1.00 # left_shoulder_pitch_joint
+      - 1.00 # left_shoulder_roll_joint
+      - 1.00 # left_shoulder_yaw_joint
+      - 1.00 # left_elbow_joint
+      - 1.00 # left_wrist_roll_joint
+      - 1.00 # left_wrist_pitch_joint
+      - 1.00 # left_wrist_yaw_joint
+      - 1.00 # right_shoulder_pitch_joint
+      - 1.00 # right_shoulder_roll_joint
+      - 1.00 # right_shoulder_yaw_joint
+      - 1.00 # right_elbow_joint
+      - 1.00 # right_wrist_roll_joint
+      - 1.00 # right_wrist_pitch_joint
+      - 1.00 # right_wrist_yaw_joint
 
 logging:
   enabled: false

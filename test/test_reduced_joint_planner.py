@@ -118,6 +118,25 @@ def test_plan_between_fake_valid_states():
     assert np.allclose(result.path[-1], [0.5, 0.5])
 
 
+def test_plan_pins_idle_right_arm_with_home_tolerance():
+    pytest.importorskip('ompl')
+    lower = -np.ones(14)
+    upper = np.ones(14)
+    planner = ReducedJointPlanner(
+        FakeRobotModel(lower=lower, upper=upper),
+        config=PlannerConfig(timeout=0.2, interpolation_steps=10),
+    )
+    start = np.zeros(14)
+    goal = np.zeros(14)
+    start[7:] = 0.01
+    goal[:7] = 0.5
+
+    result = planner.plan(start, goal)
+
+    assert result.success, result.reason
+    assert np.allclose(result.path[:, 7:], start[7:])
+
+
 def test_plan_between_named_configs_smoke():
     pytest.importorskip('ompl')
     robot_model_mod = pytest.importorskip(
