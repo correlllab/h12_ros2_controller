@@ -128,8 +128,8 @@ def main():
         )
         print(f'All waypoints valid: {path_valid}')
         if args.visualize:
-            robot_model.visualize_reduced_path(result.path)
-            robot_model.play_reduced_path(
+            robot_model.visualizer.visualize_reduced_path(result.path)
+            robot_model.visualizer.play_reduced_path(
                 result.path,
                 delay=args.visualize_delay,
             )

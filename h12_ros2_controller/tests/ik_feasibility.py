@@ -138,8 +138,8 @@ def _check(robot_model: RobotModel, solver: IKSolver,
             'dq': np.zeros(len(ENABLED_JOINTS)), 'joint_names': [],
         }
 
-    q_sol = result['q']  # full 27-dof
-    success = result['success']
+    q_sol = result.q  # full 27-dof
+    success = result.success
 
     # residual error
     q_red = q_sol[robot_model.reduced_mask]

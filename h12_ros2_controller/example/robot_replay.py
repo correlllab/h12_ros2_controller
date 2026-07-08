@@ -63,7 +63,7 @@ def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
         if com_arr is not None:
             transform = np.eye(4)
             transform[:3, 3] = com_arr[frame_idx]
-            viewer = robot_model.viz.viewer
+            viewer = robot_model.visualizer.viz.viewer
             viewer['com'].set_object(geo.Sphere(0.02))
             viewer['com'].set_transform(transform)
             viewer['com'].set_property('color', (1.0, 0.0, 0.0, 0.8))
@@ -72,7 +72,7 @@ def run_replay_loop(robot_model, data, loop, replay_speed, show_plot):
         if zmp_arr is not None:
             transform = np.eye(4)
             transform[:3, 3] = zmp_arr[frame_idx]
-            viewer = robot_model.viz.viewer
+            viewer = robot_model.visualizer.viz.viewer
             viewer['zmp'].set_object(geo.Sphere(0.02))
             viewer['zmp'].set_transform(transform)
             viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))

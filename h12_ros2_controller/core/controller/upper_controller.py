@@ -279,10 +279,10 @@ class UpperController:
             alpha=ik_alpha,
             timeout=ik_timeout,
         )
-        if not ik_result['success']:
+        if not ik_result.success:
             raise RuntimeError('IK failed to resolve current targets')
 
-        q_goal = ik_result['q'][self.robot_model.reduced_mask]
+        q_goal = ik_result.q[self.robot_model.reduced_mask]
         start_q = start if start is not None else self.robot_model.state_reduced['q']
         return self.plan_to_configuration(
             q_goal,
@@ -314,15 +314,15 @@ class UpperController:
 
     def visualize_path(self, path):
         '''Draw a reduced joint-space path with Meshcat'''
-        if self.robot_model.viz is None:
+        if self.robot_model.visualizer is None:
             self.robot_model.init_visualizer()
-        self.robot_model.visualize_reduced_path(path)
+        self.robot_model.visualizer.visualize_reduced_path(path)
 
     def play_path(self, path, delay=0.05):
         '''Animate a reduced joint-space path with Meshcat'''
-        if self.robot_model.viz is None:
+        if self.robot_model.visualizer is None:
             self.robot_model.init_visualizer()
-        self.robot_model.play_reduced_path(path, delay=delay)
+        self.robot_model.visualizer.play_reduced_path(path, delay=delay)
 
     def execute_path(self, path, validate=True):
         '''Execute reduced joint waypoints as direct position commands'''

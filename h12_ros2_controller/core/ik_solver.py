@@ -1,10 +1,39 @@
 import time
+from dataclasses import dataclass, field
+
 import pink
 import qpsolvers
 import meshcat_shapes
 import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+
+
+@dataclass
+class IKAttemptResult:
+    '''Result for one IK seed attempt'''
+
+    q: np.ndarray
+    success: bool
+    linear_error: float
+    angular_error: float
+    seed_name: str
+    iterations: int
+    elapsed_time: float
+
+
+@dataclass
+class IKResult:
+    '''Final IK result with all seed attempts'''
+
+    q: np.ndarray
+    success: bool
+    linear_error: float
+    angular_error: float
+    seed_name: str
+    attempts: list = field(default_factory=list)
+
 
 class IKSolver:
     def __init__(self,
@@ -119,18 +148,21 @@ class IKSolver:
             lm_damping=lm_damping
         )
         # add frame to visualizer
-        if self.robot_model.viz is not None:
-            viewer = self.robot_model.viz.viewer
+        visualizer = self.robot_model.visualizer
+        if visualizer is not None and visualizer.viz is not None:
+            viewer = visualizer.viz.viewer
             meshcat_shapes.frame(viewer[task_name], opacity=1.0)
-            meshcat_shapes.frame(viewer[frame_name], opacity=1.0)
+            if self._frame_is_valid(frame_name):
+                meshcat_shapes.frame(viewer[frame_name], opacity=1.0)
 
     def remove_frame_task(self, task_name: str):
         '''Remove a frame task from the IK solver'''
         frame_name = self.frame_tasks[task_name].frame
         self.frame_tasks.pop(task_name, None)
         # remove frame from visualizer
-        if self.robot_model.viz is not None:
-            viewer = self.robot_model.viz.viewer
+        visualizer = self.robot_model.visualizer
+        if visualizer is not None and visualizer.viz is not None:
+            viewer = visualizer.viz.viewer
             viewer[task_name].delete()
             viewer[frame_name].delete()
 
@@ -141,16 +173,23 @@ class IKSolver:
             self.remove_frame_task(task_name)
 
     def update_visualizer(self):
-        if self.robot_model.viz is not None:
-            viewer = self.robot_model.viz.viewer
+        visualizer = self.robot_model.visualizer
+        if visualizer is not None and visualizer.viz is not None:
+            viewer = visualizer.viz.viewer
             torso_to_world = self.robot_model.get_frame_transformation('torso_link')
             for task_name, task in self.frame_tasks.items():
                 target_to_world = torso_to_world @ task.transform_target_to_world.np
                 viewer[task_name].set_transform(target_to_world)
-                frame_name = self.frame_tasks[task_name].frame
+                frame_name = task.frame
+                if not self._frame_is_valid(frame_name):
+                    continue
                 viewer[frame_name].set_transform(
                     self.robot_model.get_frame_transformation(frame_name)
                 )
+
+    def _frame_is_valid(self, frame_name):
+        frame_id = self.robot_model.model.getFrameId(frame_name)
+        return frame_id < len(self.robot_model.model.frames)
 
     def update_configurations(self):
         '''Update Pink configurations with current robot state'''
@@ -206,6 +245,193 @@ class IKSolver:
             safety_break=False
         )
 
+    def _frame_task_errors(self, configuration):
+        '''Compute summed linear and angular frame-task residuals'''
+        linear_err = 0.0
+        angular_err = 0.0
+        for task in self.frame_tasks.values():
+            err = task.compute_error(configuration)
+            linear_err += np.linalg.norm(err[:3])
+            angular_err += np.linalg.norm(err[3:])
+        return linear_err, angular_err
+
+    def _task_error_score(self, attempt, linear_threshold, angular_threshold):
+        linear_scale = max(float(linear_threshold), 1e-12)
+        angular_scale = max(float(angular_threshold), 1e-12)
+        return attempt.linear_error / linear_scale + attempt.angular_error / angular_scale
+
+    def _reduced_q_to_full(self, q_reduced):
+        q = np.copy(self.robot_model.zero_q_body)
+        q[self.robot_model.reduced_mask] = q_reduced
+        return q
+
+    def _default_seed_items(self):
+        return [
+            ('home', NAMED_CONFIGS['home']),
+            ('t_pose', NAMED_CONFIGS['t_pose']),
+            ('arms_front_45', NAMED_CONFIGS['arms_front_45']),
+            ('current', self.robot_model.state['q']),
+        ]
+
+    def _extra_seed_items(self, initial_positions):
+        if initial_positions is None:
+            return []
+
+        try:
+            seeds = np.asarray(initial_positions, dtype=float)
+            if seeds.ndim == 1:
+                return [('initial_0', seeds)]
+            if seeds.ndim == 2:
+                return [(f'initial_{idx}', seed) for idx, seed in enumerate(seeds)]
+        except (TypeError, ValueError):
+            pass
+
+        items = []
+        for idx, item in enumerate(initial_positions):
+            if (
+                isinstance(item, tuple) and
+                len(item) == 2 and
+                isinstance(item[0], str)
+            ):
+                items.append((item[0], item[1]))
+            else:
+                items.append((f'initial_{idx}', item))
+        return items
+
+    def _normalize_full_seed(self, seed, seed_name):
+        q = np.asarray(seed, dtype=float).reshape(-1)
+        if q.shape == (self.robot_model.model_body.nq,):
+            normalized = q
+        elif q.shape == (self.robot_model.model_body_reduced.nq,):
+            normalized = self._reduced_q_to_full(q)
+        else:
+            raise ValueError(
+                f'{seed_name} seed must have shape '
+                f'({self.robot_model.model_body.nq},) or '
+                f'({self.robot_model.model_body_reduced.nq},)'
+            )
+        if not np.all(np.isfinite(normalized)):
+            raise ValueError(f'{seed_name} seed must contain only finite values')
+        return normalized
+
+    def _normalize_reduced_seed(self, seed, seed_name):
+        q = np.asarray(seed, dtype=float).reshape(-1)
+        if q.shape == (self.robot_model.model_body_reduced.nq,):
+            normalized = q
+        elif q.shape == (self.robot_model.model_body.nq,):
+            normalized = q[self.robot_model.reduced_mask]
+        else:
+            raise ValueError(
+                f'{seed_name} seed must have shape '
+                f'({self.robot_model.model_body_reduced.nq},) or '
+                f'({self.robot_model.model_body.nq},)'
+            )
+        if not np.all(np.isfinite(normalized)):
+            raise ValueError(f'{seed_name} seed must contain only finite values')
+        return normalized
+
+    def _seed_list(self, reduced, initial_positions):
+        seeds = []
+        seed_items = self._default_seed_items() + self._extra_seed_items(
+            initial_positions,
+        )
+        for seed_name, seed in seed_items:
+            if reduced:
+                q = self._normalize_reduced_seed(seed, seed_name)
+            else:
+                q = self._normalize_full_seed(seed, seed_name)
+            seeds.append((seed_name, q))
+        return seeds
+
+    def _result_from_attempts(self, attempts, linear_threshold, angular_threshold):
+        candidates = [attempt for attempt in attempts if attempt.success]
+        if not candidates:
+            candidates = attempts
+        best = min(
+            candidates,
+            key=lambda attempt: self._task_error_score(
+                attempt,
+                linear_threshold,
+                angular_threshold,
+            ),
+        )
+        return IKResult(
+            q=np.copy(best.q),
+            success=best.success,
+            linear_error=best.linear_error,
+            angular_error=best.angular_error,
+            seed_name=best.seed_name,
+            attempts=attempts,
+        )
+
+    def _solve_ik_attempt(self, seed_name, q_seed, alpha, timeout,
+                          linear_threshold, angular_threshold):
+        self.configuration.update(q_seed)
+        linear_err, angular_err = self._frame_task_errors(self.configuration)
+        start_time = time.time()
+        iterations = 0
+
+        while (
+            linear_err >= linear_threshold or
+            angular_err >= angular_threshold
+        ) and time.time() - start_time < timeout:
+            self.posture_task.set_target_from_configuration(self.configuration)
+            tasks = list(self.frame_tasks.values()) + [self.posture_task]
+            vel = self._ik(tasks, alpha)
+            self.configuration.integrate_inplace(vel, alpha)
+            iterations += 1
+            linear_err, angular_err = self._frame_task_errors(self.configuration)
+
+        return IKAttemptResult(
+            q=np.copy(self.configuration.q),
+            success=(
+                linear_err < linear_threshold and
+                angular_err < angular_threshold
+            ),
+            linear_error=linear_err,
+            angular_error=angular_err,
+            seed_name=seed_name,
+            iterations=iterations,
+            elapsed_time=time.time() - start_time,
+        )
+
+    def _solve_ik_reduced_attempt(self, seed_name, q_seed, alpha, timeout,
+                                  linear_threshold, angular_threshold):
+        self.configuration_reduced.update(q_seed)
+        linear_err, angular_err = self._frame_task_errors(
+            self.configuration_reduced,
+        )
+        start_time = time.time()
+        iterations = 0
+
+        while (
+            linear_err >= linear_threshold or
+            angular_err >= angular_threshold
+        ) and time.time() - start_time < timeout:
+            self.posture_task.set_target_from_configuration(
+                self.configuration_reduced,
+            )
+            tasks = list(self.frame_tasks.values()) + [self.posture_task]
+            vel = self._ik_reduced(tasks, alpha)
+            self.configuration_reduced.integrate_inplace(vel, alpha)
+            iterations += 1
+            linear_err, angular_err = self._frame_task_errors(
+                self.configuration_reduced,
+            )
+
+        return IKAttemptResult(
+            q=self._reduced_q_to_full(self.configuration_reduced.q),
+            success=(
+                linear_err < linear_threshold and
+                angular_err < angular_threshold
+            ),
+            linear_error=linear_err,
+            angular_error=angular_err,
+            seed_name=seed_name,
+            iterations=iterations,
+            elapsed_time=time.time() - start_time,
+        )
+
     def ik_step(self, com=False):
         '''Solve one step of IK for all tasks and return joint velocity (motor-only, 27)'''
         self.posture_task.set_target_from_configuration(self.configuration)
@@ -229,68 +455,64 @@ class IKSolver:
         return vel_full
 
     def solve_ik(self, alpha=0.1, timeout=1.0,
-                 linear_threshold=1e-3, angular_threshold=1e-2):
+                 linear_threshold=1e-3, angular_threshold=1e-2,
+                 initial_positions=None):
         '''Solve IK to convergence and return motor-only q (27)'''
-        # reset configuration to zero position
-        self.configuration.update(self.robot_model.zero_q_body)
-        # optimization loop
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            self.posture_task.set_target_from_configuration(self.configuration)
-            tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = self._ik(tasks, alpha)
-            self.configuration.integrate_inplace(vel, alpha)
-            # check convergence
-            linear_err = 0
-            angular_err = 0
-            for task in self.frame_tasks.values():
-                err = task.compute_error(self.configuration)
-                linear_err += np.linalg.norm(err[:3])
-                angular_err += np.linalg.norm(err[3:])
-            if linear_err < linear_threshold and angular_err < angular_threshold:
-                return {
-                    'q': np.copy(self.configuration.q),
-                    'success': True
-                }
+        attempts = []
+        for seed_name, q_seed in self._seed_list(False, initial_positions):
+            attempt = self._solve_ik_attempt(
+                seed_name,
+                q_seed,
+                alpha,
+                timeout,
+                linear_threshold,
+                angular_threshold,
+            )
+            attempts.append(attempt)
+            if attempt.success:
+                return self._result_from_attempts(
+                    attempts,
+                    linear_threshold,
+                    angular_threshold,
+                )
 
-        return {
-            'q': np.copy(self.configuration.q),
-            'success': False
-        }
+        result = self._result_from_attempts(
+            attempts,
+            linear_threshold,
+            angular_threshold,
+        )
+        self.configuration.update(result.q)
+        return result
 
     def solve_ik_reduced(self, alpha=0.1, timeout=1.0,
-                         linear_threshold=1e-3, angular_threshold=1e-2):
+                         linear_threshold=1e-3, angular_threshold=1e-2,
+                         initial_positions=None):
         '''Solve IK on reduced model to convergence and return motor-only q (27)'''
-        # reset configuration to zero position
-        self.configuration_reduced.update(self.robot_model.zero_q_body_reduced)
-        # optimization loop
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            self.posture_task.set_target_from_configuration(self.configuration_reduced)
-            tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = self._ik_reduced(tasks, alpha)
-            self.configuration_reduced.integrate_inplace(vel, alpha)
-            # check convergence
-            linear_err = 0
-            angular_err = 0
-            for task in self.frame_tasks.values():
-                err = task.compute_error(self.configuration_reduced)
-                linear_err += np.linalg.norm(err[:3])
-                angular_err += np.linalg.norm(err[3:])
-            if linear_err < linear_threshold and angular_err < angular_threshold:
-                q_full = self.robot_model.zero_q_body
-                q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
-                return {
-                    'q': q_full,
-                    'success': True
-                }
+        attempts = []
+        for seed_name, q_seed in self._seed_list(True, initial_positions):
+            attempt = self._solve_ik_reduced_attempt(
+                seed_name,
+                q_seed,
+                alpha,
+                timeout,
+                linear_threshold,
+                angular_threshold,
+            )
+            attempts.append(attempt)
+            if attempt.success:
+                return self._result_from_attempts(
+                    attempts,
+                    linear_threshold,
+                    angular_threshold,
+                )
 
-        q_full = self.robot_model.zero_q_body
-        q_full[self.robot_model.reduced_mask] = self.configuration_reduced.q
-        return {
-            'q': q_full,
-            'success': False
-        }
+        result = self._result_from_attempts(
+            attempts,
+            linear_threshold,
+            angular_threshold,
+        )
+        self.configuration_reduced.update(result.q[self.robot_model.reduced_mask])
+        return result
 
     def goto_configuration(self, q: np.ndarray):
         '''Solve one step of IK to reach a target joint configuration (motor-only, 27)'''

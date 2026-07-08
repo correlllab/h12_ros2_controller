@@ -1,17 +1,11 @@
 import os
-import time
 import numpy as np
 import pinocchio as pin
 from pyquaternion import Quaternion
-from pinocchio.visualize import MeshcatVisualizer
-
-import meshcat
-import meshcat_shapes
-import meshcat.geometry as geo
-import meshcat.transformations as tf
 
 from h12_ros2_controller.core.channel_interface import StateSubscriber
 from h12_ros2_controller.core.robot_dynamics import RobotDynamics
+from h12_ros2_controller.core.robot_visualizer import RobotVisualizer
 from h12_ros2_controller.utility.joint_definition import (
     ALL_JOINTS, ALL_HANDLESS_JOINTS, BODY_JOINTS, NUM_MOTOR,
     FREEFLYER_NQ, FREEFLYER_NV,
@@ -32,7 +26,7 @@ class RobotModel:
         self.data_body = self.model_body.createData()
 
         # placeholder for visualizer and state subscriber
-        self.viz = None
+        self.visualizer = None
         self.state_subscriber = None
 
         # field variables tracking joint states (motor only, length NUM_MOTOR)
@@ -54,10 +48,6 @@ class RobotModel:
         self.init_collision = False
         # placeholder mask for reduced model (motor only, length NUM_MOTOR)
         self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
-        # visualization configuration
-        self.viz_config = {}
-        # stored planned-path frame samples for per-cycle redraw
-        self._path_frame_samples = []
 
     def init_reduced_model(self, enabled_joints):
         '''
@@ -250,136 +240,28 @@ class RobotModel:
 
     def init_visualizer(self):
         '''Initialize meshcat visualizer'''
-        try:
-            self.viz = MeshcatVisualizer(self.model, visual_model=self.visual_model,
-                                         copy_models=False, data=self.data)
-            self.viz.initViewer()
-            self.viz.loadViewerModel('unitree_h1_2')
-
-            # store visualization configuration
-            self.viz_config = {
-                'show_com': False,
-                'show_zmp': False,
-                'show_sensors': False,
-                'wrench_frames': [],
-            }
-
-        except ImportError as err:
-            print('ImportError: MeshcatVisualizer requires the meshcat package.')
-            print(err)
-            exit(0)
+        if self.visualizer is None:
+            self.visualizer = RobotVisualizer(self)
+        self.visualizer.init_visualizer()
 
     def config_visualizer(self,
                           show_com=None,
                           show_zmp=None,
                           show_sensors=None,
                           wrench_frames=None):
-        '''
-        Configure dynamic visualizations
-
-        @param show_sensors: visualize sensor frames (lidar and head camera)
-        @param show_com: visualize center of mass
-        @param show_zmp: visualize zero moment point
-        @param wrench_frames: list of frame names to visualize wrenches
-        '''
-        assert self.viz is not None, 'Visualizer must be initialized first.'
-
-        # update config with provided values only
-        config_updates = {
-            'show_com': show_com,
-            'show_zmp': show_zmp,
-            'show_sensors': show_sensors,
-            'wrench_frames': wrench_frames,
-        }
-        for key, value in config_updates.items():
-            if value is not None:
-                self.viz_config[key] = value
-
-        # initialize frame visualizations
-        if show_sensors:
-            meshcat_shapes.frame(self.viz.viewer['livox_frame'], opacity=1.0)
-            meshcat_shapes.frame(self.viz.viewer['camera_frame'], opacity=1.0)
-
-    def _visualize_sensors(self):
-        '''Update sensor frame visualizations (lidar and head camera)'''
-        viewer = self.viz.viewer
-        viewer['livox_frame'].set_transform(
-            self.get_frame_transformation('livox_link')
-        )
-        viewer['camera_frame'].set_transform(
-            self.get_frame_transformation('camera_link')
+        '''Configure meshcat visualizations'''
+        assert self.visualizer is not None, 'Visualizer must be initialized first.'
+        self.visualizer.config_visualizer(
+            show_com=show_com,
+            show_zmp=show_zmp,
+            show_sensors=show_sensors,
+            wrench_frames=wrench_frames,
         )
 
-    def _visualize_com(self):
-        '''Update center of mass visualization'''
-        com_pos = self.dynamics.get_com()
-        transform = np.eye(4)
-        transform[:3, 3] = com_pos
-        viewer = self.viz.viewer
-        viewer['com'].set_object(geo.Sphere(0.02))
-        viewer['com'].set_transform(transform)
-        viewer['com'].set_property('color', (1.0, 0.5, 0.0, 0.8))
-
-    def _visualize_zmp(self):
-        '''Update zero moment point visualization'''
-        zmp_pos = self.dynamics.get_zmp()
-        transform = np.eye(4)
-        transform[:3, 3] = zmp_pos
-        viewer = self.viz.viewer
-        viewer['zmp'].set_object(geo.Sphere(0.02))
-        viewer['zmp'].set_transform(transform)
-        viewer['zmp'].set_property('color', (0.0, 1.0, 0.0, 0.8))
-
-    def _visualize_wrench(self, link_name):
-        # get frame position and wrench
-        wrench = self.dynamics.get_frame_wrench(link_name)
-
-        # create cyclinder to represent force
-        force = wrench[0:3]
-        force_magnitude = np.linalg.norm(force) + 1e-6
-        force_direction = force / force_magnitude
-        # print(f'force: {force}, force_magnitude: {force_magnitude}')
-        # scale down for visualization
-        force_magnitude *= 0.1
-        force_transform = self._get_arrow_transformation(force_direction, force_magnitude)
-        # add to viewer
-        viewer = self.viz.viewer
-        viewer[f'{link_name}/force_arrow'].set_object(
-            geo.Cylinder(height=force_magnitude, radius=0.01)
-        )
-        viewer[f'{link_name}/force_arrow'].set_transform(force_transform)
-        viewer[f'{link_name}/force_arrow'].set_property('color', (1.0, 0.0, 0.0, 0.8))
-
-        # create cyclinder to represent torque
-        torque = wrench[3:6]
-        torque_magnitude = np.linalg.norm(torque) + 1e-6
-        torque_direction = torque / torque_magnitude
-        # scale down for visualization
-        torque_magnitude *= 0.1
-        torque_transform = self._get_arrow_transformation(torque_direction, torque_magnitude)
-        # add to viewer
-        self.viz.viewer[f'{link_name}/torque_arrow'].set_object(
-            geo.Cylinder(height=torque_magnitude, radius=0.01)
-        )
-        self.viz.viewer[f'{link_name}/torque_arrow'].set_transform(torque_transform)
-        self.viz.viewer[f'{link_name}/torque_arrow'].set_property('color', (0.0, 0.0, 1.0, 0.8))
-
-    def _get_arrow_transformation(self, direction, magnitude):
-        # create rotation matrix to align Y-axis with the direction vector
-        y_axis = np.array([0, 1, 0])
-        rotation_axis = np.cross(y_axis, direction)
-        if np.linalg.norm(rotation_axis) < 1e-6:
-            rotation_matrix = np.eye(3) if np.dot(y_axis, direction) > 0 else -np.eye(3)
-        else:
-            rotation_axis /= np.linalg.norm(rotation_axis)
-            angle = np.arccos(np.clip(np.dot(y_axis, direction), -1.0, 1.0))
-            rotation_matrix = tf.rotation_matrix(angle, rotation_axis)[:3, :3]
-
-        transform = np.eye(4)
-        transform[:3, :3] = rotation_matrix
-        transform[:3, 3] = rotation_matrix @ np.array([0, 1, 0]) * magnitude / 2
-
-        return transform
+    def update_visualizer(self):
+        '''Update robot visualization and all enabled visualizations'''
+        if self.visualizer is not None:
+            self.visualizer.update_visualizer()
 
     def init_subscriber(self, low_state_topic='rt/lowstate'):
         self.state_subscriber = StateSubscriber(low_state_topic=low_state_topic)
@@ -400,120 +282,6 @@ class RobotModel:
             pin.forwardKinematics(self.model_body_reduced, self.data_body_reduced,
                                   self.state_reduced['q'], self.state_reduced['dq'])
             pin.updateFramePlacements(self.model_body_reduced, self.data_body_reduced)
-
-    def update_visualizer(self):
-        '''Update robot visualization and all enabled dynamic visualizations'''
-        if self.viz is not None:
-            self.viz.display()
-
-            # update dynamic visualizations based on config
-            if self.viz_config.get('show_sensors', False):
-                self._visualize_sensors()
-            if self.viz_config.get('show_com', False):
-                self._visualize_com()
-            if self.viz_config.get('show_zmp', False):
-                self._visualize_zmp()
-            for frame_name in self.viz_config.get('wrench_frames', []):
-                self._visualize_wrench(frame_name)
-
-            # refresh planned path samples with the current base orientation
-            self._update_path_frames()
-
-    def _as_reduced_path(self, path):
-        '''Convert path input to a reduced waypoint array'''
-        path = np.asarray(path, dtype=float)
-        if path.ndim == 1:
-            path = path.reshape(1, -1)
-        if path.ndim != 2 or path.shape[1] != self.model_body_reduced.nq:
-            raise ValueError(
-                f'Path must have shape (N, {self.model_body_reduced.nq})'
-            )
-        return path
-
-    def _reduced_path_frame_transforms(self, path, frame_name):
-        '''Get full-model frame transforms for a reduced path'''
-        q = np.copy(self.state['q'])
-        transforms = []
-        for q_reduced in path:
-            q[self.reduced_mask] = q_reduced
-            transforms.append(self._get_frame_transformation(frame_name, q))
-        return transforms
-
-    def visualize_reduced_path(self, path,
-                               frame_names=('left_grasp_frame', 'right_grasp_frame')):
-        '''Draw reduced path traces and frame samples in Meshcat'''
-        assert self.viz is not None, 'Visualizer must be initialized first.'
-        assert self.init_reduced, 'Reduced model is not initialized.'
-        path = self._as_reduced_path(path)
-
-        # draw a path trace and sampled frames for each grasp frame
-        frame_colors = {
-            'left_grasp_frame': 0xff00ff,
-            'right_grasp_frame': 0x00ffff,
-        }
-        frame_names = tuple(frame_names)
-        self._path_frame_samples = []
-        for frame_name in frame_names:
-            transforms = self._reduced_path_frame_transforms(path, frame_name)
-            points = np.asarray(
-                [transform.translation for transform in transforms],
-                dtype=float,
-            ).T
-            prefix = f'planned_path/{frame_name}'
-            self.viz.viewer[prefix].delete()
-            self.viz.viewer[f'{prefix}/line'].set_object(
-                geo.Line(
-                    geo.PointsGeometry(points),
-                    geo.LineBasicMaterial(
-                        color=frame_colors.get(frame_name, 0xffffff),
-                        linewidth=4.0,
-                    ),
-                )
-            )
-
-            sample_count = min(3, max(0, len(path) - 2))
-            if sample_count == 0:
-                continue
-            indices = np.linspace(1, len(path) - 2, sample_count).astype(int)
-            for sample_idx, path_idx in enumerate(indices):
-                path_name = f'{prefix}/frame_{sample_idx}'
-                meshcat_shapes.frame(self.viz.viewer[path_name], opacity=0.8)
-                # store reduced waypoint so the frame can be redrawn each cycle
-                self._path_frame_samples.append((path_name, frame_name,
-                                                  np.copy(path[path_idx])))
-        self._update_path_frames()
-
-    def clear_path_visualization(self):
-        '''Remove planned path lines and frame samples from Meshcat'''
-        self._path_frame_samples = []
-        if self.viz is not None:
-            self.viz.viewer['planned_path'].delete()
-
-    def _update_path_frames(self):
-        '''Redraw stored path frames using current base orientation'''
-        samples = getattr(self, '_path_frame_samples', None)
-        if not samples:
-            return
-
-        # recompute each sampled frame like the IK solver frame markers
-        q = np.copy(self.state['q'])
-        for path_name, frame_name, q_reduced in samples:
-            q[self.reduced_mask] = q_reduced
-            transform = self._get_frame_transformation(frame_name, q)
-            self.viz.viewer[path_name].set_transform(transform.np)
-
-    def play_reduced_path(self, path, delay=0.05):
-        '''Animate a reduced joint-space path in Meshcat'''
-        assert self.viz is not None, 'Visualizer must be initialized first.'
-        assert self.init_reduced, 'Reduced model is not initialized.'
-        path = self._as_reduced_path(path)
-
-        # display each reduced waypoint inside the full free-flyer model
-        q = np.copy(self.state['q'])
-        for q_reduced in path:
-            q[self.reduced_mask] = q_reduced
-            self.viz.display(self.full_q(q))
-            time.sleep(delay)
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
