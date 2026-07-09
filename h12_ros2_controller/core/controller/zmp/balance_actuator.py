@@ -4,10 +4,6 @@ import time
 import numpy as np
 import pinocchio as pin
 
-from h12_ros2_controller.core.controller.momentum_behavior import (
-    MomentumBehavior,
-)
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -453,10 +449,9 @@ class BalanceActuator:
 
     def _behavior(self, arm):
         if arm not in self.behaviors:
-            self.behaviors[arm] = MomentumBehavior(
-                self.robot_model,
-                self.dt,
-                self._behavior_config(arm),
+            self.behaviors[arm] = self.robot_model.dynamics.create_momentum_ddp(
+                dt=self.dt,
+                config=self._behavior_config(arm),
                 arm=arm,
             )
         return self.behaviors[arm]

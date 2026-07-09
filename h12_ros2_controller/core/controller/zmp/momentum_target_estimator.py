@@ -17,6 +17,7 @@ class MomentumTargetEstimator:
             gains.get('angular_acceleration', [0.0, 0.0])
         )
         self.response_time = float(target.get('response_time', 0.08))
+        self.min_momentum_norm = float(target.get('min_momentum_norm', 0.0))
         self.max_momentum = self._as_vec3(
             target.get('max_momentum', [1.2, 1.2, 0.0])
         )
@@ -40,7 +41,14 @@ class MomentumTargetEstimator:
             dtype=np.float64,
         )
         target = self.response_time * momentum_rate
+        target = self._apply_min_momentum(target)
         return np.clip(target, -self.max_momentum, self.max_momentum)
+
+    def _apply_min_momentum(self, target):
+        norm = float(np.linalg.norm(target))
+        if norm <= 1e-9 or norm >= self.min_momentum_norm:
+            return target
+        return target * (self.min_momentum_norm / norm)
 
     @staticmethod
     def _as_vec2(value):

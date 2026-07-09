@@ -3,6 +3,8 @@ import sys
 import time
 import argparse
 
+import numpy as np
+
 REPO_ROOT = os.path.abspath(
     os.path.join(__file__, '../../..')
 )
@@ -28,16 +30,32 @@ def format_array(value):
 
 
 def print_status(controller, last_summary):
+    balance = controller.latest_balance_state
     perturbation = controller.latest_perturbation_state
 
     active = False if perturbation is None else perturbation.active
     reasons = [] if perturbation is None else perturbation.reasons
     reason_text = ','.join(reasons) if reasons else '-'
     target = format_array(controller.latest_target_momentum)
+    zmp_error_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.zmp_error
+    )
+    center_shift_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.center_shift
+    )
+    com_velocity_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.com_velocity
+    )
+    angular_velocity_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.angular_velocity
+    )
+    force_proxy = 0.0 if balance is None else balance.force_proxy
     print(
-        f'active={active} reasons={reason_text} target={target} '
+        f'active={active} reasons={reason_text} '
+        f'zmp={zmp_error_norm:.3f} center={center_shift_norm:.3f} '
+        f'vcom={com_velocity_norm:.3f} gyro={angular_velocity_norm:.3f} '
+        f'force={force_proxy:.1f} target={target} '
         f'actuator={controller.latest_actuator_state} '
-        f'plan_idx={controller.latest_actuator_plan_index} '
         f'response={controller.latest_response_status} '
         f'raw_norm={controller.latest_raw_command_norm:.3f} '
         f'applied_norm={controller.latest_applied_command_norm:.3f} '
@@ -69,6 +87,15 @@ def main(config_name='balance_safety_split.yaml', status_interval=1.0):
 
     print('ZMP balance controller ready')
     print(f'config: {config_name}')
+    print('manual tuning:')
+    print('  sensitivity: zmp.thresholds.*, zmp.hysteresis.enter_cycles')
+    print('  response size: zmp.target.response_time, max_momentum,')
+    print('    min_momentum_norm, zmp.gains.*')
+    print('  motion shape: zmp.ddp.momentum_duration, return_duration,')
+    print('    return_timeout, max_velocity')
+    print('  smoothness/retriggering: zmp.ddp.min_replan_interval,')
+    print('    zmp.blending.interrupt_ticks')
+    print('  restrictiveness: zmp.ddp.return_w_q, terminal_w_q')
     print('press Ctrl-C to stop')
 
     next_status_time = 0.0

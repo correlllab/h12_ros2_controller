@@ -420,6 +420,17 @@ class MomentumDDP:
         self.w_u = float(ddp_cfg.get('w_u', 2e-3))
         self.w_limit = float(ddp_cfg.get('w_limit', 100.0))
         self.max_velocity = float(ddp_cfg.get('max_velocity', 8.0))
+        self.hold_w_q = float(ddp_cfg.get('hold_w_q', 60.0))
+        self.swing_w_q = float(ddp_cfg.get('swing_w_q', 0.5))
+        self.return_w_q = float(ddp_cfg.get('return_w_q', 100.0))
+        self.terminal_w_q = float(ddp_cfg.get('terminal_w_q', 250.0))
+        self.hold_w_momentum = float(ddp_cfg.get('hold_w_momentum', 20.0))
+        self.return_w_momentum = float(
+            ddp_cfg.get('return_w_momentum', 10.0)
+        )
+        self.terminal_w_momentum = float(
+            ddp_cfg.get('terminal_w_momentum', 20.0)
+        )
         self.arm_ids = self._arm_ids(self.arm)
         self.arm_model = self._build_arm_model()
 
@@ -478,9 +489,12 @@ class MomentumDDP:
         action_model = self._make_action_model_class()
         hold_steps, momentum_steps, return_steps = self._phase_steps()
         phases = (
-            [(np.zeros(3), 20.0, 60.0, self.w_u)] * hold_steps
-            + [(target_momentum, self.w_momentum, 0.5, self.w_u)] * momentum_steps
-            + [(np.zeros(3), 10.0, 100.0, self.w_u)] * return_steps
+            [(np.zeros(3), self.hold_w_momentum, self.hold_w_q, self.w_u)]
+            * hold_steps
+            + [(target_momentum, self.w_momentum, self.swing_w_q, self.w_u)]
+            * momentum_steps
+            + [(np.zeros(3), self.return_w_momentum, self.return_w_q, self.w_u)]
+            * return_steps
         )
         running_models = [
             self._crocoddyl.ActionModelNumDiff(action_model(
@@ -490,7 +504,8 @@ class MomentumDDP:
             for momentum, w_momentum, w_q, w_u in phases
         ]
         terminal = action_model(
-            self.arm_model, q_ref, np.zeros(3), self.dt, 20.0, 250.0,
+            self.arm_model, q_ref, np.zeros(3), self.dt,
+            self.terminal_w_momentum, self.terminal_w_q,
             0.0, self.w_limit, self.max_velocity, is_terminal=True,
         )
         return running_models, self._crocoddyl.ActionModelNumDiff(terminal)

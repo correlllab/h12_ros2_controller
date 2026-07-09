@@ -396,7 +396,7 @@ class ArmMomentumTarget:
 
 Responsibilities:
 
-- Own one `MomentumBehavior` per balance-capable arm.
+- Own one `MomentumDDP` planner per balance-capable arm.
 - Solve short DDP responses.
 - Execute planned velocity commands.
 - Return arms to saved postures.
@@ -434,8 +434,8 @@ Responsibilities:
 
 ### Phase 3: Support Both-Arm Balance Execution
 
-- Instantiate one `MomentumBehavior` per active balance arm.
-- Allow `MomentumBehavior` to be created for `left` and `right` arms from the
+- Instantiate one `MomentumDDP` planner per active balance arm.
+- Allow `MomentumDDP` to be created for `left` and `right` arms from the
     same controller config.
 - Solve one short DDP plan per available arm.
 - Compose per-arm velocity commands into one full-body velocity command.
