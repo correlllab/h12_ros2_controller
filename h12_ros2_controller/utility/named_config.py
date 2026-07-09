@@ -13,14 +13,42 @@ from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 #        7 R_sh_pitch 8 R_sh_roll 9 R_sh_yaw 10 R_elbow 11 R_wr_roll 12 R_wr_pitch 13 R_wr_yaw
 # (all values rad, validated in joint range)
 NAMED_CONFIGS = {
-    'home':              np.zeros(len(ENABLED_JOINTS)),                       # arms down (low load baseline)
-    't_pose':            np.array([ 0.0, 1.5, 0,  0.0, 0,0,0,   0.0,-1.5, 0,  0.0, 0,0,0]),  # arms out to sides, horizontal
-    'arms_front':        np.array([-1.45,0.0, 0,  0.0, 0,0,0,  -1.45,0.0, 0,  0.0, 0,0,0]),  # arms straight forward, horizontal
-    'arms_front_elbow':  np.array([-1.45,0.0, 0, -1.0, 0,0,0,  -1.45,0.0, 0,  1.0, 0,0,0]),  # forward + elbow bent (forearm CoM); elbow 1.0 = collision-free
-    't_pose_elbow':      np.array([ 0.0, 1.5, 0, -1.0, 0,0,0,   0.0,-1.5, 0,  1.0, 0,0,0]),  # sides + elbow bent
-    'arms_front_45':     np.array([-0.75,0.0, 0,  0.0, 0,0,0,  -0.75,0.0, 0,  0.0, 0,0,0]),  # forward 45 deg (mid load, conditioning)
-    'arms_overhead':     np.array([ 0.0, 2.9, 0,  0.0, 0,0,0,   0.0,-2.9, 0,  0.0, 0,0,0]),  # arms overhead (different gravity dir)
-    'arms_asym':         np.array([-1.45,0.0, 0,  0.0, 0,0,0,   0.0,-1.5, 0,  0.0, 0,0,0]),  # L forward / R to side (excitation diversity)
-    'arms_front_yaw':    np.array([-1.45,0.0, 1.0,0.0, 0,0,0,  -1.45,0.0,-1.0,0.0, 0,0,0]),  # forward + shoulder-yaw twist (upper-arm axial)
-    'elbow_only':        np.array([ 0.0, 0.0, 0, -1.0, 0,0,0,   0.0, 0.0, 0,  1.0, 0,0,0]),  # arms down, elbows bent (loads elbow); elbow 1.0 = collision-free
+    'home':  # arms down (low load baseline)
+        np.zeros(len(ENABLED_JOINTS)),
+    't_pose':  # arms out to sides, horizontal
+        np.array([0.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0,
+                  0.0, -1.5, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    # 'arms_front':  # arms straight forward, horizontal
+    #     np.array([-1.45, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    #               -1.45, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    # 'arms_front_elbow':  # forward + elbow bent (forearm CoM); elbow 1.0 = collision-free
+    #     np.array([-1.45, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+    #               -1.45, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    # 't_pose_elbow':  # sides + elbow bent
+    #     np.array([0.0, 1.5, 0.0, -1.0, 0.0, 0.0, 0.0,
+    #               0.0, -1.5, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    'arms_front_45':  # forward 45 deg (mid load, conditioning)
+        np.array([-0.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                  -0.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    'arms_overhead':  # arms overhead (different gravity dir)
+        np.array([0.0, 2.9, 0.0, 0.0, 0.0, 0.0, 0.0,
+                  0.0, -2.9, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    'arms_asym':  # L forward / R to side (excitation diversity)
+        np.array([-1.45, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                  0.0, -1.5, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    'arms_front_yaw':  # forward + shoulder-yaw twist (upper-arm axial)
+        np.array([-1.45, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                  -1.45, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0]),
+    'elbow_only':  # arms down, elbows bent (loads elbow); elbow 1.0 = collision-free
+        np.array([0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+                  0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    'init_1':  # move arm sideways
+        np.array([0.0, 0.35, 0.0, 1.3, 0.0, 0.0, 0.0,
+                  0.0, -0.35, 0.0, 1.3, 0.0, 0.0, 0.0]),
+    'init_2':
+        np.array([0.7, 0.35, 0.0, 1.3, 0.0, 0.0, 0.0,
+                  0.7, -0.35, 0.0, 1.3, 0.0, 0.0, 0.0]),
+    'init_3':
+        np.array([0.7, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0,
+                  0.7, -0.35, 0.0, 0.0, 0.0, 0.0, 0.0])
 }

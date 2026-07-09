@@ -82,23 +82,36 @@ class UpperController:
         self.right_ee_name = 'right_wrist_yaw_link'
 
         if init:
-            # move arms home before rotating torso to avoid hand/hip scraping
-            self._startup_routine(NAMED_CONFIGS['home'], torso_init, self.torso_target)
+            # move through staged init poses before rotating torso to avoid hand/hip scraping
+            self._startup_routine(torso_init, self.torso_target)
 
-    def _startup_routine(self, config_init, torso_init, torso_target):
-        self._move_to_reduced_configuration(config_init)
+    def _startup_routine(self, torso_init, torso_target):
+        for config_name in ('init_1', 'init_2', 'init_3', 'home'):
+            self._move_to_reduced_configuration(
+                NAMED_CONFIGS[config_name],
+                steps=50,
+                desc=f'Moving {config_name}',
+            )
         self._move_torso_to_target(torso_init, torso_target)
 
-    def _move_to_reduced_configuration(self, q_reduced, steps=150, threshold=1e-3):
-        for _ in tqdm(range(steps), desc='Moving home', leave=False):
+    def _move_to_reduced_configuration(
+        self, q_reduced,
+        steps=150, threshold=1e-3,
+        desc='Moving configuration',
+    ):
+        for _ in tqdm(range(steps), desc=desc, leave=False):
             self.goto_reduced_configuration(q_reduced)
             error = np.max(np.abs(self.robot_model.state_reduced['q'] - q_reduced))
             if error < threshold:
                 break
             time.sleep(self.dt)
 
-    def _move_torso_to_target(self, torso_init, torso_target, steps=150, threshold=1e-3):
+    def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
         torso_id = BODY_JOINTS.index('torso_joint')
+        torso_speed = 0.3
+        step_size = max(torso_speed * self.dt, 1e-6)
+        steps = max(1, int(np.ceil(abs(torso_target - torso_init) / step_size)))
+
         for step in tqdm(range(steps), desc='Moving torso to target', leave=False):
             alpha = (step + 1) / steps
             q_target = (1.0 - alpha) * torso_init + alpha * torso_target
@@ -107,7 +120,7 @@ class UpperController:
                 joint_ids=[torso_id],
             )
             self.update_robot_model()
-            torso_position = self.robot_model.state['q'][torso_id]
+            torso_position = float(self.robot_model.state['q'][torso_id])
             if abs(torso_position - torso_target) < threshold:
                 break
             time.sleep(self.dt)
