@@ -38,22 +38,23 @@ zmp:
   mode: both_arm_balance
   assist_arm: right
   thresholds:
-    zmp_error: 0.02
+    zmp_error: 0.012
     support_margin: 0.03
-    center_shift: 0.03
-    com_velocity: 0.08
-    angular_velocity: 0.15
-    angular_acceleration: 1.0
-    force_proxy: 20.0
+    center_shift: 0.018
+    com_velocity: 0.04
+    angular_velocity: 0.08
+    angular_acceleration: 0.5
+    force_proxy: 10.0
   target:
-    response_time: 0.10
+    response_time: 0.16
+    min_momentum_norm: 0.3
     max_momentum:
-      - 1.0
-      - 1.0
+      - 1.5
+      - 1.5
       - 0.0
   hysteresis:
-    enter_cycles: 2
-    exit_cycles: 5
+    enter_cycles: 1
+    exit_cycles: 6
   observer:
     center_reference_alpha: 0.02
     angular_acceleration_alpha: 0.35
@@ -86,15 +87,22 @@ zmp:
     right_weight: 0.5
   ddp:
     hold_duration: 0.0
-    momentum_duration: 0.24
-    return_duration: 0.32
-    return_timeout: 0.6
-    min_replan_interval: 0.06
+    momentum_duration: 0.36
+    return_duration: 0.56
+    return_timeout: 1.0
+    min_replan_interval: 0.12
     maxiter: 2
     w_momentum: 100.0
     w_u: 0.002
     w_limit: 100.0
     max_velocity: 8.0
+    hold_w_q: 60.0
+    swing_w_q: 0.5
+    return_w_q: 60.0
+    terminal_w_q: 120.0
+    hold_w_momentum: 20.0
+    return_w_momentum: 10.0
+    terminal_w_momentum: 20.0
   solver_failure:
     allow_single_arm_success: true
     accept_best_effort: true

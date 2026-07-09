@@ -9,11 +9,15 @@ from h12_ros2_controller.core.controller.zmp.balance_actuator import (
     format_status_map,
 )
 from h12_ros2_controller.core.controller.zmp_controller import ZmpController
-from h12_ros2_controller.core.controller.momentum_behavior import (
-    MomentumBehavior,
+from h12_ros2_controller.core.robot_dynamics import MomentumDDP
+from h12_ros2_controller.core.controller.zmp.balance_observer import (
+    BalanceState,
 )
 from h12_ros2_controller.core.controller.zmp.momentum_allocator import (
     ArmMomentumTarget,
+)
+from h12_ros2_controller.core.controller.zmp.momentum_target_estimator import (
+    MomentumTargetEstimator,
 )
 from h12_ros2_controller.core.controller.zmp.perturbation_detector import (
     PerturbationState,
@@ -202,11 +206,98 @@ def test_zmp_controller_uses_velocity_limit_when_configured():
     assert controller.latest_applied_command_norm == np.linalg.norm(limited)
 
 
-def test_momentum_behavior_phase_steps_allows_zero_hold():
-    behavior = MomentumBehavior.__new__(MomentumBehavior)
+def test_momentum_ddp_phase_steps_allows_zero_hold():
+    behavior = MomentumDDP.__new__(MomentumDDP)
     behavior.dt = 0.02
     behavior.hold_duration = 0.0
     behavior.momentum_duration = 0.24
     behavior.return_duration = 0.32
 
     assert behavior._phase_steps() == (0, 12, 16)
+
+
+def test_target_estimator_applies_minimum_active_momentum_norm():
+    estimator = MomentumTargetEstimator(
+        SimpleNamespace(total_mass=10.0),
+        {
+            'zmp': {
+                'gains': {
+                    'zmp': [1.0, 1.0],
+                    'center': [0.0, 0.0],
+                    'com_velocity': [0.0, 0.0],
+                    'angular_acceleration': [0.0, 0.0],
+                },
+                'target': {
+                    'response_time': 0.1,
+                    'min_momentum_norm': 0.3,
+                    'max_momentum': [1.5, 1.5, 0.0],
+                },
+            },
+        },
+    )
+    state = BalanceState(
+        zmp=np.array([0.001, 0.0], dtype=np.float64),
+        zmp_target=np.zeros(2, dtype=np.float64),
+        zmp_error=np.array([0.001, 0.0], dtype=np.float64),
+        support_margin=0.1,
+        com_xy=np.zeros(2, dtype=np.float64),
+        center_reference=np.zeros(2, dtype=np.float64),
+        center_shift=np.zeros(2, dtype=np.float64),
+        com_velocity=np.zeros(2, dtype=np.float64),
+        angular_velocity=np.zeros(3, dtype=np.float64),
+        angular_acceleration=np.zeros(3, dtype=np.float64),
+        force_proxy=0.0,
+    )
+
+    target = estimator.estimate(
+        state,
+        PerturbationState(active=True, severity=1.0),
+    )
+    quiet_target = estimator.estimate(
+        state,
+        PerturbationState(active=False, severity=0.0),
+    )
+
+    assert np.isclose(np.linalg.norm(target), 0.3)
+    assert target[1] > 0.0
+    assert np.allclose(quiet_target, np.zeros(3))
+
+
+def test_momentum_ddp_reads_phase_weight_config(monkeypatch):
+    monkeypatch.setattr(
+        MomentumDDP,
+        '_arm_ids',
+        staticmethod(lambda arm: [0]),
+    )
+    monkeypatch.setattr(
+        MomentumDDP,
+        '_build_arm_model',
+        lambda self: SimpleNamespace(),
+    )
+    robot = SimpleNamespace(
+        state={'q': np.zeros(27, dtype=np.float64)},
+    )
+
+    behavior = MomentumDDP(
+        robot,
+        dt=0.02,
+        config={
+            'momentum_ddp': {
+                'hold_w_q': 11.0,
+                'swing_w_q': 0.25,
+                'return_w_q': 22.0,
+                'terminal_w_q': 33.0,
+                'hold_w_momentum': 4.0,
+                'return_w_momentum': 5.0,
+                'terminal_w_momentum': 6.0,
+            },
+        },
+    )
+
+    assert behavior.hold_w_q == 11.0
+    assert behavior.swing_w_q == 0.25
+    assert behavior.return_w_q == 22.0
+    assert behavior.terminal_w_q == 33.0
+    assert behavior.hold_w_momentum == 4.0
+    assert behavior.return_w_momentum == 5.0
+    assert behavior.terminal_w_momentum == 6.0
