@@ -6,6 +6,7 @@ from tqdm import tqdm
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
+from h12_ros2_controller.core.planner import PlannerConfig, PlannerClient
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -72,6 +73,13 @@ class UpperController:
             dt=self.dt,
             d_min=self.d_min
         )
+        self.planner = PlannerClient(
+            urdf_path=urdf_path,
+            urdf_sphere_path=urdf_sphere_path,
+            srdf_sphere_path=srdf_sphere_path,
+            planner_config=self._load_planner_config(),
+            handless=handless,
+        )
 
         if self.visualize:
             self.robot_model.init_visualizer()
@@ -105,6 +113,52 @@ class UpperController:
             if error < threshold:
                 break
             time.sleep(self.dt)
+
+    def _load_planner_config(self):
+        '''Load OMPL planner config from controller config'''
+        # merge optional yaml planner settings with dataclass defaults
+        cfg = self.config.get('planner', {})
+        defaults = PlannerConfig()
+        return PlannerConfig(
+            planner=cfg.get('planner', defaults.planner),
+            timeout=float(cfg.get('timeout', defaults.timeout)),
+            range=float(cfg.get('range', defaults.range)),
+            try_direct=bool(cfg.get('try_direct', defaults.try_direct)),
+            simplify=bool(cfg.get('simplify', defaults.simplify)),
+            simplify_time=float(cfg.get('simplify_time', defaults.simplify_time)),
+            shortcut=bool(cfg.get('shortcut', defaults.shortcut)),
+            moving_speed=float(cfg.get('moving_speed', defaults.moving_speed)),
+            dt=float(cfg.get('dt', self.dt)),
+            min_interpolation_steps=int(
+                cfg.get(
+                    'min_interpolation_steps',
+                    defaults.min_interpolation_steps,
+                )
+            ),
+            max_interpolation_steps=int(
+                cfg.get(
+                    'max_interpolation_steps',
+                    defaults.max_interpolation_steps,
+                )
+            ),
+            validity_resolution=float(
+                cfg.get('validity_resolution', defaults.validity_resolution)
+            ),
+            constraint_check_steps=int(
+                cfg.get('constraint_check_steps', defaults.constraint_check_steps)
+            ),
+            frame_names=tuple(cfg.get('frame_names', defaults.frame_names)),
+            frame_z_min=cfg.get('frame_z_min', defaults.frame_z_min),
+            frame_z_min_margin=float(
+                cfg.get('frame_z_min_margin', defaults.frame_z_min_margin)
+            ),
+            frame_z_corridor_margin=float(
+                cfg.get(
+                    'frame_z_corridor_margin',
+                    defaults.frame_z_corridor_margin,
+                )
+            ),
+        )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
         torso_id = BODY_JOINTS.index('torso_joint')
@@ -196,6 +250,110 @@ class UpperController:
         # update IK solver with the latest robot configuration
         self.ik_solver.update_configurations()
 
+    def _as_reduced_path(self, path):
+        # normalize path input and enforce reduced-model waypoint shape
+        path = np.asarray(path, dtype=float)
+        if path.ndim == 1:
+            path = path.reshape(1, -1)
+        nq = self.robot_model.model_body_reduced.nq
+        if path.ndim != 2 or path.shape[1] != nq:
+            raise ValueError(f'Path must have shape (N, {nq})')
+        if not np.all(np.isfinite(path)):
+            raise ValueError('Path must contain only finite values')
+        return path
+
+    def _path_or_raise(self, result):
+        if not result.success:
+            raise RuntimeError(f'Planning failed: {result.reason}')
+        return result.path
+
+    def plan_to_configuration(self, q_reduced, start=None, active_mask=None):
+        '''Plan from current reduced state to a reduced joint target'''
+        if start is None:
+            start = self.robot_model.state_reduced['q']
+        q_reduced = np.asarray(q_reduced, dtype=float)
+        result = self.planner.plan_configuration(
+            current_q=self.robot_model.state['q'],
+            start=start,
+            goal=q_reduced,
+            active_mask=active_mask,
+        )
+        return self._path_or_raise(result)
+
+    def plan_to_ik_target(self, start=None, ik_timeout=1.0, ik_alpha=0.1):
+        '''Solve current IK tasks, then plan to the IK joint solution'''
+        # restrict planning to joints supporting the active tasks so that
+        # untasked limbs (e.g. the other arm) never move during the plan
+        active_mask = self._active_task_mask()
+        self.update_ik_solver()
+        ik_result = self.ik_solver.solve_ik_reduced(
+            alpha=ik_alpha,
+            timeout=ik_timeout,
+        )
+        if not ik_result.success:
+            raise RuntimeError('IK failed to resolve current targets')
+
+        q_goal = ik_result.q[self.robot_model.reduced_mask]
+        start_q = start if start is not None else self.robot_model.state_reduced['q']
+        return self.plan_to_configuration(
+            q_goal,
+            start=start_q,
+            active_mask=active_mask,
+        )
+
+    def _active_task_mask(self):
+        '''Reduced joint mask supporting all active frame tasks'''
+        mask = np.zeros(self.robot_model.model_body_reduced.nq, dtype=bool)
+        for task in self.ik_solver.frame_tasks.values():
+            mask |= self._reduced_support_mask(task.frame)
+        return mask
+
+    def _reduced_support_mask(self, frame_name):
+        '''Reduced joint mask supporting a frame in the kinematic chain'''
+        model = self.robot_model.model_body_reduced
+        frame_id = model.getFrameId(frame_name)
+        joint_id = model.frames[frame_id].parentJoint
+
+        # walk up the tree to the root, marking supporting joints
+        mask = np.zeros(model.nq, dtype=bool)
+        while joint_id > 0:
+            idx_q = model.joints[joint_id].idx_q
+            nq = model.joints[joint_id].nq
+            mask[idx_q:idx_q + nq] = True
+            joint_id = model.parents[joint_id]
+        return mask
+
+    def visualize_path(self, path):
+        '''Draw a reduced joint-space path with Meshcat'''
+        if self.robot_model.visualizer is None:
+            self.robot_model.init_visualizer()
+        self.robot_model.visualizer.visualize_reduced_path(path)
+
+    def play_path(self, path, delay=0.05):
+        '''Animate a reduced joint-space path with Meshcat'''
+        if self.robot_model.visualizer is None:
+            self.robot_model.init_visualizer()
+        self.robot_model.visualizer.play_reduced_path(path, delay=delay)
+
+    def execute_path(self, path, validate=True):
+        '''Execute reduced joint waypoints as direct position commands'''
+        path = self._as_reduced_path(path)
+
+        # apply each reduced waypoint as a direct full motor position command
+        for q_reduced in tqdm(path, desc='Executing path', leave=False):
+            if validate:
+                # keep execution guarded by the same reduced validity checks
+                if not self.robot_model.check_within_limits_reduced(q_reduced):
+                    raise ValueError('Path waypoint is outside joint limits')
+                if not self.robot_model.check_collision_free_reduced(q_reduced):
+                    raise ValueError('Path waypoint is in self-collision')
+
+            q = np.copy(self.robot_model.state['q'])
+            q[self.robot_model.reduced_mask] = q_reduced
+            self._apply_joint_position(q)
+            self.update_robot_model()
+            time.sleep(self.dt)
+
     def update_robot_model(self):
         # update kinematics
         self.robot_model.update_kinematics()
@@ -239,6 +397,10 @@ class UpperController:
             self.ik_solver.config_task,
             self.robot_model.state_reduced['q']
         )
+
+    def set_reduced_configuration_target(self, q_reduced):
+        '''Set the reduced joint target used for configuration feedback'''
+        self.ik_solver.config_task.set_target(q_reduced)
 
     def goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
@@ -328,32 +490,75 @@ class UpperController:
         if tau_clip_limits is not None:
             self._steady_tau_bias_limit = np.asarray(tau_clip_limits, dtype=np.float64)
 
+        self._steady_q_clip_limits = None
+        q_clip_limits = self.config.get('limits', {}).get('q_clip_limits')
+        if q_clip_limits is not None:
+            self._steady_q_clip_limits = np.asarray(q_clip_limits, dtype=np.float64)
+
+    def _steady_state_hits_position_clip(self, q_state, tau_bias_increment, threshold):
+        if self._steady_q_clip_limits is None:
+            return False
+
+        q_limits = self._steady_q_clip_limits[self.upper_ids]
+        q_state = q_state[self.upper_ids]
+        tau_bias_increment = tau_bias_increment[self.upper_ids]
+
+        near_upper = q_state >= (q_limits[:, 1] - threshold)
+        near_lower = q_state <= (q_limits[:, 0] + threshold)
+        push_upper = tau_bias_increment > 0.0
+        push_lower = tau_bias_increment < 0.0
+
+        return bool(np.any((near_upper & push_upper) | (near_lower & push_lower)))
+
     def steady_state_step(self, threshold=1e-3):
         '''Run one steady-state I-control tick and return convergence'''
         if not hasattr(self, '_steady_q_cmd'):
             self.init_steady_state()
 
-        q_error = self._steady_q_cmd - self.robot_model.state['q']
-        self._steady_tau_bias += self._steady_ki * q_error * self.dt
-        self._steady_tau_bias = np.clip(
-            self._steady_tau_bias,
-            -self._steady_tau_bias_limit,
-            self._steady_tau_bias_limit,
-        )
+        # get positional error
+        q_state = self.robot_model.state['q']
+        q_error = self._steady_q_cmd - q_state
+        tau_bias_increment = self._steady_ki * q_error * self.dt
+        # close to clipping limit
+        if self._steady_state_hits_position_clip(
+            q_state,
+            tau_bias_increment,
+            threshold,
+        ):
+            tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
+                self.robot_model.state['q']
+            )
+            tau_cmd = tau_gravity + self._steady_tau_bias
+            self.low_cmd_handler.set_joint_commands(
+                self._steady_q_cmd,
+                self._steady_dq_cmd,
+                tau_cmd,
+            )
+            self.update_robot_model()
+            return True
+        else:
+            self._steady_tau_bias += tau_bias_increment
+            self._steady_tau_bias = np.clip(
+                self._steady_tau_bias,
+                -self._steady_tau_bias_limit,
+                self._steady_tau_bias_limit,
+            )
 
-        tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
-            self.robot_model.state['q']
-        )
-        tau_cmd = tau_gravity + self._steady_tau_bias
-        self.low_cmd_handler.set_joint_commands(
-            self._steady_q_cmd,
-            self._steady_dq_cmd,
-            tau_cmd,
-        )
+            # compute total torque to command
+            tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
+                self.robot_model.state['q']
+            )
+            tau_cmd = tau_gravity + self._steady_tau_bias
+            self.low_cmd_handler.set_joint_commands(
+                self._steady_q_cmd,
+                self._steady_dq_cmd,
+                tau_cmd,
+            )
 
-        self.update_robot_model()
-        q_error = self._steady_q_cmd - self.robot_model.state['q']
-        return np.max(np.abs(q_error[self.upper_ids])) < threshold
+            # check convergence
+            self.update_robot_model()
+            q_error = self._steady_q_cmd - self.robot_model.state['q']
+            return bool(np.max(np.abs(q_error[self.upper_ids])) < threshold)
 
     def _limit_joint_vel(self, vel):
         # get end effector twist
@@ -399,6 +604,7 @@ class UpperController:
 
     def shutdown(self):
         self.stop_recording()
+        self.planner.shutdown()
         self.robot_model.shutdown()
         self.low_cmd_handler.shutdown()
 

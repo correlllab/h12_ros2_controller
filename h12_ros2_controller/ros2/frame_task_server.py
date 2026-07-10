@@ -168,76 +168,168 @@ class FrameTaskServer(Node):
             # update ik solver with current state
             self.controller.update_ik_solver()
 
-            # main loop
-            start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
-            ik_converged = False
-            steady_state_converged = False
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
-                if not ik_converged:
-                    vel = self.controller.control_step_reduced()
-                    vel_error = np.max(np.abs(vel))
-                else:
-                    steady_state_converged = self.controller.steady_state_step()
+            plan = goal.plan
+            if plan:
+                return self._plan_frame_task_callback(goal_handle, timeout)
+            else:
+                return self._direct_frame_task_callback(goal_handle, timeout)
 
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = FrameTask.Result()
-                    result.success = False
-                    return result
+    def _direct_frame_task_callback(self, goal_handle, timeout):
+        # main loop
+        start_time = time.time()
+        ik_converged = False
+        steady_state_converged = False
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+            if not ik_converged:
+                vel = self.controller.control_step_reduced()
+                vel_error = np.max(np.abs(vel))
+            else:
+                steady_state_converged = self.controller.steady_state_step()
 
-                # compute errors
-                errors_linear = []
-                errors_angular = []
-                for frame_name in self.frame_names:
-                    error = self.controller.get_frame_task_error(f'{frame_name}_task')
-                    errors_linear.append(np.linalg.norm(error[:3]))
-                    errors_angular.append(np.linalg.norm(error[3:]))
-                # send feedback
-                feedback_msg = FrameTask.Feedback()
-                feedback_msg.errors_linear = errors_linear
-                feedback_msg.errors_angular = errors_angular
-                goal_handle.publish_feedback(feedback_msg)
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = FrameTask.Result()
+                result.success = False
+                return result
 
-                if not ik_converged:
-                    if vel_error < self.threshold_ik:
-                        ik_converged = True
-                        self.controller.init_steady_state()
-                        self.get_logger().info(
-                            'IK converged; entering steady-state hold'
-                        )
-                else:
-                    steady_state_converged = steady_state_converged or (
-                        len(errors_linear) > 0 and
-                        len(errors_angular) > 0 and
-                        max(errors_linear) < self.threshold_linear and
-                        max(errors_angular) < self.threshold_angular
-                    )
-                    if steady_state_converged:
-                        break
-
-                time.sleep(max(
-                    0.0,
-                    self.controller.dt - (time.time() - frame_start_time)
-                ))
+            # compute errors
+            errors_linear, errors_angular = self._frame_task_errors()
+            # send feedback
+            self._publish_frame_task_feedback(
+                goal_handle,
+                errors_linear,
+                errors_angular,
+            )
 
             if not ik_converged:
-                self.get_logger().warn('Timed out before IK convergence')
-            elif not steady_state_converged:
-                self.get_logger().warn('Timed out during steady-state hold')
+                if vel_error < self.threshold_ik:
+                    ik_converged = True
+                    self.controller.init_steady_state()
+                    self.get_logger().info(
+                        'IK converged; entering steady-state hold'
+                    )
             else:
-                self.get_logger().info('Goal reached')
+                steady_state_converged = steady_state_converged or (
+                    len(errors_linear) > 0 and
+                    len(errors_angular) > 0 and
+                    max(errors_linear) < self.threshold_linear and
+                    max(errors_angular) < self.threshold_angular
+                )
+                if steady_state_converged:
+                    break
 
-            # set result
-            success = ik_converged and steady_state_converged
+            time.sleep(max(
+                0.0,
+                self.controller.dt - (time.time() - frame_start_time)
+            ))
+
+        if not ik_converged:
+            self.get_logger().warn('Timed out before IK convergence')
+        elif not steady_state_converged:
+            self.get_logger().warn('Timed out during steady-state hold')
+        else:
+            self.get_logger().info('Goal reached')
+
+        # set result
+        success = ik_converged and steady_state_converged
+        result = FrameTask.Result()
+        result.success = bool(success)
+        goal_handle.succeed()
+        return result
+
+    def _plan_frame_task_callback(self, goal_handle, timeout):
+        self.get_logger().info('Planning path to target frame poses')
+        try:
+            # solve ik, plan a reduced-joint path, then execute it
+            path = self.controller.plan_to_ik_target(ik_timeout=self.timeout)
+            self.get_logger().info(
+                f'Executing planned path with {len(path)} waypoints'
+            )
+            self.controller.execute_path(path)
+        except Exception as err:
+            self.get_logger().warn(f'Planning or execution failed: {err}')
+            goal_handle.abort()
             result = FrameTask.Result()
-            result.success = success
-            goal_handle.succeed()
+            result.success = False
             return result
+
+        # hold the final target using the existing steady-state controller
+        self.controller.init_steady_state()
+        start_time = time.time()
+        steady_state_converged = False
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = FrameTask.Result()
+                result.success = False
+                return result
+
+            self.controller.steady_state_step()
+            # publish feedback while waiting for final pose convergence
+            errors_linear, errors_angular = self._frame_task_errors()
+            self._publish_frame_task_feedback(
+                goal_handle,
+                errors_linear,
+                errors_angular,
+            )
+
+            steady_state_converged = (
+                len(errors_linear) > 0 and
+                len(errors_angular) > 0 and
+                max(errors_linear) < self.threshold_linear and
+                max(errors_angular) < self.threshold_angular
+            )
+            if steady_state_converged:
+                break
+
+            time.sleep(max(
+                0.0,
+                self.controller.dt - (time.time() - frame_start_time)
+            ))
+
+        if steady_state_converged:
+            self.get_logger().info('Goal reached')
+        else:
+            self.get_logger().warn('Timed out during steady-state hold')
+
+        goal_handle.succeed()
+        result = FrameTask.Result()
+        result.success = bool(steady_state_converged)
+        return result
+
+    def _frame_task_errors(self):
+        errors_linear = []
+        errors_angular = []
+        for frame_name in self.frame_names:
+            error = self.controller.get_frame_task_error(f'{frame_name}_task')
+            errors_linear.append(float(np.linalg.norm(error[:3])))
+            errors_angular.append(float(np.linalg.norm(error[3:])))
+        return errors_linear, errors_angular
+
+    def _publish_frame_task_feedback(self, goal_handle, errors_linear,
+                                     errors_angular):
+        feedback_msg = FrameTask.Feedback()
+        feedback_msg.errors_linear = errors_linear
+        feedback_msg.errors_angular = errors_angular
+        goal_handle.publish_feedback(feedback_msg)
+
+    def _named_config_joint_error(self):
+        return float(np.max(
+            np.abs(self.controller.reduced_configuration_error)
+        ))
+
+    def _publish_named_config_feedback(self, goal_handle, joint_error):
+        feedback_msg = NamedConfig.Feedback()
+        feedback_msg.joint_error = joint_error
+        goal_handle.publish_feedback(feedback_msg)
 
     def named_config_callback(self, goal_handle):
         with self._controller_lock:
@@ -259,73 +351,146 @@ class FrameTaskServer(Node):
             # update ik solver with current state
             self.controller.update_ik_solver()
 
-            # main loop
-            start_time = time.time()
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
-            ik_converged = False
-            steady_state_converged = False
-            while time.time() - start_time < timeout:
-                frame_start_time = time.time()
-                if not ik_converged:
-                    vel = self.controller.goto_reduced_configuration(q_reduced)
-                    vel_error = np.max(np.abs(vel))
-                else:
-                    steady_state_converged = self.controller.steady_state_step()
-
-                # handle cancel event
-                if goal_handle.is_cancel_requested:
-                    self.get_logger().info('Goal cancelled')
-                    goal_handle.canceled()
-                    result = NamedConfig.Result()
-                    result.success = False
-                    return result
-
-                # compute error
-                joint_error = np.max(
-                    np.abs(self.controller.reduced_configuration_error)
+            plan = goal.plan
+            if plan:
+                return self._plan_named_config_callback(
+                    goal_handle,
+                    q_reduced,
+                    timeout,
                 )
-                # send feedback
-                feedback_msg = NamedConfig.Feedback()
-                feedback_msg.joint_error = joint_error
-                goal_handle.publish_feedback(feedback_msg)
+            else:
+                return self._direct_named_config_callback(
+                    goal_handle,
+                    q_reduced,
+                    timeout,
+                )
 
-                if not ik_converged:
-                    if vel_error < self.threshold_ik:
-                        ik_converged = True
-                        self.controller.init_steady_state()
-                        self.get_logger().info(
-                            'IK converged; entering steady-state hold'
-                        )
-                else:
-                    steady_state_converged = (
-                        steady_state_converged or
-                        joint_error < self.threshold_joint
-                    )
-                    if steady_state_converged:
-                        self.get_logger().info('Named config reached')
-                        break
+    def _direct_named_config_callback(self, goal_handle, q_reduced, timeout):
+        # main loop
+        start_time = time.time()
+        ik_converged = False
+        steady_state_converged = False
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+            if not ik_converged:
+                vel = self.controller.goto_reduced_configuration(q_reduced)
+                vel_error = np.max(np.abs(vel))
+            else:
+                steady_state_converged = self.controller.steady_state_step()
 
-                time.sleep(max(
-                    0.0,
-                    self.controller.dt - (time.time() - frame_start_time)
-                ))
+            # handle cancel event
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
+
+            # compute error
+            joint_error = self._named_config_joint_error()
+            # send feedback
+            self._publish_named_config_feedback(goal_handle, joint_error)
 
             if not ik_converged:
-                self.get_logger().warn('Timed out before IK convergence')
-            elif not steady_state_converged:
-                self.get_logger().warn('Timed out during steady-state hold')
+                if vel_error < self.threshold_ik:
+                    ik_converged = True
+                    self.controller.init_steady_state()
+                    self.get_logger().info(
+                        'IK converged; entering steady-state hold'
+                    )
             else:
-                self.get_logger().info('Goal reached')
+                steady_state_converged = (
+                    steady_state_converged or
+                    joint_error < self.threshold_joint
+                )
+                if steady_state_converged:
+                    self.get_logger().info('Named config reached')
+                    break
 
-            goal_handle.succeed()
+            time.sleep(max(
+                0.0,
+                self.controller.dt - (time.time() - frame_start_time)
+            ))
+
+        if not ik_converged:
+            self.get_logger().warn('Timed out before IK convergence')
+        elif not steady_state_converged:
+            self.get_logger().warn('Timed out during steady-state hold')
+        else:
+            self.get_logger().info('Goal reached')
+
+        goal_handle.succeed()
+        result = NamedConfig.Result()
+        result.success = bool(ik_converged and steady_state_converged)
+        return result
+
+    def _plan_named_config_callback(self, goal_handle, q_reduced, timeout):
+        self.get_logger().info('Planning path to named configuration')
+        try:
+            # plan directly in reduced joint space for named configs
+            path = self.controller.plan_to_configuration(q_reduced)
+            self.get_logger().info(
+                f'Executing planned path with {len(path)} waypoints'
+            )
+            self.controller.execute_path(path)
+        except Exception as err:
+            self.get_logger().warn(f'Planning or execution failed: {err}')
+            goal_handle.abort()
             result = NamedConfig.Result()
-            result.success = ik_converged and steady_state_converged
+            result.success = False
             return result
+
+        # match feedback/error target to the planned joint goal
+        self.controller.set_reduced_configuration_target(q_reduced)
+
+        # hold the final joint target using steady-state control
+        self.controller.init_steady_state()
+        start_time = time.time()
+        steady_state_converged = False
+        while time.time() - start_time < timeout:
+            frame_start_time = time.time()
+
+            if goal_handle.is_cancel_requested:
+                self.get_logger().info('Goal cancelled')
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
+
+            steady_state_converged = self.controller.steady_state_step()
+            joint_error = self._named_config_joint_error()
+
+            # publish joint-space feedback during the hold phase
+            self._publish_named_config_feedback(goal_handle, joint_error)
+
+            steady_state_converged = (
+                steady_state_converged or
+                joint_error < self.threshold_joint
+            )
+            if steady_state_converged:
+                break
+
+            time.sleep(max(
+                0.0,
+                self.controller.dt - (time.time() - frame_start_time)
+            ))
+
+        if steady_state_converged:
+            self.get_logger().info('Goal reached')
+        else:
+            self.get_logger().warn('Timed out during steady-state hold')
+
+        goal_handle.succeed()
+        result = NamedConfig.Result()
+        result.success = bool(steady_state_converged)
+        return result
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info('Canceling goal')
         return CancelResponse.ACCEPT
+
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Frame task ROS2 action server')

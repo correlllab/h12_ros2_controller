@@ -41,10 +41,10 @@ def main():
 
         result, t = solve_ik_reduced(ik_solver, task_name, pos, rpy)
         print(f'IK solved in {t:.6f}s')
-        print(f'Success: {result["success"]}')
+        print(f'Success: {result.success}')
 
         ik_solver.update_visualizer()
-        robot_model._q = result['q']
+        robot_model._q = result.q
         robot_model.update_kinematics()
         robot_model.update_visualizer()
         input('Press any key to continue')

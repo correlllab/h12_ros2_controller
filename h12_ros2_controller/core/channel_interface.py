@@ -157,7 +157,6 @@ class CommandPublisher(ABC):
             self._publisher.Write(self._low_cmd)
             # sleep to maintain publishing rate
             time.sleep(max(0, self._dt - (time.time() - start_time)))
-            # print(f'LowCmdPublisher publish time: {time.time() - start_time:.6f} seconds')
 
     def _check_data_integrity(self):
         '''Check data integrity'''
@@ -247,7 +246,7 @@ class LowCmdPublisher(CommandPublisher):
             self.q[motor_ids] = init_q
 
 class ArmSDKPublisher(CommandPublisher):
-    '''ARM SDK command publisher using RecurrentThread approach.'''
+    '''ARM SDK command publisher using the shared Python thread loop'''
     def __init__(self, dt=0.002, arm_sdk_topic=TOPIC_ARM_SDK_DEFAULT, clip_limits=None):
         self._arm_sdk_topic = arm_sdk_topic
         super().__init__(dt=dt, clip_limits=clip_limits)

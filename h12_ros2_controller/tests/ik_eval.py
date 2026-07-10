@@ -288,9 +288,9 @@ def _go_home(controller: FrameController, home_q: np.ndarray,
 
 def _maybe_solve_ik_optimal(controller: FrameController, task_name: str,
                             trial_cfg: dict) -> tuple[np.ndarray | None, bool]:
-    '''Run pink's iterative solve_ik_reduced once as a "reference optimum".
+    '''Run pink's iterative solve_ik_reduced as a "reference optimum".
 
-    This resets the IK configuration to zero and runs to convergence; we
+    This tries the solver seed list and runs to convergence; we
     sync back to the real state before returning, so the live control loop
     is unaffected. Failures (collision, infeasible) are swallowed.
     '''
@@ -303,7 +303,7 @@ def _maybe_solve_ik_optimal(controller: FrameController, task_name: str,
             linear_threshold=float(trial_cfg['linear_threshold']),
             angular_threshold=float(trial_cfg['angular_threshold']),
         )
-        return np.asarray(result['q'], dtype=float), bool(result['success'])
+        return np.asarray(result.q, dtype=float), bool(result.success)
     except Exception as exc:
         print(f'  [ik_optimal] skipped: {exc}', flush=True)
         return None, False
@@ -585,7 +585,7 @@ def _run_fk_roundtrip(controller: FrameController, fk_cfg: dict,
             linear_threshold=float(trial_cfg['linear_threshold']),
             angular_threshold=float(trial_cfg['angular_threshold']),
         )
-        q_hat_full = np.asarray(res['q'], dtype=float)
+        q_hat_full = np.asarray(res.q, dtype=float)
         # solve_ik_reduced returns full body-q (27)
         q_hat_reduced = q_hat_full[REDUCED_BODY_IDS]
         T_hat = controller.robot_model.get_frame_transformation_reduced(
@@ -603,7 +603,7 @@ def _run_fk_roundtrip(controller: FrameController, fk_cfg: dict,
         results['pose_hat'].append(pose_hat)
         results['pos_residual'].append(pos_res)
         results['ang_residual'].append(ang_res)
-        results['success'].append(bool(res['success']))
+        results['success'].append(bool(res.success))
 
     controller.ik_solver.clear_frame_tasks()
     controller.update_ik_solver()
