@@ -25,11 +25,13 @@ class FrameTaskClient(Node):
         )
         self.goal_handle = None
 
-    def send_frame_task_goal(self, frame_names=None, frame_targets=None):
+    def send_frame_task_goal(self, frame_names=None, frame_targets=None,
+                             plan=False):
         goal_msg = FrameTask.Goal()
 
         goal_msg.frame_names = frame_names if frame_names is not None else []
         goal_msg.frame_targets = frame_targets if frame_targets is not None else []
+        goal_msg.plan = plan
 
         self.get_logger().info('Waiting for action server...')
         self.action_client.wait_for_server()
@@ -68,9 +70,10 @@ class FrameTaskClient(Node):
         self.get_logger().info(f'Linear errors: {errors_linear}')
         self.get_logger().info(f'Angular errors: {errors_angular}')
 
-    def send_named_config_goal(self, config_name: str):
+    def send_named_config_goal(self, config_name: str, plan=False):
         goal_msg = NamedConfig.Goal()
         goal_msg.config_name = config_name
+        goal_msg.plan = plan
 
         self.get_logger().info('Waiting for named config action server...')
         self.named_config_client.wait_for_server()
@@ -113,20 +116,36 @@ class FrameTaskClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal()
 
+
+def input_plan():
+    while True:
+        choice = input('Use OMPL path planning? (y/n): ').strip().lower()
+        if choice in ('y', 'n'):
+            return choice == 'y'
+        print('Please enter y or n')
+
+
 def input_config_name_or_frame_task():
     '''
     Ask user for config name or manual frame task input
-    Returns (config_name, frame_name, pose) tuple
+    Returns (config_name, frame_names, frame_poses, plan) tuple
     If config_name is provided, frame_name and pose will be None
     If no config_name, frame_name and pose will be provided
     '''
     print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
 
-    choice = input('Enter config name (or press Enter for manual frame task): ').strip()
+    while True:
+        choice = input(
+            'Enter config name (or press Enter for manual frame task): '
+        ).strip()
+        if choice == '' or choice in NAMED_CONFIGS:
+            break
+        print(f'Unknown config name: {choice}')
 
     if choice:
         # user entered a config name
-        return choice, [], []
+        plan = input_plan()
+        return choice, [], [], plan
     else:
         # user wants manual frame task input
         frame_names = []
@@ -138,7 +157,9 @@ def input_config_name_or_frame_task():
             cont = input('Do you want to add another frame task? (y/n): ').lower()
             if cont != 'y':
                 break
-        return '', frame_names, frame_poses
+        plan = input_plan()
+        return '', frame_names, frame_poses, plan
+
 
 def input_frame_task():
     '''Get frame name and pose from user'''
@@ -147,17 +168,20 @@ def input_frame_task():
 
     return frame_name, target_pose
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = FrameTaskClient()
 
     try:
         while rclpy.ok():
-            config_name, frame_names, frame_poses = input_config_name_or_frame_task()
+            config_name, frame_names, frame_poses, plan = (
+                input_config_name_or_frame_task()
+            )
             if config_name != '':
-                node.send_named_config_goal(config_name)
+                node.send_named_config_goal(config_name, plan=plan)
             else:
-                node.send_frame_task_goal(frame_names, frame_poses)
+                node.send_frame_task_goal(frame_names, frame_poses, plan=plan)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()

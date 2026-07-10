@@ -398,6 +398,10 @@ class UpperController:
             self.robot_model.state_reduced['q']
         )
 
+    def set_reduced_configuration_target(self, q_reduced):
+        '''Set the reduced joint target used for configuration feedback'''
+        self.ik_solver.config_task.set_target(q_reduced)
+
     def goto_reduced_configuration(self, q_reduced):
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
@@ -554,7 +558,7 @@ class UpperController:
             # check convergence
             self.update_robot_model()
             q_error = self._steady_q_cmd - self.robot_model.state['q']
-            return np.max(np.abs(q_error[self.upper_ids])) < threshold
+            return bool(np.max(np.abs(q_error[self.upper_ids])) < threshold)
 
     def _limit_joint_vel(self, vel):
         # get end effector twist

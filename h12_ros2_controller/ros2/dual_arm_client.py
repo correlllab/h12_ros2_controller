@@ -67,7 +67,8 @@ class DualArmClient(Node):
     def subscribe_right_ee_target(self, msg):
         self.right_ee_target = msg.pose
 
-    def send_dual_arm_goal(self, left_target: Pose=None, right_target: Pose=None):
+    def send_dual_arm_goal(self, left_target: Pose=None, right_target: Pose=None,
+                           plan=False):
         goal_msg = DualArm.Goal()
 
         # Convert poses to transformation matrices
@@ -77,6 +78,7 @@ class DualArmClient(Node):
             right_target = Pose()
         goal_msg.left_target = left_target
         goal_msg.right_target = right_target
+        goal_msg.plan = plan
 
         self.get_logger().info('Waiting for action server...')
         self.dual_arm_client.wait_for_server()
@@ -116,9 +118,10 @@ class DualArmClient(Node):
         self.get_logger().info(f'Right Error Linear: {feedback.right_error_linear:.4f}, ' +
                                f'Right Error Angular: {feedback.right_error_angular:.4f}')
 
-    def send_named_config_goal(self, config_name: str):
+    def send_named_config_goal(self, config_name: str, plan=False):
         goal_msg = NamedConfig.Goal()
         goal_msg.config_name = config_name
+        goal_msg.plan = plan
 
         self.get_logger().info('Waiting for named config action server...')
         self.named_config_client.wait_for_server()
@@ -161,26 +164,44 @@ class DualArmClient(Node):
                 self.get_logger().info('Cancelling goal...')
                 self.goal_handle.cancel_goal()
 
+
+def input_plan():
+    while True:
+        choice = input('Use OMPL path planning? (y/n): ').strip().lower()
+        if choice in ('y', 'n'):
+            return choice == 'y'
+        print('Please enter y or n')
+
+
 def input_config_name_or_poses():
     '''
     Ask user for config name or manual pose input
-    Returns (config_name, left_pose, right_pose) tuple
+    Returns (config_name, left_pose, right_pose, plan) tuple
     If config_name is provided, poses will be None
     If no config_name, poses will be provided
     '''
     print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
 
-    choice = input('Enter config name (or press Enter for manual poses): ').strip()
+    while True:
+        choice = input(
+            'Enter config name (or press Enter for manual poses): '
+        ).strip()
+        if choice == '' or choice in NAMED_CONFIGS:
+            break
+        print(f'Unknown config name: {choice}')
 
     if choice:
         # user entered a config name
-        return choice, None, None
+        plan = input_plan()
+        return choice, None, None, plan
     else:
         print('Enter left end-effector pose:')
         left_pose = input_pose()
         print('Enter right end-effector pose:')
         right_pose = input_pose()
-        return '', left_pose, right_pose
+        plan = input_plan()
+        return '', left_pose, right_pose, plan
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -188,11 +209,13 @@ def main(args=None):
 
     try:
         while rclpy.ok():
-            config_name, left_pose, right_pose = input_config_name_or_poses()
+            config_name, left_pose, right_pose, plan = (
+                input_config_name_or_poses()
+            )
             if config_name != '':
-                node.send_named_config_goal(config_name)
+                node.send_named_config_goal(config_name, plan=plan)
             else:
-                node.send_dual_arm_goal(left_pose, right_pose)
+                node.send_dual_arm_goal(left_pose, right_pose, plan=plan)
 
             input('Press any key to continue...') # flush the input buffer
             cont = input('Do you want to send another goal? (y/n): ').lower()
