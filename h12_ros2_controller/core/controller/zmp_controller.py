@@ -108,11 +108,18 @@ class ZmpController(UpperController):
 
         active_arms = self._balance_arms()
         arm_targets = self.allocator.allocate(target_momentum, active_arms)
-        if self.actuator.can_start_response(
-            perturbation_state,
-            target_momentum,
-        ):
-            self.actuator.maybe_start_response(arm_targets, perturbation_state)
+        if self.actuator.execution_mode == 'direct':
+            self.actuator.update_direct_response(
+                arm_targets,
+                perturbation_state,
+            )
+        elif self.actuator.can_start_response(
+                perturbation_state,
+                target_momentum):
+            self.actuator.maybe_start_response(
+                arm_targets,
+                perturbation_state,
+            )
 
         self.latest_balance_state = balance_state
         self.latest_perturbation_state = perturbation_state

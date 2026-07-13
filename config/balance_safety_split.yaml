@@ -9,9 +9,9 @@ network:
   interface: ''
 
 controller:
-  v_lim: 1.0
-  w_lim: 2.0
-  dq_lim: 1.0
+  v_lim: 1.25
+  w_lim: 2.5
+  dq_lim: 1.25
   d_min: 0.02
   timeout: 5.0
   torso_target: 0.0
@@ -53,7 +53,7 @@ zmp:
       - 1.5
       - 0.0
   hysteresis:
-    enter_cycles: 1
+    enter_cycles: 3
     exit_cycles: 6
   observer:
     center_reference_alpha: 0.02
@@ -68,7 +68,12 @@ zmp:
   blending:
     interrupt_ticks: 3
   execution:
-    limit_ddp_velocity: false
+    mode: direct
+    direct_damping: 0.05
+    direct_max_velocity: 4.0
+    direct_duration: 0.20
+    direct_cooldown: 0.20
+    limit_ddp_velocity: true
   gains:
     zmp:
       - 1.0
