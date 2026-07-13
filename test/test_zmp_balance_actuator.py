@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pinocchio as pin
 
+import h12_ros2_controller.core.controller.zmp_controller as zmp_module
 from h12_ros2_controller.core.controller.zmp.balance_actuator import (
     BalanceActuator,
     format_vector,
@@ -52,6 +53,37 @@ def make_plan(solved=False, us=None, peak_momentum=None):
         us=np.asarray(us, dtype=np.float64),
         peak_momentum=np.asarray(peak_momentum, dtype=np.float64),
     )
+
+
+def test_zmp_controller_forwards_startup_init_flag(monkeypatch):
+    captured = {}
+
+    def upper_init(self, **kwargs):
+        captured.update(kwargs)
+        self.config = {'zmp': {'enabled': False}}
+        self.robot_model = SimpleNamespace(
+            model_body=SimpleNamespace(nv=27),
+        )
+        self.dt = 0.02
+
+    monkeypatch.setattr(zmp_module.UpperController, '__init__', upper_init)
+    monkeypatch.setattr(zmp_module, 'BalanceObserver', lambda *_args: None)
+    monkeypatch.setattr(zmp_module, 'PerturbationDetector', lambda *_args: None)
+    monkeypatch.setattr(
+        zmp_module,
+        'MomentumTargetEstimator',
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(zmp_module, 'MomentumAllocator', lambda *_args: None)
+    monkeypatch.setattr(
+        zmp_module,
+        'BalanceActuator',
+        lambda *_args: SimpleNamespace(state='idle', plan_index=0),
+    )
+
+    ZmpController('robot.urdf', 'sphere.urdf', 'sphere.srdf', init=False)
+
+    assert captured['init'] is False
 
 
 def test_accepts_aligned_unconverged_best_effort_plan():

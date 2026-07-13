@@ -21,6 +21,7 @@ class ZmpController(UpperController):
                  urdf_path: str,
                  urdf_sphere_path: str,
                  srdf_sphere_path: str,
+                 init: bool = True,
                  handless: bool = False,
                  visualize: bool = False,
                  config: dict = None):
@@ -28,6 +29,7 @@ class ZmpController(UpperController):
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
             srdf_sphere_path=srdf_sphere_path,
+            init=init,
             handless=handless,
             visualize=visualize,
             config=config,
