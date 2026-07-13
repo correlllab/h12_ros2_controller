@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pinocchio as pin
 
 from h12_ros2_controller.core.controller.zmp.balance_actuator import (
     BalanceActuator,
@@ -135,6 +136,53 @@ def test_actuator_diagnostics_update_when_executing_mocked_plan():
     assert np.allclose(result, command)
     assert actuator.plan_index == 1
     assert actuator.latest_raw_plan_command_norm == np.linalg.norm(command)
+
+
+def test_direct_response_updates_each_tick_and_returns_after_perturbation():
+    actuator = make_actuator({
+        'zmp': {
+            'execution': {
+                'mode': 'direct',
+                'direct_damping': 0.1,
+                'direct_max_velocity': 2.0,
+            },
+            'ddp': {},
+            'blending': {},
+            'solver_failure': {},
+        },
+    })
+    class DirectBehavior:
+        arm_ids = np.arange(7)
+        arm_model = SimpleNamespace(createData=lambda: object())
+
+        def current_arm_q(self):
+            return np.zeros(7, dtype=np.float64)
+
+    actuator._behavior = lambda arm: DirectBehavior()
+    actuator._current_arm_q = lambda arm: np.zeros(7, dtype=np.float64)
+    target = ArmMomentumTarget(
+        'left',
+        np.array([0.5, 0.0, 0.0], dtype=np.float64),
+    )
+    active = PerturbationState(active=True, severity=1.0)
+    inactive = PerturbationState(active=False, severity=0.0)
+
+    original = pin.computeCentroidalMap
+    pin.computeCentroidalMap = lambda model, data, q: np.vstack((
+        np.zeros((3, 7)),
+        np.eye(3, 7),
+    ))
+    try:
+        actuator.update_direct_response([target], active)
+        command = actuator.step()
+        actuator.update_direct_response([], inactive)
+    finally:
+        pin.computeCentroidalMap = original
+
+    assert actuator.state == 'returning'
+    assert command[0] > 0.0
+    assert np.max(np.abs(command)) <= 2.0
+    assert actuator.latest_response_status == 'direct'
 
 
 def test_zmp_controller_bypasses_velocity_limit_by_default():

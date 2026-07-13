@@ -38,6 +38,7 @@ class BalanceActuator:
         ddp_cfg = zmp_cfg.get('ddp', {})
         blending_cfg = zmp_cfg.get('blending', {})
         failure_cfg = zmp_cfg.get('solver_failure', {})
+        execution_cfg = zmp_cfg.get('execution', {})
         controller_cfg = config.get('controller', {})
 
         self.robot_model = robot_model
@@ -54,6 +55,19 @@ class BalanceActuator:
             int(float(ddp_cfg.get('return_timeout', 0.4)) / self.dt),
         )
         self.max_return_velocity = float(ddp_cfg.get('max_velocity', 6.0))
+        self.execution_mode = execution_cfg.get('mode', 'ddp')
+        self.direct_damping = float(execution_cfg.get('direct_damping', 0.05))
+        self.direct_max_velocity = float(
+            execution_cfg.get('direct_max_velocity', 6.0)
+        )
+        self.direct_max_steps = max(
+            1,
+            int(float(execution_cfg.get('direct_duration', 0.2)) / self.dt),
+        )
+        self.direct_cooldown_steps = max(
+            0,
+            int(float(execution_cfg.get('direct_cooldown', 0.2)) / self.dt),
+        )
         self.min_replan_ticks = max(
             1,
             int(
@@ -108,7 +122,15 @@ class BalanceActuator:
         self.latest_plan_lengths = {}
         self.latest_plan_phase_lengths = {}
         self.latest_executed_plan_length = 0
+        self.direct_targets = {}
+        self.direct_index = 0
+        self.direct_cooldown_index = 0
         self._last_suppressed_warning_time = -np.inf
+
+        if self.execution_mode not in ('ddp', 'direct'):
+            raise ValueError(
+                f'unsupported zmp.execution.mode: {self.execution_mode}'
+            )
 
     def can_start_response(self, perturbation_state, target_momentum):
         if not perturbation_state.active:
@@ -133,14 +155,104 @@ class BalanceActuator:
             self.blend_index = 0
         return started
 
+    def update_direct_response(self, arm_targets, perturbation_state):
+        '''Update the closed-loop momentum response target'''
+        if self.execution_mode != 'direct':
+            return
+
+        if self.direct_cooldown_index > 0:
+            return
+
+        if perturbation_state.active and arm_targets:
+            if self.state != 'direct_impulse':
+                if not self.return_targets:
+                    self.return_targets = {
+                        target.arm: self._current_arm_q(target.arm)
+                        for target in arm_targets
+                    }
+                self.return_index = 0
+                self.direct_index = 0
+            self.direct_targets = {
+                target.arm: np.copy(target.target_momentum)
+                for target in arm_targets
+            }
+            self.state = 'direct_impulse'
+            self.latest_target_momentum = self._combined_achieved(
+                self.direct_targets
+            )
+            self.latest_arm_targets = dict(self.direct_targets)
+            self.latest_response_status = 'direct'
+            self.latest_response_summary = (
+                'ZMP response direct '
+                f'target={format_vector(self.latest_target_momentum)} '
+                f'per_arm={format_vector_map(self.direct_targets)}'
+            )
+            return
+
+        if self.state == 'direct_impulse':
+            self.direct_targets = {}
+            self.state = 'returning'
+            self.return_index = 0
+
     def step(self):
         '''Return one full-body velocity command for active response state'''
         self.ticks_since_plan += 1
+        self.direct_cooldown_index = max(
+            0,
+            self.direct_cooldown_index - 1,
+        )
+        if self.state == 'direct_impulse':
+            return self._execute_direct_step()
         if self.state == 'executing_impulse':
             return self._execute_plan_step()
         if self.state == 'returning':
             return self._execute_return_step()
         command = np.zeros(self.robot_model.model_body.nv, dtype=np.float64)
+        self._set_latest_raw_command(command)
+        return command
+
+    def _execute_direct_step(self):
+        if self.direct_index >= self.direct_max_steps:
+            self.direct_targets = {}
+            self.direct_cooldown_index = self.direct_cooldown_steps
+            self.state = 'returning'
+            self.return_index = 0
+            return self._execute_return_step()
+
+        command = np.zeros(
+            self.robot_model.model_body.nv,
+            dtype=np.float64,
+        )
+        achieved = {}
+        for arm, target in self.direct_targets.items():
+            behavior = self._behavior(arm)
+            q = behavior.current_arm_q()
+            data = behavior.arm_model.createData()
+            centroidal_map = pin.computeCentroidalMap(
+                behavior.arm_model,
+                data,
+                q,
+            )
+            angular_map = np.asarray(
+                centroidal_map[3:6, :],
+                dtype=np.float64,
+            )
+            regularized = (
+                angular_map @ angular_map.T
+                + self.direct_damping ** 2 * np.eye(3)
+            )
+            velocity = angular_map.T @ np.linalg.solve(regularized, target)
+            velocity = np.clip(
+                velocity,
+                -self.direct_max_velocity,
+                self.direct_max_velocity,
+            )
+            command[behavior.arm_ids] = velocity
+            achieved[arm] = angular_map @ velocity
+
+        self.direct_index += 1
+        self.latest_per_arm_achieved = achieved
+        self.latest_combined_achieved = self._combined_achieved(achieved)
         self._set_latest_raw_command(command)
         return command
 
