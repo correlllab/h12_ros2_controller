@@ -49,17 +49,18 @@ class BalanceObserver:
 
     def observe(self, freeze_center_reference=False):
         '''Compute current balance metrics from RobotModel state'''
-        zmp = np.asarray(self.robot_model.get_zmp(), dtype=np.float64)[:2]
+        dynamics = self.robot_model.dynamics
+        zmp = np.asarray(dynamics.get_zmp(), dtype=np.float64)[:2]
         zmp_target = self._support_target()
         zmp_error = zmp - zmp_target
         support_margin = self.compute_support_margin(zmp, zmp_target)
 
-        com_xy = np.asarray(self.robot_model.get_com(), dtype=np.float64)[:2]
+        com_xy = np.asarray(dynamics.get_com(), dtype=np.float64)[:2]
         self._update_center_reference(com_xy, freeze_center_reference)
         center_shift = com_xy - self._center_reference
 
         com_velocity = np.asarray(
-            self.robot_model.get_com_velocity(),
+            dynamics.get_com_velocity(),
             dtype=np.float64,
         )[:2]
         self._update_com_acceleration(com_velocity)
