@@ -264,6 +264,29 @@ class RobotModel:
         if self.visualizer is not None:
             self.visualizer.update_visualizer()
 
+    def get_com(self, q: np.ndarray = None):
+        return self.dynamics.get_com(q)
+
+    def get_com_velocity(self, q: np.ndarray = None, dq: np.ndarray = None):
+        return self.dynamics.get_com_velocity(q, dq)
+
+    def get_zmp(self, q: np.ndarray = None):
+        return self.dynamics.get_zmp(q)
+
+    def get_angular_centroidal_momentum_matrix(self,
+                                               q: np.ndarray = None,
+                                               joint_ids=None):
+        return self.dynamics.get_angular_centroidal_momentum_matrix(q, joint_ids)
+
+    def get_angular_centroidal_momentum(self,
+                                        q: np.ndarray = None,
+                                        dq: np.ndarray = None,
+                                        joint_ids=None):
+        return self.dynamics.get_angular_centroidal_momentum(q, dq, joint_ids)
+
+    def get_gravity_compensation(self, q: np.ndarray = None, imu_quat=None):
+        return self.dynamics.get_gravity_compensation(q, imu_quat)
+
     def init_subscriber(self, low_state_topic='rt/lowstate'):
         self.state_subscriber = StateSubscriber(low_state_topic=low_state_topic)
         print('StateSubscriber initialized.', flush=True)

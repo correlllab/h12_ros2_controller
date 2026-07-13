@@ -1,25 +1,21 @@
-import os
-import sys
 import time
 import argparse
-
 import numpy as np
 
-REPO_ROOT = os.path.abspath(
-    os.path.join(__file__, '../../..')
-)
-sys.path.append(REPO_ROOT)
-
-from h12_ros2_controller.core.controller.zmp import (  # noqa: E402
-    format_vector,
-)
-from h12_ros2_controller.core.controller.zmp_controller import (  # noqa: E402
-    ZmpController,
-)
-from h12_ros2_controller.utility.controller_config import (  # noqa: E402
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
+from h12_ros2_controller.core.controller.zmp import format_vector
+from h12_ros2_controller.core.controller.zmp_controller import ZmpController
+from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
     initialize_channel_factory,
     maybe_start_controller_logging,
+)
+from h12_ros2_controller.utility.path_definition import (
+    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
 )
 
 
@@ -76,9 +72,9 @@ def main(config_name='balance_safety_split.yaml', status_interval=1.0):
     initialize_channel_factory(config)
 
     controller = ZmpController(
-        'assets/h1_2/h1_2_handless.urdf',
-        'assets/h1_2/h1_2_handless_sphere.urdf',
-        'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+        URDF_HANDLESS_PATH,
+        URDF_HANDLESS_SPHERE_PATH,
+        SRDF_HANDLESS_SPHERE_PATH,
         handless=True,
         visualize=False,
         config=config,

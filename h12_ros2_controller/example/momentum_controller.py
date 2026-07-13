@@ -13,6 +13,11 @@ from h12_ros2_controller.utility.controller_config import (
     initialize_channel_factory,
     maybe_start_controller_logging,
 )
+from h12_ros2_controller.utility.path_definition import (
+    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+)
 
 
 def print_plan_status(plan):
@@ -45,9 +50,9 @@ def main(config_name='balance_debug.yaml'):
     initialize_channel_factory(config)
 
     controller = MomentumController(
-        'assets/h1_2/h1_2_handless.urdf',
-        'assets/h1_2/h1_2_handless_sphere.urdf',
-        'assets/h1_2/h1_2_handless_sphere_collision.srdf',
+        URDF_HANDLESS_PATH,
+        URDF_HANDLESS_SPHERE_PATH,
+        SRDF_HANDLESS_SPHERE_PATH,
         handless=True,
         visualize=False,
         config=config,
