@@ -6,7 +6,10 @@ from std_msgs.msg import Header
 import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory,
+    load_controller_config,
+)
 from h12_ros2_controller.utility.path_definition_ros import URDF_HANDLESS_PIN_PATH
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -15,7 +18,6 @@ class JointStatePublisher(Node):
         super().__init__('joint_state_publisher')
 
         # initialize robot model
-        init_channel_factory_from_env()
         self.robot_model = RobotModel(URDF_HANDLESS_PIN_PATH, handless=True)
         self.robot_model.init_subscriber()
         self.get_logger().info('robot_model successfully initialized')
@@ -37,6 +39,8 @@ class JointStatePublisher(Node):
         self.publisher.publish(msg)
 
 def main():
+    config = load_controller_config()
+    init_channel_factory(config)
     rclpy.init()
     node = JointStatePublisher()
     try:

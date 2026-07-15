@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.benchmark.precision_benchmark import PrecisionBenchmark
-from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.controller_config import load_controller_config, init_channel_factory_guard
 
 def run_benchmark(solver, filepath, mode, config):
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
@@ -65,6 +65,6 @@ if __name__ == '__main__':
     solvers = ['osqp', 'proxqp', 'daqp', 'quadprog']
 
     config = load_controller_config(args.config)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     for solver in solvers:
         run_benchmark(solver, args.save, mode, config)

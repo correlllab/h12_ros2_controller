@@ -10,7 +10,7 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    initialize_channel_factory,
+    init_channel_factory_guard,
 )
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
@@ -153,7 +153,7 @@ def main_loop(gui, robot_model, command_publisher):
 
 def main(config_name='debug.yaml'):
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
 
     # initialize robot model and command publisher
     robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)

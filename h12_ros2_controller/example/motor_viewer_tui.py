@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import init_channel_factory_guard, load_controller_config
 from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, LOWER_BODY_JOINTS, UPPER_BODY_JOINTS
 from h12_ros2_controller.utility.joint_limits import JOINT_POSITION_LIMITS
@@ -226,7 +226,8 @@ def run_tui(robot_model, joint_groups, limits, update_rate, damping_value, warn_
 
 
 def main(damping_value, update_rate, warn_threshold, crit_threshold):
-    init_channel_factory_from_env()
+    config = load_controller_config()
+    init_channel_factory_guard(config)
 
     robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_subscriber()

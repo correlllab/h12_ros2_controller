@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    initialize_channel_factory,
+    init_channel_factory_guard,
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -53,7 +53,7 @@ def input_frame_task():
 def init_frame_controller(config_name):
     '''Initialize controller, DDS channel, and Meshcat visualizer'''
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     frame_controller = FrameController(
         URDF_MAGPIE_PATH,
         URDF_MAGPIE_SPHERE_PATH,

@@ -3,7 +3,10 @@ from rclpy.node import Node
 from std_msgs.msg import Float64MultiArray
 
 from h12_ros2_controller.core.controller.hand_controller import HandController
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory,
+    load_controller_config,
+)
 
 '''
 Finger angles definition
@@ -19,7 +22,6 @@ Finger angles definition
 class HandControllerNode(Node):
     def __init__(self):
         super().__init__('hand_controller_node')
-        init_channel_factory_from_env()
         self.hand_controller = HandController()
 
         # subscribers for each hand cmd
@@ -81,6 +83,8 @@ class HandControllerNode(Node):
         self.left_state_publisher.publish(left_state)
 
 def main(args=None):
+    config = load_controller_config()
+    init_channel_factory(config)
     rclpy.init(args=args)
     node = HandControllerNode()
     try:

@@ -38,7 +38,7 @@ import yaml
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    initialize_channel_factory,
+    init_channel_factory_guard,
 )
 from h12_ros2_controller.utility.joint_definition import (
     BODY_JOINTS,
@@ -670,7 +670,7 @@ def run(args):
     controller_cfg = load_controller_config(controller_cfg_name)
     if args.mode == 'real':
         _real_mode_ros_env_sanity(controller_cfg_name)
-        initialize_channel_factory(controller_cfg)
+        init_channel_factory_guard(controller_cfg)
         if not args.yes:
             ans = input(
                 '[real] This will command the physical robot. Continue? [y/N]: '
@@ -679,7 +679,7 @@ def run(args):
                 print('[real] aborted by user')
                 return 1
     else:
-        initialize_channel_factory(controller_cfg)
+        init_channel_factory_guard(controller_cfg)
 
     urdf = test_cfg['urdf']
     controller = FrameController(

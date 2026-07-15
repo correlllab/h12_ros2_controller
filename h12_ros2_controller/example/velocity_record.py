@@ -7,11 +7,12 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import init_channel_factory_guard, load_controller_config
 from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
 def save_data(filepath, steps=1000):
-    init_channel_factory_from_env()
+    config = load_controller_config()
+    init_channel_factory_guard(config)
     print('Initializing RobotModel...')
     robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
     robot_model.init_subscriber()

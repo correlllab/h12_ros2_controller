@@ -13,7 +13,7 @@ from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    initialize_channel_factory,
+    init_channel_factory_guard,
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.path_definition import (
@@ -126,7 +126,7 @@ def load_trajectory(path):
 def init_frame_controller(config_name, visualize=True):
     '''Initialize controller and DDS channel from config'''
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     controller = FrameController(
         URDF_MAGPIE_PATH,
         URDF_MAGPIE_SPHERE_PATH,

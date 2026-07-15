@@ -8,14 +8,16 @@ from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 
 from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory,
+    load_controller_config,
+)
 from h12_ros2_controller.utility.path_definition_ros import URDF_MAGPIE_PIN_PATH, URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH
 
 
 class GravityCompServer(Node):
     def __init__(self, dt=0.03):
         super().__init__('gravity_comp_server')
-        init_channel_factory_from_env()
 
         self.controller = GravityCompController(
             URDF_MAGPIE_PIN_PATH,
@@ -94,6 +96,8 @@ class GravityCompServer(Node):
 
 
 def main(args=None):
+    config = load_controller_config()
+    init_channel_factory(config)
     rclpy.init(args=args)
     node = GravityCompServer(dt=0.03)
     try:

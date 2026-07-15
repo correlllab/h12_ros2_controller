@@ -11,8 +11,8 @@ import numpy as np
 from custom_ros_messages.action import DualArm, NamedConfig
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory,
     load_controller_config,
-    initialize_channel_factory,
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -54,7 +54,6 @@ class DualArmServer(Node):
         )
         self.config_name = config_name
 
-        initialize_channel_factory(config)
         self.controller = ArmController(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
@@ -466,6 +465,8 @@ def main(args=None):
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     parsed_args, ros_args = parser.parse_known_args(args=args)
 
+    config = load_controller_config(parsed_args.config, config_dir=CONFIG_DIR)
+    init_channel_factory(config)
     rclpy.init(args=ros_args)
     node = DualArmServer(config_name=parsed_args.config)
     try:

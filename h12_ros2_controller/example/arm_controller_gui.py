@@ -7,7 +7,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
-from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.controller_config import load_controller_config, init_channel_factory_guard
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -16,7 +16,7 @@ from h12_ros2_controller.utility.path_definition import (
 
 def main(config_name='debug.yaml'):
     config= load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     # example usage
     arm_controller = ArmController(URDF_MAGPIE_PATH,
                                    URDF_MAGPIE_SPHERE_PATH,

@@ -10,6 +10,9 @@ topics:
   low_cmd: rt/safety/lowcmd_upper_in
   low_state: rt/lowstate
 
+network:
+  domain_id: 1
+
 controller:
   v_lim: 1.0
   w_lim: 2.0

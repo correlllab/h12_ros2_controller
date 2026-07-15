@@ -4,7 +4,10 @@ import numpy as np
 from unitree_sdk2py.core.channel import ChannelSubscriber
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory_guard,
+    load_controller_config,
+)
 
 TOPIC_ARM_SDK = 'rt/arm_sdk'
 
@@ -58,7 +61,8 @@ class TopicSubscriber:
 
 def main():
     print('Starting subscriber...')
-    init_channel_factory_from_env()
+    config = load_controller_config()
+    init_channel_factory_guard(config)
     subscriber = TopicSubscriber(TOPIC_ARM_SDK, LowCmd_)
 
     try:

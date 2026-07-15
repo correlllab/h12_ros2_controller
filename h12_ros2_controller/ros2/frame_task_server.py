@@ -12,7 +12,10 @@ from custom_ros_messages.msg import StringArray
 from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory,
+    load_controller_config,
+)
 from h12_ros2_controller.utility.path_definition_ros import (
     URDF_MAGPIE_PIN_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -53,7 +56,6 @@ class FrameTaskServer(Node):
         self.frame_names = []
         self.frame_targets = []
 
-        initialize_channel_factory(config)
         self.controller = FrameController(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
@@ -497,6 +499,8 @@ def main(args=None):
     parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
     parsed_args, ros_args = parser.parse_known_args(args=args)
 
+    config = load_controller_config(parsed_args.config, config_dir=CONFIG_DIR)
+    init_channel_factory(config)
     rclpy.init(args=ros_args)
     node = FrameTaskServer(config_name=parsed_args.config)
     try:

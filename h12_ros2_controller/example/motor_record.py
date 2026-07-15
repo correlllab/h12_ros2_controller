@@ -11,7 +11,7 @@ from h12_ros2_controller.core.channel_interface import LowCmdPublisher
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
     get_publisher_clip_limits,
-    initialize_channel_factory,
+    init_channel_factory_guard,
 )
 from h12_ros2_controller.utility.joint_limits import setup_gains
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
@@ -123,7 +123,7 @@ def main(joint_name_list,
     config = load_controller_config(config_name)
     dt = 1.0 / float(config['frequency']['ctrl_hz'])
     publisher_dt = 1.0 / float(config['frequency']['pub_hz'])
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
 
     # initialize robot model and command publisher
     robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)

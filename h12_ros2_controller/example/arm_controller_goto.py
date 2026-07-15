@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
-    initialize_channel_factory,
+    init_channel_factory_guard,
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -69,7 +69,7 @@ def main(config_name='debug.yaml'):
     threshold_angular = controller_cfg['threshold_angular']
 
     # initialize channel factory
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     # initialize arm controller
     arm_controller = ArmController(URDF_MAGPIE_PATH,
                                    URDF_MAGPIE_SPHERE_PATH,

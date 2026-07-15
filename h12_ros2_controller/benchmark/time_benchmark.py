@@ -6,7 +6,7 @@ from tqdm import tqdm
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import ArmController
-from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.controller_config import load_controller_config, init_channel_factory_guard
 
 class TimeBenchmark:
     def __init__(self, arm_controller, target_poses,
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config= load_controller_config(args.config)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     arm_controller = ArmController('assets/h1_2/h1_2.urdf',
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',

@@ -113,12 +113,21 @@ jobs:
           else:
               raise SystemExit('Expected ASSETS_PATH definition was not found')
           path.write_text('\n'.join(lines) + '\n')
+
+          for path in Path('config').glob('*.yaml'):
+              if path.name == 'sim_safety_split.yaml':
+                  continue
+              text = path.read_text()
+              if 'domain_id: 0' in text:
+                  path.write_text(text.replace('domain_id: 0', 'domain_id: 1'))
+              elif 'domain_id: 1' not in text:
+                  raise SystemExit(f'Expected domain_id in {path}')
           PY
 
           uv sync
           uv export --format requirements-txt --no-hashes -o requirements.txt
 
-          git add -A .gitmodules submodules/unitree_sdk2_python submodules/CL_Assets pyproject.toml uv.lock requirements.txt README.md h12_ros2_controller/utility/path_definition.py
+          git add -A .gitmodules submodules/unitree_sdk2_python submodules/CL_Assets pyproject.toml uv.lock requirements.txt README.md h12_ros2_controller/utility/path_definition.py config
           if git diff --cached --quiet; then
             echo "No changes to commit on dev."
             exit 0

@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.arm_controller import UpperController
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.utility.controller_config import load_controller_config, initialize_channel_factory
+from h12_ros2_controller.utility.controller_config import load_controller_config, init_channel_factory_guard
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -23,7 +23,7 @@ def configuration_path(name):
 
 def save(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     print('Initializing RobotModel...')
     robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
     low_state_topic = config.get('topics', {}).get('low_state', 'rt/lowstate')
@@ -37,7 +37,7 @@ def save(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
 
 def lock(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     print('Initializing UpperController...')
     upper_controller = UpperController(URDF_MAGPIE_PATH,
                                        URDF_MAGPIE_SPHERE_PATH,
@@ -58,7 +58,7 @@ def lock(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
 
 def goto(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
     print('Initializing UpperController...')
     upper_controller = UpperController(URDF_MAGPIE_PATH,
                                        URDF_MAGPIE_SPHERE_PATH,

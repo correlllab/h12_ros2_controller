@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.channel_interface import LowCmdPublisher
-from h12_ros2_controller.utility.dds_init import init_channel_factory_from_env
+from h12_ros2_controller.utility.controller_config import init_channel_factory_guard, load_controller_config
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_JOINTS, LOWER_BODY_JOINTS
 from h12_ros2_controller.utility.path_definition import URDF_HANDLESS_PATH
 
@@ -49,7 +49,8 @@ def setup_low_damping(command_publisher, damping_value=0.5):
 
 def main(damping_value, update_rate):
     # initialize channel
-    init_channel_factory_from_env()
+    config = load_controller_config()
+    init_channel_factory_guard(config)
 
     # initialize robot model
     robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
