@@ -8,8 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.zmp import format_vector
 from h12_ros2_controller.core.controller.zmp_controller import ZmpController
 from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory_guard,
     load_controller_config,
-    initialize_channel_factory,
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.path_definition import (
@@ -69,7 +69,7 @@ def main(config_name='balance_safety_split.yaml', status_interval=1.0):
     config = load_controller_config(config_name)
     config.setdefault('zmp', {})['enabled'] = True
 
-    initialize_channel_factory(config)
+    init_channel_factory_guard(config)
 
     controller = ZmpController(
         URDF_HANDLESS_PATH,
