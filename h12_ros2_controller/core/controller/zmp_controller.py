@@ -36,6 +36,7 @@ class ZmpController(UpperController):
         )
         self.zmp_config = self.config.get('zmp', {})
         self.zmp_enabled = bool(self.zmp_config.get('enabled', False))
+        self.reflex_output_enabled = self.zmp_enabled
 
         self.observer = BalanceObserver(self.robot_model, self.dt, self.config)
         self.detector = PerturbationDetector(self.config)
@@ -53,9 +54,13 @@ class ZmpController(UpperController):
         self.latest_balance_state = None
         self.latest_perturbation_state = None
         self.latest_target_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_raw_target_momentum = np.zeros(3, dtype=np.float64)
         self.latest_arm_targets = {}
         self.latest_arm_achieved_momentum = {}
         self.latest_combined_achieved_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_post_limit_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_pre_limit_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_measured_arm_momentum = np.zeros(3, dtype=np.float64)
         self.latest_solver_statuses = {}
         self.latest_plan_duration = 0.0
         self.latest_response_status = 'idle'
@@ -97,6 +102,31 @@ class ZmpController(UpperController):
         '''Run one ZMP balance control tick for reduced-control callers'''
         return self.control_step(com=com)
 
+    def set_reflex_output_enabled(self, enabled):
+        '''Enable or suppress reflex actuation while keeping observation active'''
+        self.reflex_output_enabled = bool(enabled)
+        if not self.reflex_output_enabled:
+            self.actuator.reset_response()
+
+    def reset_balance_reference(self):
+        '''Reset quiet calibration before a new balance experiment'''
+        self.observer.reset_calibration()
+        self.detector.reset()
+        self.actuator.reset_response()
+        self.latest_perturbation_state = None
+        self.latest_target_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_raw_target_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_arm_targets = {}
+        self.latest_arm_achieved_momentum = {}
+        self.latest_combined_achieved_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_pre_limit_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_post_limit_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_measured_arm_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_raw_command_norm = 0.0
+        self.latest_applied_command_norm = 0.0
+        self.latest_response_status = 'idle'
+        self.latest_response_summary = ''
+
     def _update_balance_state(self):
         freeze_reference = self._reference_should_freeze()
         balance_state = self.observer.observe(
@@ -110,12 +140,12 @@ class ZmpController(UpperController):
 
         active_arms = self._balance_arms()
         arm_targets = self.allocator.allocate(target_momentum, active_arms)
-        if self.actuator.execution_mode == 'direct':
+        if self.reflex_output_enabled and self.actuator.execution_mode == 'direct':
             self.actuator.update_direct_response(
                 arm_targets,
                 perturbation_state,
             )
-        elif self.actuator.can_start_response(
+        elif self.reflex_output_enabled and self.actuator.can_start_response(
                 perturbation_state,
                 target_momentum):
             self.actuator.maybe_start_response(
@@ -126,6 +156,9 @@ class ZmpController(UpperController):
         self.latest_balance_state = balance_state
         self.latest_perturbation_state = perturbation_state
         self.latest_target_momentum = np.copy(target_momentum)
+        self.latest_raw_target_momentum = np.copy(
+            self.target_estimator.latest_raw_target
+        )
         self.latest_arm_targets = {
             target.arm: np.copy(target.target_momentum)
             for target in arm_targets
@@ -141,8 +174,16 @@ class ZmpController(UpperController):
             self.actuator.latest_solver_statuses
         )
         self.latest_plan_duration = float(self.actuator.latest_plan_duration)
-        self.latest_response_status = self.actuator.latest_response_status
-        self.latest_response_summary = self.actuator.latest_response_summary
+        self.latest_response_status = getattr(
+            self.actuator,
+            'latest_response_status',
+            getattr(self, 'latest_response_status', 'idle'),
+        )
+        self.latest_response_summary = getattr(
+            self.actuator,
+            'latest_response_summary',
+            getattr(self, 'latest_response_summary', ''),
+        )
         self.latest_best_effort_used = self.actuator.latest_best_effort_used
 
     def _update_execution_diagnostics(self, raw_command, applied_command):
@@ -164,6 +205,25 @@ class ZmpController(UpperController):
         }
         self.latest_actuator_state = self.actuator.state
         self.latest_actuator_plan_index = self.actuator.plan_index
+        self.latest_response_status = getattr(
+            self.actuator,
+            'latest_response_status',
+            getattr(self, 'latest_response_status', 'idle'),
+        )
+        self.latest_response_summary = getattr(
+            self.actuator,
+            'latest_response_summary',
+            getattr(self, 'latest_response_summary', ''),
+        )
+        self.latest_pre_limit_momentum = self._command_momentum(raw_command)
+        self.latest_post_limit_momentum = self._command_momentum(applied_command)
+        state = getattr(self.robot_model, 'state', {})
+        self.latest_measured_arm_momentum = self._command_momentum(
+            state.get(
+                'dq',
+                np.zeros_like(applied_command),
+            ),
+        )
 
     @staticmethod
     def _max_abs(values, indices):
@@ -171,6 +231,21 @@ class ZmpController(UpperController):
         if values.size == 0:
             return 0.0
         return float(np.max(np.abs(values[indices])))
+
+    def _command_momentum(self, velocity):
+        get_momentum = getattr(
+            self.robot_model,
+            'get_angular_centroidal_momentum',
+            None,
+        )
+        if get_momentum is None:
+            return np.zeros(3, dtype=np.float64)
+        joint_ids = list(LEFT_ARM_INDEX) + list(RIGHT_ARM_INDEX)
+        state = getattr(self.robot_model, 'state', {})
+        return np.asarray(
+            get_momentum(state['q'], velocity, joint_ids),
+            dtype=np.float64,
+        )
 
     def _reference_should_freeze(self):
         if self.latest_perturbation_state is None:

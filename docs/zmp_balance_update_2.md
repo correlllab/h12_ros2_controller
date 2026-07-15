@@ -48,6 +48,119 @@ The categorical changes are:
 - At `-Y, 95 N`, ZMP survives but peak tilt increases from `0.217 rad` to
   `0.281 rad`, reducing the remaining stability margin.
 
+## Implemented Increment 1
+
+The following low-risk reflex changes were implemented before introducing a
+new allocator or dynamics architecture:
+
+- Quiet calibration is reset when the benchmark start flag is observed, rather
+  than relying on the frozen pre-start simulator state.
+- The observer learns a `60`-sample standing ZMP reference, then waits a
+  `90`-sample quiet arming dwell before detector entry is enabled.
+- Detector entry uses a calibrated `0.003 m` ZMP residual with two-tick
+  hysteresis. The raw absolute ZMP level is retained only for legacy rollback.
+- The target no longer applies the `0.3 Nms` minimum-momentum jump. Center and
+  COM-velocity gains are disabled until base-state estimation is validated.
+- Target bounds support explicit lower and upper component limits. The active
+  profile limits `Lx` to `[0.0, 0.2] Nms` and `Ly` to `[-1.5, 1.5] Nms`.
+  This is a provisional sign guard, not a replacement for support-frame and
+  reaction-sign identification.
+- The actuator can hold after a direct burst, but the active profile retains
+  bounded burst and return behavior because hold-only failed the `+X` case.
+- The controller resets active response state on experiment start.
+- ZMP logs now include calibration and arming state, detector reasons and
+  episode IDs, residuals, raw and bounded targets, actuator state, and
+  predicted post-limit momentum. Analysis counts episode IDs rather than stale
+  response-status rows.
+
+Focused unit coverage verifies quiet calibration, residual entry, direct hold
+state behavior, direction-preserving target projection, startup reset, and the
+new target-bound compatibility. The focused controller suite has `16` passing
+tests.
+
+## Increment 1 Evaluation
+
+The matched final sweep is stored in
+`runs/20260713_update2_signguard_sweep/` in the benchmark meta-repository. It
+uses the same eight directions, `5 s` force start, `1 s` duration, and `5 N`
+resolution as the current baseline.
+
+| Direction | Lower-only | ZMP-enabled | Delta |
+| --- | --- | --- | --- |
+| `+X` | `25 N` | `30 N` | `+5 N`. |
+| `+X +Y` | `35 N` | `35 N` | `0 N`. |
+| `+Y` | `100 N` | `100 N` | `0 N`. |
+| `-X +Y` | `30 N` | `30 N` | `0 N`. |
+| `-X` | `25 N` | `25 N` | `0 N`. |
+| `-X -Y` | `40 N` | `40 N` | `0 N`. |
+| `-Y` | `95 N` | `95 N` | `0 N`. |
+| `+X -Y` | `35 N` | `35 N` | `0 N`. |
+
+The lower-only mean is `48.125 N`; ZMP-enabled mean is `48.750 N`. The
+increment restores the `+X` gain and removes the prior `+Y` regression, but
+does not yet meet the planned `5 N` aggregate mean improvement gate.
+
+Detector quality improved materially:
+
+- All `40` ZMP trials had zero pre-force episodes and zero pre-force arm
+  commands.
+- Force-window entry occurred in `38` of `40` trials.
+- Entry latency ranged from `66 ms` to `901 ms`, with a `234 ms` median.
+
+The zero false-trigger result is accepted. The latency range and asymmetrical
+`Lx` sign guard are not accepted as final architecture; they motivate the
+deferred work below.
+
+## Closure Corrections And Validation
+
+The closure increment corrected the benchmark methodology without introducing
+a new allocator or reflex state machine:
+
+- The target now uses the same calibrated ZMP residual used by detector entry.
+- ZMP runtime resets live calibration when simulation starts, suppresses reflex
+  output during calibration and arming, and only enables output after live
+  arming completes.
+- The benchmark force starts at `8 s`, leaving a quiet armed interval after the
+  `60`-sample calibration and `120`-sample arming dwell.
+- `zmp_passive` uses the identical `ZmpController`, controller configuration,
+  gains, DDS topic, initialization, and safety path as `zmp_enabled`, with
+  reflex output disabled. Historical `lower_only` remains a compatibility mode
+  and is not the controls-equivalent baseline.
+- Each run snapshots benchmark, safety, lower-body, and ZMP YAML files, hashes
+  them, and records benchmark/controller revision and dirty-state provenance.
+- The sweep now records a seeded interleaving plan and runs the passive and
+  enabled variants in shuffled order for every direction/iteration pair.
+- Telemetry labels full-body command momentum as predicted pre-limit and
+  predicted post-limit momentum, separately from momentum estimated from the
+  measured joint velocity. Burst IDs and burst-entry flags are logged.
+
+The zero-force scenario `config/zmp_no_force.yaml` was validated with both
+controls-equivalent variants: no detector episodes, no upper reflex command,
+and no fall.
+
+The closure sweep is stored in
+`runs/20260714_update2_closure_sweep/`. It used ROS domain `2`, delayed
+`8 s`/`1 s` forces, 5 N force brackets, frozen per-run configuration snapshots,
+and seed `20260714`.
+
+| Direction | ZMP passive | ZMP enabled | Delta |
+| --- | --- | --- | --- |
+| `+X` | `25 N` | `25 N` | `0 N`. |
+| `+X +Y` | `35 N` | `35 N` | `0 N`. |
+| `+Y` | `115 N` | `115 N` | `0 N`. |
+| `-X +Y` | `30 N` | `30 N` | `0 N`. |
+| `-X` | `25 N` | `25 N` | `0 N`. |
+| `-X -Y` | `40 N` | `40 N` | `0 N`. |
+| `-Y` | `105 N` | `105 N` | `0 N`. |
+| `+X -Y` | `35 N` | `30 N` | `-5 N`. |
+
+The passive mean is `51.250 N`; the enabled mean is `50.625 N`. All 40 enabled
+trials had zero pre-force episodes and zero pre-force reflex command, but only
+34 entered during the force window. Entry latency ranged from `345 ms` to
+`919 ms`, with a `544 ms` median. The closure result does not satisfy the
+performance or latency acceptance gates and does not justify further parameter
+tuning within Update 2.
+
 ## Observed Failure Mechanisms
 
 ### Non-Causal Pre-Disturbance Response
@@ -452,6 +565,30 @@ delayed forces. Randomize or interleave variant order.
       angular velocity improves by at least `10%` without a survival regression.
 - [ ] Quiet standing has zero reflex episodes in 20/20 trials.
 - [ ] All solver timing, safety-limit, recovery, and validity gates pass.
+
+## Deferred Architecture TODOs
+
+The following changes are required to move beyond the current modest, tuned
+improvement. They were not implemented in this increment.
+
+- [ ] Reconstruct validated free-base linear and angular velocity, acceleration,
+      contact confidence, and source sample timing for the observer.
+- [ ] Define and test one support-frame transform for ZMP, IMU, COM motion,
+      target momentum, and arm centroidal maps.
+- [ ] Identify measured reaction-mass sign and cross-axis coupling with safe
+      single-axis arm pulses, then replace the provisional asymmetric `Lx` guard.
+- [ ] Replace fixed equal allocation and post-solve clipping with a current
+      full-body, constrained two-arm optimization.
+- [ ] Include joint velocity, position/braking margin, acceleration, jerk,
+      end-effector speed, and directional capability constraints in that solve.
+- [ ] Close feedback on measured post-limit arm momentum rather than predicted
+      reduced-model momentum.
+- [ ] Replace fixed burst/cooldown behavior with reject, arrest,
+      recovery-wait, and bounded-return phases.
+- [ ] Make the passive baseline controls-equivalent by using the same upper-body
+      servo path with reflex output disabled.
+- [ ] Run interleaved repeated boundary trials before accepting an aggregate
+      performance claim.
 
 ## Planned Code Touchpoints
 

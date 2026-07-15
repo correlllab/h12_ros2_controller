@@ -68,6 +68,9 @@ class BalanceActuator:
             0,
             int(float(execution_cfg.get('direct_cooldown', 0.2)) / self.dt),
         )
+        self.direct_hold_after_burst = bool(
+            execution_cfg.get('direct_hold_after_burst', False)
+        )
         self.min_replan_ticks = max(
             1,
             int(
@@ -125,6 +128,8 @@ class BalanceActuator:
         self.direct_targets = {}
         self.direct_index = 0
         self.direct_cooldown_index = 0
+        self.burst_id = 0
+        self.burst_entering = False
         self._last_suppressed_warning_time = -np.inf
 
         if self.execution_mode not in ('ddp', 'direct'):
@@ -140,6 +145,21 @@ class BalanceActuator:
         if self.ticks_since_plan < self.min_replan_ticks:
             return False
         return self.state in ('idle', 'returning')
+
+    def reset_response(self):
+        '''Clear active response state before a new balance experiment'''
+        self.state = 'idle'
+        self.return_targets = {}
+        self.return_index = 0
+        self.direct_targets = {}
+        self.direct_index = 0
+        self.direct_cooldown_index = 0
+        self.burst_id = 0
+        self.burst_entering = False
+        self.latest_response_status = 'idle'
+        self.latest_response_summary = ''
+        self.latest_target_momentum = np.zeros(3, dtype=np.float64)
+        self.latest_arm_targets = {}
 
     def maybe_start_response(self, arm_targets, perturbation_state):
         if not arm_targets:
@@ -157,6 +177,7 @@ class BalanceActuator:
 
     def update_direct_response(self, arm_targets, perturbation_state):
         '''Update the closed-loop momentum response target'''
+        self.burst_entering = False
         if self.execution_mode != 'direct':
             return
 
@@ -164,7 +185,7 @@ class BalanceActuator:
             return
 
         if perturbation_state.active and arm_targets:
-            if self.state != 'direct_impulse':
+            if self.state not in ('direct_impulse', 'holding'):
                 if not self.return_targets:
                     self.return_targets = {
                         target.arm: self._current_arm_q(target.arm)
@@ -172,16 +193,19 @@ class BalanceActuator:
                     }
                 self.return_index = 0
                 self.direct_index = 0
-            self.direct_targets = {
-                target.arm: np.copy(target.target_momentum)
-                for target in arm_targets
-            }
-            self.state = 'direct_impulse'
+                self.burst_id += 1
+                self.burst_entering = True
+            if self.state != 'holding':
+                self.direct_targets = {
+                    target.arm: np.copy(target.target_momentum)
+                    for target in arm_targets
+                }
+                self.state = 'direct_impulse'
             self.latest_target_momentum = self._combined_achieved(
                 self.direct_targets
             )
             self.latest_arm_targets = dict(self.direct_targets)
-            self.latest_response_status = 'direct'
+            self.latest_response_status = self.state
             self.latest_response_summary = (
                 'ZMP response direct '
                 f'target={format_vector(self.latest_target_momentum)} '
@@ -189,10 +213,11 @@ class BalanceActuator:
             )
             return
 
-        if self.state == 'direct_impulse':
+        if self.state in ('direct_impulse', 'holding'):
             self.direct_targets = {}
             self.state = 'returning'
             self.return_index = 0
+            self.latest_response_status = 'returning'
 
     def step(self):
         '''Return one full-body velocity command for active response state'''
@@ -203,6 +228,13 @@ class BalanceActuator:
         )
         if self.state == 'direct_impulse':
             return self._execute_direct_step()
+        if self.state == 'holding':
+            command = np.zeros(
+                self.robot_model.model_body.nv,
+                dtype=np.float64,
+            )
+            self._set_latest_raw_command(command)
+            return command
         if self.state == 'executing_impulse':
             return self._execute_plan_step()
         if self.state == 'returning':
@@ -214,9 +246,19 @@ class BalanceActuator:
     def _execute_direct_step(self):
         if self.direct_index >= self.direct_max_steps:
             self.direct_targets = {}
+            if self.direct_hold_after_burst:
+                self.state = 'holding'
+                self.latest_response_status = 'holding'
+                command = np.zeros(
+                    self.robot_model.model_body.nv,
+                    dtype=np.float64,
+                )
+                self._set_latest_raw_command(command)
+                return command
             self.direct_cooldown_index = self.direct_cooldown_steps
             self.state = 'returning'
             self.return_index = 0
+            self.latest_response_status = 'returning'
             return self._execute_return_step()
 
         command = np.zeros(
@@ -269,6 +311,7 @@ class BalanceActuator:
         target_momentum = self._combined_achieved(per_arm_targets)
         self.latest_target_momentum = np.copy(target_momentum)
         self.latest_arm_targets = per_arm_targets
+        self.burst_entering = False
 
         for arm_target in arm_targets:
             arm = arm_target.arm
@@ -338,6 +381,8 @@ class BalanceActuator:
         self.plan_index = 0
         self.return_index = 0
         self.state = 'executing_impulse'
+        self.burst_id += 1
+        self.burst_entering = True
         self.ticks_since_plan = 0
         self.latest_per_arm_achieved = achieved
         self.latest_combined_achieved = self._combined_achieved(achieved)
@@ -478,6 +523,10 @@ class BalanceActuator:
             self.state = 'idle'
             self.return_targets = {}
             self.last_return_command = None
+            self.latest_response_status = 'idle'
+            self.latest_response_summary = ''
+            self.latest_target_momentum = np.zeros(3, dtype=np.float64)
+            self.latest_arm_targets = {}
             command = np.zeros(
                 self.robot_model.model_body.nv,
                 dtype=np.float64,
