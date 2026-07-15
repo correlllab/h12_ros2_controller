@@ -6,11 +6,11 @@ from dataclasses import asdict
 import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.planner.reduced_joint_planner import (
+from h12_ros2_controller.core.planner.planner_types import (
     PlanResult,
     PlannerConfig,
-    ReducedJointPlanner,
 )
+from h12_ros2_controller.core.planner.backend import create_joint_planner
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 
 
@@ -125,9 +125,10 @@ class _PlannerWorker:
             init_args['srdf_sphere_path'],
         )
         planner_config = PlannerConfig(**init_args['planner_config'])
-        self.planner = ReducedJointPlanner(
+        # select OMPL / cuRobo (or auto with OMPL fallback) per config.backend
+        self.planner = create_joint_planner(
             self.robot_model,
-            config=planner_config,
+            planner_config,
         )
 
     def handle(self, request):

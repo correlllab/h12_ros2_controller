@@ -21,6 +21,22 @@ controller:
   threshold_angular: 0.002
 
 planner:
+  # planning backend: ompl (CPU, default) | curobo (CUDA GPU) | auto
+  # auto prefers cuRobo when a GPU is present and falls back to OMPL otherwise,
+  # so the headless CPU sim (Mac/Colima) keeps working with no changes.
+  backend: ompl
+  # cuRobo backend settings (only used when backend resolves to curobo)
+  # curobo:
+  #   # generated from the sphere URDF by config/curobo/gen_curobo_cfg.py
+  #   robot_cfg: config/curobo/h1_2_handless_curobo.yml
+  #   # absolute host path to the kinematics URDF (keeps robot_cfg host-agnostic)
+  #   urdf_path: /path/to/CL_Assets/ros_assets/h1_2_handless_sphere.urdf
+  #   world_cfg: /path/to/world.yml         # optional obstacles + ground plane
+  #   velocity_scale: 1.0
+  #   max_attempts: 4
+  #   enable_graph: true
+  #   warmup: true
+  # OMPL algorithm (used when backend is ompl)
   planner: RRTConnect
   timeout: 1.0
   # example RRT* tuning
