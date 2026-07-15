@@ -55,6 +55,10 @@ planner:
   frame_z_min_margin: 0.01
   # allowed drift below endpoint z min
   frame_z_corridor_margin: 0.05
+  # obstacle point cloud (.npy, pelvis frame); '' disables the check
+  point_cloud_path: ''
+  # robot sphere inflation checked against the point cloud
+  point_cloud_margin: 0.02
 
 gains:
   # upper-body gains only; lower-body gains default to 0

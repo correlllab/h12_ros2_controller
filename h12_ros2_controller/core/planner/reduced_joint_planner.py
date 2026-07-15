@@ -3,6 +3,8 @@ from ompl import base as ob
 from ompl import geometric as og
 from dataclasses import dataclass, field
 
+from h12_ros2_controller.core.planner.point_cloud_checker import PointCloudChecker
+
 _ARM_REDUCED_NQ = 14
 _ARM_MOVE_TOL = 2e-2
 _LENGTH_ESTIMATE_STEPS = 50
@@ -31,6 +33,8 @@ class PlannerConfig:
     frame_z_min: float = None
     frame_z_min_margin: float = 1e-3
     frame_z_corridor_margin: float = 0.05
+    point_cloud_path: str = ''
+    point_cloud_margin: float = 0.02
 
 
 @dataclass
@@ -60,6 +64,14 @@ class ReducedJointPlanner:
         # active joint mask and pinned values for inactive joints
         self.active_mask = np.ones(self.nq, dtype=bool)
         self.pinned_q = np.zeros(self.nq)
+
+        # obstacle point-cloud checker, empty until a cloud is provided
+        self.point_cloud_checker = PointCloudChecker(
+            self.robot_model,
+            margin=self.config.point_cloud_margin,
+        )
+        if self.config.point_cloud_path:
+            self.set_point_cloud(np.load(self.config.point_cloud_path))
 
         # build OMPL problem objects once; plan() only resets start/goal
         self.space = self._make_space()
@@ -211,6 +223,8 @@ class ReducedJointPlanner:
             return f'{name} is outside reduced joint limits'
         if not self.robot_model.check_collision_free_reduced(q):
             return f'{name} is in self-collision'
+        if not self.point_cloud_checker.check_collision_free_reduced(q):
+            return f'{name} collides with point cloud'
         reason = self._workspace_constraint_failure(q, name)
         if reason:
             return reason
@@ -405,6 +419,10 @@ class ReducedJointPlanner:
             mask[7:] = True
         return mask
 
+    def set_point_cloud(self, points):
+        '''Update the obstacle point cloud used during validity checks'''
+        self.point_cloud_checker.update_point_cloud(points)
+
     def plan(self, start, goal, active_mask=None):
         '''Plan a collision-free path between reduced joint configurations'''
         start = self._as_reduced_array(start, 'start')
@@ -568,6 +586,7 @@ class ReducedJointPlanner:
             simplifier = og.PathSimplifier(self.si)
             simplifier.ropeShortcutPath(path)
             simplifier.reduceVertices(path)
-            # b-spline smoothing can overshoot into collision; keep optional
-            if smooth:
+            # b-spline smoothing can overshoot into collision; skip it when a
+            # point cloud obstacle is active since that overshoot is unchecked
+            if smooth and not self.point_cloud_checker.has_point_cloud:
                 simplifier.smoothBSpline(path)

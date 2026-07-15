@@ -1,9 +1,8 @@
 import queue
 import traceback
+import numpy as np
 import multiprocessing as mp
 from dataclasses import asdict
-
-import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
@@ -39,6 +38,13 @@ class PlannerClient:
             'start': np.asarray(start, dtype=float),
             'goal': np.asarray(goal, dtype=float),
             'active_mask': _optional_array(active_mask, dtype=bool),
+        })
+
+    def set_point_cloud(self, points):
+        '''Update the obstacle point cloud inside the planner process'''
+        return self._request({
+            'command': 'set_point_cloud',
+            'points': _optional_array(points),
         })
 
     def shutdown(self):
@@ -105,6 +111,8 @@ class PlannerClient:
                 ) from exc
             if isinstance(response, PlanResult):
                 return response
+            if response.get('type') == 'ok':
+                return response
             if response.get('type') == 'error':
                 raise RuntimeError(response['error'])
             raise RuntimeError(f'Unexpected planner response: {response}')
@@ -134,6 +142,8 @@ class _PlannerWorker:
         command = request['command']
         if command == 'plan_configuration':
             return self._plan_configuration(request)
+        if command == 'set_point_cloud':
+            return self._set_point_cloud(request)
         raise ValueError(f'Unsupported planner command: {command}')
 
     def _plan_configuration(self, request):
@@ -142,6 +152,10 @@ class _PlannerWorker:
         goal = np.asarray(request['goal'], dtype=float)
         active_mask = _optional_array(request.get('active_mask'), dtype=bool)
         return self.planner.plan(start, goal, active_mask=active_mask)
+
+    def _set_point_cloud(self, request):
+        self.planner.set_point_cloud(request.get('points'))
+        return {'type': 'ok'}
 
     def _set_current_q(self, q):
         # sync the child process model with the caller's current joint state

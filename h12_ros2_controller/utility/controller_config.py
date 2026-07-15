@@ -181,6 +181,15 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
 
+    planner = dict(planner)
+    point_cloud_path = planner.get('point_cloud_path')
+    if point_cloud_path:
+        # resolve a relative cloud path against repo root, like logging.base_dir
+        cloud_path = Path(point_cloud_path)
+        if not cloud_path.is_absolute():
+            cloud_path = REPO_ROOT / cloud_path
+        planner['point_cloud_path'] = str(cloud_path)
+
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
     check_hz = float(frequency.get('check_hz', 1000.0))
@@ -227,7 +236,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_linear': threshold_linear,
             'threshold_angular': threshold_angular,
         },
-        'planner': dict(planner),
+        'planner': planner,
         'frequency': {
             'ctrl_hz': ctrl_hz,
             'pub_hz': pub_hz,

@@ -73,17 +73,20 @@ class UpperController:
             dt=self.dt,
             d_min=self.d_min
         )
+        # keep the resolved planner config for the point-cloud preload path
+        self.planner_config = self._load_planner_config()
         self.planner = PlannerClient(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
             srdf_sphere_path=srdf_sphere_path,
-            planner_config=self._load_planner_config(),
+            planner_config=self.planner_config,
             handless=handless,
         )
 
         if self.visualize:
             self.robot_model.init_visualizer()
             self.robot_model.config_visualizer(show_com=True, show_zmp=True)
+            self._visualize_configured_point_cloud()
 
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
@@ -157,6 +160,12 @@ class UpperController:
                     'frame_z_corridor_margin',
                     defaults.frame_z_corridor_margin,
                 )
+            ),
+            point_cloud_path=cfg.get(
+                'point_cloud_path', defaults.point_cloud_path
+            ),
+            point_cloud_margin=float(
+                cfg.get('point_cloud_margin', defaults.point_cloud_margin)
             ),
         )
 
@@ -322,6 +331,18 @@ class UpperController:
             mask[idx_q:idx_q + nq] = True
             joint_id = model.parents[joint_id]
         return mask
+
+    def update_point_cloud(self, points):
+        '''Update the obstacle point cloud used by the planner'''
+        return self.planner.set_point_cloud(points)
+
+    def _visualize_configured_point_cloud(self):
+        '''Draw the point cloud preloaded from the planner config, if any'''
+        # the planner subprocess loads the cloud itself; only draw it here
+        path = self.planner_config.point_cloud_path
+        if not path:
+            return
+        self.robot_model.visualizer.visualize_point_cloud(np.load(path))
 
     def visualize_path(self, path):
         '''Draw a reduced joint-space path with Meshcat'''

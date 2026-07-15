@@ -22,3 +22,5 @@ SRDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere_collision.sr
 HOME = str(Path.home())
 LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'
 CONFIG_DIR = Path(f'{PACKAGE_PATH}/config')
+COLLISION_DATA_DIR = f'{PACKAGE_PATH}/data/collision'
+DUMMY_POINTCLOUD_PATH = f'{COLLISION_DATA_DIR}/pointcloud.npy'
