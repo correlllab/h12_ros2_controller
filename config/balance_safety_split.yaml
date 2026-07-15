@@ -39,6 +39,8 @@ zmp:
   assist_arm: right
   thresholds:
     zmp_error: 0.012
+    residual_zmp_error: 0.0030
+    residual_zmp_velocity: 1.0
     support_margin: 0.03
     center_shift: 0.018
     com_velocity: 0.04
@@ -47,15 +49,27 @@ zmp:
     force_proxy: 10.0
   target:
     response_time: 0.16
-    min_momentum_norm: 0.3
+    min_momentum_norm: 0.0
+    projection: component
     max_momentum:
-      - 1.5
+      - 0.2
       - 1.5
       - 0.0
+    min_momentum:
+      - 0.0
+      - -1.5
+      - 0.0
   hysteresis:
-    enter_cycles: 3
+    enter_cycles: 2
     exit_cycles: 6
+  detector:
+    entry_mode: residual
+    entry_requires_motion: false
   observer:
+    calibration_samples: 60
+    arming_samples: 120
+    zmp_reference_alpha: 0.02
+    zmp_velocity_alpha: 0.35
     center_reference_alpha: 0.02
     angular_acceleration_alpha: 0.35
     com_acceleration_alpha: 0.20
@@ -73,17 +87,18 @@ zmp:
     direct_max_velocity: 4.0
     direct_duration: 0.20
     direct_cooldown: 0.20
+    direct_hold_after_burst: false
     limit_ddp_velocity: true
   gains:
     zmp:
       - 1.0
       - 1.0
     center:
-      - 0.5
-      - 0.5
+      - 0.0
+      - 0.0
     com_velocity:
-      - 0.4
-      - 0.4
+      - 0.0
+      - 0.0
     angular_acceleration:
       - 0.0
       - 0.0

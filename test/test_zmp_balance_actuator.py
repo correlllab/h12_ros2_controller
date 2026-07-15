@@ -13,6 +13,7 @@ from h12_ros2_controller.core.controller.zmp.balance_actuator import (
 from h12_ros2_controller.core.controller.zmp_controller import ZmpController
 from h12_ros2_controller.core.robot_dynamics import MomentumDDP
 from h12_ros2_controller.core.controller.zmp.balance_observer import (
+    BalanceObserver,
     BalanceState,
 )
 from h12_ros2_controller.core.controller.zmp.momentum_allocator import (
@@ -214,7 +215,193 @@ def test_direct_response_updates_each_tick_and_returns_after_perturbation():
     assert actuator.state == 'returning'
     assert command[0] > 0.0
     assert np.max(np.abs(command)) <= 2.0
-    assert actuator.latest_response_status == 'direct'
+    assert actuator.latest_response_status == 'returning'
+
+
+def test_direct_response_holds_after_burst_until_perturbation_clears(monkeypatch):
+    actuator = make_actuator({
+        'zmp': {
+            'execution': {
+                'mode': 'direct',
+                'direct_duration': 0.02,
+                'direct_hold_after_burst': True,
+            },
+            'ddp': {},
+            'blending': {},
+            'solver_failure': {},
+        },
+    })
+
+    class DirectBehavior:
+        arm_ids = np.arange(7)
+        arm_model = SimpleNamespace(createData=lambda: object())
+
+        def current_arm_q(self):
+            return np.zeros(7, dtype=np.float64)
+
+    actuator._behavior = lambda arm: DirectBehavior()
+    actuator._current_arm_q = lambda arm: np.zeros(7, dtype=np.float64)
+    monkeypatch.setattr(
+        pin,
+        'computeCentroidalMap',
+        lambda model, data, q: np.vstack((np.zeros((3, 7)), np.eye(3, 7))),
+    )
+    target = ArmMomentumTarget(
+        'left',
+        np.array([0.5, 0.0, 0.0], dtype=np.float64),
+    )
+    active = PerturbationState(active=True, severity=1.0)
+    inactive = PerturbationState(active=False, severity=0.0)
+
+    actuator.update_direct_response([target], active)
+    first_command = actuator.step()
+    actuator.update_direct_response([target], active)
+    held_command = actuator.step()
+
+    assert first_command[0] > 0.0
+    assert actuator.state == 'holding'
+    assert np.allclose(held_command, np.zeros(27))
+
+    actuator.update_direct_response([], inactive)
+
+    assert actuator.state == 'returning'
+
+
+def test_quiet_calibration_removes_constant_zmp_bias():
+    zmp = np.array([0.03, 0.0], dtype=np.float64)
+    dynamics = SimpleNamespace(
+        get_zmp=lambda: zmp,
+        get_com=lambda: np.zeros(3, dtype=np.float64),
+        get_com_velocity=lambda: np.zeros(3, dtype=np.float64),
+    )
+    robot = SimpleNamespace(
+        dynamics=dynamics,
+        state={'q': np.zeros(27, dtype=np.float64)},
+        get_frame_position=lambda name, q: np.zeros(3, dtype=np.float64),
+    )
+    config = {
+        'zmp': {
+            'observer': {'calibration_samples': 3},
+            'detector': {
+                'entry_mode': 'residual',
+                'entry_requires_motion': False,
+            },
+            'thresholds': {'residual_zmp_error': 0.01},
+            'hysteresis': {'enter_cycles': 2, 'exit_cycles': 2},
+        },
+    }
+    observer = BalanceObserver(robot, 0.02, config)
+    detector = zmp_module.PerturbationDetector(config)
+
+    for _ in range(10):
+        state = observer.observe()
+        perturbation = detector.update(state)
+
+    assert state.calibrated
+    assert np.allclose(state.zmp_residual, np.zeros(2))
+    assert not perturbation.active
+
+
+def test_residual_step_enters_after_configured_hysteresis():
+    zmp = np.array([0.03, 0.0], dtype=np.float64)
+    dynamics = SimpleNamespace(
+        get_zmp=lambda: zmp,
+        get_com=lambda: np.zeros(3, dtype=np.float64),
+        get_com_velocity=lambda: np.zeros(3, dtype=np.float64),
+    )
+    robot = SimpleNamespace(
+        dynamics=dynamics,
+        state={'q': np.zeros(27, dtype=np.float64)},
+        get_frame_position=lambda name, q: np.zeros(3, dtype=np.float64),
+    )
+    config = {
+        'zmp': {
+            'observer': {'calibration_samples': 2},
+            'detector': {
+                'entry_mode': 'residual',
+                'entry_requires_motion': False,
+            },
+            'thresholds': {'residual_zmp_error': 0.01},
+            'hysteresis': {'enter_cycles': 2, 'exit_cycles': 2},
+        },
+    }
+    observer = BalanceObserver(robot, 0.02, config)
+    detector = zmp_module.PerturbationDetector(config)
+
+    observer.observe()
+    observer.observe()
+    zmp[:] = [0.06, 0.0]
+    first = detector.update(observer.observe())
+    second = detector.update(observer.observe())
+
+    assert not first.active
+    assert second.active
+    assert second.entering
+    assert second.episode_id == 1
+
+
+def test_target_ellipsoid_projection_preserves_planar_direction():
+    estimator = MomentumTargetEstimator(
+        SimpleNamespace(total_mass=1.0),
+        {
+            'zmp': {
+                'gains': {
+                    'zmp': [1.0, 1.0],
+                    'center': [0.0, 0.0],
+                    'com_velocity': [0.0, 0.0],
+                    'angular_acceleration': [0.0, 0.0],
+                },
+                'target': {
+                    'response_time': 1.0,
+                    'min_momentum_norm': 0.0,
+                    'max_momentum': [1.0, 1.0, 0.0],
+                    'projection': 'ellipsoid',
+                },
+            },
+        },
+    )
+    state = BalanceState(
+        zmp=np.zeros(2, dtype=np.float64),
+        zmp_target=np.zeros(2, dtype=np.float64),
+        zmp_error=np.array([0.5, -1.0], dtype=np.float64),
+        zmp_residual=np.array([0.5, -1.0], dtype=np.float64),
+        support_margin=0.1,
+        com_xy=np.zeros(2, dtype=np.float64),
+        center_reference=np.zeros(2, dtype=np.float64),
+        center_shift=np.zeros(2, dtype=np.float64),
+        com_velocity=np.zeros(2, dtype=np.float64),
+        angular_velocity=np.zeros(3, dtype=np.float64),
+        angular_acceleration=np.zeros(3, dtype=np.float64),
+        force_proxy=0.0,
+    )
+    target = estimator.estimate(
+        state,
+        PerturbationState(active=True, severity=1.0),
+    )
+
+    assert np.isclose(target[0] / target[1], 2.0)
+    assert np.isclose(np.linalg.norm(target[:2]), 1.0)
+
+
+def test_component_projection_supports_asymmetric_momentum_bounds():
+    estimator = MomentumTargetEstimator(
+        SimpleNamespace(total_mass=1.0),
+        {
+            'zmp': {
+                'target': {
+                    'max_momentum': [0.2, 1.5, 0.0],
+                    'min_momentum': [0.0, -1.5, 0.0],
+                    'projection': 'component',
+                },
+            },
+        },
+    )
+
+    projected = estimator._project_target(
+        np.array([-1.0, 2.0, 0.0], dtype=np.float64)
+    )
+
+    assert np.allclose(projected, [0.0, 1.5, 0.0])
 
 
 def test_zmp_controller_bypasses_velocity_limit_by_default():
@@ -319,6 +506,7 @@ def test_target_estimator_applies_minimum_active_momentum_norm():
         zmp=np.array([0.001, 0.0], dtype=np.float64),
         zmp_target=np.zeros(2, dtype=np.float64),
         zmp_error=np.array([0.001, 0.0], dtype=np.float64),
+        zmp_residual=np.array([0.001, 0.0], dtype=np.float64),
         support_margin=0.1,
         com_xy=np.zeros(2, dtype=np.float64),
         center_reference=np.zeros(2, dtype=np.float64),

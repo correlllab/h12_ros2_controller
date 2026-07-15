@@ -11,6 +11,8 @@ class PerturbationState:
     zmp_bad: bool = False
     motion_bad: bool = False
     raw_perturbed: bool = False
+    entering: bool = False
+    episode_id: int = 0
 
 
 class PerturbationDetector:
@@ -20,6 +22,15 @@ class PerturbationDetector:
         hysteresis = zmp_cfg.get('hysteresis', {})
 
         self.zmp_error_threshold = float(thresholds.get('zmp_error', 0.02))
+        self.residual_zmp_error_threshold = float(
+            thresholds.get(
+                'residual_zmp_error',
+                self.zmp_error_threshold,
+            )
+        )
+        self.residual_zmp_velocity_threshold = float(
+            thresholds.get('residual_zmp_velocity', np.inf)
+        )
         self.support_margin_threshold = float(
             thresholds.get('support_margin', -np.inf)
         )
@@ -40,14 +51,21 @@ class PerturbationDetector:
         )
         self.enter_cycles = max(1, int(hysteresis.get('enter_cycles', 2)))
         self.exit_cycles = max(1, int(hysteresis.get('exit_cycles', 5)))
+        detector_cfg = zmp_cfg.get('detector', {})
+        self.entry_mode = detector_cfg.get('entry_mode', 'legacy')
+        self.entry_requires_motion = bool(
+            detector_cfg.get('entry_requires_motion', True)
+        )
 
         self._active = False
         self._enter_count = 0
         self._exit_count = 0
+        self._episode_id = 0
 
     def update(self, state):
         '''Apply zmp-and-motion trigger logic with enter/exit hysteresis'''
         zmp_norm = float(np.linalg.norm(state.zmp_error))
+        residual_norm = float(np.linalg.norm(state.zmp_residual))
         center_norm = float(np.linalg.norm(state.center_shift))
         velocity_norm = float(np.linalg.norm(state.com_velocity))
         angular_velocity_norm = float(np.linalg.norm(state.angular_velocity))
@@ -55,11 +73,7 @@ class PerturbationDetector:
             np.linalg.norm(state.angular_acceleration)
         )
 
-        zmp_reasons = []
-        if zmp_norm >= self.zmp_error_threshold:
-            zmp_reasons.append('zmp_error')
-        if state.support_margin < self.support_margin_threshold:
-            zmp_reasons.append('support_margin')
+        zmp_reasons = self._zmp_reasons(state, zmp_norm, residual_norm)
 
         motion_reasons = []
         motion_reasons += self._threshold_reason(
@@ -90,8 +104,10 @@ class PerturbationDetector:
 
         zmp_bad = bool(zmp_reasons)
         motion_bad = bool(motion_reasons)
-        raw_perturbed = zmp_bad and motion_bad
-        self._update_hysteresis(raw_perturbed)
+        raw_perturbed = zmp_bad and (
+            motion_bad or not self.entry_requires_motion
+        )
+        entering = self._update_hysteresis(raw_perturbed)
 
         return PerturbationState(
             active=self._active,
@@ -107,13 +123,48 @@ class PerturbationDetector:
             zmp_bad=zmp_bad,
             motion_bad=motion_bad,
             raw_perturbed=raw_perturbed,
+            entering=entering,
+            episode_id=self._episode_id,
         )
 
     @property
     def entering(self):
         return self._enter_count > 0
 
+    def reset(self):
+        '''Clear detector hysteresis before a new balance episode'''
+        self._active = False
+        self._enter_count = 0
+        self._exit_count = 0
+        self._episode_id = 0
+
+    def _zmp_reasons(self, state, zmp_norm, residual_norm):
+        if self.entry_mode == 'residual':
+            if not state.armed:
+                return []
+            reasons = self._threshold_reason(
+                residual_norm,
+                self.residual_zmp_error_threshold,
+                'zmp_residual',
+            )
+            reasons += self._threshold_reason(
+                float(np.linalg.norm(state.zmp_residual_velocity)),
+                self.residual_zmp_velocity_threshold,
+                'zmp_residual_velocity',
+            )
+            return reasons
+
+        reasons = self._threshold_reason(
+            zmp_norm,
+            self.zmp_error_threshold,
+            'zmp_error',
+        )
+        if state.support_margin < self.support_margin_threshold:
+            reasons.append('support_margin')
+        return reasons
+
     def _update_hysteresis(self, raw_perturbed):
+        entering = False
         if raw_perturbed:
             self._enter_count += 1
             self._exit_count = 0
@@ -124,9 +175,12 @@ class PerturbationDetector:
         if not self._active and self._enter_count >= self.enter_cycles:
             self._active = True
             self._exit_count = 0
+            self._episode_id += 1
+            entering = True
         elif self._active and self._exit_count >= self.exit_cycles:
             self._active = False
             self._enter_count = 0
+        return entering
 
     def _severity(self,
                   state,

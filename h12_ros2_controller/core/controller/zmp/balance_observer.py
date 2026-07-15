@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -16,6 +16,17 @@ class BalanceState:
     angular_velocity: np.ndarray
     angular_acceleration: np.ndarray
     force_proxy: float
+    zmp_reference: np.ndarray = field(
+        default_factory=lambda: np.zeros(2, dtype=np.float64)
+    )
+    zmp_residual: np.ndarray = field(
+        default_factory=lambda: np.zeros(2, dtype=np.float64)
+    )
+    zmp_residual_velocity: np.ndarray = field(
+        default_factory=lambda: np.zeros(2, dtype=np.float64)
+    )
+    calibrated: bool = False
+    armed: bool = False
 
 
 class BalanceObserver:
@@ -40,8 +51,27 @@ class BalanceObserver:
         self.support_half_extents = self._as_vec2(
             observer_cfg.get('support_half_extents', [0.12, 0.06])
         )
+        self.calibration_samples = max(
+            1,
+            int(observer_cfg.get('calibration_samples', 1)),
+        )
+        self.arming_samples = max(
+            0,
+            int(observer_cfg.get('arming_samples', 0)),
+        )
+        self.zmp_reference_alpha = float(
+            observer_cfg.get('zmp_reference_alpha', 0.0)
+        )
+        self.zmp_velocity_alpha = float(
+            observer_cfg.get('zmp_velocity_alpha', 1.0)
+        )
 
         self._center_reference = None
+        self._zmp_reference = None
+        self._calibration_count = 0
+        self._arming_count = 0
+        self._last_zmp = None
+        self._zmp_velocity = np.zeros(2, dtype=np.float64)
         self._last_angular_velocity = None
         self._angular_acceleration = np.zeros(3, dtype=np.float64)
         self._last_com_velocity = None
@@ -53,6 +83,9 @@ class BalanceObserver:
         zmp = np.asarray(dynamics.get_zmp(), dtype=np.float64)[:2]
         zmp_target = self._support_target()
         zmp_error = zmp - zmp_target
+        self._update_zmp_velocity(zmp)
+        self._update_zmp_reference(zmp, freeze_center_reference)
+        zmp_residual = zmp - self._zmp_reference
         support_margin = self.compute_support_margin(zmp, zmp_target)
 
         com_xy = np.asarray(dynamics.get_com(), dtype=np.float64)[:2]
@@ -81,7 +114,63 @@ class BalanceObserver:
             angular_velocity=np.copy(angular_velocity),
             angular_acceleration=np.copy(self._angular_acceleration),
             force_proxy=float(force_proxy),
+            zmp_reference=np.copy(self._zmp_reference),
+            zmp_residual=np.copy(zmp_residual),
+            zmp_residual_velocity=np.copy(self._zmp_velocity),
+            calibrated=self.calibrated,
+            armed=self.armed,
         )
+
+    @property
+    def calibrated(self):
+        return self._calibration_count >= self.calibration_samples
+
+    @property
+    def armed(self):
+        return self.calibrated and self._arming_count >= self.arming_samples
+
+    def reset_calibration(self):
+        '''Reset quiet references before a new balance episode'''
+        self._center_reference = None
+        self._zmp_reference = None
+        self._calibration_count = 0
+        self._arming_count = 0
+        self._last_zmp = None
+        self._zmp_velocity = np.zeros(2, dtype=np.float64)
+        self._last_angular_velocity = None
+        self._angular_acceleration = np.zeros(3, dtype=np.float64)
+        self._last_com_velocity = None
+        self._com_acceleration = np.zeros(2, dtype=np.float64)
+
+    def _update_zmp_reference(self, zmp, freeze):
+        if self._zmp_reference is None:
+            self._zmp_reference = np.copy(zmp)
+
+        if freeze:
+            return
+
+        if self.calibrated:
+            self._arming_count += 1
+            alpha = np.clip(self.zmp_reference_alpha, 0.0, 1.0)
+            self._zmp_reference = (
+                (1.0 - alpha) * self._zmp_reference + alpha * zmp
+            )
+            return
+
+        self._calibration_count += 1
+        count = self._calibration_count
+        self._zmp_reference += (zmp - self._zmp_reference) / count
+
+    def _update_zmp_velocity(self, zmp):
+        if self._last_zmp is None:
+            raw = np.zeros(2, dtype=np.float64)
+        else:
+            raw = (zmp - self._last_zmp) / self.dt
+        alpha = np.clip(self.zmp_velocity_alpha, 0.0, 1.0)
+        self._zmp_velocity = (
+            (1.0 - alpha) * self._zmp_velocity + alpha * raw
+        )
+        self._last_zmp = np.copy(zmp)
 
     def compute_support_margin(self, zmp, zmp_target):
         '''Return rectangular support margin around the support target'''
