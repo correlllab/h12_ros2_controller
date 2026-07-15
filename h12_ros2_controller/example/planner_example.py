@@ -13,6 +13,7 @@ from h12_ros2_controller.core.planner.reduced_joint_planner import (
     PlannerConfig,
     ReducedJointPlanner,
 )
+from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -41,7 +42,7 @@ def build_robot_model(visualize=False):
     return robot_model
 
 
-def inspect_path(robot_model, path):
+def inspect_path(robot_model, path, point_cloud_checker=None):
     '''Print validity for every waypoint'''
     all_valid = True
     for idx, q_reduced in enumerate(path):
@@ -49,7 +50,10 @@ def inspect_path(robot_model, path):
         start_time = time.perf_counter()
         within_limits = robot_model.check_within_limits_reduced(q_reduced)
         collision_free = robot_model.check_collision_free_reduced(q_reduced)
-        valid = within_limits and collision_free
+        cloud_free = True
+        if point_cloud_checker is not None:
+            cloud_free = point_cloud_checker.check_collision_free_reduced(q_reduced)
+        valid = within_limits and collision_free and cloud_free
         check_time = time.perf_counter() - start_time
         all_valid = all_valid and valid
 
@@ -57,6 +61,7 @@ def inspect_path(robot_model, path):
             f'Waypoint {idx:03d}: '
             f'limits={within_limits}, '
             f'collision_free={collision_free}, '
+            f'cloud_free={cloud_free}, '
             f'valid={valid}, '
             f'check_time={check_time:.4f} s'
         )
@@ -94,6 +99,14 @@ def parse_args():
     parser.add_argument('--frame-x-max', type=float, default=0.70)
     parser.add_argument('--frame-z-max', type=float, default=0.50)
     parser.add_argument('--frame-z-corridor-margin', type=float, default=0.05)
+    parser.add_argument(
+        '--config',
+        default='debug.yaml',
+        help=(
+            'YAML under config/ that supplies the obstacle point cloud; use '
+            'pcd_debug.yaml to plan against the example cloud.'
+        ),
+    )
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--visualize-delay', type=float, default=0.05)
     return parser.parse_args()
@@ -107,6 +120,9 @@ def main():
         start = NAMED_CONFIGS[args.start_config]
     goal = NAMED_CONFIGS[args.goal_config]
 
+    # the fixed obstacle point cloud is sourced from the yaml, not the cli
+    planner_cfg = load_controller_config(args.config)['planner']
+    point_cloud_path = planner_cfg.get('point_cloud_path')
     config = PlannerConfig(
         planner=args.planner,
         timeout=args.timeout,
@@ -120,8 +136,17 @@ def main():
         frame_x_max=args.frame_x_max,
         frame_z_max=args.frame_z_max,
         frame_z_corridor_margin=args.frame_z_corridor_margin,
+        point_cloud_path=point_cloud_path,
+        point_cloud_margin=float(planner_cfg.get('point_cloud_margin', 0.02)),
     )
+    # the planner preloads the cloud from config; draw the same cloud here
     planner = ReducedJointPlanner(robot_model, config=config)
+    if point_cloud_path:
+        points = np.load(point_cloud_path)
+        print(f'Loaded {len(points)} obstacle points from {point_cloud_path}')
+        if args.visualize:
+            robot_model.visualizer.visualize_point_cloud(points)
+
     result = planner.plan(start, goal)
 
     print(f'Planner: {result.planner_name}')
@@ -135,6 +160,7 @@ def main():
         path_valid = inspect_path(
             robot_model,
             result.path,
+            point_cloud_checker=planner.point_cloud_checker,
         )
         print(f'All waypoints valid: {path_valid}')
         if args.visualize:

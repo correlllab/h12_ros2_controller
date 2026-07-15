@@ -1,10 +1,9 @@
 import queue
 import traceback
+import numpy as np
 import multiprocessing as mp
 from contextlib import contextmanager
 from dataclasses import asdict
-
-import numpy as np
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
@@ -48,6 +47,13 @@ class PlannerClient:
             'active_mask': _optional_array(active_mask, dtype=bool),
             'moving_speed': moving_speed,
             'max_interpolation_steps': max_interpolation_steps,
+        })
+
+    def set_point_cloud(self, points):
+        '''Update the obstacle point cloud inside the planner process'''
+        return self._request({
+            'command': 'set_point_cloud',
+            'points': _optional_array(points),
         })
 
     def shutdown(self):
@@ -114,6 +120,8 @@ class PlannerClient:
                 ) from exc
             if isinstance(response, PlanResult):
                 return response
+            if response.get('type') == 'ok':
+                return response
             if response.get('type') == 'error':
                 raise RuntimeError(response['error'])
             raise RuntimeError(f'Unexpected planner response: {response}')
@@ -143,6 +151,8 @@ class _PlannerWorker:
         command = request['command']
         if command == 'plan_configuration':
             return self._plan_configuration(request)
+        if command == 'set_point_cloud':
+            return self._set_point_cloud(request)
         raise ValueError(f'Unsupported planner command: {command}')
 
     def _plan_configuration(self, request):
@@ -184,6 +194,10 @@ class _PlannerWorker:
             yield
         finally:
             config.moving_speed, config.max_interpolation_steps = previous
+
+    def _set_point_cloud(self, request):
+        self.planner.set_point_cloud(request.get('points'))
+        return {'type': 'ok'}
 
     def _set_current_q(self, q):
         # sync the child process model with the caller's current joint state

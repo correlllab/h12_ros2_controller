@@ -33,6 +33,8 @@ class RobotVisualizer:
         # cached path metadata for pelvis-relative redraws
         self._path_specs = []
         self._target_frame_names = []
+        # cached obstacle point cloud for pelvis-relative redraws
+        self._point_cloud_local = None
 
     def init_visualizer(self):
         '''Initialize meshcat visualizer'''
@@ -55,6 +57,7 @@ class RobotVisualizer:
             }
             self._path_specs = []
             self._target_frame_names = []
+            self._point_cloud_local = None
         except ImportError as err:
             print('ImportError: MeshcatVisualizer requires the meshcat package.')
             print(err)
@@ -192,6 +195,35 @@ class RobotVisualizer:
                 self._visualize_wrench(frame_name)
 
             self.update_path()
+            self.update_point_cloud()
+
+    def visualize_point_cloud(self, points, color=0xff3322, size=0.01):
+        '''Draw an obstacle point cloud in Meshcat (pelvis frame)'''
+        assert self.viz is not None, 'Visualizer must be initialized first.'
+        points = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+        # cache in pelvis space; meshcat expects a 3xN position array
+        self._point_cloud_local = points.T
+        self.viz.viewer['point_cloud'].set_object(
+            geo.Points(
+                geo.PointsGeometry(self._point_cloud_local),
+                geo.PointsMaterial(size=float(size), color=color),
+            )
+        )
+        self.update_point_cloud()
+
+    def clear_point_cloud_visualization(self):
+        '''Remove the obstacle point cloud from Meshcat'''
+        self._point_cloud_local = None
+        if self.viz is not None:
+            self.viz.viewer['point_cloud'].delete()
+
+    def update_point_cloud(self):
+        '''Redraw the stored point cloud using the current base orientation'''
+        if self._point_cloud_local is None:
+            return
+        # keep the cloud attached to the live pelvis pose
+        pelvis_to_world = self.robot_model.get_frame_transformation('pelvis')
+        self.viz.viewer['point_cloud'].set_transform(pelvis_to_world)
 
     def _as_reduced_path(self, path):
         '''Convert path input to a reduced waypoint array'''

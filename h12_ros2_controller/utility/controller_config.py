@@ -270,6 +270,15 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
 
+    planner = dict(planner)
+    point_cloud_path = planner.get('point_cloud_path')
+    if point_cloud_path:
+        # resolve a relative cloud path against repo root, like logging.base_dir
+        cloud_path = Path(point_cloud_path)
+        if not cloud_path.is_absolute():
+            cloud_path = REPO_ROOT / cloud_path
+        planner['point_cloud_path'] = str(cloud_path)
+
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
     if ctrl_hz <= 0.0:
@@ -317,7 +326,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_angular': threshold_angular,
             'max_state_lag_ms': max_state_lag_ms,
         },
-        'planner': dict(planner),
+        'planner': planner,
         'frequency': {
             'ctrl_hz': ctrl_hz,
             'pub_hz': pub_hz,

@@ -61,6 +61,10 @@ planner:
   # clamp a measured start pose up to this (rad) past a joint limit back into
   # bounds instead of aborting the plan; larger overshoots still fail
   start_limit_tolerance: 0.05
+  # obstacle point cloud (.npy, pelvis frame); '' disables the check
+  point_cloud_path: ''
+  # robot sphere inflation checked against the point cloud
+  point_cloud_margin: 0.02
 
 frequency:
   ctrl_hz: 30
