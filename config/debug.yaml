@@ -27,7 +27,10 @@ planner:
   backend: ompl
   # cuRobo backend settings (only used when backend resolves to curobo)
   # curobo:
-  #   robot_cfg: /path/to/h1_2_curobo.yml   # kinematics + spheres + cspace
+  #   # generated from the sphere URDF by config/curobo/gen_curobo_cfg.py
+  #   robot_cfg: config/curobo/h1_2_handless_curobo.yml
+  #   # absolute host path to the kinematics URDF (keeps robot_cfg host-agnostic)
+  #   urdf_path: /path/to/CL_Assets/ros_assets/h1_2_handless_sphere.urdf
   #   world_cfg: /path/to/world.yml         # optional obstacles + ground plane
   #   velocity_scale: 1.0
   #   max_attempts: 4

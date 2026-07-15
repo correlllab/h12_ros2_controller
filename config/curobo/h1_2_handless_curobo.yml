@@ -1,0 +1,180 @@
+# cuRobo robot config for the Unitree H1-2 (handless) arms.
+# GENERATED from CL_Assets/ros_assets/h1_2_handless_sphere.urdf
+#   + h1_2_handless_sphere_collision.srdf by gen_curobo_cfg.py.
+# Consumed by CuroboJointPlanner via planner.curobo.robot_cfg.
+#
+# Plans the 14 arm DoF (torso + legs locked). Collision geometry
+# is the same sphere set the OMPL/Pinocchio backend uses, so both
+# backends agree on self-collision.
+robot_cfg:
+  kinematics:
+    # placeholder path relative to cuRobo's asset root; override with
+    # an absolute host path via planner.curobo.urdf_path so this
+    # committed file stays host-agnostic.
+    urdf_path: "h1_2/h1_2_handless_sphere.urdf"
+    asset_root_path: ""
+    base_link: "pelvis"
+    ee_link: "left_wrist_yaw_link"
+    # extra frames tracked for future dual-arm Cartesian goals
+    link_names:
+      - "right_wrist_yaw_link"
+      - "left_grasp_frame"
+      - "right_grasp_frame"
+    collision_link_names:
+      - "pelvis"
+      - "torso_link"
+      - "left_shoulder_pitch_link"
+      - "left_shoulder_roll_link"
+      - "left_shoulder_yaw_link"
+      - "left_elbow_link"
+      - "left_wrist_roll_link"
+      - "left_wrist_pitch_link"
+      - "left_wrist_yaw_link"
+      - "right_shoulder_pitch_link"
+      - "right_shoulder_roll_link"
+      - "right_shoulder_yaw_link"
+      - "right_elbow_link"
+      - "right_wrist_roll_link"
+      - "right_wrist_pitch_link"
+      - "right_wrist_yaw_link"
+    collision_sphere_buffer: 0.005
+    self_collision_ignore:
+      "pelvis": ["left_elbow_link", "left_shoulder_pitch_link", "left_shoulder_roll_link", "left_shoulder_yaw_link", "left_wrist_pitch_link", "left_wrist_roll_link", "left_wrist_yaw_link", "right_elbow_link", "right_shoulder_pitch_link", "right_shoulder_roll_link", "right_shoulder_yaw_link", "right_wrist_pitch_link", "right_wrist_roll_link", "right_wrist_yaw_link", "torso_link"]
+      "torso_link": ["left_shoulder_pitch_link", "pelvis", "right_shoulder_pitch_link"]
+      "left_shoulder_pitch_link": ["left_shoulder_roll_link", "left_shoulder_yaw_link", "pelvis", "torso_link"]
+      "left_shoulder_roll_link": ["left_elbow_link", "left_shoulder_pitch_link", "left_shoulder_yaw_link", "pelvis"]
+      "left_shoulder_yaw_link": ["left_elbow_link", "left_shoulder_pitch_link", "left_shoulder_roll_link", "left_wrist_roll_link", "pelvis"]
+      "left_elbow_link": ["left_shoulder_roll_link", "left_shoulder_yaw_link", "left_wrist_pitch_link", "left_wrist_roll_link", "pelvis"]
+      "left_wrist_roll_link": ["left_elbow_link", "left_shoulder_yaw_link", "left_wrist_pitch_link", "left_wrist_yaw_link", "pelvis"]
+      "left_wrist_pitch_link": ["left_elbow_link", "left_wrist_roll_link", "left_wrist_yaw_link", "pelvis"]
+      "left_wrist_yaw_link": ["left_wrist_pitch_link", "left_wrist_roll_link", "pelvis"]
+      "right_shoulder_pitch_link": ["pelvis", "right_shoulder_roll_link", "right_shoulder_yaw_link", "torso_link"]
+      "right_shoulder_roll_link": ["pelvis", "right_elbow_link", "right_shoulder_pitch_link", "right_shoulder_yaw_link"]
+      "right_shoulder_yaw_link": ["pelvis", "right_elbow_link", "right_shoulder_pitch_link", "right_shoulder_roll_link", "right_wrist_roll_link"]
+      "right_elbow_link": ["pelvis", "right_shoulder_roll_link", "right_shoulder_yaw_link", "right_wrist_pitch_link", "right_wrist_roll_link"]
+      "right_wrist_roll_link": ["pelvis", "right_elbow_link", "right_shoulder_yaw_link", "right_wrist_pitch_link", "right_wrist_yaw_link"]
+      "right_wrist_pitch_link": ["pelvis", "right_elbow_link", "right_wrist_roll_link", "right_wrist_yaw_link"]
+      "right_wrist_yaw_link": ["pelvis", "right_wrist_pitch_link", "right_wrist_roll_link"]
+    self_collision_buffer:
+      "pelvis": 0.0
+      "torso_link": 0.0
+      "left_shoulder_pitch_link": 0.0
+      "left_shoulder_roll_link": 0.0
+      "left_shoulder_yaw_link": 0.0
+      "left_elbow_link": 0.0
+      "left_wrist_roll_link": 0.0
+      "left_wrist_pitch_link": 0.0
+      "left_wrist_yaw_link": 0.0
+      "right_shoulder_pitch_link": 0.0
+      "right_shoulder_roll_link": 0.0
+      "right_shoulder_yaw_link": 0.0
+      "right_elbow_link": 0.0
+      "right_wrist_roll_link": 0.0
+      "right_wrist_pitch_link": 0.0
+      "right_wrist_yaw_link": 0.0
+    # lock every non-arm body joint at its nominal (standing) value.
+    # NOTE: torso_joint is locked at 0; if the torso is rotated at
+    # runtime, keep this in sync (or add it to cspace).
+    lock_joints:
+      left_hip_yaw_joint: 0.0
+      left_hip_pitch_joint: 0.0
+      left_hip_roll_joint: 0.0
+      left_knee_joint: 0.0
+      left_ankle_pitch_joint: 0.0
+      left_ankle_roll_joint: 0.0
+      right_hip_yaw_joint: 0.0
+      right_hip_pitch_joint: 0.0
+      right_hip_roll_joint: 0.0
+      right_knee_joint: 0.0
+      right_ankle_pitch_joint: 0.0
+      right_ankle_roll_joint: 0.0
+      torso_joint: 0.0
+    collision_spheres:
+      pelvis:
+        - center: [-0.00110676, -0.0917891, -0.0763652]
+          radius: 0.103115
+        - center: [-0.000656458, 0.0916287, -0.07702]
+          radius: 0.102024
+      torso_link:
+        - center: [0.00347848, -0.000786521, 0.09115]
+          radius: 0.106187
+        - center: [0.0451559, -4.1306e-05, 0.67157]
+          radius: 0.0889347
+        - center: [0.0101136, -0.00015289, 0.306365]
+          radius: 0.119699
+        - center: [0.0202229, 0.000373895, 0.512173]
+          radius: 0.112749
+      left_shoulder_pitch_link:
+        - center: [-0.00368061, 0.054647, -0.0052415]
+          radius: 0.0502189
+      left_shoulder_roll_link:
+        - center: [-0.0270551, -0.000354005, -0.0790321]
+          radius: 0.0561298
+      left_shoulder_yaw_link:
+        - center: [0.00115043, -0.000824867, -0.0346043]
+          radius: 0.0459026
+        - center: [0.00614692, -0.00430218, -0.182216]
+          radius: 0.0492608
+        - center: [0.00346218, -0.00244978, -0.105379]
+          radius: 0.0482344
+      left_elbow_link:
+        - center: [0.0845931, -0.0312232, -0.0089935]
+          radius: 0.0410183
+      left_wrist_roll_link:
+        - center: [0.0419629, -0.000746217, -0.000126334]
+          radius: 0.0432079
+      left_wrist_pitch_link:
+        - center: [0.0190835, -4.39921e-05, 0.000747821]
+          radius: 0.0432275
+      left_wrist_yaw_link:
+        - center: [0.025165, -0.000298688, -8.14673e-05]
+          radius: 0.0401243
+      right_shoulder_pitch_link:
+        - center: [-0.00400081, -0.054801, -0.00532615]
+          radius: 0.0505295
+      right_shoulder_roll_link:
+        - center: [-0.0270965, -0.000640061, -0.0783551]
+          radius: 0.0562942
+      right_shoulder_yaw_link:
+        - center: [0.00608713, 0.00450724, -0.181668]
+          radius: 0.0495418
+        - center: [0.00317841, 0.00217009, -0.103155]
+          radius: 0.0483715
+        - center: [0.000978634, 0.000673061, -0.0341475]
+          radius: 0.0458341
+      right_elbow_link:
+        - center: [0.0854168, 0.0308188, -0.00920541]
+          radius: 0.040997
+      right_wrist_roll_link:
+        - center: [0.041615, 0.000740097, -5.99851e-05]
+          radius: 0.0430659
+      right_wrist_pitch_link:
+        - center: [0.0189651, -1.55791e-05, 0.000553385]
+          radius: 0.0432417
+      right_wrist_yaw_link:
+        - center: [0.025165, -0.000298688, -8.14673e-05]
+          radius: 0.0401243
+  # cspace lists ONLY the 14 movable arm joints; legs/torso are fixed
+  # via lock_joints. If a cuRobo version expects cspace.joint_names to
+  # enumerate ALL joints, extend these lists to 27 and re-run.
+  cspace:
+    joint_names:
+      - "left_shoulder_pitch_joint"
+      - "left_shoulder_roll_joint"
+      - "left_shoulder_yaw_joint"
+      - "left_elbow_joint"
+      - "left_wrist_roll_joint"
+      - "left_wrist_pitch_joint"
+      - "left_wrist_yaw_joint"
+      - "right_shoulder_pitch_joint"
+      - "right_shoulder_roll_joint"
+      - "right_shoulder_yaw_joint"
+      - "right_elbow_joint"
+      - "right_wrist_roll_joint"
+      - "right_wrist_pitch_joint"
+      - "right_wrist_yaw_joint"
+    retract_config: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # home
+    null_space_weight: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    cspace_distance_weight: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    max_acceleration: 15.0
+    max_jerk: 500.0

@@ -109,6 +109,14 @@ class CuroboJointPlanner:
         robot_cfg = load_yaml(robot_cfg_path)
         robot_cfg = robot_cfg.get('robot_cfg', robot_cfg)
 
+        # let the committed YAML stay host-agnostic: allow the absolute URDF /
+        # asset path to be supplied from config (e.g. URDF_HANDLESS_SPHERE_PATH)
+        kin = robot_cfg.setdefault('kinematics', {})
+        if self.curobo_cfg.get('urdf_path'):
+            kin['urdf_path'] = self.curobo_cfg['urdf_path']
+        if self.curobo_cfg.get('asset_root_path') is not None:
+            kin['asset_root_path'] = self.curobo_cfg['asset_root_path']
+
         world_cfg = self._build_world_config(WorldConfig)
 
         motion_gen_config = MotionGenConfig.load_from_robot_config(
