@@ -1,48 +1,19 @@
 import numpy as np
 from ompl import base as ob
 from ompl import geometric as og
-from dataclasses import dataclass, field
+
+# PlannerConfig / PlanResult live in planner_types (ompl-free); re-exported
+# here so existing imports from reduced_joint_planner keep working
+from h12_ros2_controller.core.planner.planner_types import (
+    PlannerConfig,
+    PlanResult,
+)
 
 _ARM_REDUCED_NQ = 14
 _ARM_MOVE_TOL = 2e-2
 _LENGTH_ESTIMATE_STEPS = 50
 # approximate grasp radius for converting rotation to swept arc length
 _FRAME_ROTATION_RADIUS = 0.20
-
-
-@dataclass
-class PlannerConfig:
-    '''Configuration for reduced joint-space planning'''
-
-    planner: str = 'RRTConnect'
-    timeout: float = 1.0
-    range: float = 0.0
-    try_direct: bool = True
-    simplify: bool = True
-    simplify_time: float = 1.0
-    shortcut: bool = True
-    moving_speed: float = 0.25
-    dt: float = 1.0 / 30.0
-    min_interpolation_steps: int = 2
-    max_interpolation_steps: int = 300
-    validity_resolution: float = 0.0025
-    constraint_check_steps: int = 10
-    frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
-    frame_z_min: float = None
-    frame_z_min_margin: float = 1e-3
-    frame_z_corridor_margin: float = 0.05
-
-
-@dataclass
-class PlanResult:
-    '''Result returned by reduced joint-space planning'''
-
-    success: bool
-    path: np.ndarray
-    reason: str = ''
-    planning_time: float = 0.0
-    planner_name: str = ''
-    metadata: dict = field(default_factory=dict)
 
 
 class ReducedJointPlanner:

@@ -115,7 +115,7 @@ class UpperController:
             time.sleep(self.dt)
 
     def _load_planner_config(self):
-        '''Load OMPL planner config from controller config'''
+        '''Load planner backend config from controller config'''
         # merge optional yaml planner settings with dataclass defaults
         cfg = self.config.get('planner', {})
         defaults = PlannerConfig()
@@ -158,6 +158,8 @@ class UpperController:
                     defaults.frame_z_corridor_margin,
                 )
             ),
+            backend=cfg.get('backend', defaults.backend),
+            curobo=dict(cfg.get('curobo', defaults.curobo)),
         )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):

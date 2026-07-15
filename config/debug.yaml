@@ -21,6 +21,19 @@ controller:
   threshold_angular: 0.002
 
 planner:
+  # planning backend: ompl (CPU, default) | curobo (CUDA GPU) | auto
+  # auto prefers cuRobo when a GPU is present and falls back to OMPL otherwise,
+  # so the headless CPU sim (Mac/Colima) keeps working with no changes.
+  backend: ompl
+  # cuRobo backend settings (only used when backend resolves to curobo)
+  # curobo:
+  #   robot_cfg: /path/to/h1_2_curobo.yml   # kinematics + spheres + cspace
+  #   world_cfg: /path/to/world.yml         # optional obstacles + ground plane
+  #   velocity_scale: 1.0
+  #   max_attempts: 4
+  #   enable_graph: true
+  #   warmup: true
+  # OMPL algorithm (used when backend is ompl)
   planner: RRTConnect
   timeout: 1.0
   # example RRT* tuning
