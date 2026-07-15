@@ -330,7 +330,7 @@ def _plot_deep_analysis(run_dir: Path):
     for the basic per-trial plots.
     '''
     try:
-        from h12_ros2_controller.tests.analyze_deep import run_deep_analysis
+        from archive.tests.analyze_deep import run_deep_analysis
     except ImportError:
         try:
             from .analyze_deep import run_deep_analysis  # type: ignore
