@@ -50,9 +50,11 @@ def input_frame_task():
             print('Invalid input. Make sure all 6 values are numeric.')
 
 
-def init_frame_controller(config_name):
+def init_frame_controller(config_name, planner_backend=None):
     '''Initialize controller, DDS channel, and Meshcat visualizer'''
     config = load_controller_config(config_name)
+    if planner_backend is not None:
+        config.setdefault('planner', {})['backend'] = planner_backend
     init_channel_factory_guard(config)
     frame_controller = FrameController(
         URDF_MAGPIE_PATH,
@@ -116,8 +118,9 @@ def hold_steady_state(frame_controller, timeout, threshold):
         print('Timed out during steady-state hold')
 
 
-def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1):
-    frame_controller = init_frame_controller(config_name)
+def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1,
+         planner_backend=None):
+    frame_controller = init_frame_controller(config_name, planner_backend)
     controller_cfg = frame_controller.config['controller']
     steady_timeout = controller_cfg['timeout']
     threshold_joint = controller_cfg['threshold_joint']
@@ -174,9 +177,16 @@ if __name__ == '__main__':
     )
     parser.add_argument('--ik-timeout', type=float, default=1.0)
     parser.add_argument('--ik-alpha', type=float, default=0.1)
+    parser.add_argument(
+        '--planner-backend',
+        choices=('ompl', 'curobo', 'auto'),
+        default=None,
+        help='override planner.backend from the controller config',
+    )
     args = parser.parse_args()
     main(
         config_name=args.config,
         ik_timeout=args.ik_timeout,
         ik_alpha=args.ik_alpha,
+        planner_backend=args.planner_backend,
     )

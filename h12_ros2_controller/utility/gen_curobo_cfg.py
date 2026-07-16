@@ -1,4 +1,4 @@
-'''Generate the cuRobo robot_cfg.yml for the H1-2 (handless) arms.
+'''Generate a cuRobo robot_cfg.yml for the H1-2 arms.
 
 Derives the cuRobo config from the existing collision assets so the cuRobo
 backend and the OMPL/Pinocchio backend share identical self-collision geometry:
@@ -10,27 +10,27 @@ backend and the OMPL/Pinocchio backend share identical self-collision geometry:
 
 Pure stdlib (xml.etree) — no ROS / cuRobo / torch needed. Run:
 
-    python3 config/curobo/gen_curobo_cfg.py [urdf] [srdf] [out]
+    python3 -m h12_ros2_controller.utility.gen_curobo_cfg [urdf] [srdf] [out]
 
-Defaults resolve the assets from the repo's CL_Assets submodule.
+Defaults resolve the assets from the repo's CL_Assets submodule and write the
+generated cuRobo YAML alongside them.
 '''
 import os
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-# repo root is 5 levels up: config/curobo -> h12_ros2_controller -> src ->
-# core_ws -> <repo>
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.abspath(os.path.join(_HERE, '..', '..', '..', '..', '..'))
-_ASSETS = os.path.join(_REPO, 'CL_Assets', 'ros_assets')
+_REPO = os.path.abspath(os.path.join(_HERE, '..', '..'))
+_ROS_ASSETS = os.path.join(_REPO, 'submodules', 'CL_Assets', 'ros_assets')
+_CUROBO_ASSETS = os.path.join(_REPO, 'submodules', 'CL_Assets', 'curobo_assets')
 
 URDF = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    _ASSETS, 'h1_2_handless_sphere.urdf')
+    _ROS_ASSETS, 'h1_2_handless_sphere.urdf')
 SRDF = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
-    _ASSETS, 'h1_2_handless_sphere_collision.srdf')
+    _ROS_ASSETS, 'h1_2_handless_sphere_collision.srdf')
 OUT = sys.argv[3] if len(sys.argv) > 3 else os.path.join(
-    _HERE, 'h1_2_handless_curobo.yml')
+    _CUROBO_ASSETS, 'h1_2_handless_curobo.yml')
 
 # the 14 movable arm joints (must match ENABLED_JOINTS, left arm then right)
 ARM_JOINTS = [
@@ -41,16 +41,6 @@ ARM_JOINTS = [
     'right_shoulder_yaw_joint', 'right_elbow_joint', 'right_wrist_roll_joint',
     'right_wrist_pitch_joint', 'right_wrist_yaw_joint',
 ]
-# every non-arm body joint is locked at 0 (nominal stand)
-LEG_TORSO_JOINTS = [
-    'left_hip_yaw_joint', 'left_hip_pitch_joint', 'left_hip_roll_joint',
-    'left_knee_joint', 'left_ankle_pitch_joint', 'left_ankle_roll_joint',
-    'right_hip_yaw_joint', 'right_hip_pitch_joint', 'right_hip_roll_joint',
-    'right_knee_joint', 'right_ankle_pitch_joint', 'right_ankle_roll_joint',
-    'torso_joint',
-]
-
-
 def main():
     # the URDF uses unprefixed drake: namespaced tags; neutralize for ET
     with open(URDF) as f:
@@ -113,22 +103,19 @@ def fmt(x):
 def write_yaml(out, collision_links, spheres, ignore):
     L14 = ', '.join(['0.0'] * 14)
     W14 = ', '.join(['1.0'] * 14)
+    urdf_name = os.path.basename(URDF)
+    srdf_name = os.path.basename(SRDF)
     lines = [
-        '# cuRobo robot config for the Unitree H1-2 (handless) arms.',
-        '# GENERATED from CL_Assets/ros_assets/h1_2_handless_sphere.urdf',
-        '#   + h1_2_handless_sphere_collision.srdf by gen_curobo_cfg.py.',
-        '# Consumed by CuroboJointPlanner via planner.curobo.robot_cfg.',
+        '# cuRobo robot config for the Unitree H1-2 arms.',
+        '# GENERATED from the matching sphere URDF and collision SRDF.',
+        f'#   {urdf_name} + {srdf_name} by utility/gen_curobo_cfg.py.',
+        '# Consumed directly by CuroboJointPlanner.',
         '#',
-        '# Plans the 14 arm DoF (torso + legs locked). Collision geometry',
+        '# Plans the 14 arm DoF with the torso locked. Collision geometry',
         '# is the same sphere set the OMPL/Pinocchio backend uses, so both',
         '# backends agree on self-collision.',
         'robot_cfg:',
         '  kinematics:',
-        '    # placeholder path relative to cuRobo\'s asset root; override with',
-        '    # an absolute host path via planner.curobo.urdf_path so this',
-        '    # committed file stays host-agnostic.',
-        '    urdf_path: "h1_2/h1_2_handless_sphere.urdf"',
-        '    asset_root_path: ""',
         '    base_link: "pelvis"',
         '    ee_link: "left_wrist_yaw_link"',
         '    # extra frames tracked for future dual-arm Cartesian goals',
@@ -147,12 +134,12 @@ def write_yaml(out, collision_links, spheres, ignore):
     lines.append('    self_collision_buffer:')
     lines += [f'      "{L}": 0.0' for L in collision_links]
     lines += [
-        '    # lock every non-arm body joint at its nominal (standing) value.',
-        '    # NOTE: torso_joint is locked at 0; if the torso is rotated at',
-        '    # runtime, keep this in sync (or add it to cspace).',
+        '    # cuRobo builds only the pelvis-to-wrist tree, so leg joints must',
+        '    # not be locked here. CuroboJointPlanner supplies torso_joint at',
+        '    # its current measured position before constructing MotionGen.',
         '    lock_joints:',
     ]
-    lines += [f'      {j}: 0.0' for j in LEG_TORSO_JOINTS]
+    lines.append('      torso_joint: 0.0')
     lines.append('    collision_spheres:')
     for L in collision_links:
         lines.append(f'      {L}:')
@@ -162,19 +149,18 @@ def write_yaml(out, collision_links, spheres, ignore):
                 f'        - center: [{fmt(c[0])}, {fmt(c[1])}, {fmt(c[2])}]')
             lines.append(f'          radius: {fmt(s["radius"])}')
     lines += [
-        '  # cspace lists ONLY the 14 movable arm joints; legs/torso are fixed',
-        '  # via lock_joints. If a cuRobo version expects cspace.joint_names to',
-        '  # enumerate ALL joints, extend these lists to 27 and re-run.',
-        '  cspace:',
-        '    joint_names:',
+        '    # cspace lists the 14 movable arm joints. The torso is locked at',
+        '    # construction and inactive arm joints are locked per plan.',
+        '    cspace:',
+        '      joint_names:',
     ]
-    lines += [f'      - "{j}"' for j in ARM_JOINTS]
+    lines += [f'        - "{j}"' for j in ARM_JOINTS]
     lines += [
-        f'    retract_config: [{L14}]  # home',
-        f'    null_space_weight: [{W14}]',
-        f'    cspace_distance_weight: [{W14}]',
-        '    max_acceleration: 15.0',
-        '    max_jerk: 500.0',
+        f'      retract_config: [{L14}]  # home',
+        f'      null_space_weight: [{W14}]',
+        f'      cspace_distance_weight: [{W14}]',
+        '      max_acceleration: 15.0',
+        '      max_jerk: 500.0',
         '',
     ]
     os.makedirs(os.path.dirname(out), exist_ok=True)

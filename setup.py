@@ -40,7 +40,8 @@ setup(
             'frame_task_client = h12_ros2_controller.ros2.frame_task_client:main',
             'hand_controller_node = h12_ros2_controller.ros2.hand_controller_node:main',
             'hand_cmd_gui = h12_ros2_controller.ros2.hand_cmd_gui:main',
-            'planner_example = h12_ros2_controller.example.planner_example:main',
+            'planner_ompl_example = h12_ros2_controller.example.planner_ompl_example:main',
+            'planner_curobo_example = h12_ros2_controller.example.planner_curobo_example:main',
         ],
     },
 )

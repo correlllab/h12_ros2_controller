@@ -7,7 +7,7 @@ cuRobo backend into the controller: it isolates config-schema issues (the
 cspace / lock_joints convention, sphere format, URDF resolution) from the rest
 of the stack.
 
-    python3 config/curobo/smoke_test_curobo.py \
+    python3 -m h12_ros2_controller.example.planner_curobo_example \
         --urdf /abs/path/CL_Assets/ros_assets/h1_2_handless_sphere.urdf
 
 Requires cuRobo + CUDA + torch. Exits 0 on success, 1 on planning failure,
@@ -19,8 +19,24 @@ import argparse
 import os
 import sys
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_CFG = os.path.join(_HERE, 'h1_2_handless_curobo.yml')
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from h12_ros2_controller.utility.path_definition import (
+    CUROBO_HANDLESS_CONFIG_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+)
+
+_DEFAULT_CFG = CUROBO_HANDLESS_CONFIG_PATH
+_EMPTY_WORLD = {
+    'cuboid': {
+        'curobo_empty_world': {
+            'pose': [100.0, 100.0, 100.0, 1.0, 0.0, 0.0, 0.0],
+            'dims': [0.01, 0.01, 0.01],
+        },
+    },
+}
 
 
 def _active_joint_names(motion_gen, robot_cfg):
@@ -30,7 +46,7 @@ def _active_joint_names(motion_gen, robot_cfg):
         names = getattr(holder, 'joint_names', None)
         if names:
             return list(names)
-    return list(robot_cfg['cspace']['joint_names'])
+    return list(robot_cfg['kinematics']['cspace']['joint_names'])
 
 
 def _scalar(value):
@@ -47,8 +63,8 @@ def _scalar(value):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--robot-cfg', default=_DEFAULT_CFG)
-    ap.add_argument('--urdf', default=None,
-                    help='absolute kinematics URDF path (overrides robot_cfg)')
+    ap.add_argument('--urdf', default=URDF_HANDLESS_SPHERE_PATH,
+                    help='kinematics URDF path')
     ap.add_argument('--timeout', type=float, default=5.0)
     ap.add_argument('--dt', type=float, default=1.0 / 30.0)
     args = ap.parse_args()
@@ -74,17 +90,21 @@ def main():
 
     robot_cfg = load_yaml(args.robot_cfg)
     robot_cfg = robot_cfg.get('robot_cfg', robot_cfg)
-    if args.urdf:
-        kin = robot_cfg.setdefault('kinematics', {})
-        kin['urdf_path'] = args.urdf
-        kin['asset_root_path'] = os.path.dirname(args.urdf)
+    urdf_path = os.path.abspath(args.urdf)
+    kin = robot_cfg.setdefault('kinematics', {})
+    kin['urdf_path'] = urdf_path
+    kin['asset_root_path'] = os.path.dirname(urdf_path)
     print(f'[smoke] robot_cfg={args.robot_cfg}')
     print(f"[smoke] urdf_path={robot_cfg['kinematics'].get('urdf_path')}")
 
     tensor_args = TensorDeviceType()
     print('[smoke] building MotionGen ...')
     motion_gen_config = MotionGenConfig.load_from_robot_config(
-        robot_cfg, WorldConfig(), tensor_args, interpolation_dt=args.dt,
+        robot_cfg,
+        WorldConfig.from_dict(_EMPTY_WORLD),
+        tensor_args,
+        interpolation_dt=args.dt,
+        use_gradient_descent=True,
     )
     motion_gen = MotionGen(motion_gen_config)
     print('[smoke] warmup (compiles kernels; may take a while) ...')

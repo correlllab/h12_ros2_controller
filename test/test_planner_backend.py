@@ -67,7 +67,9 @@ def test_backend_auto_uses_ompl_without_gpu(stub_factories, monkeypatch):
 def test_backend_auto_uses_curobo_with_gpu(stub_factories, monkeypatch):
     monkeypatch.setattr(B, 'curobo_available', lambda: True)
     cfg = PlannerConfig(backend='auto')
-    assert create_joint_planner(object(), cfg) == 'CUROBO'
+    planner = create_joint_planner(object(), cfg)
+    assert planner.curobo == 'CUROBO'
+    assert planner.ompl == 'OMPL'
 
 
 def test_backend_auto_falls_back_when_curobo_construction_fails(monkeypatch):
@@ -81,6 +83,23 @@ def test_backend_auto_falls_back_when_curobo_construction_fails(monkeypatch):
     cfg = PlannerConfig(backend='auto')
     # a broken cuRobo backend must degrade to OMPL, never take down planning
     assert create_joint_planner(object(), cfg) == 'OMPL'
+
+
+def test_backend_auto_falls_back_when_curobo_planning_fails(
+        stub_factories, monkeypatch):
+    class FailedCurobo:
+        def plan(self, start, goal, active_mask=None):
+            return SimpleNamespace(success=False, reason='bad robot config')
+
+    class Ompl:
+        def plan(self, start, goal, active_mask=None):
+            return 'OMPL RESULT'
+
+    monkeypatch.setattr(B, 'curobo_available', lambda: True)
+    monkeypatch.setattr(B, '_make_curobo', lambda rm, cfg: FailedCurobo())
+    monkeypatch.setattr(B, '_make_ompl', lambda rm, cfg: Ompl())
+    planner = create_joint_planner(object(), PlannerConfig(backend='auto'))
+    assert planner.plan([0.0], [1.0]) == 'OMPL RESULT'
 
 
 def test_backend_curobo_explicit_raises_without_gpu(monkeypatch):
@@ -137,12 +156,11 @@ def test_curobo_rejects_invalid_endpoint_before_touching_gpu():
     assert 'joint limits' in result.reason
 
 
-def test_curobo_reports_missing_robot_cfg():
-    # valid endpoints, but no cuRobo robot config -> clean failure, no GPU
+def test_curobo_uses_canonical_robot_assets():
     planner = CuroboJointPlanner(FakeRobotModel(), PlannerConfig())
-    result = planner.plan(start=[0.0, 0.0], goal=[0.5, 0.5])
-    assert not result.success
-    assert 'robot_cfg' in result.reason
+    robot_cfg, urdf = planner._curobo_asset_paths()
+    assert robot_cfg.endswith('h1_2_magpie_curobo.yml')
+    assert urdf.endswith('h1_2_magpie_sphere.urdf')
 
 
 def test_curobo_projects_inactive_joints():

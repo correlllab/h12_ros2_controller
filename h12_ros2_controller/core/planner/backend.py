@@ -21,6 +21,25 @@ class PlannerBackendError(RuntimeError):
     '''Raised when a requested planner backend cannot be constructed'''
 
 
+class _AutoJointPlanner:
+    '''Use cuRobo when it succeeds and fall back to OMPL otherwise'''
+
+    def __init__(self, curobo, ompl):
+        self.curobo = curobo
+        self.ompl = ompl
+
+    def plan(self, start, goal, active_mask=None):
+        result = self.curobo.plan(start, goal, active_mask=active_mask)
+        if result.success:
+            return result
+        print(
+            f'[planner] cuRobo planning failed ({result.reason}); '
+            'falling back to OMPL',
+            flush=True,
+        )
+        return self.ompl.plan(start, goal, active_mask=active_mask)
+
+
 def _make_ompl(robot_model, config):
     from h12_ros2_controller.core.planner.reduced_joint_planner import (
         ReducedJointPlanner,
@@ -73,7 +92,9 @@ def create_joint_planner(robot_model, config):
     if backend == 'auto':
         if curobo_available():
             try:
-                return _make_curobo(robot_model, config)
+                curobo = _make_curobo(robot_model, config)
+                ompl = _make_ompl(robot_model, config)
+                return _AutoJointPlanner(curobo, ompl)
             except Exception as exc:
                 # a misconfigured cuRobo backend must never take down planning
                 print(
