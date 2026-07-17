@@ -3,6 +3,12 @@ import time
 
 import numpy as np
 import pinocchio as pin
+from scipy.optimize import lsq_linear
+
+from h12_ros2_controller.utility.joint_definition import (
+    LEFT_ARM_INDEX,
+    RIGHT_ARM_INDEX,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +45,7 @@ class BalanceActuator:
         blending_cfg = zmp_cfg.get('blending', {})
         failure_cfg = zmp_cfg.get('solver_failure', {})
         execution_cfg = zmp_cfg.get('execution', {})
+        response_cfg = zmp_cfg.get('response', {})
         controller_cfg = config.get('controller', {})
 
         self.robot_model = robot_model
@@ -57,6 +64,7 @@ class BalanceActuator:
         self.max_return_velocity = float(ddp_cfg.get('max_velocity', 6.0))
         self.execution_mode = execution_cfg.get('mode', 'ddp')
         self.direct_damping = float(execution_cfg.get('direct_damping', 0.05))
+        self.direct_solver = execution_cfg.get('direct_solver', 'reduced_dls')
         self.direct_max_velocity = float(
             execution_cfg.get('direct_max_velocity', 6.0)
         )
@@ -70,6 +78,39 @@ class BalanceActuator:
         )
         self.direct_hold_after_burst = bool(
             execution_cfg.get('direct_hold_after_burst', False)
+        )
+        self.direct_joint_velocity = min(
+            self.direct_max_velocity,
+            float(controller_cfg.get('dq_lim', self.direct_max_velocity)),
+        )
+        self.direct_position_margin = float(
+            execution_cfg.get('direct_position_margin', 0.05)
+        )
+        self.response_mode = response_cfg.get('mode', 'legacy_burst')
+        self.reject_max_steps = max(
+            1,
+            int(float(response_cfg.get('reject_max_duration', 0.6)) / self.dt),
+        )
+        self.arrest_steps = max(
+            1,
+            int(float(response_cfg.get('arrest_duration', 0.12)) / self.dt),
+        )
+        self.recovery_min_steps = max(
+            0,
+            int(float(response_cfg.get('recovery_min_duration', 0.3)) / self.dt),
+        )
+        self.recovery_settle_steps = max(
+            1,
+            int(float(response_cfg.get('recovery_settle_duration', 0.3)) / self.dt),
+        )
+        self.recovery_zmp_threshold = float(
+            response_cfg.get('recovery_zmp_residual', 0.003)
+        )
+        self.recovery_zmp_velocity_threshold = float(
+            response_cfg.get('recovery_zmp_velocity', 0.0015)
+        )
+        self.recovery_angular_velocity_threshold = float(
+            response_cfg.get('recovery_angular_velocity', 0.08)
         )
         self.min_replan_ticks = max(
             1,
@@ -130,11 +171,22 @@ class BalanceActuator:
         self.direct_cooldown_index = 0
         self.burst_id = 0
         self.burst_entering = False
+        self.arrest_index = 0
+        self.recovery_index = 0
+        self.recovery_settle_index = 0
+        self.last_reject_command = np.zeros(
+            self.robot_model.model_body.nv,
+            dtype=np.float64,
+        )
         self._last_suppressed_warning_time = -np.inf
 
         if self.execution_mode not in ('ddp', 'direct'):
             raise ValueError(
                 f'unsupported zmp.execution.mode: {self.execution_mode}'
+            )
+        if self.direct_solver not in ('reduced_dls', 'full_body_bounded'):
+            raise ValueError(
+                f'unsupported zmp.execution.direct_solver: {self.direct_solver}'
             )
 
     def can_start_response(self, perturbation_state, target_momentum):
@@ -156,6 +208,10 @@ class BalanceActuator:
         self.direct_cooldown_index = 0
         self.burst_id = 0
         self.burst_entering = False
+        self.arrest_index = 0
+        self.recovery_index = 0
+        self.recovery_settle_index = 0
+        self.last_reject_command[:] = 0.0
         self.latest_response_status = 'idle'
         self.latest_response_summary = ''
         self.latest_target_momentum = np.zeros(3, dtype=np.float64)
@@ -175,10 +231,22 @@ class BalanceActuator:
             self.blend_index = 0
         return started
 
-    def update_direct_response(self, arm_targets, perturbation_state):
+    def update_direct_response(
+            self,
+            arm_targets,
+            perturbation_state,
+            balance_state=None):
         '''Update the closed-loop momentum response target'''
         self.burst_entering = False
         if self.execution_mode != 'direct':
+            return
+
+        if self.response_mode == 'state_machine':
+            self._update_state_machine(
+                arm_targets,
+                perturbation_state,
+                balance_state,
+            )
             return
 
         if self.direct_cooldown_index > 0:
@@ -228,6 +296,17 @@ class BalanceActuator:
         )
         if self.state == 'direct_impulse':
             return self._execute_direct_step()
+        if self.state == 'rejecting':
+            return self._execute_reject_step()
+        if self.state == 'arresting':
+            return self._execute_arrest_step()
+        if self.state == 'recovery_wait':
+            command = np.zeros(
+                self.robot_model.model_body.nv,
+                dtype=np.float64,
+            )
+            self._set_latest_raw_command(command)
+            return command
         if self.state == 'holding':
             command = np.zeros(
                 self.robot_model.model_body.nv,
@@ -242,6 +321,116 @@ class BalanceActuator:
         command = np.zeros(self.robot_model.model_body.nv, dtype=np.float64)
         self._set_latest_raw_command(command)
         return command
+
+    def _update_state_machine(
+            self,
+            arm_targets,
+            perturbation_state,
+            balance_state):
+        new_episode = bool(perturbation_state.entering)
+        if new_episode and self.state in ('idle', 'returning', 'recovery_wait'):
+            self._start_reject(arm_targets)
+            return
+
+        if self.state == 'idle':
+            if perturbation_state.active and arm_targets:
+                self._start_reject(arm_targets)
+            return
+
+        if self.state == 'rejecting' and arm_targets:
+            self.direct_targets = {
+                target.arm: np.copy(target.target_momentum)
+                for target in arm_targets
+            }
+            self.latest_target_momentum = self._combined_achieved(
+                self.direct_targets
+            )
+            self.latest_arm_targets = dict(self.direct_targets)
+            return
+
+        if self.state == 'recovery_wait':
+            self.recovery_index += 1
+            if self._balance_quiet(balance_state) and not perturbation_state.active:
+                self.recovery_settle_index += 1
+            else:
+                self.recovery_settle_index = 0
+            if (
+                    self.recovery_index >= self.recovery_min_steps
+                    and self.recovery_settle_index
+                    >= self.recovery_settle_steps):
+                self.state = 'returning'
+                self.return_index = 0
+                self.latest_response_status = 'returning'
+
+    def _start_reject(self, arm_targets):
+        if not arm_targets:
+            return
+        if not self.return_targets:
+            self.return_targets = {
+                target.arm: self._current_arm_q(target.arm)
+                for target in arm_targets
+            }
+        self.direct_targets = {
+            target.arm: np.copy(target.target_momentum)
+            for target in arm_targets
+        }
+        self.direct_index = 0
+        self.arrest_index = 0
+        self.recovery_index = 0
+        self.recovery_settle_index = 0
+        self.burst_id += 1
+        self.burst_entering = True
+        self.state = 'rejecting'
+        self.latest_response_status = 'rejecting'
+        self.latest_target_momentum = self._combined_achieved(
+            self.direct_targets
+        )
+        self.latest_arm_targets = dict(self.direct_targets)
+
+    def _execute_reject_step(self):
+        if self.direct_index >= self.reject_max_steps:
+            self.state = 'arresting'
+            self.arrest_index = 0
+            self.direct_targets = {}
+            self.last_reject_command = np.copy(self.latest_raw_command)
+            self.latest_response_status = 'arresting'
+            return self._execute_arrest_step()
+        if self.direct_solver == 'full_body_bounded':
+            command = self._execute_full_body_direct_step()
+        else:
+            command = self._execute_direct_step()
+        self.last_reject_command = np.copy(command)
+        return command
+
+    def _execute_arrest_step(self):
+        if self.arrest_index >= self.arrest_steps:
+            self.state = 'recovery_wait'
+            self.recovery_index = 0
+            self.recovery_settle_index = 0
+            self.latest_response_status = 'recovery_wait'
+            command = np.zeros(
+                self.robot_model.model_body.nv,
+                dtype=np.float64,
+            )
+            self._set_latest_raw_command(command)
+            return command
+        scale = 1.0 - float(self.arrest_index + 1) / self.arrest_steps
+        command = scale * self.last_reject_command
+        self.arrest_index += 1
+        self._set_latest_raw_command(command)
+        return command
+
+    def _balance_quiet(self, balance_state):
+        if balance_state is None:
+            return False
+        return (
+            np.linalg.norm(balance_state.zmp_residual)
+            <= self.recovery_zmp_threshold
+            and np.linalg.norm(balance_state.zmp_residual_velocity)
+            <= self.recovery_zmp_velocity_threshold
+            and np.linalg.norm(balance_state.angular_velocity[:2])
+            <= self.recovery_angular_velocity_threshold
+        )
 
     def _execute_direct_step(self):
         if self.direct_index >= self.direct_max_steps:
@@ -260,6 +449,9 @@ class BalanceActuator:
             self.return_index = 0
             self.latest_response_status = 'returning'
             return self._execute_return_step()
+
+        if self.direct_solver == 'full_body_bounded':
+            return self._execute_full_body_direct_step()
 
         command = np.zeros(
             self.robot_model.model_body.nv,
@@ -297,6 +489,105 @@ class BalanceActuator:
         self.latest_combined_achieved = self._combined_achieved(achieved)
         self._set_latest_raw_command(command)
         return command
+
+    def _execute_full_body_direct_step(self):
+        command = np.zeros(
+            self.robot_model.model_body.nv,
+            dtype=np.float64,
+        )
+        arm_ids = []
+        if 'left' in self.direct_targets:
+            arm_ids.extend(LEFT_ARM_INDEX)
+        if 'right' in self.direct_targets:
+            arm_ids.extend(RIGHT_ARM_INDEX)
+        if not arm_ids:
+            self._set_latest_raw_command(command)
+            return command
+
+        target = self._combined_achieved(self.direct_targets)
+        q = np.asarray(self.robot_model.state['q'], dtype=np.float64)
+        angular_map = self.robot_model.get_angular_centroidal_momentum_matrix(
+            q,
+            arm_ids,
+        )
+        lower, upper = self._direct_velocity_bounds(q, arm_ids)
+        free = upper - lower > 1e-9
+        velocity = np.zeros(len(arm_ids), dtype=np.float64)
+        status = 'blocked'
+        start = time.monotonic()
+        if np.any(free):
+            free_map = angular_map[:, free]
+            augmented_map = np.vstack((
+                free_map,
+                self.direct_damping * np.eye(np.count_nonzero(free)),
+            ))
+            augmented_target = np.concatenate((
+                target,
+                np.zeros(np.count_nonzero(free), dtype=np.float64),
+            ))
+            result = lsq_linear(
+                augmented_map,
+                augmented_target,
+                bounds=(lower[free], upper[free]),
+                tol=1e-7,
+                lsmr_tol='auto',
+                max_iter=30,
+            )
+            velocity[free] = result.x
+            status = 'success' if result.success else f'failed:{result.status}'
+
+        command[arm_ids] = velocity
+        achieved = {}
+        offset = 0
+        for arm, ids in (
+                ('left', LEFT_ARM_INDEX),
+                ('right', RIGHT_ARM_INDEX)):
+            if arm not in self.direct_targets:
+                continue
+            count = len(ids)
+            achieved[arm] = (
+                angular_map[:, offset:offset + count]
+                @ velocity[offset:offset + count]
+            )
+            offset += count
+
+        self.direct_index += 1
+        self.latest_per_arm_achieved = achieved
+        self.latest_combined_achieved = angular_map @ velocity
+        self.latest_solver_statuses = {'full_body': status}
+        self.latest_plan_duration = time.monotonic() - start
+        self.latest_response_summary = (
+            'ZMP response full_body_bounded '
+            f'target={format_vector(target)} '
+            f'achieved={format_vector(self.latest_combined_achieved)} '
+            f'status={status}'
+        )
+        self._set_latest_raw_command(command)
+        return command
+
+    def _direct_velocity_bounds(self, q, arm_ids):
+        model = self.robot_model.model_body
+        velocity_limit = np.asarray(model.velocityLimit, dtype=np.float64)[arm_ids]
+        finite_velocity = np.where(
+            np.isfinite(velocity_limit) & (velocity_limit > 0.0),
+            velocity_limit,
+            self.direct_joint_velocity,
+        )
+        maximum = np.minimum(finite_velocity, self.direct_joint_velocity)
+        lower = -maximum
+        upper = maximum
+        q_arm = q[arm_ids]
+        position_lower = np.asarray(model.lowerPositionLimit)[arm_ids]
+        position_upper = np.asarray(model.upperPositionLimit)[arm_ids]
+        lower = np.maximum(
+            lower,
+            (position_lower + self.direct_position_margin - q_arm) / self.dt,
+        )
+        upper = np.minimum(
+            upper,
+            (position_upper - self.direct_position_margin - q_arm) / self.dt,
+        )
+        return lower, upper
 
     def _start_response(self, arm_targets, perturbation_state):
         start = time.monotonic()

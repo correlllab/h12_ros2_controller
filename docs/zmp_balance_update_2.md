@@ -122,10 +122,10 @@ a new allocator or reflex state machine:
   arming completes.
 - The benchmark force starts at `8 s`, leaving a quiet armed interval after the
   `60`-sample calibration and `120`-sample arming dwell.
-- `zmp_passive` uses the identical `ZmpController`, controller configuration,
-  gains, DDS topic, initialization, and safety path as `zmp_enabled`, with
-  reflex output disabled. Historical `lower_only` remains a compatibility mode
-  and is not the controls-equivalent baseline.
+- `upper_fixed` is the explicit fixed-upper-body baseline: it uses the
+  benchmark-owned `upper_hold_runtime` and does not start a ZMP controller.
+  Historical `zmp_passive` labels in older artifacts referred to a suppressed
+  ZMP process without an active upper hold and should not be used as a baseline.
 - Each run snapshots benchmark, safety, lower-body, and ZMP YAML files, hashes
   them, and records benchmark/controller revision and dirty-state provenance.
 - The sweep now records a seeded interleaving plan and runs the passive and
@@ -143,7 +143,7 @@ The closure sweep is stored in
 `8 s`/`1 s` forces, 5 N force brackets, frozen per-run configuration snapshots,
 and seed `20260714`.
 
-| Direction | ZMP passive | ZMP enabled | Delta |
+| Direction | Upper fixed | ZMP enabled | Delta |
 | --- | --- | --- | --- |
 | `+X` | `25 N` | `25 N` | `0 N`. |
 | `+X +Y` | `35 N` | `35 N` | `0 N`. |

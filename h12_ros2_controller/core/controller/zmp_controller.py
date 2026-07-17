@@ -144,6 +144,7 @@ class ZmpController(UpperController):
             self.actuator.update_direct_response(
                 arm_targets,
                 perturbation_state,
+                balance_state,
             )
         elif self.reflex_output_enabled and self.actuator.can_start_response(
                 perturbation_state,
@@ -254,6 +255,7 @@ class ZmpController(UpperController):
             self.latest_perturbation_state.active
             or self.latest_perturbation_state.raw_perturbed
             or self.detector.entering
+            or self.actuator.state != 'idle'
         )
 
     def _balance_arms(self):
