@@ -1,19 +1,19 @@
-from h12_ros2_controller.core.controller.zmp.balance_actuator import (
+from h12_ros2_controller.core.controller.zmp_legacy.balance_actuator import (
     BalanceActuator,
     format_vector,
 )
-from h12_ros2_controller.core.controller.zmp.balance_observer import (
+from h12_ros2_controller.core.controller.zmp_legacy.balance_observer import (
     BalanceObserver,
     BalanceState,
 )
-from h12_ros2_controller.core.controller.zmp.momentum_allocator import (
+from h12_ros2_controller.core.controller.zmp_legacy.momentum_allocator import (
     ArmMomentumTarget,
     MomentumAllocator,
 )
-from h12_ros2_controller.core.controller.zmp.momentum_target_estimator import (
+from h12_ros2_controller.core.controller.zmp_legacy.momentum_target_estimator import (
     MomentumTargetEstimator,
 )
-from h12_ros2_controller.core.controller.zmp.perturbation_detector import (
+from h12_ros2_controller.core.controller.zmp_legacy.perturbation_detector import (
     PerturbationDetector,
     PerturbationState,
 )
