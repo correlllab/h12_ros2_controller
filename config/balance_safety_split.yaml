@@ -49,15 +49,16 @@ zmp:
     force_proxy: 10.0
   target:
     response_time: 0.16
+    reaction_sign: -1.0
     min_momentum_norm: 0.0
     projection: component
     max_momentum:
       - 0.2
-      - 1.5
+      - 0.8
       - 0.0
     min_momentum:
-      - 0.0
-      - -1.5
+      - -0.2
+      - -0.8
       - 0.0
   hysteresis:
     enter_cycles: 2
@@ -83,12 +84,23 @@ zmp:
     interrupt_ticks: 3
   execution:
     mode: direct
+    direct_solver: full_body_bounded
     direct_damping: 0.05
     direct_max_velocity: 4.0
     direct_duration: 0.20
     direct_cooldown: 0.20
     direct_hold_after_burst: false
+    direct_position_margin: 0.05
     limit_ddp_velocity: true
+  response:
+    mode: legacy_burst
+    reject_max_duration: 0.60
+    arrest_duration: 0.12
+    recovery_min_duration: 0.30
+    recovery_settle_duration: 0.30
+    recovery_zmp_residual: 0.003
+    recovery_zmp_velocity: 0.0015
+    recovery_angular_velocity: 0.08
   gains:
     zmp:
       - 1.0
@@ -100,6 +112,9 @@ zmp:
       - 0.0
       - 0.0
     angular_acceleration:
+      - 0.0
+      - 0.0
+    angular_velocity_momentum:
       - 0.0
       - 0.0
   allocation:

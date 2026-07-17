@@ -404,6 +404,57 @@ def test_component_projection_supports_asymmetric_momentum_bounds():
     assert np.allclose(projected, [0.0, 1.5, 0.0])
 
 
+def test_full_body_bounded_direct_solver_tracks_target_within_bounds():
+    angular_map = np.zeros((3, 14), dtype=np.float64)
+    angular_map[:, :3] = np.eye(3)
+    robot = SimpleNamespace(
+        model_body=SimpleNamespace(
+            nv=27,
+            velocityLimit=np.full(27, 4.0),
+            lowerPositionLimit=np.full(27, -2.0),
+            upperPositionLimit=np.full(27, 2.0),
+        ),
+        state={'q': np.zeros(27, dtype=np.float64)},
+        get_angular_centroidal_momentum_matrix=(
+            lambda q, joint_ids: angular_map[:, :len(joint_ids)]
+        ),
+    )
+    actuator = BalanceActuator(
+        robot,
+        0.02,
+        {
+            'controller': {'dq_lim': 1.0},
+            'zmp': {
+                'execution': {
+                    'mode': 'direct',
+                    'direct_solver': 'full_body_bounded',
+                    'direct_damping': 1e-4,
+                    'direct_max_velocity': 4.0,
+                },
+                'ddp': {},
+                'blending': {},
+                'solver_failure': {},
+            },
+        },
+    )
+    actuator._current_arm_q = lambda arm: np.zeros(7, dtype=np.float64)
+    target = np.array([0.4, -0.3, 0.2], dtype=np.float64)
+    arm_targets = [
+        ArmMomentumTarget('left', 0.5 * target),
+        ArmMomentumTarget('right', 0.5 * target),
+    ]
+
+    actuator.update_direct_response(
+        arm_targets,
+        PerturbationState(active=True, severity=1.0),
+    )
+    command = actuator.step()
+
+    assert np.allclose(actuator.latest_combined_achieved, target, atol=1e-5)
+    assert np.max(np.abs(command)) <= 1.0
+    assert actuator.latest_solver_statuses == {'full_body': 'success'}
+
+
 def test_zmp_controller_bypasses_velocity_limit_by_default():
     controller = ZmpController.__new__(ZmpController)
     controller.zmp_enabled = True

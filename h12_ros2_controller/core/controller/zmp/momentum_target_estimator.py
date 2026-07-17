@@ -16,7 +16,11 @@ class MomentumTargetEstimator:
         self.k_angular_acceleration = self._as_vec2(
             gains.get('angular_acceleration', [0.0, 0.0])
         )
+        self.k_angular_velocity_momentum = self._as_vec2(
+            gains.get('angular_velocity_momentum', [0.0, 0.0])
+        )
         self.response_time = float(target.get('response_time', 0.08))
+        self.reaction_sign = float(target.get('reaction_sign', 1.0))
         self.min_momentum_norm = float(target.get('min_momentum_norm', 0.0))
         self.max_momentum = self._as_vec3(
             target.get('max_momentum', [1.2, 1.2, 0.0])
@@ -48,7 +52,11 @@ class MomentumTargetEstimator:
             [-mg * correction[1], mg * correction[0], 0.0],
             dtype=np.float64,
         )
-        target = self.response_time * momentum_rate
+        target = self.reaction_sign * self.response_time * momentum_rate
+        target[:2] += (
+            self.k_angular_velocity_momentum
+            * balance_state.angular_velocity[:2]
+        )
         target = self._apply_min_momentum(target)
         self.latest_raw_target = np.copy(target)
         self.latest_projected_target = self._project_target(target)
