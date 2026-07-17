@@ -3,7 +3,7 @@ import numpy as np
 from h12_ros2_controller.core.controller.upper_controller import (
     UpperController,
 )
-from h12_ros2_controller.core.controller.zmp import (
+from h12_ros2_controller.core.controller.zmp_legacy import (
     BalanceActuator,
     BalanceObserver,
     MomentumAllocator,

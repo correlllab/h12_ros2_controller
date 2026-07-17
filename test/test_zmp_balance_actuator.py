@@ -3,26 +3,28 @@ from types import SimpleNamespace
 import numpy as np
 import pinocchio as pin
 
-import h12_ros2_controller.core.controller.zmp_controller as zmp_module
-from h12_ros2_controller.core.controller.zmp.balance_actuator import (
+import h12_ros2_controller.core.controller.zmp_controller_legacy as zmp_module
+from h12_ros2_controller.core.controller.zmp_legacy.balance_actuator import (
     BalanceActuator,
     format_vector,
     format_vector_map,
     format_status_map,
 )
-from h12_ros2_controller.core.controller.zmp_controller import ZmpController
+from h12_ros2_controller.core.controller.zmp_controller_legacy import (
+    ZmpController,
+)
 from h12_ros2_controller.core.robot_dynamics import MomentumDDP
-from h12_ros2_controller.core.controller.zmp.balance_observer import (
+from h12_ros2_controller.core.controller.zmp_legacy.balance_observer import (
     BalanceObserver,
     BalanceState,
 )
-from h12_ros2_controller.core.controller.zmp.momentum_allocator import (
+from h12_ros2_controller.core.controller.zmp_legacy.momentum_allocator import (
     ArmMomentumTarget,
 )
-from h12_ros2_controller.core.controller.zmp.momentum_target_estimator import (
+from h12_ros2_controller.core.controller.zmp_legacy.momentum_target_estimator import (
     MomentumTargetEstimator,
 )
-from h12_ros2_controller.core.controller.zmp.perturbation_detector import (
+from h12_ros2_controller.core.controller.zmp_legacy.perturbation_detector import (
     PerturbationState,
 )
 
