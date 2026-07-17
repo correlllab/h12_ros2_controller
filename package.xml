@@ -10,6 +10,7 @@
   <depend>action_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>robot_state_publisher</depend>
 
   <depend>custom_ros_messages</depend>

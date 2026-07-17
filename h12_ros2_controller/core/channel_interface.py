@@ -99,6 +99,9 @@ class CommandPublisher(ABC):
         self.data_lock = threading.Lock()
         self._publisher = None
         self._publishing = False
+        # when True, the publishing loop keeps running but skips the DDS write,
+        # so nothing is emitted to the wire until resume() (see pause()).
+        self._paused = False
         self._publishing_thread = None
 
         # shared low_cmd object
@@ -151,10 +154,10 @@ class CommandPublisher(ABC):
                     self._low_cmd.motor_cmd[i].tau = self.tau[i]
                     self._low_cmd.motor_cmd[i].kp = self.kp[i]
                     self._low_cmd.motor_cmd[i].kd = self.kd[i]
-            # set CRC
-            self._low_cmd.crc = self._crc.Crc(self._low_cmd)
-            # write to publisher
-            self._publisher.Write(self._low_cmd)
+            # set CRC and write to publisher (skipped entirely while paused)
+            if not self._paused:
+                self._low_cmd.crc = self._crc.Crc(self._low_cmd)
+                self._publisher.Write(self._low_cmd)
             # sleep to maintain publishing rate
             time.sleep(max(0, self._dt - (time.time() - start_time)))
 
@@ -196,6 +199,19 @@ class CommandPublisher(ABC):
         '''Start the publisher thread'''
         self._publishing = True
         self._publishing_thread.start()
+
+    def pause(self):
+        '''Stop emitting commands to the wire (publishing loop keeps running)'''
+        self._paused = True
+
+    def resume(self):
+        '''Resume emitting commands to the wire'''
+        self._paused = False
+
+    @property
+    def paused(self):
+        '''Whether the publisher is currently withholding writes'''
+        return self._paused
 
     def shutdown(self):
         '''Shutdown the publisher'''

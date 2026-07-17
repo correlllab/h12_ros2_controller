@@ -171,6 +171,18 @@ class LowCmdHandler:
         self._command_publisher.start()
         self._safety_thread.start()
 
+    def pause_publishing(self):
+        '''Stop emitting low commands to the wire (does not disable motors)'''
+        self._command_publisher.pause()
+
+    def resume_publishing(self):
+        '''Resume emitting low commands to the wire'''
+        self._command_publisher.resume()
+
+    @property
+    def publishing_paused(self):
+        return self._command_publisher.paused
+
     def shutdown(self):
         self._command_publisher.shutdown()
         self._checking_safety = False

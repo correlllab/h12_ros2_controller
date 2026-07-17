@@ -3,6 +3,7 @@ import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
+from std_srvs.srv import Trigger
 
 import time
 import threading
@@ -94,6 +95,14 @@ class FrameTaskServer(Node):
             'named_config',
             execute_callback=self.named_config_callback,
             cancel_callback=self.cancel_callback
+        )
+
+        # service to stop the server from emitting upper-body commands to the
+        # wire (pauses the low_cmd DDS publisher; motors stay enabled/held)
+        self.pause_upperbody_service = self.create_service(
+            Trigger,
+            'frametaskserver/pause_upperbody',
+            self.pause_upperbody_callback,
         )
         self.get_logger().info('Frame Task Server initialized')
 
@@ -488,6 +497,14 @@ class FrameTaskServer(Node):
         result = NamedConfig.Result()
         result.success = bool(steady_state_converged)
         return result
+
+    def pause_upperbody_callback(self, request, response):
+        '''Stop the frame task server from publishing upper-body low commands'''
+        self.controller.low_cmd_handler.pause_publishing()
+        self.get_logger().info('Upper-body publishing paused (low_cmd writes stopped)')
+        response.success = True
+        response.message = 'frame_task_server upper-body publishing paused'
+        return response
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info('Canceling goal')
