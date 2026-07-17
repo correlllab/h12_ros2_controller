@@ -3,6 +3,7 @@ import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
+from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
 
 import time
@@ -57,6 +58,12 @@ class FrameTaskServer(Node):
         self.frame_names = []
         self.frame_targets = []
 
+        # start_paused: come up NOT publishing the upper channel, so another
+        # controller (e.g. MJPC) owns the arms. Bringup sets this true so MJPC
+        # drives the upper body by default; call the toggle service to take over.
+        self.declare_parameter('start_paused', False)
+        start_paused = self.get_parameter('start_paused').value
+
         self.controller = FrameController(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
@@ -65,6 +72,7 @@ class FrameTaskServer(Node):
             handless=False,
             visualize=False,
             config=config,
+            start_paused=start_paused,
         )
 
         # publisher publishing frame names and target poses
@@ -77,6 +85,11 @@ class FrameTaskServer(Node):
         self.right_ee_pose_publisher = self.create_publisher(PoseStamped, 'right_ee_pose', 10)
         self.left_ee_target_publisher = self.create_publisher(PoseStamped, 'left_ee_target', 10)
         self.right_ee_target_publisher = self.create_publisher(PoseStamped, 'right_ee_target', 10)
+
+        # status: whether the upper-body channel is paused (True = this server is
+        # NOT driving the upper body; another controller, e.g. MJPC, is).
+        self.upper_body_paused_publisher = self.create_publisher(
+            Bool, 'frametaskserver/upper_body_paused', 10)
 
         self.publisher_timer = self.create_timer(1.0 / 100, self.publisher_callback)
 
@@ -97,12 +110,13 @@ class FrameTaskServer(Node):
             cancel_callback=self.cancel_callback
         )
 
-        # service to stop the server from emitting upper-body commands to the
-        # wire (pauses the low_cmd DDS publisher; motors stay enabled/held)
-        self.pause_upperbody_service = self.create_service(
+        # toggle service: flip whether the server emits the upper-body channel.
+        # Paused = another controller (MJPC) owns the arms; unpaused = this
+        # server does. Motors stay enabled/held either way.
+        self.toggle_pause_upperbody_service = self.create_service(
             Trigger,
-            'frametaskserver/pause_upperbody',
-            self.pause_upperbody_callback,
+            'frametaskserver/toggle_pause_upperbody',
+            self.toggle_pause_upperbody_callback,
         )
         self.get_logger().info('Frame Task Server initialized')
 
@@ -159,6 +173,10 @@ class FrameTaskServer(Node):
                 self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
         except (AttributeError, KeyError):
             pass
+
+        # publish upper-body pause status (True = paused = not driving the arms)
+        self.upper_body_paused_publisher.publish(
+            Bool(data=bool(self.controller.low_cmd_handler.publishing_paused)))
 
     def frame_task_callback(self, goal_handle):
         with self._controller_lock:
@@ -498,12 +516,43 @@ class FrameTaskServer(Node):
         result.success = bool(steady_state_converged)
         return result
 
-    def pause_upperbody_callback(self, request, response):
-        '''Stop the frame task server from publishing upper-body low commands'''
-        self.controller.low_cmd_handler.pause_publishing()
-        self.get_logger().info('Upper-body publishing paused (low_cmd writes stopped)')
+    def toggle_pause_upperbody_callback(self, request, response):
+        '''Flip whether the frame task server publishes the upper-body channel'''
+        handler = self.controller.low_cmd_handler
+        if handler.publishing_paused:
+            # RESUME = taking the arms back (e.g. from MJPC). While paused the
+            # publisher's held command went stale (the boot homing target, or
+            # whatever goal last ran -- goals can execute while paused and
+            # mutate it), and the other controller may have moved the arms far
+            # from it; emitting that stale target at full kp would snap the
+            # arms. Re-seed everything from the MEASURED pose and drop all
+            # outstanding goals/targets BEFORE the first wire write, so
+            # control resumes as a hold-in-place with no goals pending.
+            # (The toggle service and the action executors share the node's
+            # default mutually-exclusive callback group, so no goal is
+            # running concurrently with this callback.)
+            self.controller.clear_frame_tasks()
+            self.frame_names = []
+            self.frame_targets = []
+            self.controller.update_robot_model()
+            q_measured = self.controller.robot_model.state['q']
+            # command = measured pose (+ gravity comp): the first published
+            # tick holds the arms exactly where they are.
+            self.controller.lock_configuration(q_measured)
+            # IK solver + steady-state controller restart from the measured
+            # pose too, so the next goal plans from reality, not the stale
+            # pre-pause target.
+            self.controller.update_ik_solver()
+            self.controller.init_steady_state()
+            handler.resume_publishing()
+            paused = False
+        else:
+            handler.pause_publishing()
+            paused = True
+        state = 'PAUSED' if paused else 'PUBLISHING'
+        self.get_logger().info(f'Upper-body publishing toggled -> {state}')
         response.success = True
-        response.message = 'frame_task_server upper-body publishing paused'
+        response.message = f'frame_task_server upper-body {state.lower()}'
         return response
 
     def cancel_callback(self, goal_handle):

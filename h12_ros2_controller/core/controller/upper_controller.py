@@ -25,7 +25,8 @@ class UpperController:
                  init: bool=True,
                  handless: bool=False,
                  visualize=False,
-                 config=None):
+                 config=None,
+                 start_paused: bool=False):
         self.config = config if config is not None else load_controller_config()
         controller_cfg = self.config.get('controller', {})
 
@@ -63,6 +64,13 @@ class UpperController:
         torso_id = BODY_JOINTS.index('torso_joint')
         torso_init = float(self.robot_model.state['q'][torso_id])
         self.low_cmd_handler.enable_motors([torso_id], [torso_init])
+
+        # start_paused: come up without emitting to the wire (another controller
+        # owns the upper channel). Set BEFORE start() so the publisher thread
+        # never writes, and BEFORE the init routine so its IK warm-up runs but
+        # nothing reaches the safety layer / robot.
+        if start_paused:
+            self.low_cmd_handler.pause_publishing()
 
         # start publisher
         self.low_cmd_handler.start()

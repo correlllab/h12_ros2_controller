@@ -11,7 +11,8 @@ class FrameController(UpperController):
                  init: bool=True,
                  handless: bool=False,
                  visualize: bool=False,
-                 config: dict=None):
+                 config: dict=None,
+                 start_paused: bool=False):
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
@@ -20,6 +21,7 @@ class FrameController(UpperController):
             handless=handless,
             visualize=visualize,
             config=config,
+            start_paused=start_paused,
         )
 
     def add_frame_task(self, task_name: str, frame_name: str, target: np.ndarray = None):
