@@ -1,0 +1,38 @@
+{
+  "frame_name": "right_graspgenx_frame",
+  "ik_timeout": 10.0,
+  "input_path": "/home/tonyzyt2000/ros2_ws/src/h12_ros2_controller/data/planner/generated_grasps_filtered.npy",
+  "repeats": 10,
+  "representations": {
+    "mesh": {
+      "checks": 1140,
+      "collision_count": 0,
+      "collision_free_count": 1140,
+      "collision_pair_count": 371,
+      "geometry_count": 40,
+      "maximum_check_time": 0.3964550259988755,
+      "mean_check_time": 0.06348731160588182,
+      "median_check_time": 4.132298636250198e-05,
+      "p95_check_time": 0.2079906363709596,
+      "setup_time": 11.703243697003927,
+      "total_check_time": 72.37553523070528
+    },
+    "sphere": {
+      "checks": 1140,
+      "collision_count": 0,
+      "collision_free_count": 1140,
+      "collision_pair_count": 212,
+      "geometry_count": 26,
+      "maximum_check_time": 2.8692011255770922e-05,
+      "mean_check_time": 5.428187560347285e-06,
+      "median_check_time": 5.37899904884398e-06,
+      "p95_check_time": 5.494139622896909e-06,
+      "setup_time": 8.212658060976537,
+      "total_check_time": 0.0061881338187959045
+    }
+  },
+  "skipped_targets": {},
+  "start_config": "home",
+  "state_count": 114,
+  "warmup": 2
+}

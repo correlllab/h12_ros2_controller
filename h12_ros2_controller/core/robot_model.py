@@ -71,7 +71,7 @@ class RobotModel:
 
     def init_collision_model(self, urdf_path, srdf_path):
         '''
-        Initialize collision model from another urdf (sphere collision)
+        Initialize collision model from another URDF and SRDF pair
         Uses model_body (no free-flyer) for collision checking
         '''
         self.init_collision = True

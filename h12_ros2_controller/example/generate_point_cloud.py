@@ -4,7 +4,7 @@ import numpy as np
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
-from h12_ros2_controller.utility.path_definition import DUMMY_POINTCLOUD_PATH
+from h12_ros2_controller.utility.path_definition import POINTCLOUD_PATH
 
 
 def make_cube(center, size, samples):
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         '--samples', type=int, default=15,
         help='number of samples per axis',
     )
-    parser.add_argument('--output', default=DUMMY_POINTCLOUD_PATH)
+    parser.add_argument('--output', default=POINTCLOUD_PATH)
     args = parser.parse_args()
     main(
         shape=args.shape,

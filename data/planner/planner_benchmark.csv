@@ -1,0 +1,11 @@
+source_index,collision_representation,repeat,success,reason,planning_time,validity_checks,waypoint_count
+0,sphere,0,True,raw ompl solution,0.026506701949983835,162,3
+1,sphere,0,True,raw ompl solution,0.026583235012367368,154,3
+2,sphere,0,True,raw ompl solution,0.02970058802748099,177,4
+3,sphere,0,True,raw ompl solution,0.035050802980549634,201,4
+4,sphere,0,True,raw ompl solution,0.03073706303257495,185,4
+0,mesh,0,True,raw ompl solution,7.9612328259972855,226,4
+1,mesh,0,True,raw ompl solution,11.160250996006653,281,4
+2,mesh,0,True,raw ompl solution,19.213124791975133,216,4
+3,mesh,0,True,raw ompl solution,5.149548785004299,162,3
+4,mesh,0,True,raw ompl solution,7.681844545993954,160,3

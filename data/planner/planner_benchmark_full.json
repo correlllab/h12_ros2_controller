@@ -1,0 +1,38 @@
+{
+  "config": "debug.yaml",
+  "frame_name": "right_graspgenx_frame",
+  "ik_collision_representation": "sphere",
+  "ik_timeout": 10.0,
+  "input_path": "/home/tonyzyt2000/ros2_ws/src/h12_ros2_controller/data/planner/generated_grasps_filtered.npy",
+  "planner_mode": "RRT with full path processing",
+  "planner_timeout": 1.0,
+  "representations": {
+    "mesh": {
+      "attempts": 5,
+      "failure_reasons": {
+        "OMPL failed to find a solution before timeout": 1
+      },
+      "ik_success_count": 5,
+      "mean_ik_time": 0.1275618760031648,
+      "mean_pipeline_time": 77.3243096302147,
+      "mean_plan_time": 77.19674076020019,
+      "mean_postprocess_time": 61.815953526389784,
+      "mean_raw_plan_time": 14.994757469801698,
+      "plan_success_count": 4
+    },
+    "sphere": {
+      "attempts": 5,
+      "failure_reasons": {},
+      "ik_success_count": 5,
+      "mean_ik_time": 0.1210201173904352,
+      "mean_pipeline_time": 0.4551603482104838,
+      "mean_plan_time": 0.3341335864039138,
+      "mean_postprocess_time": 0.30128750500734897,
+      "mean_raw_plan_time": 0.03184523979434743,
+      "plan_success_count": 5
+    }
+  },
+  "selected_targets": 5,
+  "start_config": "home",
+  "warmup_queries_per_representation": 1
+}

@@ -51,7 +51,7 @@ planner:
   # allowed drift below endpoint z min
   frame_z_corridor_margin: 0.05
   # obstacle point cloud (.npy, pelvis frame); '' disables the check
-  point_cloud_path: data/collision/pointcloud.npy
+  point_cloud_path: data/planner/pointcloud.npy
   # robot sphere inflation checked against the point cloud
   point_cloud_margin: 0.02
 

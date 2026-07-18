@@ -1,0 +1,33 @@
+{
+  "config": "debug.yaml",
+  "frame_name": "right_graspgenx_frame",
+  "input_path": "/home/tonyzyt2000/ros2_ws/src/h12_ros2_controller/data/planner/generated_grasps_filtered.npy",
+  "measurement": "raw OMPL solve time only",
+  "planner_timeout": 1.0,
+  "preparation_skips": {},
+  "prepared_goals": 5,
+  "repeats": 1,
+  "representations": {
+    "mesh": {
+      "attempts": 5,
+      "failure_reasons": {},
+      "mean_planning_time": 10.233200388995465,
+      "median_planning_time": 7.9612328259972855,
+      "p95_planning_time": 17.602550032781437,
+      "success_count": 5,
+      "success_rate": 1.0
+    },
+    "sphere": {
+      "attempts": 5,
+      "failure_reasons": {},
+      "mean_planning_time": 0.029715678200591355,
+      "median_planning_time": 0.02970058802748099,
+      "p95_planning_time": 0.034188054990954696,
+      "success_count": 5,
+      "success_rate": 1.0
+    }
+  },
+  "selected_targets": 5,
+  "start_config": "home",
+  "warmup_queries_per_representation": 1
+}

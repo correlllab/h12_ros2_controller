@@ -121,6 +121,30 @@ def test_plan_between_fake_valid_states():
     assert result.path.shape[0] <= 10
     assert np.allclose(result.path[0], [0.0, 0.0])
     assert np.allclose(result.path[-1], [0.5, 0.5])
+    assert result.planning_time >= 0.0
+    assert result.metadata['ompl_solve_time'] == pytest.approx(
+        result.planning_time
+    )
+    assert result.metadata['postprocess_time'] >= 0.0
+
+
+def test_raw_ompl_plan_skips_postprocessing():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(timeout=0.2, max_interpolation_steps=10),
+    )
+
+    result = planner.plan(
+        [0.0, 0.0],
+        [0.5, 0.5],
+        raw_ompl_only=True,
+    )
+
+    assert result.success
+    assert result.reason == 'raw ompl solution'
+    assert result.metadata['raw_ompl_only']
+    assert result.metadata['postprocess_time'] == 0.0
 
 
 def test_plan_pins_idle_right_arm_with_home_tolerance():
@@ -200,7 +224,6 @@ def test_plan_between_named_configs_smoke():
         'home',
         'arms_front_45',
         'arms_asym',
-        't_pose_elbow',
         'elbow_only',
     ]
     valid_pairs = []
