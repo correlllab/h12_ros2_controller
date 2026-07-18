@@ -8,10 +8,14 @@ ROS_ASSETS_PATH = f'{ASSETS_PATH}/ros_assets'
 URDF_MAGPIE_PATH = f'{ROS_ASSETS_PATH}/h1_2_magpie.urdf'
 URDF_MAGPIE_SPHERE_PATH = f'{ROS_ASSETS_PATH}/h1_2_magpie_sphere.urdf'
 SRDF_MAGPIE_SPHERE_PATH = f'{ROS_ASSETS_PATH}/h1_2_magpie_sphere_collision.srdf'
+SRDF_MAGPIE_PATH = f'{ROS_ASSETS_PATH}/h1_2_magpie_collision.srdf'
 
 URDF_HANDLESS_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless.urdf'
 URDF_HANDLESS_SPHERE_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless_sphere.urdf'
-SRDF_HANDLESS_SPHERE_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless_sphere_collision.srdf'
 
-COLLISION_DATA_DIR = str(PROJECT_ROOT / 'data' / 'collision')
-DUMMY_POINTCLOUD_PATH = f'{COLLISION_DATA_DIR}/pointcloud.npy'
+PLANNER_DATA_DIR = str(PROJECT_ROOT / 'data' / 'planner')
+POINTCLOUD_PATH = f'{PLANNER_DATA_DIR}/pointcloud.npy'
+GENERATED_GRASPS_PATH = f'{PLANNER_DATA_DIR}/generated_grasps.npy'
+FILTERED_GENERATED_GRASPS_PATH = (
+    f'{PLANNER_DATA_DIR}/generated_grasps_filtered.npy'
+)

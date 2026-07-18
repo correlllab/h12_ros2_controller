@@ -13,14 +13,18 @@ URDF_MAGPIE_PIN_PATH = f'{MODEL_H12_PATH}/h1_2_magpie.urdf'
 URDF_MAGPIE_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_magpie_ros.urdf'
 URDF_MAGPIE_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_magpie_sphere.urdf'
 SRDF_MAGPIE_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_magpie_sphere_collision.srdf'
+SRDF_MAGPIE_PATH = f'{MODEL_H12_PATH}/h1_2_magpie_collision.srdf'
 # handless models
 URDF_HANDLESS_PIN_PATH = f'{MODEL_H12_PATH}/h1_2_handless.urdf'
 URDF_HANDLESS_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_handless_ros.urdf'
 URDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere.urdf'
-SRDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere_collision.srdf'
 # data path
 HOME = str(Path.home())
 LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'
 CONFIG_DIR = Path(f'{PACKAGE_PATH}/config')
-COLLISION_DATA_DIR = f'{PACKAGE_PATH}/data/collision'
-DUMMY_POINTCLOUD_PATH = f'{COLLISION_DATA_DIR}/pointcloud.npy'
+PLANNER_DATA_DIR = f'{PACKAGE_PATH}/data/planner'
+POINTCLOUD_PATH = f'{PLANNER_DATA_DIR}/pointcloud.npy'
+GENERATED_GRASPS_PATH = f'{PLANNER_DATA_DIR}/generated_grasps.npy'
+FILTERED_GENERATED_GRASPS_PATH = (
+    f'{PLANNER_DATA_DIR}/generated_grasps_filtered.npy'
+)

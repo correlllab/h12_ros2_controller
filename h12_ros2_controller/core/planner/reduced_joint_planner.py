@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from ompl import base as ob
 from ompl import geometric as og
 from dataclasses import dataclass, field
@@ -17,7 +18,7 @@ class PlannerConfig:
     '''Configuration for reduced joint-space planning'''
 
     planner: str = 'RRTConnect'
-    timeout: float = 1.0
+    timeout: float | None = 1.0
     range: float = 0.0
     try_direct: bool = True
     simplify: bool = True
@@ -74,11 +75,8 @@ class ReducedJointPlanner:
         self.active_mask = np.ones(self.nq, dtype=bool)
         self.pinned_q = np.zeros(self.nq)
 
-        # obstacle point-cloud checker, empty until a cloud is provided
-        self.point_cloud_checker = PointCloudChecker(
-            self.robot_model,
-            margin=self.config.point_cloud_margin,
-        )
+        # create point-cloud checks only when an obstacle cloud is configured
+        self.point_cloud_checker = None
         if self.config.point_cloud_path:
             self.set_point_cloud(np.load(self.config.point_cloud_path))
 
@@ -247,7 +245,10 @@ class ReducedJointPlanner:
             )
         if not self.robot_model.check_collision_free_reduced(q):
             return f'{name} is in self-collision'
-        if not self.point_cloud_checker.check_collision_free_reduced(q):
+        if (
+            self.point_cloud_checker is not None and
+            not self.point_cloud_checker.check_collision_free_reduced(q)
+        ):
             return f'{name} collides with point cloud'
         reason = self._workspace_constraint_failure(q, name)
         if reason:
@@ -531,9 +532,14 @@ class ReducedJointPlanner:
 
     def set_point_cloud(self, points):
         '''Update the obstacle point cloud used during validity checks'''
+        if self.point_cloud_checker is None:
+            self.point_cloud_checker = PointCloudChecker(
+                self.robot_model,
+                margin=self.config.point_cloud_margin,
+            )
         self.point_cloud_checker.update_point_cloud(points)
 
-    def plan(self, start, goal, active_mask=None):
+    def plan(self, start, goal, active_mask=None, raw_ompl_only=False):
         '''Plan a collision-free path between reduced joint configurations'''
         start = self._as_reduced_array(start, 'start')
         goal = self._as_reduced_array(goal, 'goal')
@@ -557,16 +563,25 @@ class ReducedJointPlanner:
                     path=self._empty_path(),
                     reason=reason,
                     planner_name=self.config.planner,
-                    metadata={'validity_checks': self.validity_checks},
+                    metadata={
+                        'validity_checks': self.validity_checks,
+                        'ompl_solve_time': 0.0,
+                        'postprocess_time': 0.0,
+                    },
                 )
 
         self.validity_checks = 0
         direct_failure = ''
-        if self.config.try_direct:
+        if self.config.try_direct and not raw_ompl_only:
+            direct_started = time.perf_counter()
             path, metadata = self._direct_path(start, goal)
             direct_failure = self._path_validity_failure(path)
             if not direct_failure:
                 metadata['validity_checks'] = self.validity_checks
+                metadata['ompl_solve_time'] = 0.0
+                metadata['postprocess_time'] = (
+                    time.perf_counter() - direct_started
+                )
                 return PlanResult(
                     success=True,
                     path=path,
@@ -586,14 +601,40 @@ class ReducedJointPlanner:
             self._make_state(goal),
         )
 
-        solved = self.ss.solve(float(self.config.timeout))
+        ompl_started = time.perf_counter()
+        if self.config.timeout is None:
+            solved = self.ss.solve(ob.plannerNonTerminatingCondition())
+        else:
+            solved = self.ss.solve(float(self.config.timeout))
+        ompl_solve_time = time.perf_counter() - ompl_started
         if not bool(solved):
             return PlanResult(
                 success=False,
                 path=self._empty_path(),
                 reason=self._timeout_reason(direct_failure),
+                planning_time=ompl_solve_time,
                 planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
+                metadata={
+                    'validity_checks': self.validity_checks,
+                    'ompl_solve_time': ompl_solve_time,
+                    'postprocess_time': 0.0,
+                },
+            )
+
+        if raw_ompl_only:
+            path = self._path_to_array(self.ss.getSolutionPath(), cap=False)
+            return PlanResult(
+                success=True,
+                path=path,
+                reason='raw ompl solution',
+                planning_time=ompl_solve_time,
+                planner_name=self.config.planner,
+                metadata={
+                    'validity_checks': self.validity_checks,
+                    'ompl_solve_time': ompl_solve_time,
+                    'postprocess_time': 0.0,
+                    'raw_ompl_only': True,
+                },
             )
 
         # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
@@ -611,6 +652,7 @@ class ReducedJointPlanner:
             )
 
         # simplify once, then validate the final candidate path
+        postprocess_started = time.perf_counter()
         path = self.ss.getSolutionPath()
         self._shorten_path(path)
         sparse_path = self._path_to_array(path, cap=False)
@@ -623,11 +665,16 @@ class ReducedJointPlanner:
         metadata['actual_waypoints'] = path_array.shape[0]
         reason = self._path_validity_failure(path_array)
         metadata['validity_checks'] = self.validity_checks
+        metadata['ompl_solve_time'] = ompl_solve_time
+        metadata['postprocess_time'] = (
+            time.perf_counter() - postprocess_started
+        )
         if reason:
             return PlanResult(
                 success=False,
                 path=path_array,
                 reason=reason,
+                planning_time=ompl_solve_time,
                 planner_name=self.config.planner,
                 metadata=metadata,
             )
@@ -636,6 +683,7 @@ class ReducedJointPlanner:
             success=True,
             path=path_array,
             reason='success',
+            planning_time=ompl_solve_time,
             planner_name=self.config.planner,
             metadata=metadata,
         )
@@ -721,7 +769,12 @@ class ReducedJointPlanner:
             simplifier = og.PathSimplifier(self.si)
             simplifier.ropeShortcutPath(path)
             simplifier.reduceVertices(path)
-            # b-spline smoothing can overshoot into collision; skip it when a
-            # point cloud obstacle is active since that overshoot is unchecked
-            if smooth and not self.point_cloud_checker.has_point_cloud:
+            # b-spline smoothing can overshoot into an active point cloud
+            if (
+                smooth and
+                (
+                    self.point_cloud_checker is None or
+                    not self.point_cloud_checker.has_point_cloud
+                )
+            ):
                 simplifier.smoothBSpline(path)

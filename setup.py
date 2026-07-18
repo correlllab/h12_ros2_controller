@@ -13,7 +13,7 @@ data_files = [
     ('share/' + package_name + '/launch', glob('launch/*.py')),
     ('share/' + package_name + '/rviz', glob('rviz/*.rviz')),
     ('share/' + package_name + '/config', glob('config/*.yaml')),
-    ('share/' + package_name + '/data/collision', glob('data/collision/*.npy')),
+    ('share/' + package_name + '/data/planner', glob('data/planner/*.npy')),
 ]
 
 setup(
@@ -41,7 +41,6 @@ setup(
             'frame_task_client = h12_ros2_controller.ros2.frame_task_client:main',
             'hand_controller_node = h12_ros2_controller.ros2.hand_controller_node:main',
             'hand_cmd_gui = h12_ros2_controller.ros2.hand_cmd_gui:main',
-            'planner_example = h12_ros2_controller.example.planner_example:main',
         ],
     },
 )
