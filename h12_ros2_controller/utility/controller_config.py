@@ -16,7 +16,6 @@ from h12_ros2_controller.utility.joint_limits import (
 DEFAULT_CONFIG_NAME = 'debug.yaml'
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
-
 def _ensure_yaml_extension(config_path: Path) -> Path:
     '''Append .yaml when config path has no suffix'''
     if config_path.suffix:
@@ -45,6 +44,17 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 def _validate_mode(mode):
     if mode not in ('debug', 'sport'):
         raise ValueError(f"Config mode must be 'debug' or 'sport', got: {mode}")
+
+
+def _validate_zmp(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'zmp' not in raw:
+        return {}
+
+    zmp = raw['zmp']
+    if not isinstance(zmp, dict):
+        raise ValueError('zmp must be a mapping when provided')
+
+    return zmp
 
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
@@ -181,7 +191,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
     momentum_ddp = raw.get('momentum_ddp', {})
-    zmp = raw.get('zmp', {})
+    zmp = _validate_zmp(raw)
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))

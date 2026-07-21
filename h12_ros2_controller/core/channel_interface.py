@@ -1,4 +1,5 @@
 import time
+import copy
 import threading
 import numpy as np
 from abc import ABC, abstractmethod
@@ -50,7 +51,7 @@ class StateSubscriber:
     def _subscribe_low_state(self, msg: LowState_):
         with self._subscriber_lock:
             self._time_stamp = time.time()
-            self._imu_state = msg.imu_state
+            self._imu_state = copy.deepcopy(msg.imu_state)
             for i in range(NUM_MOTOR):
                 self._mode[i] = msg.motor_state[i].mode
                 self._q[i] = msg.motor_state[i].q
@@ -67,7 +68,7 @@ class StateSubscriber:
         with self._subscriber_lock:
             return {
                 'time_stamp': self._time_stamp,
-                'imu_state': self._imu_state,
+                'imu_state': copy.deepcopy(self._imu_state),
                 'mode': self._mode.copy(),
                 'q': self._q.copy(),
                 'dq': self._dq.copy(),
