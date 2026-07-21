@@ -35,6 +35,9 @@ class UpperController:
         self.v_lim = float(controller_cfg.get('v_lim', 1.0))
         self.w_lim = float(controller_cfg.get('w_lim', 2.0))
         self.dq_lim = float(controller_cfg.get('dq_lim', 1.0))
+        # global multiplier on commanded arm speed (1.0 = full speed); set
+        # below 1.0 (e.g. 0.25 for slow mode) to move the arms more slowly
+        self.speed_scale = 1.0
         self.d_min = float(controller_cfg.get('d_min', 0.02))
         self.torso_target = float(controller_cfg.get('torso_target', 0.0))
         self.visualize = visualize
@@ -352,7 +355,8 @@ class UpperController:
             q[self.robot_model.reduced_mask] = q_reduced
             self._apply_joint_position(q)
             self.update_robot_model()
-            time.sleep(self.dt)
+            # hold each waypoint longer when speed_scale < 1.0 (slow mode)
+            time.sleep(self.dt / max(self.speed_scale, 1e-6))
 
     def update_robot_model(self):
         # update kinematics
@@ -588,8 +592,8 @@ class UpperController:
 
         vel_scaled = np.zeros_like(vel)
         vel_scaled[:13] = vel[:13]
-        vel_scaled[LEFT_ARM_INDEX] = left_scaler * vel[LEFT_ARM_INDEX]
-        vel_scaled[RIGHT_ARM_INDEX] = right_scaler * vel[RIGHT_ARM_INDEX]
+        vel_scaled[LEFT_ARM_INDEX] = self.speed_scale * left_scaler * vel[LEFT_ARM_INDEX]
+        vel_scaled[RIGHT_ARM_INDEX] = self.speed_scale * right_scaler * vel[RIGHT_ARM_INDEX]
 
         return vel_scaled
 

@@ -24,6 +24,9 @@ from h12_ros2_controller.utility.path_definition_ros import (
 )
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
+# arm speed multiplier applied when a FrameTask goal requests slow_mode
+SLOW_MODE_SCALE = 0.25
+
 class FrameTaskServer(Node):
     def __init__(self,
                  timeout=None,
@@ -173,10 +176,21 @@ class FrameTaskServer(Node):
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
             plan = goal.plan
-            if plan:
-                return self._plan_frame_task_callback(goal_handle, timeout)
-            else:
-                return self._direct_frame_task_callback(goal_handle, timeout)
+            # slow the arm for this goal only; restore full speed afterwards
+            self.controller.speed_scale = (
+                SLOW_MODE_SCALE if goal.slow_mode else 1.0
+            )
+            if goal.slow_mode:
+                self.get_logger().info(
+                    f'Slow mode enabled (speed_scale={SLOW_MODE_SCALE})'
+                )
+            try:
+                if plan:
+                    return self._plan_frame_task_callback(goal_handle, timeout)
+                else:
+                    return self._direct_frame_task_callback(goal_handle, timeout)
+            finally:
+                self.controller.speed_scale = 1.0
 
     def _direct_frame_task_callback(self, goal_handle, timeout):
         # main loop
