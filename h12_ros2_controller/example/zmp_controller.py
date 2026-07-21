@@ -1,10 +1,8 @@
 import time
 import argparse
+
 import numpy as np
 
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.controller.zmp_legacy import format_vector
 from h12_ros2_controller.core.controller.zmp_controller_legacy import (
     ZmpController,
@@ -85,15 +83,6 @@ def main(config_name='balance_safety_split.yaml', status_interval=1.0):
 
     print('ZMP balance controller ready')
     print(f'config: {config_name}')
-    print('manual tuning:')
-    print('  sensitivity: zmp.thresholds.*, zmp.hysteresis.enter_cycles')
-    print('  response size: zmp.target.response_time, max_momentum,')
-    print('    min_momentum_norm, zmp.gains.*')
-    print('  motion shape: zmp.ddp.momentum_duration, return_duration,')
-    print('    return_timeout, max_velocity')
-    print('  smoothness/retriggering: zmp.ddp.min_replan_interval,')
-    print('    zmp.blending.interrupt_ticks')
-    print('  restrictiveness: zmp.ddp.return_w_q, terminal_w_q')
     print('press Ctrl-C to stop')
 
     next_status_time = 0.0
@@ -122,14 +111,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='ZMP balance controller runner'
     )
-    parser.add_argument('--config',
-                        type=str,
-                        default='balance_safety_split.yaml',
-                        help='YAML file name under config/')
-    parser.add_argument('--status-interval',
-                        type=float,
-                        default=1.0,
-                        help='Seconds between status prints')
+    parser.add_argument('--config', type=str, default='balance_safety_split.yaml')
+    parser.add_argument('--status-interval', type=float, default=1.0)
     args = parser.parse_args()
 
     main(

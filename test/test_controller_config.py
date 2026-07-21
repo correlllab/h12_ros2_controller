@@ -4,6 +4,7 @@ import pytest
 
 from h12_ros2_controller.utility.joint_definition import UPPER_BODY_INDEX
 from h12_ros2_controller.utility.controller_config import (
+    DEFAULT_CONFIG_DIR,
     load_controller_config,
 )
 
@@ -13,69 +14,54 @@ def _gain_list(value):
     return f'[{values}]'
 
 
-def _write_config(tmp_path, planner_section):
+def _write_config(tmp_path, extra_section):
     config_path = tmp_path / 'test.yaml'
-    content = dedent(
-        f'''
-        mode: debug
-
-        gains:
-          kp: {_gain_list(1.0)}
-          kd: {_gain_list(0.1)}
-          ki: {_gain_list(0.0)}
-        '''
-    )
-    content = f'{content}\n{planner_section.lstrip()}'
     config_path.write_text(
-        content,
+        dedent(
+            f'''
+            mode: debug
+
+            gains:
+              kp: {_gain_list(1.0)}
+              kd: {_gain_list(0.1)}
+              ki: {_gain_list(0.0)}
+
+            {extra_section}
+            '''
+        ),
         encoding='utf-8',
     )
     return config_path
 
 
-def test_load_controller_config_preserves_planner_section(tmp_path):
-    _write_config(
-        tmp_path,
-        dedent(
-            '''
-            planner:
-              planner: RRTstar
-              timeout: 2.5
-              range: 0.15
-              moving_speed: 0.2
-              dt: 0.02
-              min_interpolation_steps: 3
-              max_interpolation_steps: 250
-              frame_names:
-                - left_grasp_frame
-            '''
-        ),
-    )
+def test_load_controller_config_preserves_empty_zmp_mapping(tmp_path):
+    _write_config(tmp_path, 'zmp: {}')
 
     config = load_controller_config('test.yaml', config_dir=tmp_path)
 
-    assert config['planner'] == {
-        'planner': 'RRTstar',
-        'timeout': 2.5,
-        'range': 0.15,
-        'moving_speed': 0.2,
-        'dt': 0.02,
-        'min_interpolation_steps': 3,
-        'max_interpolation_steps': 250,
-        'frame_names': ['left_grasp_frame'],
-    }
+    assert config['zmp'] == {}
 
 
-def test_load_controller_config_rejects_non_mapping_planner(tmp_path):
-    _write_config(
-        tmp_path,
-        dedent(
-            '''
-            planner:
-              - RRTConnect
-            '''
-        ),
-    )
+@pytest.mark.parametrize('zmp_section', ('zmp: invalid',))
+def test_load_controller_config_rejects_non_mapping_zmp(tmp_path, zmp_section):
+    _write_config(tmp_path, zmp_section)
 
-    with pytest.raises(ValueError, match='planner must be a mapping'):
+    with pytest.raises(
+            ValueError, match='zmp must be a mapping when provided'):
         load_controller_config('test.yaml', config_dir=tmp_path)
+
+
+@pytest.mark.parametrize(
+    ('name', 'topic'),
+    (
+        ('balance_debug.yaml', 'rt/lowcmd'),
+        ('balance_safety_full.yaml', 'rt/safety/lowcmd_in'),
+        ('balance_safety_split.yaml', 'rt/safety/lowcmd_upper_in'),
+        ('balance_sport.yaml', 'rt/arm_sdk'),
+    ),
+)
+def test_checked_in_profiles_keep_empty_zmp_mapping(name, topic):
+    config = load_controller_config(name, config_dir=DEFAULT_CONFIG_DIR)
+
+    assert config['topics']['low_cmd'] == topic
+    assert config['zmp'] == {}
