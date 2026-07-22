@@ -55,7 +55,7 @@ planner:
   frame_y_min: -0.35
   frame_y_max: 0.35
   # global z floor for frame_names
-  frame_z_min: 0.025
+  frame_z_min: 0.0
   # zero-pose z references: head camera=0.68789 m, lidar=0.67980 m
   # shoulder z=0.43358 m
   frame_z_max: 0.50
