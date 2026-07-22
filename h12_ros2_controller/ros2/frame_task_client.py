@@ -70,10 +70,11 @@ class FrameTaskClient(Node):
         self.get_logger().info(f'Linear errors: {errors_linear}')
         self.get_logger().info(f'Angular errors: {errors_angular}')
 
-    def send_named_config_goal(self, config_name: str, plan=False):
+    def send_named_config_goal(self, config_name: str, plan=False, slow_mode=False):
         goal_msg = NamedConfig.Goal()
         goal_msg.config_name = config_name
         goal_msg.plan = plan
+        goal_msg.slow_mode = slow_mode
 
         self.get_logger().info('Waiting for named config action server...')
         self.named_config_client.wait_for_server()

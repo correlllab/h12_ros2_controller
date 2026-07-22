@@ -118,10 +118,11 @@ class DualArmClient(Node):
         self.get_logger().info(f'Right Error Linear: {feedback.right_error_linear:.4f}, ' +
                                f'Right Error Angular: {feedback.right_error_angular:.4f}')
 
-    def send_named_config_goal(self, config_name: str, plan=False):
+    def send_named_config_goal(self, config_name: str, plan=False, slow_mode=False):
         goal_msg = NamedConfig.Goal()
         goal_msg.config_name = config_name
         goal_msg.plan = plan
+        goal_msg.slow_mode = slow_mode
 
         self.get_logger().info('Waiting for named config action server...')
         self.named_config_client.wait_for_server()

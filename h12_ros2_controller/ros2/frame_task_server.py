@@ -26,6 +26,9 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
 # arm speed multiplier applied when a FrameTask goal requests slow_mode
 SLOW_MODE_SCALE = 0.25
+# a duration is a TIMEOUT, so a slow move needs a proportionally longer budget
+# to cover the same distance
+SLOW_MODE_TIME_SCALE = 1.0 / SLOW_MODE_SCALE
 
 class FrameTaskServer(Node):
     def __init__(self,
@@ -370,18 +373,32 @@ class FrameTaskServer(Node):
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
             plan = goal.plan
-            if plan:
-                return self._plan_named_config_callback(
-                    goal_handle,
-                    q_reduced,
-                    timeout,
+            # slow the arm for this goal only; restore full speed afterwards
+            self.controller.speed_scale = (
+                SLOW_MODE_SCALE if goal.slow_mode else 1.0
+            )
+            if goal.slow_mode:
+                # a duration is a timeout, so stretch it to match the lower
+                # speed or the move ends short of the target
+                timeout *= SLOW_MODE_TIME_SCALE
+                self.get_logger().info(
+                    f'Slow mode enabled (speed_scale={SLOW_MODE_SCALE})'
                 )
-            else:
-                return self._direct_named_config_callback(
-                    goal_handle,
-                    q_reduced,
-                    timeout,
-                )
+            try:
+                if plan:
+                    return self._plan_named_config_callback(
+                        goal_handle,
+                        q_reduced,
+                        timeout,
+                    )
+                else:
+                    return self._direct_named_config_callback(
+                        goal_handle,
+                        q_reduced,
+                        timeout,
+                    )
+            finally:
+                self.controller.speed_scale = 1.0
 
     def _direct_named_config_callback(self, goal_handle, q_reduced, timeout):
         # main loop
