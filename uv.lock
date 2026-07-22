@@ -1111,7 +1111,7 @@ requires-dist = [
     { name = "qpsolvers", extras = ["clarabel", "cvxopt", "daqp", "ecos", "highs", "osqp", "piqp", "qpalm", "qpax", "quadprog", "scs", "sip"], specifier = ">=4.10.0" },
     { name = "scipy", specifier = ">=1.15.3" },
     { name = "tqdm", specifier = ">=4.67.3" },
-    { name = "unitree-sdk2py", editable = "../../../unitree_sdk2_python" },
+    { name = "unitree-sdk2py", editable = "submodules/unitree_sdk2_python" },
 ]
 
 [[package]]
@@ -3939,7 +3939,7 @@ wheels = [
 [[package]]
 name = "unitree-sdk2py"
 version = "1.0.1"
-source = { editable = "../../../unitree_sdk2_python" }
+source = { editable = "submodules/unitree_sdk2_python" }
 dependencies = [
     { name = "cyclonedds" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
