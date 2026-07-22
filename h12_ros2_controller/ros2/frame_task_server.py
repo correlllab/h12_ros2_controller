@@ -65,7 +65,7 @@ class FrameTaskServer(Node):
             SRDF_MAGPIE_SPHERE_PATH,
             init=True,
             handless=False,
-            visualize=False,
+            visualize=True,
             config=config,
         )
 

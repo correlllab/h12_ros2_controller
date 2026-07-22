@@ -9,14 +9,14 @@ network:
   interface: ''
 
 controller:
-  v_lim: 1.0
-  w_lim: 2.0
-  dq_lim: 1.0
+  v_lim: 0.5
+  w_lim: 1.0
+  dq_lim: 0.5
   d_min: 0.02
   timeout: 5.0
   torso_target: 0.0
   threshold_ik: 0.0001
-  threshold_joint: 0.001
+  threshold_joint: 0.01
   threshold_linear: 0.001
   threshold_angular: 0.002
 
@@ -34,7 +34,7 @@ planner:
   simplify_time: 1.0
   shortcut: true
   # target grasp-frame Cartesian speed in m/s
-  moving_speed: 0.30
+  moving_speed: 0.15
   min_interpolation_steps: 30
   max_interpolation_steps: 300
   # sampled validity spacing in joint space
