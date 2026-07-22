@@ -49,10 +49,18 @@ planner:
   frame_names:
     - left_grasp_frame
     - right_grasp_frame
+  # maximum forward reach for grasp frames
+  frame_x_max: 0.70
+  # prep grasp-frame y limits
+  frame_y_min: -0.35
+  frame_y_max: 0.35
   # global z floor for frame_names
-  frame_z_min: 0.0
-  # allowed drift below z floor
-  frame_z_min_margin: 0.01
+  frame_z_min: 0.025
+  # zero-pose z references: head camera=0.68789 m, lidar=0.67980 m
+  # shoulder z=0.43358 m
+  frame_z_max: 0.50
+  # allowed drift beyond frame limits
+  frame_limit_margin: 0.01
   # allowed drift below endpoint z min
   frame_z_corridor_margin: 0.05
 

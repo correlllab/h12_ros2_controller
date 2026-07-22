@@ -152,8 +152,12 @@ class UpperController:
             ),
             frame_names=tuple(cfg.get('frame_names', defaults.frame_names)),
             frame_z_min=cfg.get('frame_z_min', defaults.frame_z_min),
-            frame_z_min_margin=float(
-                cfg.get('frame_z_min_margin', defaults.frame_z_min_margin)
+            frame_x_max=cfg.get('frame_x_max', defaults.frame_x_max),
+            frame_y_min=cfg.get('frame_y_min', defaults.frame_y_min),
+            frame_y_max=cfg.get('frame_y_max', defaults.frame_y_max),
+            frame_z_max=cfg.get('frame_z_max', defaults.frame_z_max),
+            frame_limit_margin=float(
+                cfg.get('frame_limit_margin', defaults.frame_limit_margin)
             ),
             frame_z_corridor_margin=float(
                 cfg.get(

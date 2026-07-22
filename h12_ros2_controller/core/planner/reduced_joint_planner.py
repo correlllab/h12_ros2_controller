@@ -28,8 +28,12 @@ class PlannerConfig:
     validity_resolution: float = 0.0025
     constraint_check_steps: int = 10
     frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
+    frame_x_max: float = 0.70
+    frame_y_min: float = None
+    frame_y_max: float = None
     frame_z_min: float = None
-    frame_z_min_margin: float = 1e-3
+    frame_z_max: float = 0.50
+    frame_limit_margin: float = 1e-3
     frame_z_corridor_margin: float = 0.05
 
 
@@ -56,6 +60,7 @@ class ReducedJointPlanner:
         self.validity_checks = 0
         self.frame_names = tuple(self.config.frame_names)
         self.frame_min_z = self._make_frame_floor_map(self.config.frame_z_min)
+        self.frame_max_z = self._make_frame_floor_map(self.config.frame_z_max)
         self.corridor_min_z = {}
         # active joint mask and pinned values for inactive joints
         self.active_mask = np.ones(self.nq, dtype=bool)
@@ -92,6 +97,18 @@ class ReducedJointPlanner:
                 'Planner max_interpolation_steps must be at least '
                 'min_interpolation_steps'
             )
+        if self.config.frame_limit_margin < 0.0:
+            raise ValueError('Planner frame_limit_margin must be non-negative')
+        if self.config.frame_z_corridor_margin < 0.0:
+            raise ValueError(
+                'Planner frame_z_corridor_margin must be non-negative'
+            )
+        if (
+            self.config.frame_y_min is not None and
+            self.config.frame_y_max is not None and
+            self.config.frame_y_min > self.config.frame_y_max
+        ):
+            raise ValueError('Planner frame_y_min must not exceed frame_y_max')
 
     def _make_space(self):
         # copy Pinocchio reduced joint limits into an OMPL real-vector space
@@ -331,20 +348,57 @@ class ReducedJointPlanner:
         )
 
     def _workspace_constraint_failure(self, q_reduced, name):
-        if not self.frame_min_z and not self.corridor_min_z:
+        if (
+            not self.frame_min_z and
+            not self.frame_max_z and
+            not self.corridor_min_z and
+            self.config.frame_x_max is None and
+            self.config.frame_y_min is None and
+            self.config.frame_y_max is None
+        ):
             return ''
 
-        # keep selected frames above the configured and endpoint-derived floors
-        margin = self.config.frame_z_min_margin
+        # keep selected frames within configured workspace limits
+        margin = self.config.frame_limit_margin
         q = self._motor_q(q_reduced)
         for frame_name in self.frame_names:
-            z = self.robot_model.get_frame_position(frame_name, q)[2]
+            position = self.robot_model.get_frame_position(frame_name, q)
+            x = position[0]
+            y = position[1]
+            z = position[2]
             min_z = self.frame_min_z.get(frame_name)
             corridor_z = self.corridor_min_z.get(frame_name)
             if corridor_z is not None:
                 min_z = corridor_z if min_z is None else max(min_z, corridor_z)
             if min_z is not None and z + margin < min_z:
                 return f'{name} moves {frame_name} below z={min_z:.4f}'
+            max_z = self.frame_max_z.get(frame_name)
+            if max_z is not None and z - margin > max_z:
+                return f'{name} moves {frame_name} above z={max_z:.4f}'
+            if (
+                self.config.frame_x_max is not None and
+                x - margin > self.config.frame_x_max
+            ):
+                return (
+                    f'{name} moves {frame_name} beyond '
+                    f'x={self.config.frame_x_max:.4f}'
+                )
+            if (
+                self.config.frame_y_min is not None and
+                y + margin < self.config.frame_y_min
+            ):
+                return (
+                    f'{name} moves {frame_name} below '
+                    f'y={self.config.frame_y_min:.4f}'
+                )
+            if (
+                self.config.frame_y_max is not None and
+                y - margin > self.config.frame_y_max
+            ):
+                return (
+                    f'{name} moves {frame_name} above '
+                    f'y={self.config.frame_y_max:.4f}'
+                )
         return ''
 
     def _make_frame_floor_map(self, min_z):

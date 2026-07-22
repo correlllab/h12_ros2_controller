@@ -90,7 +90,9 @@ def parse_args():
     parser.add_argument('--max-interpolation-steps', type=int, default=300)
     parser.add_argument('--validity-resolution', type=float, default=0.0025)
     parser.add_argument('--constraint-check-steps', type=int, default=10)
-    parser.add_argument('--frame-z-min-margin', type=float, default=1e-3)
+    parser.add_argument('--frame-limit-margin', type=float, default=1e-3)
+    parser.add_argument('--frame-x-max', type=float, default=0.70)
+    parser.add_argument('--frame-z-max', type=float, default=0.50)
     parser.add_argument('--frame-z-corridor-margin', type=float, default=0.05)
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--visualize-delay', type=float, default=0.05)
@@ -114,7 +116,9 @@ def main():
         max_interpolation_steps=args.max_interpolation_steps,
         validity_resolution=args.validity_resolution,
         constraint_check_steps=args.constraint_check_steps,
-        frame_z_min_margin=args.frame_z_min_margin,
+        frame_limit_margin=args.frame_limit_margin,
+        frame_x_max=args.frame_x_max,
+        frame_z_max=args.frame_z_max,
         frame_z_corridor_margin=args.frame_z_corridor_margin,
     )
     planner = ReducedJointPlanner(robot_model, config=config)

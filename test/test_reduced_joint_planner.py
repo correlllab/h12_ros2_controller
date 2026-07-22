@@ -34,7 +34,7 @@ class FakeRobotModel:
         return self.collision_free
 
     def get_frame_position(self, frame_name, q):
-        return np.array([0.0, 0.0, q[0]])
+        return np.array([q[1], q[1], q[0]])
 
 
 def test_requires_initialized_reduced_model():
@@ -146,7 +146,10 @@ def test_path_validation_rejects_z_corridor_dip():
     pytest.importorskip('ompl')
     planner = ReducedJointPlanner(
         FakeRobotModel(),
-        config=PlannerConfig(constraint_check_steps=2),
+        config=PlannerConfig(
+            constraint_check_steps=2,
+            frame_z_max=None,
+        ),
     )
     start = np.array([1.0, 0.0])
     goal = np.array([1.0, 0.0])
@@ -160,6 +163,88 @@ def test_path_validation_rejects_z_corridor_dip():
     reason = planner._path_validity_failure(path)
 
     assert 'below z=' in reason
+
+
+def test_z_corridor_uses_its_own_margin():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(
+            frame_limit_margin=0.01,
+            frame_z_corridor_margin=0.05,
+        ),
+    )
+    start = np.array([1.0, 0.0])
+
+    planner._set_workspace_corridor(start, start)
+
+    assert planner.corridor_min_z['left_grasp_frame'] == pytest.approx(0.95)
+
+
+def test_state_validation_rejects_y_limit_violation():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(
+            frame_y_min=-0.5,
+            frame_y_max=0.5,
+            frame_limit_margin=0.01,
+        ),
+    )
+
+    result = planner.plan([0.0, 0.52], [0.0, 0.0])
+
+    assert not result.success
+    assert result.reason == 'start moves left_grasp_frame above y=0.5000'
+
+
+def test_state_validation_allows_y_limit_margin():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(
+            frame_y_min=-0.5,
+            frame_y_max=0.5,
+            frame_limit_margin=0.01,
+        ),
+    )
+
+    reason = planner._validity_failure(np.array([0.0, 0.51]), 'state')
+
+    assert reason == ''
+
+
+def test_state_validation_rejects_x_limit_violation():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(
+            frame_x_max=0.7,
+            frame_limit_margin=0.01,
+        ),
+    )
+
+    result = planner.plan([0.0, 0.72], [0.0, 0.0])
+
+    assert not result.success
+    assert result.reason == 'start moves left_grasp_frame beyond x=0.7000'
+
+
+def test_state_validation_rejects_z_limit_violation():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(),
+        config=PlannerConfig(
+            frame_z_max=0.5,
+            frame_limit_margin=0.01,
+        ),
+    )
+
+    result = planner.plan([0.52, 0.0], [0.0, 0.0])
+
+    assert not result.success
+    assert result.reason == 'start moves left_grasp_frame above z=0.5000'
+    assert planner._validity_failure(np.array([0.51, 0.0]), 'state') == ''
 
 
 def test_plan_between_named_configs_smoke():
