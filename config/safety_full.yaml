@@ -9,9 +9,9 @@ network:
   interface: ''
 
 controller:
-  v_lim: 0.5
-  w_lim: 1.0
-  dq_lim: 0.5
+  v_lim: 1.0
+  w_lim: 2.0
+  dq_lim: 1.0
   d_min: 0.02
   timeout: 5.0
   torso_target: 0.0
@@ -34,7 +34,7 @@ planner:
   simplify_time: 1.0
   shortcut: true
   # target grasp-frame Cartesian speed in m/s
-  moving_speed: 0.15
+  moving_speed: 0.30
   min_interpolation_steps: 30
   max_interpolation_steps: 300
   # sampled validity spacing in joint space
