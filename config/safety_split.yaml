@@ -16,7 +16,7 @@ controller:
   timeout: 5.0
   torso_target: 0.0
   threshold_ik: 0.0001
-  threshold_joint: 0.001
+  threshold_joint: 0.01
   threshold_linear: 0.001
   threshold_angular: 0.002
 
@@ -45,7 +45,7 @@ planner:
     - left_grasp_frame
     - right_grasp_frame
   # global z floor for frame_names
-  frame_z_min: 0.0
+  frame_z_min: 0.025
   # allowed drift below z floor
   frame_z_min_margin: 0.01
   # allowed drift below endpoint z min
