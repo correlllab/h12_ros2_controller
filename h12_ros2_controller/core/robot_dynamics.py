@@ -22,6 +22,10 @@ class RobotDynamics:
         '''Create a Crocoddyl momentum planner for one arm'''
         return MomentumDDP(self.robot_model, dt=dt, config=config, arm=arm)
 
+    def create_balance_ddp(self, dt=None, config=None):
+        '''Create a direct balance-to-arm Crocoddyl controller'''
+        return BalanceDDP(self.robot_model, dt=dt, config=config)
+
     def get_com(self, q: np.ndarray=None):
         robot = self.robot_model
         q = robot.state['q'] if q is None else q
@@ -646,3 +650,420 @@ class MomentumDDP:
                 return data
 
         return MomentumActionModel
+
+
+@dataclass
+class BalancePlan:
+    '''One-step Crocoddyl balance solution'''
+
+    solved: bool
+    xs: np.ndarray
+    us: np.ndarray
+    solver: object
+    arm_ids: list[int]
+    balance_error: np.ndarray
+    predicted_error: np.ndarray
+    measured_momentum: np.ndarray
+    seed_momentum: np.ndarray
+    commanded_momentum: np.ndarray
+    solve_time: float
+
+    def body_velocity(self, nv):
+        '''Expand the first arm control into a motor velocity vector'''
+        velocity = np.zeros(nv, dtype=np.float64)
+        if len(self.us):
+            velocity[self.arm_ids] = self.us[0]
+        return velocity
+
+
+def predict_balance_error(balance_error, momentum, measured_momentum,
+                          mass, dt, effect_sign=1.0):
+    '''Predict planar balance error after an arm momentum change'''
+    balance_error = np.asarray(balance_error, dtype=np.float64)
+    momentum_delta = (
+        np.asarray(momentum, dtype=np.float64)
+        - np.asarray(measured_momentum, dtype=np.float64)
+    )
+    scale = max(float(mass) * 9.81 * float(dt), 1e-9)
+    planar_effect = np.array(
+        [momentum_delta[1], -momentum_delta[0]],
+        dtype=np.float64,
+    ) / scale
+    return balance_error + float(effect_sign) * planar_effect
+
+
+class BalanceDDP:
+    '''One-step Crocoddyl controller from balance error to arm velocity'''
+
+    def __init__(self, robot_model, dt=None, config=None):
+        try:
+            import crocoddyl
+        except ImportError as err:
+            raise ImportError(
+                'BalanceDDP requires the optional crocoddyl dependency'
+            ) from err
+
+        self._crocoddyl = crocoddyl
+        self.robot_model = robot_model
+        self.dt = float(dt if dt is not None else 0.04)
+        cfg = (config or {}).get('zmp', {}).get('ddp', {})
+        self.maxiter = int(cfg.get('maxiter', 2))
+        self.w_balance = float(cfg.get('w_balance', 1.0))
+        self.w_velocity = float(cfg.get('w_velocity', 1e-4))
+        self.w_posture = float(cfg.get('w_posture', 1e-3))
+        self.w_terminal_posture = float(
+            cfg.get('w_terminal_posture', 1e-3)
+        )
+        self.w_limit = float(cfg.get('w_limit', 100.0))
+        self.max_velocity = float(cfg.get('max_velocity', 4.0))
+        self.damping = float(cfg.get('damping', 1e-4))
+        self.effect_sign = float(cfg.get('effect_sign', 1.0))
+        self.arm_ids = list(LEFT_ARM_INDEX) + list(RIGHT_ARM_INDEX)
+        self.arm_model = self._build_arm_model()
+        self.mass = float(robot_model.total_mass)
+
+    def solve(self, balance_error, q_ref=None):
+        '''Solve one feedback action for the current balance error'''
+        started = time.perf_counter()
+        balance_error = np.asarray(balance_error, dtype=np.float64)
+        q = self.current_arm_q()
+        dq = self.current_arm_dq()
+        q_ref = q if q_ref is None else np.asarray(q_ref, dtype=np.float64)
+        measured_momentum = self.angular_momentum(q, dq)
+        action_model = self._make_action_model_class()
+        running = action_model(
+            self.arm_model,
+            q_ref,
+            balance_error,
+            measured_momentum,
+            dq,
+            self.mass,
+            self.dt,
+            self.effect_sign,
+            self.w_balance,
+            self.w_velocity,
+            self.w_posture,
+            self.w_limit,
+            self.max_velocity,
+        )
+        terminal = action_model(
+            self.arm_model,
+            q_ref,
+            np.zeros(2),
+            measured_momentum,
+            dq,
+            self.mass,
+            self.dt,
+            self.effect_sign,
+            0.0,
+            0.0,
+            self.w_terminal_posture,
+            self.w_limit,
+            self.max_velocity,
+            is_terminal=True,
+        )
+        problem = self._crocoddyl.ShootingProblem(
+            q,
+            [running],
+            terminal,
+        )
+        solver = self._crocoddyl.SolverDDP(problem)
+        velocity_seed = self._target_joint_velocity(
+            q,
+            dq,
+            balance_error,
+            measured_momentum,
+        )
+        xs = [np.copy(q), self._integrate_bounded(q, velocity_seed)]
+        us = [velocity_seed]
+        seed_momentum = self.angular_momentum(q, velocity_seed)
+        solved = solver.solve(xs, us, self.maxiter)
+        solved_xs = np.asarray(solver.xs, dtype=np.float64)
+        solved_us = np.asarray(solver.us, dtype=np.float64)
+        if len(solved_us):
+            solved_us[0] = np.clip(
+                solved_us[0],
+                -self._velocity_limits(),
+                self._velocity_limits(),
+            )
+            commanded_momentum = self.angular_momentum(q, solved_us[0])
+        else:
+            commanded_momentum = np.copy(measured_momentum)
+        predicted_error = predict_balance_error(
+            balance_error,
+            commanded_momentum,
+            measured_momentum,
+            self.mass,
+            self.dt,
+            self.effect_sign,
+        )
+        return BalancePlan(
+            solved=bool(solved),
+            xs=solved_xs,
+            us=solved_us,
+            solver=solver,
+            arm_ids=self.arm_ids,
+            balance_error=np.copy(balance_error),
+            predicted_error=predicted_error,
+            measured_momentum=measured_momentum,
+            seed_momentum=seed_momentum,
+            commanded_momentum=commanded_momentum,
+            solve_time=time.perf_counter() - started,
+        )
+
+    def current_arm_q(self):
+        '''Return the current two-arm configuration'''
+        return np.copy(self.robot_model.state['q'][self.arm_ids])
+
+    def current_arm_dq(self):
+        '''Return the current two-arm velocity'''
+        return np.copy(self.robot_model.state['dq'][self.arm_ids])
+
+    def angular_momentum(self, q, velocity):
+        '''Return two-arm angular centroidal momentum'''
+        data = self.arm_model.createData()
+        pin.ccrba(self.arm_model, data, q, velocity)
+        return np.asarray(data.hg.angular, dtype=np.float64)
+
+    def _target_joint_velocity(self, q, dq, balance_error,
+                               measured_momentum):
+        data = self.arm_model.createData()
+        pin.ccrba(self.arm_model, data, q, dq)
+        angular_map = np.asarray(data.Ag[3:6, :], dtype=np.float64)
+        scale = self.mass * 9.81 * self.dt
+        momentum_delta = self.effect_sign * scale * np.array(
+            [balance_error[1], -balance_error[0], 0.0],
+            dtype=np.float64,
+        )
+        target_momentum = measured_momentum + momentum_delta
+        velocity = angular_map.T @ np.linalg.solve(
+            angular_map @ angular_map.T + self.damping * np.eye(3),
+            target_momentum,
+        )
+        return np.clip(
+            velocity,
+            -self._velocity_limits(),
+            self._velocity_limits(),
+        )
+
+    def _integrate_bounded(self, q, velocity):
+        return np.clip(
+            pin.integrate(self.arm_model, q, self.dt * velocity),
+            self.arm_model.lowerPositionLimit,
+            self.arm_model.upperPositionLimit,
+        )
+
+    def _velocity_limits(self):
+        limits = np.asarray(
+            self.arm_model.velocityLimit,
+            dtype=np.float64,
+        ).copy()
+        limits[~np.isfinite(limits) | (limits <= 0.0)] = self.max_velocity
+        return np.minimum(limits, self.max_velocity)
+
+    def _build_arm_model(self):
+        arm_names = {
+            BODY_JOINTS[index]
+            for index in self.arm_ids
+        }
+        frozen_joints = [
+            self.robot_model.model_body.getJointId(name)
+            for name in BODY_JOINTS if name not in arm_names
+        ]
+        model = pin.buildReducedModel(
+            self.robot_model.model_body,
+            frozen_joints,
+            np.copy(self.robot_model.state['q']),
+        )
+        model.gravity.linear = np.array([0.0, 0.0, -9.81])
+        return model
+
+    def _make_action_model_class(self):
+        crocoddyl = self._crocoddyl
+
+        class BalanceActionModel(crocoddyl.ActionModelAbstract):
+            def __init__(self, model, q_ref, balance_error,
+                         measured_momentum, measured_velocity, mass, dt,
+                         effect_sign, w_balance, w_velocity, w_posture,
+                         w_limit, max_velocity, is_terminal=False):
+                self.model = model
+                self.q_ref = np.asarray(q_ref, dtype=np.float64)
+                self.balance_error = np.asarray(
+                    balance_error,
+                    dtype=np.float64,
+                )
+                self.measured_momentum = np.asarray(
+                    measured_momentum,
+                    dtype=np.float64,
+                )
+                self.measured_velocity = np.asarray(
+                    measured_velocity,
+                    dtype=np.float64,
+                )
+                self.mass = float(mass)
+                self.dt = float(dt)
+                self.effect_sign = float(effect_sign)
+                self.w_balance = float(w_balance)
+                self.w_velocity = float(w_velocity)
+                self.w_posture = float(w_posture)
+                self.w_limit = float(w_limit)
+                self.is_terminal = bool(is_terminal)
+                self.velocity_limit = np.minimum(
+                    np.where(
+                        np.isfinite(model.velocityLimit)
+                        & (model.velocityLimit > 0.0),
+                        model.velocityLimit,
+                        max_velocity,
+                    ),
+                    max_velocity,
+                )
+                nu = 0 if self.is_terminal else model.nv
+                super().__init__(crocoddyl.StateVector(model.nq), nu)
+
+            def calc(self, data, x, u=None):
+                q = np.asarray(x, dtype=np.float64)
+                if not np.isfinite(q).all():
+                    data.xnext = np.copy(q)
+                    data.cost = 1e12
+                    return
+                try:
+                    if self.is_terminal or u is None:
+                        velocity = np.zeros(self.model.nv, dtype=np.float64)
+                    else:
+                        velocity = np.clip(
+                            np.asarray(u, dtype=np.float64),
+                            -self.velocity_limit,
+                            self.velocity_limit,
+                        )
+                    posture_error = pin.difference(
+                        self.model,
+                        self.q_ref,
+                        q,
+                    )
+                    lower = np.maximum(
+                        self.model.lowerPositionLimit - q,
+                        0.0,
+                    )
+                    upper = np.maximum(
+                        q - self.model.upperPositionLimit,
+                        0.0,
+                    )
+                    cost = 0.5 * self.w_posture * posture_error.dot(
+                        posture_error
+                    )
+                    cost += 0.5 * self.w_limit * (lower + upper).dot(
+                        lower + upper
+                    )
+                    if not self.is_terminal:
+                        pin.ccrba(self.model, data.pin_data, q, velocity)
+                        momentum = np.asarray(
+                            data.pin_data.hg.angular,
+                            dtype=np.float64,
+                        )
+                        predicted_error = predict_balance_error(
+                            self.balance_error,
+                            momentum,
+                            self.measured_momentum,
+                            self.mass,
+                            self.dt,
+                            self.effect_sign,
+                        )
+                        velocity_error = velocity - self.measured_velocity
+                        cost += 0.5 * self.w_balance * predicted_error.dot(
+                            predicted_error
+                        )
+                        cost += 0.5 * self.w_velocity * velocity_error.dot(
+                            velocity_error
+                        )
+                        data.xnext = pin.integrate(
+                            self.model,
+                            q,
+                            self.dt * velocity,
+                        )
+                    else:
+                        data.xnext = np.copy(q)
+                    data.cost = cost
+                except Exception:
+                    data.xnext = np.copy(q)
+                    data.cost = 1e12
+
+            def calcDiff(self, data, x, u=None):
+                q = np.asarray(x, dtype=np.float64)
+                posture_error = pin.difference(
+                    self.model,
+                    self.q_ref,
+                    q,
+                )
+                data.Fx[:] = np.eye(self.model.nv)
+                data.Lx[:] = self.w_posture * posture_error
+                data.Lxx[:] = self.w_posture * np.eye(self.model.nv)
+                lower_active = q < self.model.lowerPositionLimit
+                upper_active = q > self.model.upperPositionLimit
+                violation = np.zeros(self.model.nv, dtype=np.float64)
+                violation[lower_active] = (
+                    self.model.lowerPositionLimit[lower_active]
+                    - q[lower_active]
+                )
+                violation[upper_active] = (
+                    q[upper_active]
+                    - self.model.upperPositionLimit[upper_active]
+                )
+                signs = upper_active.astype(np.float64)
+                signs -= lower_active.astype(np.float64)
+                data.Lx[:] += self.w_limit * signs * violation
+                data.Lxx[:] += self.w_limit * np.diag(
+                    lower_active | upper_active
+                )
+                if self.is_terminal or u is None:
+                    return
+
+                velocity = np.clip(
+                    np.asarray(u, dtype=np.float64),
+                    -self.velocity_limit,
+                    self.velocity_limit,
+                )
+                pin.ccrba(self.model, data.pin_data, q, velocity)
+                angular_map = np.asarray(
+                    data.pin_data.Ag[3:6, :],
+                    dtype=np.float64,
+                )
+                momentum = np.asarray(
+                    data.pin_data.hg.angular,
+                    dtype=np.float64,
+                )
+                predicted_error = predict_balance_error(
+                    self.balance_error,
+                    momentum,
+                    self.measured_momentum,
+                    self.mass,
+                    self.dt,
+                    self.effect_sign,
+                )
+                scale = max(self.mass * 9.81 * self.dt, 1e-9)
+                rotation = np.array([
+                    [0.0, 1.0, 0.0],
+                    [-1.0, 0.0, 0.0],
+                ])
+                balance_jacobian = (
+                    self.effect_sign * rotation @ angular_map / scale
+                )
+                velocity_error = velocity - self.measured_velocity
+                data.Fu[:] = self.dt * np.eye(self.model.nv)
+                data.Lu[:] = (
+                    self.w_balance
+                    * balance_jacobian.T @ predicted_error
+                    + self.w_velocity * velocity_error
+                )
+                data.Luu[:] = (
+                    self.w_balance
+                    * balance_jacobian.T @ balance_jacobian
+                    + self.w_velocity * np.eye(self.model.nv)
+                )
+                data.Lxu[:] = 0.0
+
+            def createData(self):
+                data = crocoddyl.ActionDataAbstract(self)
+                data.pin_data = self.model.createData()
+                return data
+
+        return BalanceActionModel
