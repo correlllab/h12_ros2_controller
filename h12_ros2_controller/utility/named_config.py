@@ -54,18 +54,18 @@ NAMED_CONFIGS = {
     'prep':  # init_3 with elbow bend for level, raised grasp frames
         np.array([0.7, 0.35, 0.0, -0.7, 0.0, 0.0, 0.0,
                   0.7, -0.35, 0.0, -0.7, 0.0, 0.0, 0.0]),
-    'staging_right':  # RECORDED live from /joint_states: left arm at 'prep',
-                      # right arm at the grasp staging pose (right_graspgenx_frame
-                      # ~0.3, 0, 0.2 pelvis, top-down 80 deg, fingers along +Y)
-        np.array([0.6823, 0.3452, -0.0067, -0.6844, -0.0086, 0.0118, -0.0141,
-                  -1.5156, -0.6879, 1.6836, -0.0454, 2.7962, 0.4020, -1.0666]),
+    'staging_right':  # RE-RECORDED live from the real robot's /lowstate 2026-07-24
+                      # (arm motors 13-19 left, 20-26 right): left arm tucked
+                      # (elbow bent ~1.38 rad), right arm at the grasp staging pose.
+        np.array([0.0140, 0.0857, 0.0841, 1.3763, -0.2961, 0.1508, 0.1918,
+                  -0.3684, -0.6277, 0.9203, -0.1642, 1.8361, 0.4210, -1.1482]),
     'staging_left':  # MIRROR of 'staging_right' across the sagittal plane: left
-                     # arm staged, right arm at 'prep'. Mirror rule (arm joint
-                     # axes are identical L/R in the URDF, so a XZ reflection
-                     # negates the roll/yaw axes only): pitch same, roll FLIP,
-                     # yaw FLIP, elbow same, wrist_roll FLIP, wrist_pitch same,
-                     # wrist_yaw FLIP. Verified in-range against the LEFT limits;
-                     # DERIVED, not recorded live — sanity-check before trusting.
-        np.array([-1.5156, 0.6879, -1.6836, -0.0454, -2.7962, 0.4020, 1.0666,
-                  0.6823, -0.3452, 0.0067, -0.6844, 0.0086, 0.0118, 0.0141]),
+                     # arm staged, right arm tucked. Mirror rule (arm joint axes
+                     # are identical L/R in the URDF, so a XZ reflection negates
+                     # the roll/yaw axes only): pitch same, roll FLIP, yaw FLIP,
+                     # elbow same, wrist_roll FLIP, wrist_pitch same, wrist_yaw
+                     # FLIP. DERIVED from the new staging_right, not recorded live
+                     # — sanity-check against the LEFT joint limits before trusting.
+        np.array([-0.3684, 0.6277, -0.9203, -0.1642, -1.8361, 0.4210, 1.1482,
+                  0.0140, -0.0857, -0.0841, 1.3763, 0.2961, 0.1508, -0.1918]),
 }
