@@ -28,13 +28,17 @@ class PlannerConfig:
     validity_resolution: float = 0.0025
     constraint_check_steps: int = 10
     frame_names: tuple = ('left_grasp_frame', 'right_grasp_frame')
-    frame_x_max: float = 0.70
+    frame_x_max: float = 0.50
     frame_y_min: float = None
     frame_y_max: float = None
     frame_z_min: float = None
     frame_z_max: float = 0.50
     frame_limit_margin: float = 1e-3
     frame_z_corridor_margin: float = 0.05
+    # the start config is the robot's measured pose, which can sit marginally
+    # past a joint limit; clamp overshoots up to this (rad) into limits instead
+    # of aborting the plan. Larger overshoots still fail (genuinely bad pose).
+    start_limit_tolerance: float = 0.05
 
 
 @dataclass
@@ -225,13 +229,56 @@ class ReducedJointPlanner:
 
     def _validity_failure(self, q, name):
         if not self.robot_model.check_within_limits_reduced(q):
-            return f'{name} is outside reduced joint limits'
+            return (
+                f'{name} is outside reduced joint limits: '
+                f'{self._format_limit_violations(q)}'
+            )
         if not self.robot_model.check_collision_free_reduced(q):
             return f'{name} is in self-collision'
         reason = self._workspace_constraint_failure(q, name)
         if reason:
             return reason
         return ''
+
+    def _format_limit_violations(self, q):
+        violations = self.robot_model.reduced_limit_violations(q)
+        if not violations:
+            return '(no joint outside limits; check tolerance)'
+        return ', '.join(
+            f'{v["name"]}={v["value"]:.4f} '
+            f'(limit {v["bound"]:.4f}, {v["overshoot"]:.4f} rad over)'
+            for v in violations
+        )
+
+    def _clamp_start_into_limits(self, start):
+        '''
+        Nudge a start config that sits marginally past a joint limit back into
+        bounds. Only overshoots within start_limit_tolerance are clamped;
+        larger ones are left untouched so plan() still rejects a bad pose.
+        '''
+        tol = self.config.start_limit_tolerance
+        if tol is None or tol <= 0.0:
+            return start
+        lower = self.robot_model.model_body_reduced.lowerPositionLimit
+        upper = self.robot_model.model_body_reduced.upperPositionLimit
+        clamped = np.clip(start, lower, upper)
+        delta = clamped - start
+        within = np.abs(delta) <= tol
+        result = np.where(within, clamped, start)
+        moved = within & (delta != 0.0)
+        if np.any(moved):
+            idx_to_name = self.robot_model._reduced_idx_to_name()
+            detail = ', '.join(
+                f'{idx_to_name.get(i, f"q[{i}]")} '
+                f'{start[i]:.4f}->{result[i]:.4f}'
+                for i in np.where(moved)[0]
+            )
+            print(
+                f'[planner] clamped start into joint limits (tol={tol:.4f}): '
+                f'{detail}',
+                flush=True,
+            )
+        return result
 
     def _motor_q(self, q_reduced):
         q = np.copy(self.robot_model.state['q'])
@@ -371,17 +418,24 @@ class ReducedJointPlanner:
             if corridor_z is not None:
                 min_z = corridor_z if min_z is None else max(min_z, corridor_z)
             if min_z is not None and z + margin < min_z:
-                return f'{name} moves {frame_name} below z={min_z:.4f}'
+                return (
+                    f'{name} moves {frame_name} below z={min_z:.4f} '
+                    f'(z={z:.4f}, {min_z - z:.4f}m below floor)'
+                )
             max_z = self.frame_max_z.get(frame_name)
             if max_z is not None and z - margin > max_z:
-                return f'{name} moves {frame_name} above z={max_z:.4f}'
+                return (
+                    f'{name} moves {frame_name} above z={max_z:.4f} '
+                    f'(z={z:.4f}, {z - max_z:.4f}m above ceiling)'
+                )
             if (
                 self.config.frame_x_max is not None and
                 x - margin > self.config.frame_x_max
             ):
                 return (
                     f'{name} moves {frame_name} beyond '
-                    f'x={self.config.frame_x_max:.4f}'
+                    f'x={self.config.frame_x_max:.4f} '
+                    f'(x={x:.4f}, {x - self.config.frame_x_max:.4f}m beyond)'
                 )
             if (
                 self.config.frame_y_min is not None and
@@ -389,7 +443,8 @@ class ReducedJointPlanner:
             ):
                 return (
                     f'{name} moves {frame_name} below '
-                    f'y={self.config.frame_y_min:.4f}'
+                    f'y={self.config.frame_y_min:.4f} '
+                    f'(y={y:.4f}, {self.config.frame_y_min - y:.4f}m below)'
                 )
             if (
                 self.config.frame_y_max is not None and
@@ -397,7 +452,8 @@ class ReducedJointPlanner:
             ):
                 return (
                     f'{name} moves {frame_name} above '
-                    f'y={self.config.frame_y_max:.4f}'
+                    f'y={self.config.frame_y_max:.4f} '
+                    f'(y={y:.4f}, {y - self.config.frame_y_max:.4f}m above)'
                 )
         return ''
 
@@ -463,6 +519,8 @@ class ReducedJointPlanner:
         '''Plan a collision-free path between reduced joint configurations'''
         start = self._as_reduced_array(start, 'start')
         goal = self._as_reduced_array(goal, 'goal')
+        # the start reflects the measured pose; legalize tiny limit overshoots
+        start = self._clamp_start_into_limits(start)
         if active_mask is None:
             active_mask = self._infer_active_mask(start, goal)
 
@@ -520,6 +578,20 @@ class ReducedJointPlanner:
                 metadata={'validity_checks': self.validity_checks},
             )
 
+        # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
+        # EXACT_SOLUTION. An approximate path ends at the closest state OMPL
+        # reached, NOT at the goal, so executing it drives the arm to a
+        # near-miss and leaves the steady-state controller to chase a gap it
+        # cannot close. Treat it as a planning failure instead.
+        if not self.ss.haveExactSolutionPath():
+            return PlanResult(
+                success=False,
+                path=self._empty_path(),
+                reason=self._approximate_reason(direct_failure),
+                planner_name=self.config.planner,
+                metadata={'validity_checks': self.validity_checks},
+            )
+
         # simplify once, then validate the final candidate path
         path = self.ss.getSolutionPath()
         self._shorten_path(path)
@@ -552,6 +624,15 @@ class ReducedJointPlanner:
 
     def _timeout_reason(self, direct_failure):
         reason = 'OMPL failed to find a solution before timeout'
+        if direct_failure:
+            reason = f'{reason}; direct path failed: {direct_failure}'
+        return reason
+
+    def _approximate_reason(self, direct_failure):
+        reason = (
+            'OMPL returned only an approximate solution '
+            '(path does not reach the goal)'
+        )
         if direct_failure:
             reason = f'{reason}; direct path failed: {direct_failure}'
         return reason

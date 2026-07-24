@@ -386,6 +386,45 @@ class RobotModel:
             np.all(q_reduced >= self.model_body_reduced.lowerPositionLimit)
         )
 
+    def _reduced_idx_to_name(self):
+        '''Map each reduced-model configuration index to its joint name.'''
+        model = self.model_body_reduced
+        idx_to_name = {}
+        for jid in range(1, model.njoints):
+            joint = model.joints[jid]
+            for k in range(joint.nq):
+                idx_to_name[joint.idx_q + k] = model.names[jid]
+        return idx_to_name
+
+    def reduced_limit_violations(self, q_reduced, tol=0.0):
+        '''
+        Report reduced-model joints whose position is outside limits by more
+        than tol. Returns a list of dicts with the joint name, config index,
+        value, the violated bound, and the overshoot magnitude (>= 0).
+        '''
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        lower = self.model_body_reduced.lowerPositionLimit
+        upper = self.model_body_reduced.upperPositionLimit
+        idx_to_name = self._reduced_idx_to_name()
+        violations = []
+        for i in range(len(q_reduced)):
+            if q_reduced[i] < lower[i] - tol:
+                bound, overshoot = float(lower[i]), float(lower[i] - q_reduced[i])
+            elif q_reduced[i] > upper[i] + tol:
+                bound, overshoot = float(upper[i]), float(q_reduced[i] - upper[i])
+            else:
+                continue
+            violations.append({
+                'name': idx_to_name.get(i, f'q[{i}]'),
+                'index': i,
+                'value': float(q_reduced[i]),
+                'lower': float(lower[i]),
+                'upper': float(upper[i]),
+                'bound': bound,
+                'overshoot': overshoot,
+            })
+        return violations
+
     def check_collision_free(self, q):
         '''
         check if the given joint position violates collision constraints

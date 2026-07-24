@@ -186,6 +186,9 @@ def test_state_validation_rejects_y_limit_violation():
     planner = ReducedJointPlanner(
         FakeRobotModel(),
         config=PlannerConfig(
+            # FakeRobotModel maps both x and y to q[1], so the x limit has to
+            # be off for this to isolate the y constraint
+            frame_x_max=None,
             frame_y_min=-0.5,
             frame_y_max=0.5,
             frame_limit_margin=0.01,
@@ -203,6 +206,8 @@ def test_state_validation_allows_y_limit_margin():
     planner = ReducedJointPlanner(
         FakeRobotModel(),
         config=PlannerConfig(
+            # see above: x must be unconstrained to isolate the y margin
+            frame_x_max=None,
             frame_y_min=-0.5,
             frame_y_max=0.5,
             frame_limit_margin=0.01,

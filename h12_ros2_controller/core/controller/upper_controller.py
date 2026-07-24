@@ -165,6 +165,12 @@ class UpperController:
                     defaults.frame_z_corridor_margin,
                 )
             ),
+            start_limit_tolerance=float(
+                cfg.get(
+                    'start_limit_tolerance',
+                    defaults.start_limit_tolerance,
+                )
+            ),
         )
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
@@ -353,7 +359,9 @@ class UpperController:
         path = self._as_reduced_path(path)
 
         # apply each reduced waypoint as a direct full motor position command
+        step_period = self.dt / max(self.speed_scale, 1e-6)
         for q_reduced in tqdm(path, desc='Executing path', leave=False):
+            step_start_time = time.time()
             if validate:
                 # keep execution guarded by the same reduced validity checks
                 if not self.robot_model.check_within_limits_reduced(q_reduced):
@@ -365,8 +373,16 @@ class UpperController:
             q[self.robot_model.reduced_mask] = q_reduced
             self._apply_joint_position(q)
             self.update_robot_model()
-            # hold each waypoint longer when speed_scale < 1.0 (slow mode)
-            time.sleep(self.dt / max(self.speed_scale, 1e-6))
+            # Subtract the work already done this step, the same way every other
+            # loop in this package paces itself. A bare sleep(step_period) makes
+            # the real period dt + validation + FK + (when visualize is on)
+            # Meshcat publishing, which stretches a planned path well past its
+            # planned duration -- and does so with speed_scale at 1.0, i.e.
+            # outside slow mode.
+            time.sleep(max(
+                0.0,
+                step_period - (time.time() - step_start_time)
+            ))
 
     def update_robot_model(self):
         # update kinematics

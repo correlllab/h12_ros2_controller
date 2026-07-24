@@ -7,6 +7,16 @@ import meshcat_shapes
 import meshcat.geometry as geo
 import meshcat.transformations as tf
 
+# Draw a triad every Nth waypoint of a planned path. The polyline still traces
+# every waypoint; this only thins the triads, which are 4 meshes apiece and the
+# expensive part of the drawing.
+PATH_FRAME_STRIDE = 10
+# Triad size for planned-path frames. Deliberately smaller than meshcat_shapes'
+# 0.1 m default so a path's worth of triads does not obscure the robot.
+PATH_FRAME_AXIS_LENGTH = 0.03
+PATH_FRAME_AXIS_THICKNESS = 0.002
+PATH_FRAME_ORIGIN_RADIUS = 0.004
+
 
 class RobotVisualizer:
     def __init__(self, robot_model):
@@ -202,8 +212,15 @@ class RobotVisualizer:
         return transforms
 
     def visualize_reduced_path(self, path,
-                               frame_names=('left_grasp_frame', 'right_grasp_frame')):
-        '''Draw reduced path traces and frame samples in Meshcat'''
+                               frame_names=('left_grasp_frame', 'right_grasp_frame'),
+                               frame_stride=PATH_FRAME_STRIDE):
+        '''
+        Draw reduced path traces and frame samples in Meshcat
+
+        The polyline follows every waypoint; triads are drawn every
+        `frame_stride`-th waypoint (plus the final one, which stride can
+        otherwise skip). Pass 1 to get a triad on every waypoint.
+        '''
         assert self.viz is not None, 'Visualizer must be initialized first.'
         assert self.robot_model.init_reduced, 'Reduced model is not initialized.'
         path = self._as_reduced_path(path)
@@ -236,16 +253,18 @@ class RobotVisualizer:
             ])
             points_local = points_local_h[:3, :]
 
-            # visualize intermediate frames
+            # visualize every waypoint (subject to stride), endpoints included
             sample_local_transforms = []
             sample_names = []
-            sample_fractions = (0.25, 0.5, 0.75)
-            indices = np.rint((len(path) - 1) * np.asarray(sample_fractions)).astype(int)
-            indices = np.clip(indices, 0, len(path) - 1)
+            stride = max(1, int(frame_stride))
+            indices = list(range(0, len(path), stride))
+            # always keep the final waypoint, which stride can otherwise skip
+            if indices and indices[-1] != len(path) - 1:
+                indices.append(len(path) - 1)
+            # transforms for the whole path were already computed above; reuse
+            # them instead of re-running forward kinematics per sample
             for sample_idx, path_idx in enumerate(indices):
-                q = np.copy(self.robot_model.state['q'])
-                q[self.robot_model.reduced_mask] = path[path_idx]
-                transform_world = self.robot_model._get_frame_transformation(frame_name, q)
+                transform_world = transforms[path_idx].np
                 sample_local_transforms.append(world_to_pelvis @ transform_world)
                 sample_names.append(f'{prefix}/frame_{sample_idx}')
 
@@ -269,9 +288,16 @@ class RobotVisualizer:
                 )
             )
 
-            # add the sampled frames once
+            # add the sampled frames once; small triads keep a full-resolution
+            # path readable where the old 3-sample version could afford big ones
             for path_name in sample_names:
-                meshcat_shapes.frame(self.viz.viewer[path_name], opacity=0.8)
+                meshcat_shapes.frame(
+                    self.viz.viewer[path_name],
+                    axis_length=PATH_FRAME_AXIS_LENGTH,
+                    axis_thickness=PATH_FRAME_AXIS_THICKNESS,
+                    opacity=0.6,
+                    origin_radius=PATH_FRAME_ORIGIN_RADIUS,
+                )
 
         # draw once now
         self.update_path()

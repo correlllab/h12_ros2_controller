@@ -68,7 +68,7 @@ class FrameTaskServer(Node):
             SRDF_MAGPIE_SPHERE_PATH,
             init=True,
             handless=False,
-            visualize=True,
+            visualize=False,
             config=config,
         )
 
@@ -261,15 +261,36 @@ class FrameTaskServer(Node):
         goal_handle.succeed()
         return result
 
+    def _visualize_planned_path(self, path):
+        '''
+        Draw the planned path in Meshcat, one triad per waypoint.
+
+        Purely diagnostic: a dead or unreachable Meshcat server must never
+        abort a motion goal, so every failure here is swallowed with a warning.
+        '''
+        if not self.controller.visualize:
+            return
+        try:
+            self.controller.visualize_path(path)
+        except Exception as err:  # noqa: BLE001 - visualization is best-effort
+            self.get_logger().warn(f'Path visualization failed: {err}')
+
     def _plan_frame_task_callback(self, goal_handle, timeout):
         self.get_logger().info('Planning path to target frame poses')
         try:
             # solve ik, plan a reduced-joint path, then execute it
             path = self.controller.plan_to_ik_target(ik_timeout=self.timeout)
+            self._visualize_planned_path(path)
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
+            execute_start_time = time.time()
             self.controller.execute_path(path)
+            self.get_logger().info(
+                f'Path execution finished in '
+                f'{time.time() - execute_start_time:.2f}s; '
+                f'holding steady state (timeout {timeout:.1f}s)'
+            )
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
@@ -464,10 +485,17 @@ class FrameTaskServer(Node):
         try:
             # plan directly in reduced joint space for named configs
             path = self.controller.plan_to_configuration(q_reduced)
+            self._visualize_planned_path(path)
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
+            execute_start_time = time.time()
             self.controller.execute_path(path)
+            self.get_logger().info(
+                f'Path execution finished in '
+                f'{time.time() - execute_start_time:.2f}s; '
+                f'holding steady state (timeout {timeout:.1f}s)'
+            )
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
