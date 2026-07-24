@@ -54,4 +54,18 @@ NAMED_CONFIGS = {
     'prep':  # init_3 with elbow bend for level, raised grasp frames
         np.array([0.7, 0.35, 0.0, -0.7, 0.0, 0.0, 0.0,
                   0.7, -0.35, 0.0, -0.7, 0.0, 0.0, 0.0]),
+    'staging_right':  # RECORDED live from /joint_states: left arm at 'prep',
+                      # right arm at the grasp staging pose (right_graspgenx_frame
+                      # ~0.3, 0, 0.2 pelvis, top-down 80 deg, fingers along +Y)
+        np.array([0.6823, 0.3452, -0.0067, -0.6844, -0.0086, 0.0118, -0.0141,
+                  -1.5156, -0.6879, 1.6836, -0.0454, 2.7962, 0.4020, -1.0666]),
+    'staging_left':  # MIRROR of 'staging_right' across the sagittal plane: left
+                     # arm staged, right arm at 'prep'. Mirror rule (arm joint
+                     # axes are identical L/R in the URDF, so a XZ reflection
+                     # negates the roll/yaw axes only): pitch same, roll FLIP,
+                     # yaw FLIP, elbow same, wrist_roll FLIP, wrist_pitch same,
+                     # wrist_yaw FLIP. Verified in-range against the LEFT limits;
+                     # DERIVED, not recorded live — sanity-check before trusting.
+        np.array([-1.5156, 0.6879, -1.6836, -0.0454, -2.7962, 0.4020, 1.0666,
+                  0.6823, -0.3452, 0.0067, -0.6844, 0.0086, 0.0118, 0.0141]),
 }
