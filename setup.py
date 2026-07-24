@@ -38,6 +38,7 @@ setup(
             'dual_arm_client = h12_ros2_controller.ros2.dual_arm_client:main',
             'frame_task_server = h12_ros2_controller.ros2.frame_task_server:main',
             'frame_task_client = h12_ros2_controller.ros2.frame_task_client:main',
+            'arm_plan_client = h12_ros2_controller.ros2.arm_plan_client:main',
             'hand_controller_node = h12_ros2_controller.ros2.hand_controller_node:main',
             'hand_cmd_gui = h12_ros2_controller.ros2.hand_cmd_gui:main',
         ],
