@@ -254,6 +254,12 @@ class UpperController:
         return np.concatenate([self.right_ee_position, self.right_ee_rpy])
 
     def update_ik_solver(self):
+        # re-lock the frozen joints (torso, legs) at their measured angles so
+        # reduced-model FK agrees with the robot's actual kinematics (and the
+        # TF tree); frozen-at-zero, a torso holding e.g. -0.04 rad offsets
+        # every arm frame by a constant ~15 mm that IK can never converge away
+        self.robot_model.rebuild_reduced_model()
+        self.ik_solver.rebuild_reduced()
         # update IK solver with the latest robot configuration
         self.ik_solver.update_configurations()
 

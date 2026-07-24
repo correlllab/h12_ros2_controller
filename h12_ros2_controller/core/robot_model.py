@@ -59,15 +59,36 @@ class RobotModel:
         # get joint ids in model_body (no free-flyer, so no offset)
         frozen_ids_body = [self.model_body.getJointId(joint_name) for joint_name in frozen_joints]
         frozen_motor_ids = [self.model_body.joints[joint_id].idx_q for joint_id in frozen_ids_body]
-        # create reduced model from model_body
-        self.model_body_reduced = pin.buildReducedModel(
-            self.model_body, frozen_ids_body, self.zero_q_body
-        )
-        self.data_body_reduced = self.model_body_reduced.createData()
+        # store frozen ids for collision model and rebuilds
+        self.frozen_ids_body = frozen_ids_body
         # set the reduced mask (motor only)
         self.reduced_mask[frozen_motor_ids] = False
-        # store frozen ids for collision model
-        self.frozen_ids_body = frozen_ids_body
+        # create reduced model from model_body
+        self._build_reduced_model(self.zero_q_body)
+
+    def _build_reduced_model(self, reference_q):
+        self.model_body_reduced = pin.buildReducedModel(
+            self.model_body, self.frozen_ids_body, reference_q
+        )
+        self.data_body_reduced = self.model_body_reduced.createData()
+
+    def rebuild_reduced_model(self, reference_q=None):
+        '''
+        Re-lock the frozen joints at reference_q (default: the measured
+        state). Freezing bakes the frozen joints (torso, legs) into fixed
+        transforms, so a torso that physically sits away from the frozen
+        reference makes reduced-model FK disagree with the robot (and TF)
+        by a constant end-effector offset no IK iteration can remove.
+        Callers must rebind any object holding references to the reduced
+        model (see IKSolver.rebuild_reduced).
+        '''
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        if reference_q is None:
+            reference_q = self.state['q']
+        reference_q = np.asarray(reference_q, dtype=float).copy()
+        self._build_reduced_model(reference_q)
+        if self.init_collision:
+            self._build_reduced_collision_model(reference_q)
 
     def init_collision_model(self, urdf_path, srdf_path):
         '''
@@ -80,14 +101,22 @@ class RobotModel:
         self.collision_model_body, self.collision_data_body = self._process_srdf(
             model_collision, collision_model, srdf_path
         )
+        # keep the unreduced collision model and srdf path for reduced rebuilds
+        self._collision_model_full = model_collision
+        self._collision_geom_full = collision_model
+        self._collision_srdf_path = srdf_path
 
         if self.init_reduced:
-            model_collision_reduced, collision_model_reduced = pin.buildReducedModel(
-                model_collision, collision_model, self.frozen_ids_body, self.zero_q_body
-            )
-            self.collision_model_body_reduced, self.collision_data_body_reduced = RobotModel._process_srdf(
-                model_collision_reduced, collision_model_reduced, srdf_path
-            )
+            self._build_reduced_collision_model(self.zero_q_body)
+
+    def _build_reduced_collision_model(self, reference_q):
+        model_collision_reduced, collision_model_reduced = pin.buildReducedModel(
+            self._collision_model_full, self._collision_geom_full,
+            self.frozen_ids_body, reference_q
+        )
+        self.collision_model_body_reduced, self.collision_data_body_reduced = RobotModel._process_srdf(
+            model_collision_reduced, collision_model_reduced, self._collision_srdf_path
+        )
 
     @staticmethod
     def _load_urdf_freeflyer(urdf_path, handless=False):

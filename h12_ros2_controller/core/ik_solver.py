@@ -63,29 +63,15 @@ class IKSolver:
         self.com_task_reduced = pink.tasks.ComTask(cost=30.0)
 
         assert(self.robot_model.init_collision), 'Collision model is not initialized.'
-        self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(self.robot_model.collision_model_body_reduced.collisionPairs),
-            gain=20.0,
-            safe_displacement_gain=1.0,
-            d_min=d_min,
-        )
 
-        # configurations using model_body (no free-flyer)
+        # configuration using model_body (no free-flyer)
         self.configuration = pink.Configuration(
             robot_model.model_body,
             robot_model.data_body,
             robot_model.state['q']
         )
-        self.configuration_reduced = pink.Configuration(
-            robot_model.model_body_reduced,
-            robot_model.data_body_reduced,
-            robot_model.state_reduced['q'],
-            collision_model=self.robot_model.collision_model_body_reduced,
-            collision_data=self.robot_model.collision_data_body_reduced
-        )
         # set target for CoM task
         self.com_task.set_target_from_configuration(self.configuration)
-        self.com_task_reduced.set_target_from_configuration(self.configuration_reduced)
 
         # limits using model_body (no free-flyer)
         self.limits = [
@@ -94,12 +80,9 @@ class IKSolver:
             pink.limits.AccelerationLimit(robot_model.model_body,
                                           25.0 * np.ones(robot_model.model_body.nv))
         ]
-        self.limits_reduced = [
-            pink.limits.ConfigurationLimit(robot_model.model_body_reduced),
-            pink.limits.VelocityLimit(robot_model.model_body_reduced),
-            pink.limits.AccelerationLimit(robot_model.model_body_reduced,
-                                          25.0 * np.ones(robot_model.model_body_reduced.nv))
-        ]
+
+        # reduced-model bindings (configuration, limits, collision barrier)
+        self.rebuild_reduced()
 
         # solver selection
         self.solver = qpsolvers.available_solvers[0]
@@ -107,6 +90,34 @@ class IKSolver:
             if preferred in qpsolvers.available_solvers:
                 self.solver = preferred
                 break
+
+    def rebuild_reduced(self):
+        '''
+        Rebind all objects that hold references to the reduced model.
+        Call after RobotModel.rebuild_reduced_model() so the IK, limits and
+        collision barrier all see the newly locked frozen-joint reference.
+        '''
+        robot_model = self.robot_model
+        self.configuration_reduced = pink.Configuration(
+            robot_model.model_body_reduced,
+            robot_model.data_body_reduced,
+            robot_model.state_reduced['q'],
+            collision_model=robot_model.collision_model_body_reduced,
+            collision_data=robot_model.collision_data_body_reduced
+        )
+        self.com_task_reduced.set_target_from_configuration(self.configuration_reduced)
+        self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
+            n_collision_pairs=len(robot_model.collision_model_body_reduced.collisionPairs),
+            gain=20.0,
+            safe_displacement_gain=1.0,
+            d_min=self.d_min,
+        )
+        self.limits_reduced = [
+            pink.limits.ConfigurationLimit(robot_model.model_body_reduced),
+            pink.limits.VelocityLimit(robot_model.model_body_reduced),
+            pink.limits.AccelerationLimit(robot_model.model_body_reduced,
+                                          25.0 * np.ones(robot_model.model_body_reduced.nv))
+        ]
 
     @property
     def q(self):
