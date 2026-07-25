@@ -12,6 +12,8 @@ SRDF_MAGPIE_PATH = f'{ROS_ASSETS_PATH}/h1_2_magpie_collision.srdf'
 
 URDF_HANDLESS_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless.urdf'
 URDF_HANDLESS_SPHERE_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless_sphere.urdf'
+SRDF_HANDLESS_COLLISION_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless_collision.srdf'
+SRDF_HANDLESS_SPHERE_COLLISION_PATH = f'{ROS_ASSETS_PATH}/h1_2_handless_sphere_collision.srdf'
 
 PLANNER_DATA_DIR = str(PROJECT_ROOT / 'data' / 'planner')
 POINTCLOUD_PATH = f'{PLANNER_DATA_DIR}/pointcloud.npy'
