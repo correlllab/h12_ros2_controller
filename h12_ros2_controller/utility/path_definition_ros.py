@@ -18,6 +18,8 @@ SRDF_MAGPIE_PATH = f'{MODEL_H12_PATH}/h1_2_magpie_collision.srdf'
 URDF_HANDLESS_PIN_PATH = f'{MODEL_H12_PATH}/h1_2_handless.urdf'
 URDF_HANDLESS_ROS_PATH = f'{MODEL_H12_PATH}/h1_2_handless_ros.urdf'
 URDF_HANDLESS_SPHERE_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere.urdf'
+SRDF_HANDLESS_COLLISION_PATH = f'{MODEL_H12_PATH}/h1_2_handless_collision.srdf'
+SRDF_HANDLESS_SPHERE_COLLISION_PATH = f'{MODEL_H12_PATH}/h1_2_handless_sphere_collision.srdf'
 # data path
 HOME = str(Path.home())
 LOG_PATH = f'{HOME}/.ros/log/{PACKAGE_NAME}'

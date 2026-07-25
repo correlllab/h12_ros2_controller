@@ -16,24 +16,29 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+
+# keep broad except to isolate per-target solver failures
 from h12_ros2_controller.utility.path_definition import (
     FILTERED_GENERATED_GRASPS_PATH,
-    SRDF_MAGPIE_PATH,
+    SRDF_HANDLESS_COLLISION_PATH,
+    SRDF_HANDLESS_SPHERE_COLLISION_PATH,
     SRDF_MAGPIE_SPHERE_PATH,
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
 )
 
-
 _REPRESENTATIONS = {
-    'sphere': (URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH),
-    'mesh': (URDF_MAGPIE_PATH, SRDF_MAGPIE_PATH),
+    'sphere': (URDF_HANDLESS_SPHERE_PATH, SRDF_HANDLESS_SPHERE_COLLISION_PATH),
+    'mesh': (URDF_HANDLESS_PATH, SRDF_HANDLESS_COLLISION_PATH),
 }
 _RESULT_FIELDS = (
     'state_name',
     'state_source',
     'source_index',
     'representation',
+    'check_type',
     'repeat',
     'collision_free',
     'elapsed_seconds',
@@ -99,7 +104,7 @@ def _prepare_states(input_path, frame_name, indices, count, start, d_min,
                 angular_threshold=angular_threshold,
                 initial_positions=[('start', start)],
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             skipped[type(exc).__name__] += 1
             continue
         if not result.success:
@@ -126,12 +131,36 @@ def _build_collision_model(start, representation):
     robot_model.init_collision_model(urdf_path, srdf_path)
     return robot_model, {
         'setup_time': time.perf_counter() - started,
-        'geometry_count': len(robot_model.collision_model_body_reduced.geometryObjects),
-        'collision_pair_count': len(robot_model.collision_model_body_reduced.collisionPairs),
+        'geometry_count': len(
+            robot_model.collision_model_body_reduced.geometryObjects
+        ),
+        'collision_pair_count': len(
+            robot_model.collision_model_body_reduced.collisionPairs
+        ),
     }
 
 
-def _measure_states(states, start, repeats, warmup):
+def _global_warmup(robot_model, start):
+    '''Trigger lazy one-time initialisation outside measured samples'''
+    # build BVHs, broadphase managers, and Pinocchio internals once
+    robot_model.check_collision_free_reduced(start)
+
+
+def _per_state_result(state_name, state_source, source_index, representation,
+                      check_type, repeat, collision_free, elapsed):
+    return {
+        'state_name': state_name,
+        'state_source': state_source,
+        'source_index': '' if source_index is None else source_index,
+        'representation': representation,
+        'check_type': check_type,
+        'repeat': repeat,
+        'collision_free': bool(collision_free),
+        'elapsed_seconds': elapsed,
+    }
+
+
+def _measure_states(states, start, steady_repeats):
     rows = []
     setup = {}
     for representation in _REPRESENTATIONS:
@@ -139,24 +168,51 @@ def _measure_states(states, start, repeats, warmup):
             start,
             representation,
         )
+        _global_warmup(robot_model, start)
         for state_name, state_source, source_index, q in states:
-            # warm up bindings and allocation outside measured samples
-            for _ in range(warmup):
-                robot_model.check_collision_free_reduced(q)
-            for repeat in range(repeats):
+            # measure the very first collision check on this configuration
+            started = time.perf_counter()
+            collision_free = robot_model.check_collision_free_reduced(q)
+            elapsed = time.perf_counter() - started
+            rows.append(_per_state_result(
+                state_name, state_source, source_index,
+                representation, 'cold', 0,
+                collision_free, elapsed,
+            ))
+
+            # measure steady-state repeats on the same configuration
+            for repeat in range(steady_repeats):
                 started = time.perf_counter()
                 collision_free = robot_model.check_collision_free_reduced(q)
                 elapsed = time.perf_counter() - started
-                rows.append({
-                    'state_name': state_name,
-                    'state_source': state_source,
-                    'source_index': '' if source_index is None else source_index,
-                    'representation': representation,
-                    'repeat': repeat,
-                    'collision_free': bool(collision_free),
-                    'elapsed_seconds': elapsed,
-                })
+                rows.append(_per_state_result(
+                    state_name, state_source, source_index,
+                    representation, 'steady', repeat,
+                    collision_free, elapsed,
+                ))
     return rows, setup
+
+
+def _timing_summary(timings):
+    '''Report mean, median, p95, and maximum for an array of timings'''
+    if len(timings) == 0:
+        return {
+            'mean': 0.0,
+            'median': 0.0,
+            'p95': 0.0,
+            'maximum': 0.0,
+            'total': 0.0,
+            'count': 0,
+        }
+    arr = np.asarray(timings, dtype=float)
+    return {
+        'mean': float(np.mean(arr)),
+        'median': float(np.median(arr)),
+        'p95': float(np.percentile(arr, 95)),
+        'maximum': float(np.max(arr)),
+        'total': float(np.sum(arr)),
+        'count': len(arr),
+    }
 
 
 def _summarize(rows, setup, skipped):
@@ -170,24 +226,24 @@ def _summarize(rows, setup, skipped):
             row for row in rows
             if row['representation'] == representation
         ]
-        timings = np.asarray(
-            [row['elapsed_seconds'] for row in group],
-            dtype=float,
-        )
+        cold = [
+            row['elapsed_seconds']
+            for row in group if row['check_type'] == 'cold'
+        ]
+        steady = [
+            row['elapsed_seconds']
+            for row in group if row['check_type'] == 'steady'
+        ]
         summary['representations'][representation] = {
             **setup[representation],
-            'checks': len(group),
+            'cold_start': _timing_summary(cold),
+            'steady_state': _timing_summary(steady),
             'collision_free_count': sum(
                 row['collision_free'] for row in group
             ),
             'collision_count': sum(
                 not row['collision_free'] for row in group
             ),
-            'mean_check_time': float(np.mean(timings)),
-            'median_check_time': float(np.median(timings)),
-            'p95_check_time': float(np.percentile(timings, 95)),
-            'maximum_check_time': float(np.max(timings)),
-            'total_check_time': float(np.sum(timings)),
         }
     return summary
 
@@ -207,14 +263,14 @@ def _write_results(rows, summary, output):
 
 
 def main(config_name, frame_name, indices, count, start_config, ik_timeout,
-         repeats, warmup, output):
+         steady_repeats, output):
     '''Generate a sphere-versus-mesh collision checking comparison'''
     if frame_name not in ('right_graspgenx_frame', 'left_graspgenx_frame'):
         raise ValueError(f'Unsupported GraspGenX frame: {frame_name}')
     if start_config not in NAMED_CONFIGS:
         raise ValueError(f'Unknown start configuration: {start_config}')
-    if repeats < 1 or warmup < 0:
-        raise ValueError('Repeats must be positive and warmup nonnegative')
+    if steady_repeats < 1:
+        raise ValueError('Steady repeats must be at least one')
 
     config = load_controller_config(config_name)
     controller = config['controller']
@@ -230,7 +286,7 @@ def main(config_name, frame_name, indices, count, start_config, ik_timeout,
         float(controller['threshold_linear']),
         float(controller['threshold_angular']),
     )
-    rows, setup = _measure_states(states, start, repeats, warmup)
+    rows, setup = _measure_states(states, start, steady_repeats)
     summary = _summarize(rows, setup, skipped)
     summary.update({
         'config': str(config_name),
@@ -238,8 +294,9 @@ def main(config_name, frame_name, indices, count, start_config, ik_timeout,
         'frame_name': frame_name,
         'start_config': start_config,
         'ik_timeout': float(ik_timeout),
-        'repeats': repeats,
-        'warmup': warmup,
+        'steady_repeats': steady_repeats,
+        'warmup': 'global only (no per-state warmup)',
+        'measurement': 'cold-start matches planner per-state cost',
     })
     summary_path = _write_results(rows, summary, output)
     print(json.dumps(summary, indent=2, sort_keys=True))
@@ -259,8 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--start-config', choices=sorted(NAMED_CONFIGS),
                         default='home')
     parser.add_argument('--ik-timeout', type=float, default=10.0)
-    parser.add_argument('--repeats', type=int, default=10)
-    parser.add_argument('--warmup', type=int, default=2)
+    parser.add_argument('--steady-repeats', type=int, default=4)
     parser.add_argument(
         '--output',
         default='data/planner/collision_benchmark.csv',
@@ -273,7 +329,6 @@ if __name__ == '__main__':
         count=args.count,
         start_config=args.start_config,
         ik_timeout=args.ik_timeout,
-        repeats=args.repeats,
-        warmup=args.warmup,
+        steady_repeats=args.steady_repeats,
         output=args.output,
     )
