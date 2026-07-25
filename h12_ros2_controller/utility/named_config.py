@@ -54,18 +54,20 @@ NAMED_CONFIGS = {
     'prep':  # init_3 with elbow bend for level, raised grasp frames
         np.array([0.7, 0.35, 0.0, -0.7, 0.0, 0.0, 0.0,
                   0.7, -0.35, 0.0, -0.7, 0.0, 0.0, 0.0]),
-    'staging_right':  # RE-RECORDED live from the real robot's /lowstate 2026-07-24
-                      # (arm motors 13-19 left, 20-26 right): left arm tucked
-                      # (elbow bent ~1.38 rad), right arm at the grasp staging pose.
-        np.array([0.0140, 0.0857, 0.0841, 1.3763, -0.2961, 0.1508, 0.1918,
-                  -0.3684, -0.6277, 0.9203, -0.1642, 1.8361, 0.4210, -1.1482]),
+    'staging_right':  # right arm RE-RECORDED live from the real robot's /lowstate
+                      # 2026-07-24 (arm motors 20-26) at the grasp staging pose;
+                      # left (idle) arm held at 'prep'. NOTE wrist_yaw -1.2632 sits
+                      # ~0.007 rad off its -1.27 limit — leave headroom if retuning.
+        np.array([0.7, 0.35, 0.0, -0.7, 0.0, 0.0, 0.0,
+                  -1.0597, -0.8747, 1.5802, -0.5551, 2.4575, -0.0036, -1.2632]),
     'staging_left':  # MIRROR of 'staging_right' across the sagittal plane: left
-                     # arm staged, right arm tucked. Mirror rule (arm joint axes
-                     # are identical L/R in the URDF, so a XZ reflection negates
-                     # the roll/yaw axes only): pitch same, roll FLIP, yaw FLIP,
-                     # elbow same, wrist_roll FLIP, wrist_pitch same, wrist_yaw
-                     # FLIP. DERIVED from the new staging_right, not recorded live
-                     # — sanity-check against the LEFT joint limits before trusting.
-        np.array([-0.3684, 0.6277, -0.9203, -0.1642, -1.8361, 0.4210, 1.1482,
-                  0.0140, -0.0857, -0.0841, 1.3763, 0.2961, 0.1508, -0.1918]),
+                     # arm staged, right (idle) arm at 'prep' ('prep' is itself
+                     # L/R symmetric, so the mirror still holds). Mirror rule (arm
+                     # joint axes are identical L/R in the URDF, so a XZ reflection
+                     # negates the roll/yaw axes only): pitch same, roll FLIP, yaw
+                     # FLIP, elbow same, wrist_roll FLIP, wrist_pitch same,
+                     # wrist_yaw FLIP. DERIVED, not recorded live — sanity-check
+                     # against the LEFT joint limits before trusting.
+        np.array([-1.0597, 0.8747, -1.5802, -0.5551, -2.4575, -0.0036, 1.2632,
+                  0.7, -0.35, 0.0, -0.7, 0.0, 0.0, 0.0]),
 }

@@ -122,7 +122,25 @@ limits:
   clip:
     position_offset: 0.001
     velocity_ratio: 0.10
-    torque_ratio: 0.60
+    # elbows raised to 1.1111 x 18 Nm = 20.0 Nm for high-force grasping;
+    # the safety layer config in use is the real ceiling (relax = 20 Nm,
+    # default = 10.8 Nm, tight = 4.5 Nm)
+    torque_ratio:
+      - 0.60 # torso_joint
+      - 0.60 # left_shoulder_pitch_joint
+      - 0.60 # left_shoulder_roll_joint
+      - 0.60 # left_shoulder_yaw_joint
+      - 1.1111 # left_elbow_joint
+      - 0.60 # left_wrist_roll_joint
+      - 0.60 # left_wrist_pitch_joint
+      - 0.60 # left_wrist_yaw_joint
+      - 0.60 # right_shoulder_pitch_joint
+      - 0.60 # right_shoulder_roll_joint
+      - 0.60 # right_shoulder_yaw_joint
+      - 1.1111 # right_elbow_joint
+      - 0.60 # right_wrist_roll_joint
+      - 0.60 # right_wrist_pitch_joint
+      - 0.60 # right_wrist_yaw_joint
   estop:
     position_offset: -1.0
     velocity_ratio:
@@ -141,19 +159,21 @@ limits:
       - 0.60 # right_wrist_roll_joint
       - 0.60 # right_wrist_pitch_joint
       - 0.60 # right_wrist_yaw_joint
+    # elbow trip raised to 1.20 x 18 Nm = 21.6 Nm so it sits above the
+    # 20.0 Nm elbow clip limit instead of firing as soon as it is reached
     torque_ratio:
       - 0.50 # torso_joint
       - 1.00 # left_shoulder_pitch_joint
       - 1.00 # left_shoulder_roll_joint
       - 1.00 # left_shoulder_yaw_joint
-      - 1.00 # left_elbow_joint
+      - 1.20 # left_elbow_joint
       - 1.00 # left_wrist_roll_joint
       - 1.00 # left_wrist_pitch_joint
       - 1.00 # left_wrist_yaw_joint
       - 1.00 # right_shoulder_pitch_joint
       - 1.00 # right_shoulder_roll_joint
       - 1.00 # right_shoulder_yaw_joint
-      - 1.00 # right_elbow_joint
+      - 1.20 # right_elbow_joint
       - 1.00 # right_wrist_roll_joint
       - 1.00 # right_wrist_pitch_joint
       - 1.00 # right_wrist_yaw_joint
