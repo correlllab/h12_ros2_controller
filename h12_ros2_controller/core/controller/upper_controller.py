@@ -286,16 +286,40 @@ class UpperController:
             raise RuntimeError(f'Planning failed: {result.reason}')
         return result.path
 
+    def _planner_speed_overrides(self):
+        '''Per-plan speed settings implied by the current speed_scale
+
+        A planned path is slowed by PLANNING it at a lower grasp-frame speed:
+        the planner then emits proportionally more waypoints and execute_path
+        still clocks them out at dt. Stretching the step period instead keeps
+        the original waypoint spacing and turns a smooth ramp into a staircase.
+        Returns (None, None) at full speed so the planner process keeps the
+        config it was spawned with.
+        '''
+        scale = float(self.speed_scale)
+        if scale == 1.0:
+            return None, None
+        config = self.planner.planner_config
+        # the waypoint cap bounds a path's duration, so it has to grow with the
+        # step count or a long slow path clamps back to near full speed
+        return (
+            config.moving_speed * scale,
+            int(np.ceil(config.max_interpolation_steps / scale)),
+        )
+
     def plan_to_configuration(self, q_reduced, start=None, active_mask=None):
         '''Plan from current reduced state to a reduced joint target'''
         if start is None:
             start = self.robot_model.state_reduced['q']
         q_reduced = np.asarray(q_reduced, dtype=float)
+        moving_speed, max_interpolation_steps = self._planner_speed_overrides()
         result = self.planner.plan_configuration(
             current_q=self.robot_model.state['q'],
             start=start,
             goal=q_reduced,
             active_mask=active_mask,
+            moving_speed=moving_speed,
+            max_interpolation_steps=max_interpolation_steps,
         )
         return self._path_or_raise(result)
 
@@ -358,8 +382,11 @@ class UpperController:
         '''Execute reduced joint waypoints as direct position commands'''
         path = self._as_reduced_path(path)
 
-        # apply each reduced waypoint as a direct full motor position command
-        step_period = self.dt / max(self.speed_scale, 1e-6)
+        # apply each reduced waypoint as a direct full motor position command.
+        # The path is already time-parameterized at dt by the planner (slow
+        # moves are planned at a lower moving_speed and come back with more
+        # waypoints), so it always plays back at the control period.
+        step_period = self.dt
         for q_reduced in tqdm(path, desc='Executing path', leave=False):
             step_start_time = time.time()
             if validate:
@@ -377,8 +404,7 @@ class UpperController:
             # loop in this package paces itself. A bare sleep(step_period) makes
             # the real period dt + validation + FK + (when visualize is on)
             # Meshcat publishing, which stretches a planned path well past its
-            # planned duration -- and does so with speed_scale at 1.0, i.e.
-            # outside slow mode.
+            # planned duration.
             time.sleep(max(
                 0.0,
                 step_period - (time.time() - step_start_time)

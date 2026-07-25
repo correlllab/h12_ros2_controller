@@ -1,6 +1,7 @@
 import queue
 import traceback
 import multiprocessing as mp
+from contextlib import contextmanager
 from dataclasses import asdict
 
 import numpy as np
@@ -31,14 +32,22 @@ class PlannerClient:
         self._process = None
 
     def plan_configuration(self, current_q, start, goal,
-                           active_mask=None):
-        '''Plan to a reduced joint target in the planner process'''
+                           active_mask=None, moving_speed=None,
+                           max_interpolation_steps=None):
+        '''Plan to a reduced joint target in the planner process
+
+        The worker's PlannerConfig is serialized once at spawn, so per-goal
+        speed changes have to travel with the request. Leave the overrides at
+        None to plan with the config the worker was started with.
+        '''
         return self._request({
             'command': 'plan_configuration',
             'current_q': np.asarray(current_q, dtype=float),
             'start': np.asarray(start, dtype=float),
             'goal': np.asarray(goal, dtype=float),
             'active_mask': _optional_array(active_mask, dtype=bool),
+            'moving_speed': moving_speed,
+            'max_interpolation_steps': max_interpolation_steps,
         })
 
     def shutdown(self):
@@ -141,7 +150,40 @@ class _PlannerWorker:
         start = np.asarray(request['start'], dtype=float)
         goal = np.asarray(request['goal'], dtype=float)
         active_mask = _optional_array(request.get('active_mask'), dtype=bool)
-        return self.planner.plan(start, goal, active_mask=active_mask)
+        with self._config_override(
+            request.get('moving_speed'),
+            request.get('max_interpolation_steps'),
+        ):
+            return self.planner.plan(start, goal, active_mask=active_mask)
+
+    @contextmanager
+    def _config_override(self, moving_speed, max_interpolation_steps):
+        '''Apply per-request planner speed settings, restoring them after'''
+        if moving_speed is None and max_interpolation_steps is None:
+            yield
+            return
+
+        config = self.planner.config
+        previous = (config.moving_speed, config.max_interpolation_steps)
+        # PlannerConfig is validated at construction only, so an override has
+        # to be checked here or a bad value divides by zero when interpolating
+        if moving_speed is not None:
+            moving_speed = float(moving_speed)
+            if moving_speed <= 0.0:
+                raise ValueError('Planner moving_speed must be positive')
+            config.moving_speed = moving_speed
+        if max_interpolation_steps is not None:
+            max_interpolation_steps = int(max_interpolation_steps)
+            if max_interpolation_steps < config.min_interpolation_steps:
+                raise ValueError(
+                    'Planner max_interpolation_steps must be at least '
+                    'min_interpolation_steps'
+                )
+            config.max_interpolation_steps = max_interpolation_steps
+        try:
+            yield
+        finally:
+            config.moving_speed, config.max_interpolation_steps = previous
 
     def _set_current_q(self, q):
         # sync the child process model with the caller's current joint state

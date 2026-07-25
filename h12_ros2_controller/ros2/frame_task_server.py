@@ -24,11 +24,11 @@ from h12_ros2_controller.utility.path_definition_ros import (
 )
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 
-# arm speed multiplier applied when a FrameTask goal requests slow_mode
+# Speed multiplier applied when a goal requests slow_mode. The controller
+# applies it per execution mode: a direct move scales joint velocity, a planned
+# move is planned at a proportionally lower grasp-frame speed (more waypoints,
+# same control period) so the arm stays smooth instead of stepping.
 SLOW_MODE_SCALE = 0.25
-# a duration is a TIMEOUT, so a slow move needs a proportionally longer budget
-# to cover the same distance
-SLOW_MODE_TIME_SCALE = 1.0 / SLOW_MODE_SCALE
 
 class FrameTaskServer(Node):
     def __init__(self,
@@ -399,9 +399,6 @@ class FrameTaskServer(Node):
                 SLOW_MODE_SCALE if goal.slow_mode else 1.0
             )
             if goal.slow_mode:
-                # a duration is a timeout, so stretch it to match the lower
-                # speed or the move ends short of the target
-                timeout *= SLOW_MODE_TIME_SCALE
                 self.get_logger().info(
                     f'Slow mode enabled (speed_scale={SLOW_MODE_SCALE})'
                 )
