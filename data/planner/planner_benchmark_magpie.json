@@ -1,0 +1,37 @@
+{
+  "base_seed": 20260725,
+  "config": "debug.yaml",
+  "frame_name": "right_graspgenx_frame",
+  "input_path": "/home/tonyzyt2000/ros2_ws/src/h12_ros2_controller/data/planner/generated_grasps_filtered_q.npy",
+  "measurement": "raw OMPL solve time only",
+  "model_variant": "magpie",
+  "planner_timeout": 1.0,
+  "prepared_goals": 113,
+  "repeats": 1,
+  "representations": {
+    "mesh": {
+      "attempts": 113,
+      "failure_reasons": {
+        "OMPL failed to find a solution before timeout": 7
+      },
+      "mean_planning_time": 11.764384175769928,
+      "median_planning_time": 9.012209005999466,
+      "p95_planning_time": 29.26838786319967,
+      "success_count": 106,
+      "success_rate": 0.9380530973451328
+    },
+    "sphere": {
+      "attempts": 113,
+      "failure_reasons": {},
+      "mean_planning_time": 0.028484053327428333,
+      "median_planning_time": 0.027641762000712333,
+      "p95_planning_time": 0.03607392179983435,
+      "success_count": 113,
+      "success_rate": 1.0
+    }
+  },
+  "seed_strategy": "fresh worker seed = base + repeat",
+  "selected_targets": 113,
+  "start_config": "home",
+  "warmup_queries_per_representation": 1
+}

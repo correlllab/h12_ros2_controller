@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import time
@@ -9,33 +8,23 @@ import pinocchio as pin
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.benchmark.collision_benchmark import (
     _build_collision_model,
-    _build_ik_solver,
-    _load_grasps,
     _prepare_states,
 )
-from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
-from h12_ros2_controller.utility.path_definition import (
-    FILTERED_GENERATED_GRASPS_PATH,
-    URDF_MAGPIE_PATH,
-)
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.path_definition import (
+    FILTERED_GENERATED_GRASPS_Q_PATH,
+)
 
 
 def _grasp_states(count):
     start = np.asarray(NAMED_CONFIGS['home'], dtype=float)
-    d_min = 0.02
-    states, skipped = _prepare_states(
-        FILTERED_GENERATED_GRASPS_PATH,
-        'right_graspgenx_frame',
+    states = _prepare_states(
+        FILTERED_GENERATED_GRASPS_Q_PATH,
         None,
         count,
         start,
-        d_min,
-        10.0,
-        1e-3,
-        1e-2,
     )
-    return states, skipped
+    return states, {}
 
 
 def _per_state_measure(representation, states, steady_repeats=5):
@@ -75,7 +64,7 @@ def _correlation_analysis(all_queries):
     steady_medians = np.array([np.median(q['steady']) for q in all_queries])
 
     print(f'\n{"="*60}')
-    print(f'COLD VS STEADY CORRELATION (Pearson r)')
+    print('COLD VS STEADY CORRELATION (Pearson r)')
     print(f'{"="*60}')
     r_mean = np.corrcoef(cold_times, steady_means)[0, 1]
     r_med = np.corrcoef(cold_times, steady_medians)[0, 1]
@@ -100,14 +89,14 @@ def _find_slow_states(all_queries, top_n=5):
     by_steady = sorted(all_queries, key=lambda x: np.mean(x['steady']), reverse=True)
 
     print(f'\n{"="*60}')
-    print(f'SLOWEST STATES BY COLD QUERY')
+    print('SLOWEST STATES BY COLD QUERY')
     print(f'{"="*60}')
     for q in by_cold[:top_n]:
         print(f'  {q["name"]:20s} cold={q["cold"]:.4f}s  steady_mean={np.mean(q["steady"]):.4f}s  '
               f'steady_med={np.median(q["steady"]):.4f}s  steady_range={np.min(q["steady"]):.2e}-{np.max(q["steady"]):.2e}')
 
     print(f'\n{"="*60}')
-    print(f'SLOWEST STATES BY STEADY MEAN')
+    print('SLOWEST STATES BY STEADY MEAN')
     print(f'{"="*60}')
     for q in by_steady[:top_n]:
         print(f'  {q["name"]:20s} cold={q["cold"]:.4f}s  steady_mean={np.mean(q["steady"]):.4f}s  '
@@ -173,7 +162,7 @@ def _profile_collision_pairs(robot_model, q, label, top_n=10):
         geom_types[key]['time'] += p['time']
 
     print(f'\n{"="*60}')
-    print(f'GEOMETRY TYPE BREAKDOWN')
+    print('GEOMETRY TYPE BREAKDOWN')
     print(f'{"="*60}')
     for key, info in sorted(geom_types.items(), key=lambda x: x[1]['time'], reverse=True):
         pct = info['time'] / total * 100
@@ -192,7 +181,7 @@ def _full_diagnostic(count=100, steady_repeats=5):
 
     r = _correlation_analysis(mesh_queries)
 
-    slow_cold, slow_steady = _find_slow_states(mesh_queries, top_n=5)
+    slow_cold, _slow_steady = _find_slow_states(mesh_queries, top_n=5)
 
     # pick the slowest state by cold time for pair profiling
     slowest = slow_cold[0]
