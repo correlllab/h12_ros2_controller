@@ -30,3 +30,6 @@ GENERATED_GRASPS_PATH = f'{PLANNER_DATA_DIR}/generated_grasps.npy'
 FILTERED_GENERATED_GRASPS_PATH = (
     f'{PLANNER_DATA_DIR}/generated_grasps_filtered.npy'
 )
+FILTERED_GENERATED_GRASPS_Q_PATH = (
+    f'{PLANNER_DATA_DIR}/generated_grasps_filtered_q.npy'
+)

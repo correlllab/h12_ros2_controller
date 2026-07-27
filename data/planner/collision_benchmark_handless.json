@@ -1,0 +1,59 @@
+{
+  "config": "debug.yaml",
+  "frame_name": "right_graspgenx_frame",
+  "input_path": "/home/tonyzyt2000/ros2_ws/src/h12_ros2_controller/data/planner/generated_grasps_filtered_q.npy",
+  "measurement": "cold-start matches planner per-state cost",
+  "model_variant": "handless",
+  "representations": {
+    "mesh": {
+      "cold_start": {
+        "count": 114,
+        "maximum": 2.5424000341445208e-05,
+        "mean": 1.2625201777968629e-05,
+        "median": 1.2409001101332251e-05,
+        "p95": 1.8010550502367543e-05,
+        "total": 0.0014392730026884237
+      },
+      "collision_count": 0,
+      "collision_free_count": 570,
+      "collision_pair_count": 66,
+      "geometry_count": 22,
+      "setup_time": 11.677091286001087,
+      "steady_state": {
+        "count": 456,
+        "maximum": 2.3010001314105466e-05,
+        "mean": 1.2223662260542992e-05,
+        "median": 1.2303499715926591e-05,
+        "p95": 1.6534499536646763e-05,
+        "total": 0.005573989990807604
+      }
+    },
+    "sphere": {
+      "cold_start": {
+        "count": 114,
+        "maximum": 5.915000656386837e-06,
+        "mean": 4.9258245812859715e-06,
+        "median": 4.886500391876325e-06,
+        "p95": 5.1173504289181436e-06,
+        "total": 0.0005615440022666007
+      },
+      "collision_count": 0,
+      "collision_free_count": 570,
+      "collision_pair_count": 173,
+      "geometry_count": 24,
+      "setup_time": 9.2226119930001,
+      "steady_state": {
+        "count": 456,
+        "maximum": 1.9642999177449383e-05,
+        "mean": 4.922752240370181e-06,
+        "median": 4.849999641010072e-06,
+        "p95": 4.982750851922901e-06,
+        "total": 0.0022447750216088025
+      }
+    }
+  },
+  "start_config": "home",
+  "state_count": 114,
+  "steady_repeats": 4,
+  "warmup": "global only (no per-state warmup)"
+}
