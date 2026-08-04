@@ -233,7 +233,7 @@ class IKSolver:
             safety_break=False
         )
 
-    def _ik_reduced(self, tasks, dt):
+    def _ik_reduced(self, tasks, dt, constraints=None):
         '''Helper function solving IK on reduced model for all tasks'''
         return pink.solve_ik(
             self.configuration_reduced,
@@ -242,6 +242,7 @@ class IKSolver:
             solver=self.solver,
             limits=self.limits_reduced,
             barriers=[self.collision_barrier_reduced],
+            constraints=constraints,
             safety_break=False
         )
 
@@ -441,7 +442,7 @@ class IKSolver:
             tasks.append(self.com_task)
         return self._ik(tasks, self.dt)
 
-    def ik_step_reduced(self, com=False):
+    def ik_step_reduced(self, com=False, constraints=None):
         '''Solve one step of IK on reduced model for all tasks and return motor-only velocity'''
         self.posture_task.set_target_from_configuration(self.configuration_reduced)
         tasks = list(self.frame_tasks.values()) + [self.posture_task]
@@ -449,7 +450,11 @@ class IKSolver:
         if com:
             tasks.append(self.com_task_reduced)
         # convert reduced vel to full motor vel
-        vel = self._ik_reduced(tasks, self.dt)
+        vel = self._ik_reduced(
+            tasks,
+            self.dt,
+            constraints=constraints,
+        )
         vel_full = self.robot_model.zero_q_body
         vel_full[self.robot_model.reduced_mask] = vel
         return vel_full
