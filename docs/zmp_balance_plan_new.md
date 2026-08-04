@@ -383,6 +383,223 @@ arms and 35-37.5 N for direct control.
 The 30 N eight-direction regression introduces no pass/fail regression: both
 variants pass every direction except negative X.
 
+## Controlled Arm Reaction Identification
+
+### Purpose and tooling
+
+The `arm_probe` benchmark variant was added to identify how prescribed arm
+motions affect centroidal dynamics before constructing a larger optimal-control
+problem. It continuously publishes through the upper-body safety input and
+releases a profile from the same `impulse.flag` used by MuJoCo.
+
+Two profile shapes are available:
+
+- `bump`: smooth motion to a configured displacement followed by a smooth
+  return to the original posture.
+- `hold`: smooth one-way motion followed by a position hold, matching the
+  accepted direct controller more closely.
+
+The MuJoCo recorder now includes:
+
+- Full `qpos`, `qvel`, and `qacc`.
+- Applied actuator controls and actuator forces.
+- Whole-body COM position and velocity.
+- Whole-body centroidal angular momentum.
+- Left, right, and combined arm angular momentum translated to the whole-body
+  COM.
+
+Probe command, measured joint state, release tick, and profile time are written
+to `arm_probe.jsonl`. Validation produced zero-step or one-step release skew and
+tracked a 0.15 rad shoulder profile to approximately 0.155 rad.
+
+Reusable commands are:
+
+```bash
+uv run python -m h12_zmp_benchmark.experiment.arm_reaction_sweep \
+    --config config/arm_probe.yaml \
+    --direction none \
+    --force 0 \
+    --profile shoulder_pitch_pos \
+    --profile shoulder_pitch_neg \
+    --output-dir arm_reaction_basis
+
+uv run python -m h12_zmp_benchmark.plot.analyze_arm_reaction \
+    runs/arm_reaction_basis
+```
+
+The analyzer writes raw metrics, antisymmetric reaction pairs,
+baseline-subtracted directional effects, and aligned time-series plots.
+
+### No-disturbance joint basis
+
+The primary basis used 0.15 rad, 0.8 s closed bump profiles. Positive and
+negative profiles were differenced and divided by two to suppress standing
+offset and lower-policy phase variation.
+
+| Mode | Dominant arm momentum | Base-rate reaction | Interpretation |
+| --- | ---: | ---: | --- |
+| Shoulder pitch | `H_y = -0.108` | `omega_y = +0.0098` | Strong pitch authority. |
+| Elbow | `H_y = +0.0318` | `omega_y = -0.0003` | About 30% arm momentum and negligible measured base authority. |
+| Same-sign shoulder roll | `H_x = -0.121` | `omega_x = +0.0244` | Strongest roll authority. |
+| Opposed shoulder roll | `H_x = +0.0256` | `omega_x = +0.0080` | Mostly cancels and has strong coupling/noise. |
+
+Units are kg m²/s for angular momentum and rad/s for base rate. Signs describe
+the positive profile command in the current MuJoCo joint coordinates.
+
+The map is not axis diagonal. Shoulder pitch also produced about 0.063 kg m²/s
+of X angular momentum, and same-sign shoulder roll produced about
+0.051 kg m²/s about Z. A future controller should use the measured full matrix,
+not a hand-written planar sign swap.
+
+### Braking and momentum payback
+
+The second half of the closed bump reverses arm velocity. Antisymmetric braking
+momentum was:
+
+- Shoulder pitch: `H_y = +0.0466`, opposite the `-0.108` spin-up momentum.
+- Elbow: `H_y = -0.0309`, nearly the full opposite of its spin-up momentum.
+- Same-sign shoulder roll: `H_x = +0.0861`, about 71% of the opposite spin-up
+  momentum.
+
+The useful reaction cannot be evaluated from spin-up alone. Elbow motion is
+especially unattractive because almost all of its small momentum is paid back
+during braking.
+
+One-way 0.15 rad, 0.3 s move-and-hold profiles further showed that base motion
+can reverse after the arm stops even without a commanded return. For shoulder
+pitch, paired spin-up base rate was `+0.0209 rad/s`, while the held-phase value
+became `-0.0102 rad/s`. Servo braking and the lower-body policy therefore create
+payback even when arm position remains fixed.
+
+### Amplitude and duration scaling
+
+Shoulder pitch paired `H_y` at 0.075, 0.15, and 0.225 rad was approximately:
+
+```text
+-0.0548, -0.1077, -0.1308 kg m^2/s
+```
+
+The response is nearly linear through 0.15 rad and then saturates. Same-sign
+shoulder-roll paired `H_x` was approximately:
+
+```text
+-0.0804, -0.1214, -0.2371 kg m^2/s
+```
+
+Actual peak shoulder velocity increased from approximately 0.27 to 0.56 and
+0.82 rad/s across the amplitude sweep. The 0.4 s shoulder profile reached the
+roughly 0.9 rad/s safety boundary. A 1.2 s profile produced similar sampled arm
+momentum but almost no paired base-rate reaction (`0.0002 rad/s`), showing that
+the lower policy absorbs slow motions. Useful control authority depends on
+momentum rate and timing, not only arm momentum or displacement.
+
+Artifacts:
+
+- `runs/arm_reaction_basis_20260722`.
+- `runs/arm_reaction_scale_0075_20260722`.
+- `runs/arm_reaction_scale_0225_20260722`.
+- `runs/arm_reaction_duration_04_20260722`.
+- `runs/arm_reaction_duration_12_20260722`.
+- `runs/arm_reaction_hold_basis_20260722`.
+
+### Four-direction closed-bump experiments
+
+At 20 N, baseline, predicted matching sign, opposite sign, and a weaker or
+canceling joint mode were tested in all four cardinal directions.
+
+| Direction | Baseline peak | Best tested profile | Profile peak | Opposite or weak profile |
+| --- | ---: | --- | ---: | ---: |
+| +X | 0.0897 | Elbow positive | 0.0888 | Shoulder pitch positive: 0.0931 |
+| -X | 0.1229 | Shoulder pitch negative | 0.1207 | Shoulder pitch positive: 0.1228 |
+| +Y | 0.0641 | Same-sign roll positive | 0.0565 | Same-sign roll negative: 0.0677 |
+| -Y | 0.0506 | Same-sign roll negative | 0.0487 | Same-sign roll positive: 0.0550 |
+
+The X differences at 20 N are too small to separate from run variation. The
+lateral sign effect is clearer. At 60 N:
+
+| Direction | Baseline | Roll positive | Roll negative |
+| --- | ---: | ---: | ---: |
+| +Y | 0.1054 | 0.0957 | 0.1062 |
+| -Y | 0.0682 | 0.0717 | 0.0675 |
+
+Positive roll reduced +Y roll angle by about 10.5%. Negative roll provided only
+a small -Y improvement. These are single-trial system-identification results,
+not threshold claims.
+
+Artifacts:
+
+- `runs/arm_reaction_directional_20260722`.
+- `runs/arm_reaction_lateral_60n_20260722`.
+
+### Four-direction one-way experiments
+
+The one-way profile gives a substantially different result because it removes
+the explicit return half of the bump.
+
+| Direction and force | Baseline peak | Positive profile | Negative profile |
+| --- | ---: | ---: | ---: |
+| +X, 35 N shoulder pitch | 0.2122, fall | 0.0949, pass | 0.3730, fall |
+| -X, 25 N shoulder pitch | 0.1386 | 0.1406 | 0.1383 |
+| +Y, 60 N same roll | 0.1046 | 0.0904 | 0.1116 |
+| -Y, 60 N same roll | 0.0684 | 0.0596 | 0.0795 |
+
+For +X, the positive shoulder-pitch hold profile changed failure to survival,
+matching the sign used by the accepted direct controller. The isolated
+spin-phase base-rate sign alone would have predicted the opposite profile.
+The time series show that positive shoulder pitch arrests divergence after the
+force interval, reduces long-term COM excursion, and avoids explicit braking
+payback. Therefore the balance benefit is a closed-loop trajectory effect, not
+an instantaneous reaction-sign effect.
+
+Both +Y and -Y preferred the same positive shoulder-roll profile in this
+posture and with this lower-body policy. The system is not laterally symmetric;
+mass redistribution and policy coupling are as important as arm angular
+momentum sign.
+
+Artifact: `runs/arm_reaction_hold_directional_20260722`.
+
+### Current direct-controller trigger behavior
+
+The retained 30 N direct-controller logs show:
+
+| Direction | Crocoddyl solves | Maximum absolute ZMP residual | Main arm motion |
+| --- | ---: | ---: | --- |
+| +X | 6 | X: 0.0232 m | Shoulder pitch: about 0.15 rad. |
+| +Y | 19 | X: 0.0120 m, Y: 0.0115 m | Shoulder pitch: about 0.35 rad. |
+| -X | 32 | X: 0.0645 m | Shoulder pitch: about 0.86 rad. |
+| -Y | 19 | X: 0.0123 m, Y: 0.0116 m | Shoulder pitch: about 0.35 rad. |
+
+The Y pushes do not produce a clean Y trigger. Instead, X residual noise reaches
+the 0.012 m threshold and starts pitch-oriented arm motion. The current
+controller is therefore not a valid planar directional controller even though
+the 30 N pass/fail regression is neutral.
+
+### Implications for the next controller
+
+1. Use measured arm-to-centroid reaction matrices:
+   shoulder pitch for the pitch subspace and same-sign shoulder roll for the
+   roll subspace. Elbow and opposed roll should have low allocation priority.
+2. Optimize momentum rate and body state over time:
+   instantaneous arm momentum sign does not predict whole-response benefit.
+3. Represent spin-up, servo braking, held posture, and optional return as
+   separate phases or within a short horizon.
+4. Include arm posture and remaining stroke:
+   held arm position changes COM and lower-policy behavior.
+5. Use a directional trigger:
+   classify X and Y independently from a better COP/IMU/COM state instead of
+   triggering on the norm of a noisy residual.
+6. Include coupled objectives:
+   roll modes generate yaw and pitch momentum, and pitch modes generate roll
+   momentum in the current geometry.
+7. Validate a future model against measured outputs:
+   predicted arm momentum, base angular acceleration, COM change, and braking
+   payback should all be checked after safety clipping.
+
+The next Crocoddyl state should include at least arm position and velocity,
+body roll and pitch, body angular velocity, COM position and velocity, and arm
+angular momentum. Arm acceleration is a more appropriate control than arm
+velocity for modeling the measured reaction.
+
 ## Benchmark Metrics
 
 `summary.json` now includes:

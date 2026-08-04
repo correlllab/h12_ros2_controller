@@ -69,6 +69,16 @@ def _validate_zmp(raw: dict[str, Any]) -> dict[str, Any]:
 
     return zmp
 
+
+def _validate_counter_balance(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'counter_balance' not in raw:
+        return {}
+
+    counter_balance = raw['counter_balance']
+    if not isinstance(counter_balance, dict):
+        raise ValueError('counter_balance must be a mapping when provided')
+    return counter_balance
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -189,6 +199,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         raise ValueError('planner must be a mapping')
     momentum_ddp = raw.get('momentum_ddp', {})
     zmp = _validate_zmp(raw)
+    counter_balance = _validate_counter_balance(raw)
 
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
@@ -263,6 +274,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         },
         'momentum_ddp': momentum_ddp,
         'zmp': zmp,
+        'counter_balance': counter_balance,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
