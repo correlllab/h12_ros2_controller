@@ -91,7 +91,7 @@ jobs:
               '- The `main` branch is meant to be compatible with '
               '[HAMS](https://github.com/correlllab/HAMS), '
               'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
-              'at `/home/code/CL_Assets`.\n'
+              'at `../../../CL_Assets` relative to the repo root.\n'
               '- The [dev branch](https://github.com/correlllab/h12_ros2_controller/tree/dev) '
               'is for local testing.'
           )

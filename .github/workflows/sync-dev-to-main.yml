@@ -95,7 +95,7 @@ jobs:
               '- The `main` branch is meant to be compatible with '
               '[HAMS](https://github.com/correlllab/HAMS), '
               'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
-              'at `/home/code/CL_Assets`.\n'
+              'at `../../../CL_Assets` relative to the repo root.\n'
               '- The [dev branch](https://github.com/correlllab/h12_ros2_controller/tree/dev) '
               'is for local testing.'
           )
@@ -108,7 +108,7 @@ jobs:
           lines = path.read_text().splitlines()
           for index, line in enumerate(lines):
               if line.startswith('ASSETS_PATH = '):
-                  lines[index] = "ASSETS_PATH = '/home/code/CL_Assets'"
+                  lines[index] = "ASSETS_PATH = str(PROJECT_ROOT / '../../../CL_Assets')"
                   break
           else:
               raise SystemExit('Expected ASSETS_PATH definition was not found')
