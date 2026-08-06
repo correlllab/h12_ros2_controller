@@ -407,8 +407,69 @@ refined pass/fail boundaries, cells where variants disagree, and adjacent
 common-pass/common-fail controls three times. Majority decides the repeated
 cell; a tie fails.
 
+#### Catalog Motion-Group Sweep
+
+After the offline reachability catalog is accepted, add a separate
+catalog-driven configuration sweep. It must not be merged with the Cartesian
+grid or reported as a continuous workspace volume.
+
+- The saved catalog at `data/arm_reachability_candidates.yaml` labels every
+  direction and candidate as either `directional` or `overhang`.
+- The `directional` group contains the fixed five-point forward, upward,
+  forward-outward, diagonal, and cross-body lines for each arm.
+- The `overhang` group contains the fixed five-point, strict `0, 80, 0` degree
+  wrist-pitch lines. These include outer and inner forward/upward lines plus
+  the center-crossing lateral line.
+- Every left/right pair must use the same rank and reflected Cartesian target:
+  identical X/Z, opposite Y, and reflected orientation. Keep only pairwise
+  offline-valid ranks.
+- Run each catalog group independently for every arm, variant, trial, and
+  movement profile. The profiles are quasi-static and dynamic, each followed
+  by the same hold and standing-settle qualification.
+- Write independent checkpoints, manifests, CSV results, summaries, plots, and
+  frontier tables for `directional` and `overhang`. Include `motion_group`,
+  catalog direction ID, candidate rank, saved 14-joint configuration, and
+  profile in every trial record.
+- Write a direction-rank aggregate CSV and dashboard section for every group
+  and profile. Plot CoM margin, contact-ZMP margin, configuration error, and
+  outcome against ranks one through five for each direction.
+- Do not combine group pass counts, margins, frontiers, or grid-cell proxies.
+  Compare variants only within the same motion group and profile.
+- Replay and benchmark the saved joint configuration directly after offline
+  filtering. Do not re-solve the Cartesian target during visualization or the
+  configuration benchmark.
+- Use `frame_task` as the initial baseline. The configured profiles are
+  quasi-static (`6 s` move, `4 s` target hold) and bounded-fast (`1.5 s` smooth
+  direct trajectory, `3 s` target hold), with zero external impulse unless a
+  later force study changes that condition. Runtime limits are `dq_lim: 6`,
+  `v_lim: 3`, and `w_lim: 8`, with full publisher velocity clipping. Do not use
+  scaled one-step IK feedback for fast configuration replay.
+- Classify each complete trial as green when it passes, orange when it survives
+  with excessive configuration error or failed reach/settle, and red when it
+  falls. Keep infrastructure failures separate from these physical outcomes.
+- Render a MuJoCo replay MP4 only for red trials when
+  `video.enable: true`; retain the `.npz` trace and an explicit unavailable
+  reason when a replay cannot be produced.
+
 ### 5. Counter-Balance Solver And Controller
 
+- Implement a simple reactive counter-arm controller before further Crocoddyl
+  tuning. Treat the saved moving-arm trajectory as fixed and control the
+  opposite arm's shoulder pitch, roll, yaw, and elbow.
+- Form a bounded counter-arm velocity command from moving-arm feedforward and
+  balance feedback. Feedforward minimizes predicted centroidal momentum from
+  the moving arm. Feedback uses simulator-independent controller signals:
+  support-relative CoM error, torso angular velocity, and their filtered rates.
+- Solve a damped bounded least-squares problem each tick. Penalize residual
+  centroidal momentum, support-center error, counter-arm speed, and deviation
+  from a captured counter-arm posture. Enforce effective publisher velocity and
+  position limits before publication.
+- Fade counter motion to posture hold after the moving trajectory ends. Reject
+  nonfinite, collision-invalid, or support-invalid commands and publish a
+  zero-velocity counter-arm hold instead.
+- Keep the existing one-step Crocoddyl controller as an experimental comparison,
+  not the initial reactive implementation. Its static CoM objective has not yet
+  demonstrated closed-loop disturbance rejection.
 - Add a dedicated four-joint `CounterBalanceDDP` module rather than extending
   the existing disturbance DDP classes.
 - Add `CounterBalanceController` with fixed arm roles, constrained Pink IK,
@@ -566,6 +627,35 @@ These are smoke tests, not repeated validation:
 
 Pending implementation and experiment.
 
+### Catalog Metric Response Diagnostic
+
+The preserved rank-5 artifact is
+`runs/20260805_135802_arm_reachability_balance_sweep/`. It is useful for metric
+validation but is deprecated as a controller baseline because its fast profile
+used scaled one-step IK feedback and produced violent arm-joint ringing.
+
+- Stable quasi-static directional trials kept minimum CoM margins between
+  `0.09804 m` and `0.13697 m`; contact-ZMP margins remained positive between
+  `0.01777 m` and `0.12307 m`.
+- Quasi-static overhang targets produced smaller support reserves despite tiny
+  final configuration errors. The most disturbing stable examples reached
+  `0.06638 m` CoM margin and `0.00925 m` contact-ZMP margin.
+- In falling fast-overhang trials, CoM margins crossed below zero to
+  `-0.12687 m`, while contact-ZMP margins reached `-0.66380 m`. Base tilt,
+  support invalidity, and survival status changed consistently with those
+  margin crossings.
+- Contact-ZMP margin is the earliest and most sensitive disturbance metric in
+  these examples. CoM margin is smoother and better for sustained support loss.
+  Configuration error must remain separate because it measures arm tracking,
+  not balance.
+- The metrics therefore reflect physical balance disturbance and loss of
+  support, but the red outcomes cannot be attributed cleanly to intended arm
+  motion because the deprecated command path was unstable. Do not use its red
+  count as evidence of a counter-balance opportunity or controller efficacy.
+- New baseline and counter-balance comparisons must use the bounded `1.5 s`
+  direct trajectory and report rank-wise metric trends, not only final rank-5
+  classifications.
+
 ### Counter-Balance Model Validation
 
 The exploratory counter-balance run executed 399 solver calls with four
@@ -590,7 +680,7 @@ Pending implementation and experiment.
 
 ### Final Limitations
 
-Only two exploratory integration smoke runs have been completed. No repeated
-baseline, mirrored reachability validation, coarse or refined grid, tuned-weight
-series, or external-force spot check has been run. The development weights remain
-unaccepted, and no workspace extension is claimed.
+The metric response has been validated qualitatively, but the preserved red
+trials used a deprecated unstable command path. No repeated bounded-trajectory
+baseline, counter-balance comparison, tuned-weight series, or external-force
+spot check has been completed. No workspace extension is claimed.
