@@ -89,7 +89,7 @@ jobs:
           text = path.read_text()
           main = (
               '- The `main` branch is meant to be compatible with '
-              '[HAMS](https://github.com/correlllab/HAMS), '
+              '[GOLEM](https://github.com/correlllab/GOLEM), '
               'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
               'at `../../../CL_Assets` relative to the repo root.\n'
               '- The [dev branch](https://github.com/correlllab/h12_ros2_controller/tree/dev) '

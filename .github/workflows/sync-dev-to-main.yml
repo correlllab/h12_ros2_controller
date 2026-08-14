@@ -49,7 +49,7 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive submodules/unitree_sdk2_python
 
-          # Preserve the SDK from dev at the path used by HAMS packaging.
+          # Preserve the SDK from dev at the path used by GOLEM packaging.
           if [ ! -f submodules/unitree_sdk2_python/pyproject.toml ]; then
             echo "submodules/unitree_sdk2_python was not initialized correctly" >&2
             exit 1
@@ -93,7 +93,7 @@ jobs:
           )
           new = (
               '- The `main` branch is meant to be compatible with '
-              '[HAMS](https://github.com/correlllab/HAMS), '
+              '[GOLEM](https://github.com/correlllab/GOLEM), '
               'so place Unitree SDK at `../../../unitree_sdk2_python` and CL_Assets '
               'at `../../../CL_Assets` relative to the repo root.\n'
               '- The [dev branch](https://github.com/correlllab/h12_ros2_controller/tree/dev) '
