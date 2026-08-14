@@ -447,9 +447,9 @@ grid or reported as a continuous workspace volume.
 - Classify each complete trial as green when it passes, orange when it survives
   with excessive configuration error or failed reach/settle, and red when it
   falls. Keep infrastructure failures separate from these physical outcomes.
-- Render a MuJoCo replay MP4 only for red trials when
-  `video.enable: true`; retain the `.npz` trace and an explicit unavailable
-  reason when a replay cannot be produced.
+- Render a VP9/WebM MuJoCo replay for every completed trial when
+  `video.enable: true`. Retain `replay.webm` in the run directory and a hard
+  link under `videos/<controller>/<target>_<profile>_aNN.webm`.
 
 ### 5. Counter-Balance Solver And Controller
 
@@ -467,6 +467,10 @@ grid or reported as a continuous workspace volume.
 - Fade counter motion to posture hold after the moving trajectory ends. Reject
   nonfinite, collision-invalid, or support-invalid commands and publish a
   zero-velocity counter-arm hold instead.
+- Bound accumulated counter-arm displacement relative to the captured posture
+  with a configurable four-joint `max_excursion`. Keep the current reactive
+  reference unbounded and unchanged; use explicit excursion limits only for
+  aggressive experimental variants.
 - Keep the existing one-step Crocoddyl controller as an experimental comparison,
   not the initial reactive implementation. Its static CoM objective has not yet
   demonstrated closed-loop disturbance rejection.
@@ -625,50 +629,229 @@ These are smoke tests, not repeated validation:
 
 ### Normal Frame-Task Grid
 
-Pending implementation and experiment.
+The offline frontier scan evaluated 410 targets, solved 236, and retained five
+paired ranks in each of 20 directions. Several original rays were already at
+their collision/limit frontier. Useful paired extensions included:
 
-### Catalog Metric Response Diagnostic
+- `upward_arc`: from approximately `[0.234, 0.608, 0.466]` to
+  `[0.234, 0.703, 0.555]` on the left, with an exact right reflection.
+- `overhang_forward`: from `x = 0.40 m` to `0.425 m` at `|y| = 0.40 m`.
+- `overhang_inner_forward`: from `x = 0.40 m` to `0.475 m` at
+  `|y| = 0.20 m`.
+- `overhang_inner_upward`: from `z = 0.433 m` to `0.450 m`.
 
-The preserved rank-5 artifact is
-`runs/20260805_135802_arm_reachability_balance_sweep/`. It is useful for metric
-validation but is deprecated as a controller baseline because its fast profile
-used scaled one-step IK feedback and produced violent arm-joint ringing.
+The complete bounded-trajectory baseline is
+`runs/20260805_193114_arm_reachability_balance_sweep/`:
 
-- Stable quasi-static directional trials kept minimum CoM margins between
-  `0.09804 m` and `0.13697 m`; contact-ZMP margins remained positive between
-  `0.01777 m` and `0.12307 m`.
-- Quasi-static overhang targets produced smaller support reserves despite tiny
-  final configuration errors. The most disturbing stable examples reached
-  `0.06638 m` CoM margin and `0.00925 m` contact-ZMP margin.
-- In falling fast-overhang trials, CoM margins crossed below zero to
-  `-0.12687 m`, while contact-ZMP margins reached `-0.66380 m`. Base tilt,
-  support invalidity, and survival status changed consistently with those
-  margin crossings.
-- Contact-ZMP margin is the earliest and most sensitive disturbance metric in
-  these examples. CoM margin is smoother and better for sustained support loss.
-  Configuration error must remain separate because it measures arm tracking,
-  not balance.
-- The metrics therefore reflect physical balance disturbance and loss of
-  support, but the red outcomes cannot be attributed cleanly to intended arm
-  motion because the deprecated command path was unstable. Do not use its red
-  count as evidence of a counter-balance opportunity or controller efficacy.
-- New baseline and counter-balance comparisons must use the bounded `1.5 s`
-  direct trajectory and report rank-wise metric trends, not only final rank-5
-  classifications.
+- All 200 `frame_task` trials completed: 94 green, 106 orange, 0 red falls,
+  and 0 infrastructure failures.
+- All targets survived. Orange results therefore represent target-hold or
+  settling degradation, not loss of support.
+- Fast overhang trials were the most disturbing group. Left/right minimum CoM
+  margins were `0.05155 m` and `0.04351 m`; minimum contact-ZMP margins were
+  `0.00814 m` and `0.00679 m`.
+- Directional fast trials retained larger reserves. Left/right minimum CoM
+  margins were `0.09980 m` and `0.07659 m`; minimum contact-ZMP margins were
+  `0.02935 m` and `0.00862 m`.
+- Rank trends are meaningful in several rays. For left cross-body fast motion,
+  CoM margin decreased from `0.13139 m` at rank 1 to `0.09980 m` at rank 5,
+  while contact-ZMP margin decreased from `0.09047 m` to `0.02935 m`. Left
+  forward fast motion decreased from `0.13642 m` to `0.11933 m` CoM margin and
+  from `0.09437 m` to `0.03274 m` contact-ZMP margin.
+- Contact-ZMP rank curves are not strictly monotonic because individual foot
+  contacts and lower-body policy reactions change. Use the rank-wise lower
+  envelope together with CoM margin and settling status.
+- The initial extended sweep did not produce a fall under the bounded `1.5 s`
+  trajectory. Its orange low-margin targets remain useful controller development
+  cases; do not reintroduce unstable command scaling merely to make red outcomes.
 
-### Counter-Balance Model Validation
+After enforcing a `0.75 rad` maximum consecutive offline IK step, 10 candidates
+in the inner-forward and inner-upward lines changed. The correction artifact is
+`runs/20260806_114747_arm_reachability_balance_sweep/`:
 
-The exploratory counter-balance run executed 399 solver calls with four
-best-effort rejection/failure ticks. Mean solve time was `2.15 ms`, maximum
-solve time was `5.38 ms`, and the configured control period was `20 ms`. No
-publisher clipping, collision rejection, invalid support, or estop was recorded.
+- The 20 corrected trials produced 10 green, 9 orange, and 1 red result.
+- Combined with the 180 unchanged trials, the continuity-corrected baseline is
+  94 green, 105 orange, and 1 red.
+- `right_overhang_inner_upward_05` fast at `[0.4, -0.2, 0.425]` fell with
+  `-0.16713 m` CoM margin. Its contact-ZMP margin remained positive because
+  valid contact-ZMP samples ended before the subsequent support loss; CoM
+  margin and survival status are the decisive fall metrics for this case.
 
-During the movement window, mean predicted optimized CoM error was `0.00120 m`
-versus `0.00131 m` for the zero-counter-velocity candidate. During final hold,
-the corresponding means were `0.000656 m` and `0.000711 m`. This confirms the
-online solver and acceptance path operated, but does not validate a closed-loop
-workspace benefit because the target was not reached and the trial was not
-repeated.
+### Hard Target Fall Set
+
+The normal fast profile evaluates six seconds after release. A separate
+long-hold profile evaluates 22 seconds after release, with a `1.5 s` motion and
+`16 s` target hold. This rules out a false no-fall result caused solely by the
+normal evaluation window.
+
+- The user-provided `left_grasp_frame` target `[0.4, 0.3, 0.3]` with
+  `[0, 80, 0]` degree RPY is not equivalent to the wrist-yaw-frame overhang
+  targets. Its strict offline solution uses a near-limit elbow/shoulder posture.
+- The exact grasp-frame target fell during the long-hold run with CoM margin
+  `-0.87558 m` and contact-ZMP margin `-1.23978 m`. The simulator recorded
+  `22 s` after release, so this is not an evaluation-window false negative.
+- Its reflected right grasp-frame target survived the same long-hold test.
+  Symmetric Cartesian targets do not imply symmetric adaptive-policy outcomes.
+- Expanded 70--80 degree strict grasp-frame requests found no additional
+  reachable far targets. The current hard set therefore uses the verified left
+  grasp-frame fall and the independently verified right wrist-yaw-frame
+  stochastic fall boundary.
+- `data/arm_hard_targets.yaml` retains only these two fall-inducing targets;
+  temporary reachable nonfall candidates are intentionally discarded.
+
+### Reactive Counter-Arm Validation
+
+The implemented `ReactiveCounterBalanceController` controls the opposite
+shoulder pitch, roll, yaw, and elbow while replaying the same saved moving-arm
+trajectory as the baseline. It uses live 27-motor Pinocchio kinematics, bounded
+least squares over CoM velocity and centroidal angular momentum, support/gyro
+feedback, effective publisher limits, full-body collision backtracking, atomic
+14-arm publication, and a post-motion fade to captured posture.
+
+The final paired development artifact is
+`runs/20260806_111729_arm_reachability_balance_sweep/`. It contains baseline and
+reactive trials for eight fixed orange fast targets:
+
+- All 16 trials survived and remained orange; there was no classification or
+  survival change.
+- During movement, reactive CoM margin improved by `0.00117 m` on average, but
+  only 4 of 8 pairs improved. Contact-ZMP margin changed by `-0.00378 m` on
+  average and improved in 4 of 8 pairs; the median change was `+0.00017 m`.
+- Final-hold CoM and ZMP margins changed by `-0.00143 m` and `-0.00146 m` on
+  average because the counter arm was returning to posture. Increasing posture
+  return gain reduced final counter-arm offset to `0.00239 rad` in a follow-up
+  smoke trial.
+- Raising counter velocity to `2 rad/s` increased movement CoM improvement to
+  `0.00174 m` but worsened movement ZMP by `0.00296 m` on average. This variant
+  was rejected.
+- A CoM-only variant improved movement ZMP by `0.00234 m` on average and
+  improved both movement metrics in 6 of 8 pairs, but CoM improvement fell to
+  `0.00018 m` and final-hold CoM margin regressed by `0.00439 m`. It was also
+  rejected as non-dominating.
+- The conservative mixed formulation is safe and occasionally reduces dynamic
+  disturbance, but effectiveness is weak and direction-dependent. It does not
+  yet establish counter-balance benefit.
+
+The corrected red-boundary target was then repeated three times with each
+variant using the same saved moving-arm trajectory:
+
+- Baseline fell in 2 of 3 trials, with CoM margins `-0.16713 m` and
+  `-0.16736 m`; the surviving baseline trial had `0.03983 m` margin.
+- Reactive counter-balance survived all 3 trials with CoM margins between
+  `0.03950 m` and `0.04022 m`.
+- This is the first positive controller result: the conservative reactive
+  formulation changed majority survival at one stochastic fall boundary.
+- It does not supersede the broad eight-target finding. The controller has
+  demonstrated local fall recovery, not general margin improvement.
+
+### Full Paired Controller Comparison
+
+The final paired evaluation comprises 400 regular trials and four long-hold
+hard-target trials. The generated report is
+`submodules/h12_ros2_controller/docs/counter_balance_controller_analysis.html`.
+
+- All 200 regular baseline and 200 regular reactive trials survived. Outcome
+  counts were unchanged by the controller for every group/profile combination.
+- Among 202 complete baseline/reactive pairs, there were zero fall recoveries,
+  zero reactive regressions, and a mean final CoM-margin delta of `-0.00062 m`.
+- Directional fast: mean CoM/ZMP deltas were `-0.00040 m` and `-0.00204 m`.
+  Directional quasi-static: `-0.00095 m` and `-0.00219 m`.
+- Overhang fast: mean CoM/ZMP deltas were `-0.00055 m` and `+0.00128 m`.
+  Overhang quasi-static: `-0.00063 m` and `-0.00233 m`.
+- The left grasp-frame hard target fell under both variants. The right
+  wrist-frame fall boundary survived under both variants in this final run.
+- These full-matrix data supersede the earlier small-sample local recovery
+  claim. The current reactive controller is operational and safe, but does not
+  yet demonstrate useful counter-balance effectiveness.
+
+The next controller iteration should use measured contact/support feedback or
+an experimentally identified arm-momentum-to-base-reaction map. More counter-arm
+speed or static CoM weighting alone is not supported by these results.
+
+### Excursion-Limited Aggressive Reaction
+
+The 2026-08-12 iteration kept the current `reactive_counter_balance` parameters
+unchanged as a reference and tested two separately named aggressive overlays.
+The first aggressive sweep is
+`runs/20260811_194150_arm_reaction_aggressiveness_sweep/`:
+
+- Unrestricted aggressive reactions accumulated `1.2--1.9 rad` of counter-arm
+  motion on `right_overhang_upward_05`, while the current reactive reference
+  stayed below `0.63 rad` on the same target.
+- The gain and displacement variants each introduced two falls. The
+  displacement variant also produced three estop or operational failures.
+- Increasing velocity and reducing posture cost therefore increased useful arm
+  motion, but unbounded accumulation was unsafe.
+
+`ReactiveCounterBalanceController` now accepts a four-joint `max_excursion`
+relative to its captured counter-arm posture. This constraint does not change
+the current reference configuration. The accepted aggressive overlay is:
+
+```yaml
+reactive_counter_balance_gain:
+  reactive_counter_balance:
+    weights:
+      com: 1.8
+      momentum: 0.5
+      posture: 0.02
+    gains:
+      com: 3.0
+      gyro: 0.05
+      posture: 0.75
+    max_velocity: [2.0, 2.5, 2.0, 1.2]
+    max_excursion: [0.65, 0.50, 0.35, 0.50]
+  arm_workspace:
+    reactive_fade_duration: 2.5
+```
+
+The full excursion-limited artifact is
+`runs/20260812_143500_arm_reaction_excursion_limited_sweep/`. Eleven late
+right-inner-upward rows were incomplete because `arm_workspace.jsonl` sampling
+became sparse after a long continuous session. All affected simulations that
+completed had zero estops and survived. The three affected targets were repeated
+from a fresh process in
+`runs/20260813_022600_right_inner_upward_retry/`; all 24 retry trials completed.
+Replacing only the 11 sparse-log rows with the matching retry rows gives one
+complete 200-trial view per variant:
+
+- `frame_task`: 93 green, 106 orange, 1 red; 199/200 survived.
+- Current `reactive_counter_balance`: 94 green, 106 orange, 0 red; 200/200
+  survived.
+- Excursion-limited displacement: 94 green, 106 orange, 0 red; 200/200
+  survived.
+- Excursion-limited gain: 95 green, 105 orange, 0 red; 200/200 survived.
+- The gain variant changed `right_cross_body_03` quasi-static and
+  `right_upward_arc_05` quasi-static from orange to green. It also changed
+  `right_overhang_inner_upward_05` fast from red to orange.
+- No baseline green became orange/red, and no baseline orange became red under
+  the gain variant in the merged complete view.
+- Mean paired final CoM and contact-ZMP margin deltas for the gain variant were
+  `-0.00298 m` and `-0.00445 m`. The classification improvements therefore do
+  not establish general margin dominance.
+- The gain overlay is the best tested aggressive candidate by survival first,
+  then green-count improvement and operational completeness. Keep the current
+  reactive controller unchanged as the conservative default/reference until
+  repeated boundary trials or contact-aware feedback justify promotion.
+
+Fresh repeats distinguish robust effects from one-run classification changes:
+
+- `right_upward_arc_05` quasi-static was orange for `frame_task` and green for
+  the gain overlay in all three paired trials. The two repeat artifacts are
+  `runs/20260813_025000_gain_repeat_qs_a/` and
+  `runs/20260813_025500_gain_repeat_qs_b/`.
+- `right_cross_body_03` quasi-static changed orange to green once, but remained
+  orange under both variants in two repeats. Do not claim this as a repeatable
+  workspace improvement.
+- `right_overhang_inner_upward_05` fast fell under `frame_task` and survived as
+  orange under the gain overlay in all three paired observations. The evidence
+  is the full sweep, `runs/20260813_022600_right_inner_upward_retry/`, and
+  `runs/20260813_030000_gain_fall_recovery_repeat/`. Baseline CoM minima were
+  `-0.06968`, `-0.07052`, and `-0.07161 m`; gain-overlay minima were `0.03993`,
+  `0.03949`, and `0.03985 m`.
+- The gain overlay therefore has repeatable local evidence for one
+  orange-to-green transition and one red-to-orange recovery, with no observed
+  catalog classification regression. This remains local evidence rather than
+  general margin improvement because its mean paired margins are lower.
 
 ### Comparative Grid
 
@@ -680,7 +863,8 @@ Pending implementation and experiment.
 
 ### Final Limitations
 
-The metric response has been validated qualitatively, but the preserved red
-trials used a deprecated unstable command path. No repeated bounded-trajectory
-baseline, counter-balance comparison, tuned-weight series, or external-force
-spot check has been completed. No workspace extension is claimed.
+The bounded baseline plus continuity correction covers every current catalog
+target once. Only one target produced a repeatable stochastic fall boundary.
+Reactive evaluation recovers that boundary in three trials but remains weak and
+inconsistent across eight other orange targets. No external-force spot check or
+validated workspace extension is claimed.
