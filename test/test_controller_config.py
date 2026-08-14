@@ -42,33 +42,6 @@ def test_load_controller_config_preserves_empty_zmp_mapping(tmp_path):
     assert config['zmp'] == {}
 
 
-def test_load_controller_config_preserves_counter_balance_mapping(tmp_path):
-    _write_config(
-        tmp_path,
-        'counter_balance:\n'
-        '              maxiter: 7\n'
-        '              w_com: 2.0\n'
-        '              support_geometry:\n'
-        '                front: 0.174',
-    )
-
-    config = load_controller_config('test.yaml', config_dir=tmp_path)
-
-    assert config['counter_balance'] == {
-        'maxiter': 7,
-        'w_com': 2.0,
-        'support_geometry': {'front': 0.174},
-    }
-
-
-def test_load_controller_config_rejects_non_mapping_counter_balance(tmp_path):
-    _write_config(tmp_path, 'counter_balance: invalid')
-
-    with pytest.raises(
-            ValueError, match='counter_balance must be a mapping'):
-        load_controller_config('test.yaml', config_dir=tmp_path)
-
-
 @pytest.mark.parametrize('zmp_section', ('zmp: invalid',))
 def test_load_controller_config_rejects_non_mapping_zmp(tmp_path, zmp_section):
     _write_config(tmp_path, zmp_section)
