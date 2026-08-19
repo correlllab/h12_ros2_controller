@@ -87,7 +87,9 @@ The benchmark compares these configurations:
   weight, stronger CoM response, lower gyro/posture gain, expanded velocity, and
   explicit excursion limits.
 - `reactive_counter_balance_displacement`: a distinct bounded displacement
-  candidate reserved for the next all-candidate evaluation.
+  candidate.
+- `reactive_counter_balance_aggressive_tight`, `_nominal`, and `_wide`: one
+  aggressive response evaluated under three counter-arm excursion limits.
 
 `reactive_counter_balance_gain` is retained as a candidate, not promoted as a
 universal default. Promotion requires a completed matched evaluation with no
@@ -116,23 +118,18 @@ using the same catalog, target runtime, base-drift classifier, and replay
 pipeline. Partial sweeps, retired artifacts, and exploratory experiments may
 inform hypotheses but do not establish comparative performance.
 
-The current FAME and ALMI frame-versus-gain sweeps use this contract. FAME is
-finalized. ALMI simulation trials are complete and replay rendering is in
-progress; the comparative result summary will be updated only after ALMI report
-generation completes.
+The completed matched all-candidate findings and next tuning gate are summarized
+in [counter_balance_analysis.md](counter_balance_analysis.md).
 
-## Next Evaluation
+## Next Tuning Cycle
 
-Run a matched all-candidate sweep on both lower-body policies:
+Use the completed all-candidate sweep to develop measured-response gating:
 
-1. Compare `frame_task`, conservative reactive, gain, and displacement
-   candidates.
-2. Use the settled-reference base-drift outcome and separate tracking report.
-3. Require complete replay coverage and zero infrastructure failures before
-   interpreting differences.
-4. Review paired per-target outcomes before promoting or rejecting a candidate.
-5. If no bounded reactive candidate improves both backends, identify a
-   direction-dependent arm-reaction model before adding more scalar tuning.
+1. Start from the tight aggressive excursion envelope.
+2. Diagnose ALMI left-upward-arc regressions against matched frame trials.
+3. Gate counter-arm response from observed base motion rather than backend name.
+4. Preserve FAME recovery targets and enforce no-regression ALMI gates.
+5. Run the compact tuning set before another full sweep.
 
 ## Deferred Work
 
