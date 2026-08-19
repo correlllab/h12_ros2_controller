@@ -62,6 +62,8 @@ class ReactiveCounterBalanceController(UpperController):
         self.q_counter_ref = None
         self.counter_wrist_ref = None
         self.com_offset_ref = None
+        self.tilt_reference = None
+        self._latched_activation = 0.0
         self._counter_q_command = None
         self._reset_diagnostics()
 
@@ -137,6 +139,11 @@ class ReactiveCounterBalanceController(UpperController):
                 arm_dq,
                 'invalid_support',
             )
+
+        activation_scale = self._balance_activation()
+        balance_scale *= activation_scale
+        self.latest_activation_scale = activation_scale
+        self.latest_balance_scale = balance_scale
 
         com_target = support.center + self.com_offset_ref
         com_error = np.asarray(com[:2] - com_target, dtype=np.float64)
@@ -240,6 +247,7 @@ class ReactiveCounterBalanceController(UpperController):
             'moving_arm': self.moving_arm,
             'counter_arm': self.counter_arm,
             'balance_scale': float(self.latest_balance_scale),
+            'activation_scale': float(self.latest_activation_scale),
             'requested_counter_dq': (
                 self.latest_requested_counter_dq.tolist()
             ),
@@ -328,6 +336,53 @@ class ReactiveCounterBalanceController(UpperController):
             cfg.get('posture_velocity_scale', 1.0),
             'posture_velocity_scale',
         )
+        activation = cfg.get('activation', {})
+        if not isinstance(activation, dict):
+            raise ValueError(
+                'reactive_counter_balance.activation must be a mapping'
+            )
+        self.activation_tilt_threshold = self._finite_scalar(
+            activation.get('tilt_threshold', 0.0),
+            'activation.tilt_threshold',
+            minimum=0.0,
+        )
+        self.activation_tilt_full_scale = self._finite_scalar(
+            activation.get(
+                'tilt_full_scale', self.activation_tilt_threshold,
+            ),
+            'activation.tilt_full_scale',
+            minimum=self.activation_tilt_threshold,
+        )
+        if (
+            self.activation_tilt_threshold > 0.0
+            and self.activation_tilt_full_scale
+            <= self.activation_tilt_threshold
+        ):
+            raise ValueError(
+                'reactive_counter_balance.activation.tilt_full_scale must '
+                'exceed tilt_threshold'
+            )
+        self.activation_latch = bool(activation.get('latch', False))
+        always_active_arms = activation.get('always_active_moving_arms', [])
+        if (
+            not isinstance(always_active_arms, list)
+            or any(arm not in ('left', 'right') for arm in always_active_arms)
+        ):
+            raise ValueError(
+                'reactive_counter_balance.activation.'
+                'always_active_moving_arms must contain left or right'
+            )
+        self.always_active_moving_arms = tuple(always_active_arms)
+        self.always_active_scale = self._finite_scalar(
+            activation.get('always_active_scale', 1.0),
+            'activation.always_active_scale',
+            minimum=0.0,
+        )
+        if self.always_active_scale > 1.0:
+            raise ValueError(
+                'reactive_counter_balance.activation.always_active_scale '
+                'must not exceed 1.0'
+            )
         support = cfg.get('support_geometry', {})
         if not isinstance(support, dict):
             raise ValueError(
@@ -503,6 +558,7 @@ class ReactiveCounterBalanceController(UpperController):
             and np.all(np.isfinite(com))
         ):
             self.com_offset_ref = np.copy(com[:2] - support.center)
+            self.tilt_reference = self._imu_tilt()
             self._reference_captured = True
 
     def _body_q(self, motor_q):
@@ -580,6 +636,42 @@ class ReactiveCounterBalanceController(UpperController):
                         break
                     return rotation @ value[:3], True
         return np.zeros(3, dtype=np.float64), False
+
+    def _imu_tilt(self):
+        imu_state = self.robot_model.state.get('imu_state')
+        quaternion = getattr(imu_state, 'quaternion', None)
+        if quaternion is None:
+            return np.zeros(2, dtype=np.float64)
+        quaternion = np.asarray(quaternion, dtype=np.float64).reshape(-1)
+        if quaternion.size != 4 or not np.all(np.isfinite(quaternion)):
+            return np.zeros(2, dtype=np.float64)
+        w, x, y, z = quaternion
+        roll = np.arctan2(
+            2.0 * (w * x + y * z),
+            1.0 - 2.0 * (x * x + y * y),
+        )
+        pitch = np.arcsin(np.clip(
+            2.0 * (w * y - z * x), -1.0, 1.0,
+        ))
+        return np.array([roll, pitch], dtype=np.float64)
+
+    def _balance_activation(self):
+        if self.moving_arm in self.always_active_moving_arms:
+            return self.always_active_scale
+        threshold = self.activation_tilt_threshold
+        if threshold <= 0.0:
+            return 1.0
+        if self.tilt_reference is None:
+            return 0.0
+        tilt_error = float(np.linalg.norm(
+            self._imu_tilt() - self.tilt_reference,
+        ))
+        span = self.activation_tilt_full_scale - threshold
+        scale = float(np.clip((tilt_error - threshold) / span, 0.0, 1.0))
+        if self.activation_latch:
+            self._latched_activation = max(self._latched_activation, scale)
+            return self._latched_activation
+        return scale
 
     def _reaction_targets(self, com_moving, momentum_moving, moving_dq,
                           com_error, gyro, balance_scale):
@@ -851,6 +943,7 @@ class ReactiveCounterBalanceController(UpperController):
     def _reset_diagnostics(self, balance_scale=1.0):
         self.latest_status = 'idle'
         self.latest_balance_scale = float(balance_scale)
+        self.latest_activation_scale = 1.0
         self.latest_requested_counter_dq = np.zeros(4, dtype=np.float64)
         self.latest_applied_counter_dq = np.zeros(4, dtype=np.float64)
         self.latest_predicted_com_residual = None

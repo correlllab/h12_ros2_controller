@@ -108,7 +108,11 @@ gains:
     - 100.0 # right_wrist_yaw_joint
 
 limits:
+  clip:
+    position_offset: 0.001
+    velocity_ratio: 3.0
+    torque_ratio: 3.0
   estop:
-    position_offset: 0.0  # no inset off URDF joint limits
-    velocity_ratio: 2.0
-    torque_ratio: 2.0
+    position_offset: -0.1  # extend beyond URDF joint limits in simulation
+    velocity_ratio: 3.0
+    torque_ratio: 3.0
