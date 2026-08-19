@@ -113,3 +113,8 @@ gains:
     - 100.0 # right_wrist_roll_joint
     - 100.0 # right_wrist_pitch_joint
     - 100.0 # right_wrist_yaw_joint
+limits:
+  clip:
+    position_offset: 0.001
+    velocity_ratio: 3.0
+    torque_ratio: 3.0

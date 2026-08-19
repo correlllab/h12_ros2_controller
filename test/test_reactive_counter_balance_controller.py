@@ -66,6 +66,11 @@ def _harness(moving_arm='left'):
     controller.com_velocity_scale = 0.1
     controller.momentum_scale = 2.0
     controller.posture_velocity_scale = 0.5
+    controller.activation_tilt_threshold = 0.0
+    controller.activation_tilt_full_scale = 0.0
+    controller.activation_latch = False
+    controller.always_active_moving_arms = ()
+    controller.always_active_scale = 1.0
     controller.support_geometry = {
         'front': 0.174,
         'rear': 0.086,
@@ -88,7 +93,10 @@ def _harness(moving_arm='left'):
     state = {
         'q': q,
         'dq': np.zeros(27, dtype=np.float64),
-        'imu_state': SimpleNamespace(gyroscope=[0.0, 0.0, 0.0]),
+        'imu_state': SimpleNamespace(
+            gyroscope=[0.0, 0.0, 0.0],
+            quaternion=[1.0, 0.0, 0.0, 0.0],
+        ),
     }
     handler = _CommandHandler()
     handler.q_cmd[:] = q
@@ -137,6 +145,8 @@ def _harness(moving_arm='left'):
     controller.q_counter_ref = None
     controller.counter_wrist_ref = None
     controller.com_offset_ref = None
+    controller.tilt_reference = None
+    controller._latched_activation = 0.0
     controller._counter_q_command = None
     controller._reset_diagnostics()
     return controller
@@ -162,6 +172,36 @@ def test_reactive_config_is_validated_before_base_initialization(monkeypatch):
         ReactiveCounterBalanceController('', '', '', 'left', config=config)
 
     assert calls == []
+
+
+def test_tilt_activation_ramps_and_latches():
+    controller = _harness()
+    controller.activation_tilt_threshold = 0.07
+    controller.activation_tilt_full_scale = 0.10
+    controller.activation_latch = True
+    controller.tilt_reference = np.zeros(2)
+
+    controller._imu_tilt = lambda: np.array([0.05, 0.0])
+    assert controller._balance_activation() == 0.0
+    controller._imu_tilt = lambda: np.array([0.085, 0.0])
+    assert np.isclose(controller._balance_activation(), 0.5)
+    controller._imu_tilt = lambda: np.zeros(2)
+    assert np.isclose(controller._balance_activation(), 0.5)
+    controller._imu_tilt = lambda: np.array([0.11, 0.0])
+    assert controller._balance_activation() == 1.0
+
+
+def test_configured_moving_arm_bypasses_tilt_activation():
+    controller = _harness(moving_arm='right')
+    controller.activation_tilt_threshold = 0.07
+    controller.activation_tilt_full_scale = 0.10
+    controller.always_active_moving_arms = ('right',)
+    controller.always_active_scale = 0.8
+    controller.tilt_reference = np.zeros(2)
+
+    controller._imu_tilt = lambda: np.zeros(2)
+
+    assert controller._balance_activation() == 0.8
 
 
 @pytest.mark.parametrize(
