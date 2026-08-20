@@ -252,9 +252,16 @@ displacement. It also retains both arc 5 drift-to-stable improvements at about
 
 An initial symmetric tilt gate failed to recover the FAME
 `right_overhang_inner_upward_05` fall because activation occurred too late.
-Right-arm-moving manipulation therefore remains feedforward-active while the
-problematic left-arm family uses measured activation. This is a side-specific
-physical contract, not a backend-name branch.
+The implemented iteration-1 candidate therefore bypasses the tilt gate for
+right-arm-moving manipulation and keeps it for left-arm-moving manipulation.
+
+This is an empirical side-specific workaround, not a general physical contract.
+It follows the observed target distribution: the harmful ALMI counter-arm
+responses were moving-left-arm cases, while the early FAME recovery case was a
+moving-right-arm target. It can fail to generalize to hard left-arm disturbances
+or benign right-arm motions. Iteration 2 should replace the bypass with a
+side-independent activation defined by the maximum of predicted manipulation
+risk and measured base response.
 
 ## Sustained-Tight Probe
 
@@ -370,6 +377,103 @@ shows no monotonic scale relationship. Scales `0.6`, `0.8`, and `1.0` all recove
 the hard fall; `1.0` produces the best sampled inner-forward drift. The final
 candidate therefore retains full right-arm-moving authority.
 
+## Final Full Candidate Matrices
+
+### Corrected ALMI Matrix
+
+The final corrected-ALMI matrix is:
+
+```text
+runs/20260819_090636_arm_reachability_all_candidates_almi_iteration_1
+```
+
+All 1,600 cells completed with no infrastructure failure, fall, or safety estop.
+The ALMI observation mapping correction is included in every trial.
+
+| Candidate | Stable | Drift | Stumble | Tracking note |
+|---|---:|---:|---:|---|
+| Frame task | 194 | 6 | 0 | 200 precise |
+| Conservative | 189 | 8 | 3 | 200 precise |
+| Gain | 181 | 14 | 5 | 200 precise |
+| Displacement | 179 | 14 | 7 | 200 precise |
+| Aggressive tight | 190 | 6 | 4 | 200 precise |
+| Aggressive nominal | 183 | 11 | 6 | 200 precise |
+| Aggressive wide | 177 | 16 | 7 | 200 precise |
+| Gated sustained tight | 194 | 6 | 0 | 196 precise, 4 imprecise |
+
+The gated sustained candidate is the only reactive candidate without an ALMI
+stumble. It improves both `left_upward_arc_05` profiles from drift to stable,
+but regresses both `right_overhang_upward_03` profiles from stable to drift. Its
+four tracking misses are rank-5 cross-body targets.
+
+### FAME Matrix With Unified 3x Safety Limits
+
+The final FAME matrix is:
+
+```text
+runs/20260819_171758_arm_reachability_all_candidates_fame_iteration_1_3x
+```
+
+The physical matrix completed, but an execution outage produced 127 child exits
+with status 1 across 18 target/profile blocks. The failures are nearly uniform
+across all controller candidates and include no summary artifact, so they are
+infrastructure failures rather than physical outcomes. They must be rerun before
+treating the raw 1,600-row report as final.
+
+The 182 target/profile cells that completed for every candidate provide a valid
+matched comparison:
+
+| Candidate | Stable | Drift | Fall | Improvements | Regressions | Tracking |
+|---|---:|---:|---:|---:|---:|---|
+| Frame task | 178 | 3 | 1 | Baseline | Baseline | 182 precise |
+| Conservative | 177 | 5 | 0 | 1 | 2 | 182 precise |
+| Gain | 174 | 8 | 0 | 1 | 5 | 182 precise |
+| Displacement | 175 | 7 | 0 | 1 | 4 | 182 precise |
+| Aggressive tight | 179 | 3 | 0 | 1 | 0 | 182 precise |
+| Aggressive nominal | 177 | 5 | 0 | 1 | 2 | 182 precise |
+| Aggressive wide | 174 | 8 | 0 | 1 | 5 | 182 precise |
+| Gated sustained tight | 179 | 3 | 0 | 1 | 0 | 178 precise, 4 imprecise |
+
+Aggressive tight is the narrow FAME-only winner because it ties the best physical
+outcome with no regression and has no tracking miss. Gated sustained tight ties
+its physical outcome and recovers the frame fall on
+`right_overhang_inner_upward_05` from a fall at `0.3035 rad` to stable at `0.0947 rad`,
+but it retains four cross-body tracking misses.
+
+## Candidate Conclusions And Failed Designs
+
+- Frame task: strongest passive reference after the ALMI observation correction.
+  It has no ALMI stumble, but no active fall recovery.
+- Conservative reactive: recovers the FAME hard fall but has three ALMI stumbles
+  and two FAME regressions.
+- Gain: recovers the FAME hard fall, but has five ALMI stumbles and five FAME
+  regressions. It is superseded.
+- Displacement: gives the lowest sampled FAME hard-fall drift, but causes seven
+  ALMI stumbles and four FAME regressions. It is superseded.
+- Aggressive tight: strongest fully symmetric existing candidate. It has four
+  ALMI stumbles, but is the best FAME-only candidate with no matched regression
+  and all precise tracking.
+- Aggressive nominal: wider excursion than tight without better results: six
+  ALMI stumbles and two FAME regressions.
+- Aggressive wide: largest envelope and weakest trade-off: seven ALMI stumbles
+  and five FAME regressions.
+- Gated sustained tight: best overall iteration-1 candidate. It eliminates ALMI
+  reactive stumbles and preserves FAME hard fall recovery, but uses the ad hoc
+  right-arm bypass and has four tracking misses.
+
+Failed attempts were informative:
+
+- The original ALMI observation mapping omitted or mislabeled right-arm state.
+  Correcting it removed severe frame-task stepping for left-arm manipulation.
+- Sustained tight without activation solved the rank-2 target but created steps
+  on ALMI upward arcs 3 and 4 where frame task was stable.
+- A symmetric tilt-only gate removed those ALMI steps but activated too late to
+  recover the FAME inner-upward hard fall.
+- Right-arm activation scales of `0.6`, `0.8`, and `1.0` did not yield a
+  monotonic FAME boundary improvement; full right-arm authority was retained.
+- The first full FAME iteration-1 checkpoint was discarded because concurrent
+  execution caused resource failures and mixed historical safety snapshots.
+
 ## Experiment Log
 
 | Iteration | Change | ALMI `left_upward_arc_02` | FAME preservation | Decision |
@@ -410,4 +514,7 @@ arm_target:
 ```
 
 The ALMI observation map is corrected to motors 0 through 16 followed by motors
-20 through 23. Full matched FAME and ALMI promotion results remain pending.
+20 through 23. The candidate is promoted as the best iteration-1 empirical
+result, but not as a final general architecture: repair the FAME outage blocks
+and replace the asymmetric bypass with side-independent predicted-risk plus
+measured-response activation in the next iteration.
