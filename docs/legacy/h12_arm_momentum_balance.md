@@ -16,7 +16,7 @@ desired angular momentum rate, then integrated into an arm momentum target.
 
 When one arm is already moving for a task, its estimated angular momentum can be
 subtracted from the desired whole-body momentum target. The remaining residual
-target is assigned to the free arm. This makes the arm controller compensate for
+target is assigned to the counter arm. This makes the arm controller compensate for
 both external pushes and internal disturbances from manipulation, subject to
 filtering, saturation, joint limits, and task-priority constraints.
 
@@ -45,8 +45,8 @@ filtering, saturation, joint limits, and task-priority constraints.
 4. Integrate angular momentum rate into an arm angular momentum target:
 
     - Keep a bounded target $h_{arm}^*$.
-    - Subtract angular momentum already caused by a moving task arm.
-    - Allocate the remaining target to the compensating arm.
+    - Subtract angular momentum already caused by the moving arm.
+    - Allocate the remaining target to the counter arm.
 
 5. Track the target with the available arm:
 
@@ -255,14 +255,14 @@ $$
 H_{task} = A_{H,task}(q)\dot{q}_{task}
 $$
 
-The compensating arm should track the residual:
+The counter arm should track the residual:
 
 $$
 H_{comp}^* = H_{cmd}^* - H_{task}
 $$
 
-This makes the free arm cancel both external pushes and momentum injected by
-the task arm.
+This makes the counter arm cancel both external pushes and momentum injected by
+the moving arm.
 
 If both arms can participate, allocate the target with weights:
 
@@ -277,8 +277,8 @@ A larger $\rho$ gives that arm lower priority.
 
 ## Tracking the Arm Momentum Target
 
-Partition the angular centroidal momentum map into lower body, task arm, and
-compensating arm blocks:
+Partition the angular centroidal momentum map into lower body, moving-arm, and
+counter-arm blocks:
 
 $$
 H = A_{H,base}\dot{q}_{base}
@@ -287,7 +287,7 @@ H = A_{H,base}\dot{q}_{base}
 $$
 
 With a black-box lower body, do not command $\dot{q}_{base}$. Instead,
-estimate the current residual and command only the compensating arm.
+estimate the current residual and command only the counter arm.
 
 A velocity-level controller solves:
 
@@ -373,10 +373,10 @@ every control tick:
     compute balance errors e_z, e_c, e_v
     compute desired momentum rate dH_star
     filter, clip, and integrate to H_cmd_star
-    estimate task-arm momentum H_task
+    estimate moving-arm momentum H_task
     set compensating target H_comp_star = H_cmd_star - H_task
     solve arm momentum tracking QP/DDP
-    send command to free arm
+    send command to counter arm
 ```
 
 ## Practical Notes

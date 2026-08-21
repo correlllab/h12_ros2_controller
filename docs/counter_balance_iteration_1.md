@@ -486,7 +486,12 @@ Failed attempts were informative:
 | Gated sustained 0 | Symmetric tilt activation | Arcs 2–5 stable | Hard FAME fall not recovered | Preserve early right-arm response |
 | Gated sustained 1 | Tilt gate for left motion; full right response | All tested ALMI arcs stable | Hard recovery preserved; boundary noise remains | Promote to full sweep |
 
-## Final Candidate
+## Historical Iteration-1 Candidate
+
+The following candidate records the best iteration-1 empirical result. It is
+retired from runnable configurations because its side-specific activation bypass
+does not represent a general physical controller. Future controller comparisons
+must use symmetric logic and parameters for left- and right-moving-arm tasks.
 
 `reactive_counter_balance_gated_sustained_tight` uses:
 
@@ -514,7 +519,6 @@ arm_target:
 ```
 
 The ALMI observation map is corrected to motors 0 through 16 followed by motors
-20 through 23. The candidate is promoted as the best iteration-1 empirical
-result, but not as a final general architecture: repair the FAME outage blocks
-and replace the asymmetric bypass with side-independent predicted-risk plus
-measured-response activation in the next iteration.
+20 through 23. This was the best iteration-1 empirical result, but not a final
+general architecture. The asymmetric bypass is retained here only to explain the
+historical evidence and is no longer supported by executable controller code.
