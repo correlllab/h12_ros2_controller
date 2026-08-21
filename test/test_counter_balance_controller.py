@@ -3,10 +3,13 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import h12_ros2_controller.core.controller.reactive_counter_balance_controller as reactive
-from h12_ros2_controller.core.controller.reactive_counter_balance_controller import (
+import h12_ros2_controller.core.controller.counter_balance.controller as reactive
+import h12_ros2_controller.core.controller.counter_balance.objective as objective
+from h12_ros2_controller.core.controller.counter_balance import (
+    CounterBalanceController,
     ReactiveCounterBalanceController,
 )
+from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -146,6 +149,7 @@ def _harness(moving_arm='left'):
     controller.tilt_reference = None
     controller._latched_activation = 0.0
     controller._counter_q_command = None
+    controller._frame_balance_scale = 1.0
     controller._reset_diagnostics()
     return controller
 
@@ -155,10 +159,15 @@ def test_moving_arm_is_validated_before_base_initialization():
         ReactiveCounterBalanceController('', '', '', moving_arm='both')
 
 
+def test_canonical_controller_extends_frame_controller():
+    assert issubclass(CounterBalanceController, FrameController)
+    assert ReactiveCounterBalanceController is CounterBalanceController
+
+
 def test_reactive_config_is_validated_before_base_initialization(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        reactive.UpperController,
+        reactive.FrameController,
         '__init__',
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
@@ -205,6 +214,51 @@ def test_arm_ownership_and_body_velocity_column_routing(
     assert np.array_equal(controller.moving_v_indices, moving_ids)
     assert np.array_equal(controller.counter_v_indices, counter_ids[:4])
     assert not set(controller.moving_ids) & set(controller.counter_arm_ids)
+
+
+def test_frame_target_identifies_moving_arm_from_kinematic_support():
+    controller = _harness('right')
+    controller.clear_frame_tasks = lambda: None
+    controller.add_frame_task = lambda *unused: None
+    controller._reduced_support_mask = lambda unused: np.array(
+        [True] * 7 + [False] * 7,
+    )
+
+    controller.set_frame_target('wrist', np.zeros(6))
+
+    assert controller.moving_arm == 'left'
+    assert controller.counter_arm == 'right'
+
+
+def test_named_target_identifies_single_moving_arm(monkeypatch):
+    controller = _harness('right')
+    target = np.zeros(14)
+    target[:7] = 0.4
+    captured = []
+    monkeypatch.setitem(reactive.NAMED_CONFIGS, 'left_test', target)
+    controller.set_reduced_configuration_target = captured.append
+
+    result = controller.set_named_target('left_test')
+
+    assert controller.moving_arm == 'left'
+    assert controller.counter_arm == 'right'
+    assert np.array_equal(result, target)
+    assert np.array_equal(captured[0], target)
+
+
+def test_inherited_frame_publication_preserves_moving_command():
+    controller = _harness('left')
+    q = np.copy(controller.robot_model.state['q'])
+    dq = np.zeros(27)
+    q[controller.moving_ids] = 0.35
+    dq[controller.moving_ids] = 0.2
+
+    controller._publish_position_command(q, dq, np.zeros(27))
+
+    call = controller.low_cmd_handler.calls[0]
+    assert np.allclose(call['q'][:7], 0.35)
+    assert np.allclose(call['dq'][:7], 0.2)
+    assert controller._steady_state_control_ids() == controller.moving_ids
 
 
 def test_body_indices_follow_pinocchio_joint_q_and_v_indices():
@@ -328,7 +382,7 @@ def test_physical_scales_normalize_least_squares_rows(monkeypatch):
         captured['bounds'] = bounds
         return SimpleNamespace(success=True, x=np.zeros(4))
 
-    monkeypatch.setattr(reactive, 'lsq_linear', solve)
+    monkeypatch.setattr(objective, 'lsq_linear', solve)
     controller._solve_bounded_velocity(
         np.ones((2, 4)),
         2.0 * np.ones((2, 4)),
@@ -454,66 +508,56 @@ def test_step_preserves_live_lower_body_and_publishes_atomically():
     assert call['dq'].shape == (14,)
     assert call['tau'].shape == (14,)
     assert np.array_equal(call['tau'], np.arange(13.0, 27.0))
-    assert np.allclose(call['q'][:7], 1.0)
-    assert np.allclose(np.abs(call['dq'][:4]), 0.5)
+    assert np.allclose(call['q'][:7], 5.0)
+    assert np.allclose(call['dq'][:4], [2.0, -2.0, 2.0, -2.0])
     assert np.allclose(call['q'][11:14], [0.2, -0.3, 0.4])
     assert np.allclose(call['dq'][11:14], 0.0)
     assert np.array_equal(result, call['dq'])
     assert np.allclose(candidates[0][:13], controller.robot_model.state['q'][:13])
     assert controller.diagnostics()['balance_scale'] == 0.5
-    assert controller.diagnostics()['clipped']
+    assert not controller.diagnostics()['clipped']
+    assert controller.diagnostics()['moving_position_command_error'] == 0.0
+    assert controller.diagnostics()['moving_velocity_command_error'] == 0.0
 
 
-@pytest.mark.parametrize(
-    ('collision_check', 'expected_status'),
-    (
-        (lambda unused: False, 'moving_candidate_collision'),
-        (
-            lambda unused: (_ for _ in ()).throw(RuntimeError('failed')),
-            'moving_candidate_check_failure',
-        ),
-    ),
-)
-def test_invalid_moving_candidate_publishes_measured_two_arm_hold(
-        collision_check, expected_status):
+def test_counter_collision_cannot_block_moving_arm():
     controller = _harness()
-    controller.robot_model.check_collision_free = collision_check
-    controller._model_terms = lambda unused: pytest.fail(
-        'reactive solve ran for invalid moving candidate'
-    )
+    controller.robot_model.check_collision_free = lambda unused: False
     q_target = np.zeros(14)
     q_target[:7] = 0.4
+    dq_target = np.zeros(14)
+    dq_target[:7] = 0.2
 
-    result = controller.control_configuration_step(q_target, np.zeros(14))
+    result = controller.control_configuration_step(q_target, dq_target)
 
     call = controller.low_cmd_handler.calls[0]
     measured = controller.robot_model.state['q'][13:27]
-    assert controller.latest_status == expected_status
-    assert np.allclose(call['q'], measured)
-    assert np.allclose(call['dq'], 0.0)
-    assert np.allclose(result, 0.0)
+    assert controller.latest_status == 'counter_candidate_invalid'
+    assert np.allclose(call['q'][:7], q_target[:7])
+    assert np.allclose(call['dq'][:7], dq_target[:7])
+    assert np.allclose(call['q'][7:], measured[7:])
+    assert np.allclose(call['dq'][7:], 0.0)
+    assert np.allclose(result[:7], dq_target[:7])
 
 
-def test_full_body_limit_rejection_holds_before_collision_or_model_terms():
+def test_counter_limit_rejection_cannot_block_moving_arm():
     controller = _harness()
     controller.robot_model.check_within_limits = lambda unused: False
-    controller.robot_model.check_collision_free = lambda unused: pytest.fail(
-        'collision check ran after limit rejection'
-    )
-    controller._model_terms = lambda unused: pytest.fail(
-        'model terms ran after limit rejection'
-    )
     q_target = np.zeros(14)
     q_target[:7] = 0.4
+    dq_target = np.zeros(14)
+    dq_target[:7] = 0.2
 
-    result = controller.control_configuration_step(q_target, np.zeros(14))
+    result = controller.control_configuration_step(q_target, dq_target)
 
     call = controller.low_cmd_handler.calls[0]
     measured = controller.robot_model.state['q'][13:27]
-    assert controller.latest_status == 'moving_candidate_out_of_limits'
-    assert np.allclose(call['q'], measured)
-    assert np.allclose(call['dq'], 0.0)
-    assert np.allclose(result, 0.0)
+    assert controller.latest_status == 'counter_candidate_invalid'
+    assert np.allclose(call['q'][:7], q_target[:7])
+    assert np.allclose(call['dq'][:7], dq_target[:7])
+    assert np.allclose(call['q'][7:], measured[7:])
+    assert np.allclose(call['dq'][7:], 0.0)
+    assert np.allclose(result[:7], dq_target[:7])
 
 
 def test_counter_collision_backtracks_to_zero_and_keeps_valid_motion():
@@ -538,22 +582,18 @@ def test_counter_collision_backtracks_to_zero_and_keeps_valid_motion():
     assert controller.latest_backtrack_scale == 0.0
 
 
-def test_nonfinite_input_holds_both_arms_at_measured_position():
+def test_nonfinite_moving_input_is_rejected_without_publication():
     controller = _harness()
     q_target = np.full(14, 0.4)
     q_target[0] = np.nan
 
-    result = controller.control_configuration_step(q_target, np.zeros(14))
+    with pytest.raises(ValueError, match='moving-arm command must be finite'):
+        controller.control_configuration_step(q_target, np.zeros(14))
 
-    call = controller.low_cmd_handler.calls[0]
-    measured = controller.robot_model.state['q'][13:27]
-    assert controller.latest_status == 'invalid_input'
-    assert np.allclose(call['q'], measured)
-    assert np.allclose(call['dq'], 0.0)
-    assert np.allclose(result, 0.0)
+    assert controller.low_cmd_handler.calls == []
 
 
-def test_gravity_failure_replaces_active_motion_with_measured_hold():
+def test_gravity_failure_preserves_moving_arm_and_holds_counter_arm():
     controller = _harness()
     controller.robot_model.dynamics.get_gravity_compensation = (
         lambda unused: (_ for _ in ()).throw(RuntimeError('failed'))
@@ -568,10 +608,12 @@ def test_gravity_failure_replaces_active_motion_with_measured_hold():
     call = controller.low_cmd_handler.calls[0]
     measured = controller.robot_model.state['q'][13:27]
     assert controller.latest_status == 'gravity_failure'
-    assert np.allclose(call['q'], measured)
-    assert np.allclose(call['dq'], 0.0)
+    assert np.allclose(call['q'][:7], q_target[:7])
+    assert np.allclose(call['dq'][:7], dq_target[:7])
+    assert np.allclose(call['q'][7:], measured[7:])
+    assert np.allclose(call['dq'][7:], 0.0)
     assert np.allclose(call['tau'], 0.25)
-    assert np.allclose(result, 0.0)
+    assert np.allclose(result[:7], dq_target[:7])
 
 
 def test_estop_suppresses_model_update_and_publication():

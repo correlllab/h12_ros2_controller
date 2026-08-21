@@ -2,10 +2,10 @@
 
 ## Purpose
 
-`ReactiveCounterBalanceController` sends the manipulation trajectory to the
-moving arm and uses the counter arm to reduce balance disturbance. It is evaluated in
-double-support handless simulation with an unchanged lower-body policy and torso
-command.
+`CounterBalanceController` extends `FrameController`. The inherited frame or
+named-configuration path owns moving-arm IK, positional publication, convergence,
+and I-stage hold. A counter-arm overlay reduces balance disturbance without
+changing the moving-arm command.
 
 This document records the controller contract, evaluation contract, durable
 lessons, and next experiment. Interactive dashboards, replay videos, raw logs,
@@ -14,8 +14,12 @@ outputs, not this controller repository.
 
 ## Controller Contract
 
-- `moving_arm` is selected at initialization and receives the manipulation frame
-  task.
+- `moving_arm` is selected at initialization or inferred from the target request
+  and receives the manipulation frame task.
+- A `{frame, target}` request identifies the moving arm from the frame's
+  kinematic support. A named target must change exactly one arm.
+- Moving-arm commands pass through unchanged. Counter-arm model, solver, limit,
+  collision, or gravity failures may only hold the counter arm.
 - Only counter-arm shoulder pitch, shoulder roll,
   shoulder yaw, and elbow are allowed to move reactively.
 - Counter-arm wrists remain held to their captured posture.
@@ -24,9 +28,28 @@ outputs, not this controller repository.
 - Counter-arm motion is bounded by velocity, joint limits, collision checks,
   and a captured-posture excursion limit.
 - After moving-arm motion completes, reactive output fades to posture hold.
-- The moving arm uses normal PD tracking during motion. The benchmark runtime
-  then enters the existing bounded steady-state integral hold to reduce static
-  target error without changing controller gains.
+- The moving arm uses inherited frame tracking and enters the existing bounded
+  steady-state integral hold when IK converges.
+
+## Package Structure
+
+Counter-balance implementation is isolated under:
+
+```text
+h12_ros2_controller/core/controller/counter_balance/
+    __init__.py
+    controller.py
+    objective.py
+```
+
+`controller.py` owns target routing, model terms, counter-arm constraints,
+collision backtracking, publication, and diagnostics. `objective.py` owns the
+unchanged normalized bounded least-squares objective. Shared support-region code
+remains in `core/support_region.py` because simulation metrics also use it.
+
+The controller runs synchronously at the frame-controller rate. The four-variable
+counter solve does not justify a worker thread; one control thread keeps state and
+publication deterministic.
 
 ## Safety Contract
 

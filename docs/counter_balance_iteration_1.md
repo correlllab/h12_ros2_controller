@@ -29,7 +29,7 @@ and stumbles take precedence over base-orientation drift.
 The focused current-window run is:
 
 ```text
-runs/20260818_213501_left_upward_arc_02_almi_10s_review
+runs/almi_stumble_study/20260818_213501_left_upward_arc_02_almi_10s_review
 ```
 
 It evaluated `left_upward_arc_02` with seven controllers in both profiles.
@@ -53,7 +53,7 @@ step in both profiles.
 The replacement full ALMI sweep is stored at:
 
 ```text
-runs/20260819_003453_arm_reachability_all_candidates_almi
+runs/full_sweep/20260819_003453_arm_reachability_all_candidates_almi
 ```
 
 It completed all 1,400 current-window trials without a fall, estop, runtime
@@ -168,7 +168,7 @@ corrected mappings. Include the right-arm mirror to test side symmetry. Compare:
 The corrected-mapping probe is:
 
 ```text
-runs/20260819_073156_almi_observation_mapping_probe
+runs/almi_stumble_study/20260819_073156_almi_observation_mapping_probe
 ```
 
 | Target/profile | Controller | Current mapping | Corrected mapping |
@@ -233,7 +233,7 @@ The initial hypotheses are:
 The corrected-ALMI promotion gate is:
 
 ```text
-runs/20260819_083103_almi_gated_sustained_tight_probe
+runs/almi_stumble_study/20260819_083103_almi_gated_sustained_tight_probe
 ```
 
 Ungated sustained tight stumbles on `left_upward_arc_03` and `_04` in both
@@ -270,7 +270,7 @@ aggressive-tight controller with an effectively constant balance scale through
 the post-motion window:
 
 ```text
-runs/20260819_074130_almi_sustained_tight_probe
+runs/almi_stumble_study/20260819_074130_almi_sustained_tight_probe
 ```
 
 | Profile | Frame displacement | Aggressive tight | Sustained tight |
@@ -289,9 +289,9 @@ required before promotion.
 Three additional matched repeats are stored at:
 
 ```text
-runs/20260819_074802_almi_sustained_tight_repeat_1
-runs/20260819_074909_almi_sustained_tight_repeat_2
-runs/20260819_075016_almi_sustained_tight_repeat_3
+runs/almi_stumble_study/20260819_074802_almi_sustained_tight_repeat_1
+runs/almi_stumble_study/20260819_074909_almi_sustained_tight_repeat_2
+runs/almi_stumble_study/20260819_075016_almi_sustained_tight_repeat_3
 ```
 
 Sustained tight remains stable in all six repeated profile cells, with
@@ -304,7 +304,7 @@ The implemented candidate uses an explicit `reactive_hold_duration: 10.0`
 rather than the probe's long-fade approximation. Its validation run is:
 
 ```text
-runs/20260819_075508_almi_sustained_tight_probe
+runs/almi_stumble_study/20260819_075508_almi_sustained_tight_probe
 ```
 
 It reproduces stable feet at `0.0126 m` quasi-static and `0.0148 m` fast.
@@ -328,7 +328,7 @@ It must not regress these known boundaries:
 The primary current-window FAME probe is:
 
 ```text
-runs/20260819_080120_fame_sustained_tight_hard_probe
+runs/hard_sweep/20260819_080120_fame_sustained_tight_hard_probe
 ```
 
 | Target/profile | Frame | Aggressive tight | Sustained tight |
@@ -340,7 +340,7 @@ Sustained tight preserves the aggressive-tight boundary improvement and hard
 fall recovery. The wider no-regression gate is:
 
 ```text
-runs/20260819_080746_fame_sustained_tight_regression_gate
+runs/candidate_sweep/20260819_080746_fame_sustained_tight_regression_gate
 ```
 
 All frame-stable cells remain stable. Sustained tight also changes
@@ -352,7 +352,7 @@ no classification regression in the gate.
 The side-aware gated hard retest is:
 
 ```text
-runs/20260819_084502_fame_sustained_tight_hard_probe
+runs/hard_sweep/20260819_084502_fame_sustained_tight_hard_probe
 ```
 
 It keeps `right_upward_arc_05` stable at `0.0929 rad` and recovers the frame fall
@@ -361,7 +361,7 @@ on `right_overhang_inner_upward_05` to stable at `0.0943 rad`.
 The final side-aware regression gate is:
 
 ```text
-runs/20260819_085036_fame_sustained_tight_regression_gate
+runs/candidate_sweep/20260819_085036_fame_sustained_tight_regression_gate
 ```
 
 All but one frame-stable cell remain stable. The remaining
@@ -370,7 +370,7 @@ frame and reactive outcomes vary between approximately `0.097` and `0.102 rad`
 across repeats. A right-authority scale probe at:
 
 ```text
-runs/20260819_085900_fame_gated_sustained_right_scale_probe
+runs/candidate_sweep/20260819_085900_fame_gated_sustained_right_scale_probe
 ```
 
 shows no monotonic scale relationship. Scales `0.6`, `0.8`, and `1.0` all recover
@@ -384,7 +384,7 @@ candidate therefore retains full right-arm-moving authority.
 The final corrected-ALMI matrix is:
 
 ```text
-runs/20260819_090636_arm_reachability_all_candidates_almi_iteration_1
+runs/full_sweep/20260819_090636_arm_reachability_all_candidates_almi_iteration_1
 ```
 
 All 1,600 cells completed with no infrastructure failure, fall, or safety estop.
@@ -411,7 +411,7 @@ four tracking misses are rank-5 cross-body targets.
 The final FAME matrix is:
 
 ```text
-runs/20260819_171758_arm_reachability_all_candidates_fame_iteration_1_3x
+runs/full_sweep/20260819_171758_arm_reachability_all_candidates_fame_iteration_1_3x
 ```
 
 The physical matrix completed, but an execution outage produced 127 child exits
