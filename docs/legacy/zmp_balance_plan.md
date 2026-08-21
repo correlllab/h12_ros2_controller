@@ -20,7 +20,7 @@ the other arm actively counter-balances.
 - Avoid arm motion while the robot is standing normally.
 - Generate smaller, shorter, and more frequent counter-actions.
 - Keep balance logic independent from the arm-motion planner.
-- Support both-arm balance now and one-free-arm balance later.
+- Support both-arm balance now and one-counter-arm balance later.
 - Keep the public name `zmp_controller` available for the new implementation.
 
 ## Use Cases
@@ -46,9 +46,9 @@ arm remains available for balance assistance.
 
 Expected behavior:
 
-- The task arm is marked unavailable or partially available.
-- The balance controller allocates counter-momentum only to the assist arm.
-- The assist arm avoids disturbing the task arm command interface.
+- The moving arm is marked unavailable or partially available.
+- The balance controller allocates counter-momentum only to the counter arm.
+- The counter arm avoids disturbing the moving-arm command interface.
 - The same detection and target-generation logic is reused.
 
 This mode should not be implemented first, but the interfaces should be designed
@@ -227,8 +227,8 @@ both_arm_balance:
     right role = balance
 
 single_arm_task_balance:
-    task arm role = task
-    assist arm role = balance
+    moving arm role = task
+    counter arm role = balance
 ```
 
 ## Momentum Allocation
@@ -456,10 +456,10 @@ Responsibilities:
 ### Phase 5: Add One-Arm Moving Compatibility
 
 - Add an API for task controllers to reserve an arm.
-- Allow the task controller to report whether the task arm is unavailable,
+- Allow the task controller to report whether the moving arm is unavailable,
     limited, or available for partial balance assistance.
-- Allocate full balance target to the assist arm when the task arm is reserved.
-- Keep the task arm command stream untouched by the balance actuator.
+- Allocate full balance target to the counter arm when the moving arm is reserved.
+- Keep the moving-arm command stream untouched by the balance actuator.
 
 ## Config Sketch
 

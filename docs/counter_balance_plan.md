@@ -2,8 +2,8 @@
 
 ## Purpose
 
-`ReactiveCounterBalanceController` reserves one arm for manipulation and uses
-the opposite arm to reduce balance disturbance. The controller is evaluated in
+`ReactiveCounterBalanceController` sends the manipulation trajectory to the
+moving arm and uses the counter arm to reduce balance disturbance. It is evaluated in
 double-support handless simulation with an unchanged lower-body policy and torso
 command.
 
@@ -14,9 +14,9 @@ outputs, not this controller repository.
 
 ## Controller Contract
 
-- `free_arm` is selected at initialization and receives the manipulation frame
+- `moving_arm` is selected at initialization and receives the manipulation frame
   task.
-- The opposite arm is the counter arm. Only shoulder pitch, shoulder roll,
+- Only counter-arm shoulder pitch, shoulder roll,
   shoulder yaw, and elbow are allowed to move reactively.
 - Counter-arm wrists remain held to their captured posture.
 - The controller uses live robot state, CoM, support geometry, gyro feedback,
