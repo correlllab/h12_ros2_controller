@@ -166,8 +166,8 @@ outcome improvement or regression.
 
 Evidence:
 
-- `runs/20260820_013537_fame_handless_fast_frame_model_pilot`.
-- `runs/20260820_013827_fame_magpie_fast_frame_model_pilot`.
+- `runs/model_sweep/20260820_013537_fame_handless_fast_frame_model_pilot`.
+- `runs/model_sweep/20260820_013827_fame_magpie_fast_frame_model_pilot`.
 
 Fast MAGPIE is retained for target discovery because its drift margins are
 slightly more adverse overall and it matches the intended workshop scenario.
@@ -192,7 +192,7 @@ The drift boundaries were:
 
 Evidence:
 
-- `runs/20260820_014142_fame_magpie_fast_frame_rank5_overhang_hard_screen`.
+- `runs/hard_sweep/20260820_014142_fame_magpie_fast_frame_rank5_overhang_hard_screen`.
 
 ### Farther And Named Targets
 
@@ -206,7 +206,7 @@ isolated overhead targets drifted.
 
 Evidence:
 
-- `runs/20260820_020745_fame_magpie_extra_fast_frame_rank6_named_extreme_screen`.
+- `runs/hard_sweep/20260820_020745_fame_magpie_extra_fast_frame_rank6_named_extreme_screen`.
 
 ### Speed Selection
 
@@ -226,8 +226,8 @@ workshop stress condition, not a nominal manipulation-speed claim.
 
 Evidence:
 
-- `runs/20260820_020432_fame_magpie_extra_fast_frame_speed_pilot`.
-- `runs/20260820_021450_fame_magpie_impulsive_frame_speed_pilot`.
+- `runs/hard_sweep/20260820_020432_fame_magpie_extra_fast_frame_speed_pilot`.
+- `runs/hard_sweep/20260820_021450_fame_magpie_impulsive_frame_speed_pilot`.
 
 ### Hard-Target Neighborhood
 
@@ -251,8 +251,8 @@ basin around five failure modes, not 25 independent failure mechanisms.
 
 Evidence:
 
-- `runs/20260820_021755_fame_magpie_impulsive_frame_rank5_overhang_hard_screen`.
-- `runs/20260820_024735_fame_magpie_impulsive_frame_hard_neighborhood_screen`.
+- `runs/hard_sweep/20260820_021755_fame_magpie_impulsive_frame_rank5_overhang_hard_screen`.
+- `runs/hard_sweep/20260820_024735_fame_magpie_impulsive_frame_hard_neighborhood_screen`.
 
 ### Current-Candidate Fall Panel
 
@@ -274,7 +274,7 @@ converting six falls only to drift.
 
 Evidence and workshop videos:
 
-- `runs/20260820_025617_fame_magpie_impulsive_fall_panel_current_candidates`.
+- `runs/hard_sweep/20260820_025617_fame_magpie_impulsive_fall_panel_current_candidates`.
 
 ### Full Hard-Target Evaluation
 
@@ -305,7 +305,7 @@ rendered: frame and reactive videos for each of the 20 recovered targets.
 
 Evidence and workshop videos:
 
-- `runs/20260820_135559_fame_magpie_impulsive_all_hard_conservative_evaluation`.
+- `runs/hard_sweep/20260820_135559_fame_magpie_impulsive_all_hard_conservative_evaluation`.
 
 ### Unresolved Manual-Grasp Family
 
@@ -322,8 +322,8 @@ honest limitation rather than hidden from the panel.
 
 Evidence:
 
-- `runs/20260820_032340_fame_magpie_impulsive_manual_fall_authority_probe`.
-- `runs/20260820_032753_fame_magpie_impulsive_manual_fall_extended_authority_probe`.
+- `runs/hard_sweep/20260820_032340_fame_magpie_impulsive_manual_fall_authority_probe`.
+- `runs/hard_sweep/20260820_032753_fame_magpie_impulsive_manual_fall_extended_authority_probe`.
 
 ## Final Full Evaluation
 
@@ -380,7 +380,7 @@ improvement.
 
 Evidence:
 
-- `runs/20260820_033117_fame_magpie_impulsive_full_conservative_evaluation`.
+- `runs/full_sweep/20260820_033117_fame_magpie_impulsive_full_conservative_evaluation`.
 
 ## Workshop Interpretation
 
@@ -415,3 +415,30 @@ config/sweep_configs/fame_magpie_impulsive_full_conservative_evaluation.yaml
 This promotion is specific to the FAME/MAGPIE impulsive workshop stress
 condition. It does not supersede iteration-1 conclusions for ALMI or nominal
 manipulation speeds.
+
+## Moving-Arm Pass-Through Refactor
+
+The controller implementation was moved under
+`core/controller/counter_balance/` and now extends `FrameController`. The
+counter objective and all symmetric candidate parameters are unchanged. Frame
+IK, positional tracking, and I-stage hold own the moving arm; counter failures
+hold only the counter arm.
+
+Fast FAME/MAGPIE smoke trials covered left manual-grasp and right
+inner-upward-overhang targets with frame and aggressive-tight control:
+
+- Left manual grasp: both variants fell and tracked precisely, preserving the
+  known hard outcome.
+- Right inner-upward overhang: both variants drifted and tracked precisely;
+  aggressive tight reduced maximum drift from `0.1128` to `0.1036 rad`.
+- Reactive moving-arm velocity command error remained below
+  `1.2e-7 rad/s`.
+- Counter-candidate rejection occurred in the right-arm trial without blocking
+  moving-arm publication.
+
+Evidence:
+
+- `runs/hard_sweep/20260820_201743_counter_balance_refactor_left_manual_frame_smoke`.
+- `runs/hard_sweep/20260820_201809_counter_balance_refactor_left_manual_tight_smoke`.
+- `runs/hard_sweep/20260820_201836_counter_balance_refactor_right_overhang_frame_smoke`.
+- `runs/hard_sweep/20260820_201912_counter_balance_refactor_right_overhang_tight_smoke`.

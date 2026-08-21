@@ -1,8 +1,11 @@
 import numpy as np
 import pinocchio as pin
-from scipy.optimize import lsq_linear
 
-from h12_ros2_controller.core.controller.upper_controller import UpperController
+from h12_ros2_controller.core.controller.counter_balance.objective import (
+    reaction_targets,
+    solve_bounded_velocity,
+)
+from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.core.support_region import support_rectangle
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import (
@@ -10,16 +13,17 @@ from h12_ros2_controller.utility.joint_definition import (
     LEFT_ARM_INDEX,
     RIGHT_ARM_INDEX,
 )
+from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 
-class ReactiveCounterBalanceController(UpperController):
+class CounterBalanceController(FrameController):
     '''Reactive counter-arm controller for moving-arm trajectories'''
 
     def __init__(self, urdf_path: str, urdf_sphere_path: str,
-                 srdf_sphere_path: str, moving_arm: str,
+                 srdf_sphere_path: str, moving_arm: str = None,
                  init: bool = True, handless: bool = False,
                  visualize: bool = False, config: dict = None):
-        if moving_arm not in ('left', 'right'):
+        if moving_arm not in (None, 'left', 'right'):
             raise ValueError('moving_arm must be "left" or "right"')
         resolved_config = (
             load_controller_config() if config is None else config
@@ -27,8 +31,6 @@ class ReactiveCounterBalanceController(UpperController):
         self._load_reactive_config(
             resolved_config.get('reactive_counter_balance', {})
         )
-        self.moving_arm = moving_arm
-        self.counter_arm = 'right' if moving_arm == 'left' else 'left'
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
@@ -40,6 +42,78 @@ class ReactiveCounterBalanceController(UpperController):
         )
 
         self.arm_ids = list(LEFT_ARM_INDEX) + list(RIGHT_ARM_INDEX)
+        self.motor_q_indices, self.motor_v_indices = self._body_indices()
+        self.moving_arm = None
+        self.counter_arm = None
+        self.moving_ids = []
+        self.counter_arm_ids = []
+        self.counter_ids = []
+        self.counter_wrist_ids = []
+        self.moving_local = np.array([], dtype=int)
+        self.counter_local = np.array([], dtype=int)
+        self.counter_active_local = np.array([], dtype=int)
+        self.counter_wrist_local = np.array([], dtype=int)
+        self.moving_v_indices = np.array([], dtype=int)
+        self.counter_v_indices = np.array([], dtype=int)
+        if moving_arm is not None:
+            self._set_arm_ownership(moving_arm)
+        self._reactive_data = self.robot_model.model_body.createData()
+        self.backtrack_scales = (1.0, 0.5, 0.25, 0.125, 0.0)
+        self._reference_captured = False
+        self.q_counter_ref = None
+        self.counter_wrist_ref = None
+        self.com_offset_ref = None
+        self.tilt_reference = None
+        self._latched_activation = 0.0
+        self._counter_q_command = None
+        self._frame_balance_scale = 1.0
+        self._reset_diagnostics()
+
+    def set_frame_target(self, frame_name, target, task_name='moving_arm_task'):
+        '''Configure one moving-arm frame target and infer arm ownership'''
+        moving_arm = self._arm_for_frame(frame_name)
+        self.clear_frame_tasks()
+        self.add_frame_task(task_name, frame_name, np.asarray(target))
+        self._set_arm_ownership(moving_arm)
+
+    def set_named_target(self, config_name, tolerance=1e-6):
+        '''Configure one single-arm named target and infer arm ownership'''
+        if config_name not in NAMED_CONFIGS:
+            raise ValueError(f'Unknown named configuration: {config_name}')
+        target = np.asarray(NAMED_CONFIGS[config_name], dtype=np.float64)
+        reference = np.asarray(
+            NAMED_CONFIGS['home'],
+            dtype=np.float64,
+        )
+        changed = (
+            np.max(np.abs(target[:7] - reference[:7])) > tolerance,
+            np.max(np.abs(target[7:] - reference[7:])) > tolerance,
+        )
+        if changed == (True, False):
+            moving_arm = 'left'
+        elif changed == (False, True):
+            moving_arm = 'right'
+        else:
+            raise ValueError(
+                'named target must change exactly one moving arm',
+            )
+        self._set_arm_ownership(moving_arm)
+        self.set_reduced_configuration_target(target)
+        return target
+
+    def _arm_for_frame(self, frame_name):
+        support = self._reduced_support_mask(frame_name)
+        left = bool(np.any(support[:7]))
+        right = bool(np.any(support[7:14]))
+        if left == right:
+            raise ValueError('frame must depend on exactly one moving arm')
+        return 'left' if left else 'right'
+
+    def _set_arm_ownership(self, moving_arm):
+        if moving_arm not in ('left', 'right'):
+            raise ValueError('moving_arm must be "left" or "right"')
+        self.moving_arm = moving_arm
+        self.counter_arm = 'right' if moving_arm == 'left' else 'left'
         self.moving_ids = list(
             LEFT_ARM_INDEX if moving_arm == 'left' else RIGHT_ARM_INDEX
         )
@@ -52,12 +126,8 @@ class ReactiveCounterBalanceController(UpperController):
         self.counter_local = self._arm_local_indices(self.counter_arm_ids)
         self.counter_active_local = self.counter_local[:4]
         self.counter_wrist_local = self.counter_local[4:]
-
-        self.motor_q_indices, self.motor_v_indices = self._body_indices()
         self.moving_v_indices = self.motor_v_indices[self.moving_ids]
         self.counter_v_indices = self.motor_v_indices[self.counter_ids]
-        self._reactive_data = self.robot_model.model_body.createData()
-        self.backtrack_scales = (1.0, 0.5, 0.25, 0.125, 0.0)
         self._reference_captured = False
         self.q_counter_ref = None
         self.counter_wrist_ref = None
@@ -65,13 +135,15 @@ class ReactiveCounterBalanceController(UpperController):
         self.tilt_reference = None
         self._latched_activation = 0.0
         self._counter_q_command = None
-        self._reset_diagnostics()
+        self._frame_balance_scale = 1.0
 
     def control_configuration_step(self, moving_q_target_14,
                                    moving_dq_target_14,
                                    balance_scale=1.0):
         '''Apply one 50 Hz 14-arm configuration trajectory sample'''
+        self._require_arm_ownership()
         balance_scale = self._validated_balance_scale(balance_scale)
+        self._frame_balance_scale = balance_scale
         self._reset_diagnostics(balance_scale)
         if getattr(self.low_cmd_handler, '_estopped', False):
             self.latest_status = 'estopped'
@@ -85,36 +157,37 @@ class ReactiveCounterBalanceController(UpperController):
             moving_dq_target_14,
             'moving_dq_target_14',
         )
-        try:
-            self.update_robot_model()
-        except Exception:
-            motor_q, _ = self._measured_motor_state()
-            return self._publish_measured_hold(
-                motor_q,
-                'model_update_failure',
-            )
-
         motor_q, _ = self._measured_motor_state()
         measured_arm_q = np.copy(motor_q[self.arm_ids])
-        arm_q, arm_dq, input_valid = self._bounded_moving_sample(
+        arm_q, arm_dq, input_valid = self._moving_sample(
             q_target,
             dq_target,
             measured_arm_q,
         )
         if not input_valid:
-            return self._publish_measured_hold(motor_q, 'invalid_input')
+            raise ValueError('moving-arm command must be finite')
+        try:
+            self.update_robot_model()
+        except Exception:
+            return self._publish_counter_hold(
+                motor_q,
+                arm_q,
+                arm_dq,
+                'model_update_failure',
+            )
+        motor_q, _ = self._measured_motor_state()
+        measured_arm_q = np.copy(motor_q[self.arm_ids])
+        arm_q, arm_dq, input_valid = self._moving_sample(
+            q_target,
+            dq_target,
+            measured_arm_q,
+        )
+        if not input_valid:
+            raise ValueError('moving-arm command must be finite')
 
         counter_q = np.copy(measured_arm_q[self.counter_active_local])
         if self.counter_wrist_ref is not None:
             arm_q[self.counter_wrist_local] = self.counter_wrist_ref
-        moving_candidate = self._full_candidate(motor_q, arm_q)
-        moving_status = self._candidate_status(
-            moving_candidate,
-            prefix='moving_candidate',
-        )
-        if moving_status is not None:
-            return self._publish_measured_hold(motor_q, moving_status)
-
         try:
             support, com, com_jacobian, momentum_map, torso_rotation = (
                 self._model_terms(motor_q)
@@ -209,8 +282,10 @@ class ReactiveCounterBalanceController(UpperController):
             requested,
         )
         if result is None:
-            return self._publish_measured_hold(
+            return self._publish_counter_hold(
                 motor_q,
+                arm_q,
+                arm_dq,
                 failure_status or 'counter_candidate_invalid',
             )
 
@@ -240,6 +315,25 @@ class ReactiveCounterBalanceController(UpperController):
             return np.zeros(14, dtype=np.float64)
         return command_dq
 
+    def _publish_position_command(self, q, dq, tau):
+        '''Route inherited frame tracking through the counter-arm overlay'''
+        q = np.asarray(q, dtype=np.float64)
+        dq = np.asarray(dq, dtype=np.float64)
+        self.control_configuration_step(
+            q[self.arm_ids],
+            dq[self.arm_ids],
+            balance_scale=self._frame_balance_scale,
+        )
+
+    def _steady_state_control_ids(self):
+        '''Use only moving-arm joints for I-stage clipping and convergence'''
+        self._require_arm_ownership()
+        return self.moving_ids
+
+    def _require_arm_ownership(self):
+        if self.moving_arm not in ('left', 'right'):
+            raise RuntimeError('moving arm is not configured')
+
     def diagnostics(self):
         '''Return serializable reactive controller diagnostics'''
         return {
@@ -266,6 +360,12 @@ class ReactiveCounterBalanceController(UpperController):
             'backtrack_scale': float(self.latest_backtrack_scale),
             'clipped': bool(self.latest_clipped),
             'collision_rejection': bool(self.latest_collision_rejection),
+            'moving_position_command_error': float(
+                self.latest_moving_position_command_error
+            ),
+            'moving_velocity_command_error': float(
+                self.latest_moving_velocity_command_error
+            ),
             'support_valid': bool(self.latest_support_valid),
             'support_error': self.latest_support_error or None,
             'com': (
@@ -494,7 +594,7 @@ class ReactiveCounterBalanceController(UpperController):
         dq = np.where(np.isfinite(dq), dq, 0.0)
         return np.copy(q), np.copy(dq)
 
-    def _bounded_moving_sample(self, q_target, dq_target, measured_arm_q):
+    def _moving_sample(self, q_target, dq_target, measured_arm_q):
         arm_q = np.copy(measured_arm_q)
         arm_dq = np.zeros(14, dtype=np.float64)
         q_values = q_target[self.moving_local]
@@ -504,24 +604,8 @@ class ReactiveCounterBalanceController(UpperController):
             and np.all(np.isfinite(dq_values))
         )
         if valid:
-            lower, upper = self._arm_position_limits()
-            velocity = self._arm_velocity_limits()
-            bounded_q = np.clip(
-                q_values,
-                lower[self.moving_local],
-                upper[self.moving_local],
-            )
-            bounded_dq = np.clip(
-                dq_values,
-                -velocity[self.moving_local],
-                velocity[self.moving_local],
-            )
-            self.latest_clipped = bool(
-                not np.array_equal(bounded_q, q_values)
-                or not np.array_equal(bounded_dq, dq_values)
-            )
-            arm_q[self.moving_local] = bounded_q
-            arm_dq[self.moving_local] = bounded_dq
+            arm_q[self.moving_local] = q_values
+            arm_dq[self.moving_local] = dq_values
         return arm_q, arm_dq, valid
 
     def _capture_reference(self, measured_arm_q, support, com):
@@ -653,57 +737,37 @@ class ReactiveCounterBalanceController(UpperController):
 
     def _reaction_targets(self, com_moving, momentum_moving, moving_dq,
                           com_error, gyro, balance_scale):
-        com_rhs = balance_scale * (
-            -com_moving @ moving_dq - self.com_gain * com_error
+        return reaction_targets(
+            com_moving,
+            momentum_moving,
+            moving_dq,
+            com_error,
+            gyro,
+            balance_scale,
+            self.com_gain,
+            self.gyro_gain,
         )
-        momentum_rhs = balance_scale * (
-            -momentum_moving @ moving_dq + self.gyro_gain * gyro[:2]
-        )
-        return com_rhs, momentum_rhs
 
     def _solve_bounded_velocity(self, com_counter, momentum_counter,
                                 com_rhs, momentum_rhs, posture_target,
                                 lower, upper, balance_scale=1.0):
-        blocks = []
-        targets = []
-        terms = (
-            (
-                balance_scale * self.com_weight,
-                com_counter / self.com_velocity_scale,
-                com_rhs / self.com_velocity_scale,
-            ),
-            (
-                balance_scale * self.momentum_weight,
-                momentum_counter / self.momentum_scale,
-                momentum_rhs / self.momentum_scale,
-            ),
-            (
-                self.posture_weight,
-                np.eye(4) / self.posture_velocity_scale,
-                posture_target / self.posture_velocity_scale,
-            ),
-            (
-                self.damping,
-                np.eye(4) / self.posture_velocity_scale,
-                np.zeros(4),
-            ),
+        return solve_bounded_velocity(
+            com_counter,
+            momentum_counter,
+            com_rhs,
+            momentum_rhs,
+            posture_target,
+            lower,
+            upper,
+            balance_scale,
+            self.com_weight,
+            self.momentum_weight,
+            self.posture_weight,
+            self.damping,
+            self.com_velocity_scale,
+            self.momentum_scale,
+            self.posture_velocity_scale,
         )
-        for weight, matrix, target in terms:
-            if weight > 0.0:
-                root = np.sqrt(weight)
-                blocks.append(root * np.asarray(matrix, dtype=np.float64))
-                targets.append(root * np.asarray(target, dtype=np.float64))
-        matrix = np.vstack(blocks)
-        target = np.concatenate(targets)
-        values = (matrix, target, lower, upper)
-        if not all(np.all(np.isfinite(value)) for value in values):
-            raise ValueError('Least-squares input is nonfinite')
-        if np.any(lower > upper):
-            raise ValueError('Counter velocity bounds are empty')
-        result = lsq_linear(matrix, target, bounds=(lower, upper))
-        if not result.success:
-            raise RuntimeError('Bounded least-squares solve failed')
-        return np.asarray(result.x, dtype=np.float64)
 
     def _counter_velocity_bounds(self, counter_q):
         lower, upper = self._arm_position_limits()
@@ -830,17 +894,6 @@ class ReactiveCounterBalanceController(UpperController):
             return np.zeros(14, dtype=np.float64)
         return arm_dq
 
-    def _publish_measured_hold(self, motor_q, status):
-        arm_q = np.copy(motor_q[self.arm_ids])
-        arm_dq = np.zeros(14, dtype=np.float64)
-        self._counter_q_command = np.copy(
-            arm_q[self.counter_active_local]
-        )
-        self.latest_status = status
-        if not self._publish_arm_command(arm_q, arm_dq, motor_q):
-            return np.zeros(14, dtype=np.float64)
-        return arm_dq
-
     def _publish_arm_command(self, arm_q, arm_dq, measured_motor_q):
         if getattr(self.low_cmd_handler, '_estopped', False):
             self.latest_status = 'estopped'
@@ -857,23 +910,29 @@ class ReactiveCounterBalanceController(UpperController):
             self.latest_applied_counter_dq[:] = 0.0
             self.latest_predicted_com_residual = None
             self.latest_predicted_momentum_residual = None
-            self._publish_hold_without_gravity(measured_motor_q)
-            return False
+            measured_arm_q = measured_motor_q[self.arm_ids]
+            arm_q = np.copy(arm_q)
+            arm_dq = np.copy(arm_dq)
+            arm_q[self.counter_local] = measured_arm_q[self.counter_local]
+            arm_dq[self.counter_local] = 0.0
+            return self._publish_without_gravity(arm_q, arm_dq)
         if not self._write_arm_command(arm_q, arm_dq, tau):
             return False
+        self._record_moving_command_error(arm_q, arm_dq)
         self._record_applied_counter_dq()
         return True
 
-    def _publish_hold_without_gravity(self, measured_motor_q):
+    def _publish_without_gravity(self, arm_q, arm_dq):
         tau_cmd = getattr(self.low_cmd_handler, 'tau_cmd', None)
         tau = np.zeros(14, dtype=np.float64)
         if tau_cmd is not None:
             tau_cmd = np.asarray(tau_cmd, dtype=np.float64)
             if tau_cmd.shape == (27,) and np.all(np.isfinite(tau_cmd)):
                 tau = np.copy(tau_cmd[self.arm_ids])
-        arm_q = np.copy(measured_motor_q[self.arm_ids])
-        arm_dq = np.zeros(14, dtype=np.float64)
-        return self._write_arm_command(arm_q, arm_dq, tau)
+        published = self._write_arm_command(arm_q, arm_dq, tau)
+        if published:
+            self._record_moving_command_error(arm_q, arm_dq)
+        return published
 
     def _write_arm_command(self, arm_q, arm_dq, tau):
         try:
@@ -900,6 +959,24 @@ class ReactiveCounterBalanceController(UpperController):
             self.latest_applied_counter_dq = np.copy(
                 applied[self.counter_ids]
             )
+
+    def _record_moving_command_error(self, arm_q, arm_dq):
+        q_cmd = np.asarray(
+            getattr(self.low_cmd_handler, 'q_cmd', []),
+            dtype=np.float64,
+        )
+        dq_cmd = np.asarray(
+            getattr(self.low_cmd_handler, 'dq_cmd', []),
+            dtype=np.float64,
+        )
+        if q_cmd.shape == (27,):
+            self.latest_moving_position_command_error = float(np.max(np.abs(
+                q_cmd[self.moving_ids] - arm_q[self.moving_local]
+            )))
+        if dq_cmd.shape == (27,):
+            self.latest_moving_velocity_command_error = float(np.max(np.abs(
+                dq_cmd[self.moving_ids] - arm_dq[self.moving_local]
+            )))
 
     def _set_predicted_residuals(self, com_moving, com_counter,
                                  momentum_moving, momentum_counter,
@@ -929,6 +1006,8 @@ class ReactiveCounterBalanceController(UpperController):
         self.latest_backtrack_scale = 0.0
         self.latest_clipped = False
         self.latest_collision_rejection = False
+        self.latest_moving_position_command_error = 0.0
+        self.latest_moving_velocity_command_error = 0.0
         self.latest_support_valid = False
         self.latest_support_error = ''
         self.latest_com = None
@@ -936,3 +1015,6 @@ class ReactiveCounterBalanceController(UpperController):
         self.latest_com_error = None
         self.latest_gyro_available = False
         self.latest_published = False
+
+
+ReactiveCounterBalanceController = CounterBalanceController
