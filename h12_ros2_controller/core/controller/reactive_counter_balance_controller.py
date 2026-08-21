@@ -13,7 +13,7 @@ from h12_ros2_controller.utility.joint_definition import (
 
 
 class ReactiveCounterBalanceController(UpperController):
-    '''Reactive opposite-arm controller for configuration trajectories'''
+    '''Reactive counter-arm controller for moving-arm trajectories'''
 
     def __init__(self, urdf_path: str, urdf_sphere_path: str,
                  srdf_sphere_path: str, moving_arm: str,
@@ -363,26 +363,6 @@ class ReactiveCounterBalanceController(UpperController):
                 'exceed tilt_threshold'
             )
         self.activation_latch = bool(activation.get('latch', False))
-        always_active_arms = activation.get('always_active_moving_arms', [])
-        if (
-            not isinstance(always_active_arms, list)
-            or any(arm not in ('left', 'right') for arm in always_active_arms)
-        ):
-            raise ValueError(
-                'reactive_counter_balance.activation.'
-                'always_active_moving_arms must contain left or right'
-            )
-        self.always_active_moving_arms = tuple(always_active_arms)
-        self.always_active_scale = self._finite_scalar(
-            activation.get('always_active_scale', 1.0),
-            'activation.always_active_scale',
-            minimum=0.0,
-        )
-        if self.always_active_scale > 1.0:
-            raise ValueError(
-                'reactive_counter_balance.activation.always_active_scale '
-                'must not exceed 1.0'
-            )
         support = cfg.get('support_geometry', {})
         if not isinstance(support, dict):
             raise ValueError(
@@ -656,8 +636,6 @@ class ReactiveCounterBalanceController(UpperController):
         return np.array([roll, pitch], dtype=np.float64)
 
     def _balance_activation(self):
-        if self.moving_arm in self.always_active_moving_arms:
-            return self.always_active_scale
         threshold = self.activation_tilt_threshold
         if threshold <= 0.0:
             return 1.0

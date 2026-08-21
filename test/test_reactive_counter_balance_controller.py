@@ -69,8 +69,6 @@ def _harness(moving_arm='left'):
     controller.activation_tilt_threshold = 0.0
     controller.activation_tilt_full_scale = 0.0
     controller.activation_latch = False
-    controller.always_active_moving_arms = ()
-    controller.always_active_scale = 1.0
     controller.support_geometry = {
         'front': 0.174,
         'rear': 0.086,
@@ -189,19 +187,6 @@ def test_tilt_activation_ramps_and_latches():
     assert np.isclose(controller._balance_activation(), 0.5)
     controller._imu_tilt = lambda: np.array([0.11, 0.0])
     assert controller._balance_activation() == 1.0
-
-
-def test_configured_moving_arm_bypasses_tilt_activation():
-    controller = _harness(moving_arm='right')
-    controller.activation_tilt_threshold = 0.07
-    controller.activation_tilt_full_scale = 0.10
-    controller.always_active_moving_arms = ('right',)
-    controller.always_active_scale = 0.8
-    controller.tilt_reference = np.zeros(2)
-
-    controller._imu_tilt = lambda: np.zeros(2)
-
-    assert controller._balance_activation() == 0.8
 
 
 @pytest.mark.parametrize(
