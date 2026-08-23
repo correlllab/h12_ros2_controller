@@ -1,6 +1,7 @@
 import time
 
 import numpy as np
+import pinocchio as pin
 from pinocchio.visualize import MeshcatVisualizer
 
 import meshcat_shapes
@@ -21,6 +22,7 @@ class RobotVisualizer:
         }
         # cached path metadata for pelvis-relative redraws
         self._path_specs = []
+        self._target_frame_names = []
 
     def init_visualizer(self):
         '''Initialize meshcat visualizer'''
@@ -42,6 +44,7 @@ class RobotVisualizer:
                 'wrench_frames': [],
             }
             self._path_specs = []
+            self._target_frame_names = []
         except ImportError as err:
             print('ImportError: MeshcatVisualizer requires the meshcat package.')
             print(err)
@@ -282,6 +285,37 @@ class RobotVisualizer:
         self._path_specs = []
         if self.viz is not None:
             self.viz.viewer['planned_path'].delete()
+
+    def show_target_frames(self, targets):
+        '''Display pelvis-relative target frames as persistent Meshcat overlays'''
+        assert self.viz is not None, 'Visualizer must be initialized first.'
+        self.clear_target_frames()
+        pelvis_to_world = self.robot_model.get_frame_transformation('pelvis')
+        viewer = self.viz.viewer
+        for target in targets:
+            name = f'targets/{target["id"]}'
+            position = np.asarray(target['target_position'], dtype=np.float64)
+            rpy = np.deg2rad(target['target_rpy_degrees'])
+            transform = np.eye(4)
+            transform[:3, :3] = pin.rpy.rpyToMatrix(rpy)
+            transform[:3, 3] = position
+            meshcat_shapes.frame(
+                viewer[name],
+                axis_length=0.06,
+                axis_thickness=0.003,
+                opacity=0.85,
+                origin_color=(0x1F77B4 if target['arm'] == 'left' else 0xFF7F0E),
+                origin_radius=0.008,
+            )
+            viewer[name].set_transform(pelvis_to_world @ transform)
+            self._target_frame_names.append(name)
+
+    def clear_target_frames(self):
+        '''Remove persistent target-frame overlays from Meshcat'''
+        if self.viz is not None:
+            for name in self._target_frame_names:
+                self.viz.viewer[name].delete()
+        self._target_frame_names = []
 
     def update_path(self):
         '''Redraw stored path lines and frames using current base orientation'''
