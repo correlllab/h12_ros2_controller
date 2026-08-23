@@ -57,11 +57,14 @@ when changing the simulation model.
 Iteration-2 historical target selections now live in `data/archive/`. Active
 target groups use semantic rather than experiment-specific names:
 
-- `data/arm_reachability_targets.yaml`: 50 directional and 50 overhang targets.
+- `data/arm_directional_targets.yaml`: 50 directional targets.
+- `data/arm_overhang_targets.yaml`: 50 overhang targets.
 - `data/arm_exploration_targets.yaml`: 20 symmetric rank-6 and named-pose
   exploration targets.
-- `data/arm_hard_targets.yaml`: 12 symmetric hard targets, with two maximally
-  separated shoulder-pitch endpoints in each of six physical families.
+- `data/arm_hard_targets.yaml`: 16 symmetric hard targets, including 12
+  shoulder-pitch endpoints and four Cartesian-separated fast boundary targets.
+- `data/arm_fast_boundary_targets.yaml`: eight paired threshold conditions from
+  four Cartesian-distinct families, used only for fast-profile boundary study.
 
 The hard group contains left and right manual-grasp, inner-upward-overhang, and
 upward-overhang families. The original two hard targets are retained as lineage
@@ -398,7 +401,7 @@ The strongest concise result is:
 - The left manual-grasp family and cross-body tracking remain explicit
   limitations.
 
-## Final Candidate
+## Historical Impulsive Candidate
 
 The final FAME/MAGPIE candidate is the original conservative reactive
 counter-balance controller. It is preferred over aggressive tight and gated
@@ -442,3 +445,163 @@ Evidence:
 - `runs/hard_sweep/20260820_201809_counter_balance_refactor_left_manual_tight_smoke`.
 - `runs/hard_sweep/20260820_201836_counter_balance_refactor_right_overhang_frame_smoke`.
 - `runs/hard_sweep/20260820_201912_counter_balance_refactor_right_overhang_tight_smoke`.
+
+## Fast-Profile Redesign
+
+After enforcing moving-arm pass-through, all subsequent work used only FAME,
+MAGPIE, and the `1.5 s` fast profile. Impulsive, extra-fast, and asymmetric
+activation designs were not used for tuning or final evaluation.
+
+### Fair Baseline Re-evaluation
+
+The original 12 hard targets produced three frame falls and four drifts. None of
+the conservative, aggressive-tight, or aggressive-nominal candidates rescued a
+fall. Conservative converted one drift to stable; tight and nominal each added
+one stable-to-drift regression.
+
+The 20 exploration targets produced one frame fall and five drifts. Aggressive
+tight converted one drift to stable but did not rescue the fall. Moving-arm
+velocity command error remained approximately `1e-7 rad/s` in both sweeps.
+
+Evidence:
+
+- `runs/model_sweep/20260821_010114_fame_magpie_fast_hard_targets_pass_through`.
+- `runs/model_sweep/20260821_012331_fame_magpie_fast_exploration_pass_through`.
+
+### Temporary Fall Discovery
+
+The active target groups did not contain enough frame falls for useful tuning.
+A deterministic temporary search sampled collision-free extreme poses around
+the active hard and exploration targets. Every selected left target was mirrored
+exactly to the right. Candidate grasp-frame positions were required to be at
+least `0.08 m` from every active target and every other selected target on the
+same side.
+
+The first 28-target screen produced 22 falls, three drifts, one stumble, and two
+stable outcomes. Eight precise falls from four mirrored families formed the
+first candidate-tuning set. They were intentionally severe; existing aggressive
+variants rescued none, and conservative converted only one fall to drift.
+
+Amplitude searches at `0.70`, `0.80`, and `0.90`, followed by a refined search
+at `0.74`, `0.76`, and `0.78`, identified recoverable fast-profile boundaries.
+The 24 conditions represent four Cartesian-distinct mirrored families with
+three nearby amplitude samples per side; they are a tuning grid rather than 24
+independent target mechanisms.
+
+Temporary evidence:
+
+- `runs/temp/20260821_014210_fame_magpie_fast_frame_fall_discovery`.
+- `runs/temp/20260821_022214_fame_magpie_fast_frame_boundary_search`.
+- `runs/temp/20260821_030021_fame_magpie_fast_frame_refined_boundary_search`.
+
+### Symmetric Candidate Tuning
+
+Across-candidate sweeps were retained under `runs/model_sweep/`. Original
+aggressive variants down-weight momentum to `0.15` and disable gyro feedback;
+they did not rescue the new fast falls. Tuning restored momentum and gyro while
+retaining bounded aggressive velocity and excursion limits.
+
+The promoted candidate is `reactive_counter_balance_momentum_wide`:
+
+```yaml
+weights: {com: 1.0, momentum: 2.0, posture: 0.02}
+gains: {com: 2.0, gyro: 0.2, posture: 1.0}
+max_velocity: [2.6, 3.2, 2.6, 1.5]
+max_excursion: [0.75, 0.58, 0.40, 0.58]
+```
+
+Velocity increases, stronger momentum weighting, and fast-plus-wide variants
+did not improve on this design. Initial boundary outcomes used immediate tilt
+termination and are retained only as tuning evidence. Confirmed-fall results
+are reported below.
+
+Candidate evidence:
+
+- `runs/model_sweep/20260821_015146_fame_magpie_fast_confirmed_fall_candidates`.
+- `runs/model_sweep/20260821_020533_fame_magpie_fast_counter_tuning`.
+- `runs/retired/20260821_023032_fame_magpie_fast_boundary_candidates`.
+- `runs/retired/20260821_024359_fame_magpie_fast_momentum_authority_tuning`.
+- `runs/retired/20260821_030826_fame_magpie_fast_refined_boundary_evaluation`.
+
+### Promoted Hard Targets
+
+Two mirrored boundary families were promoted into `data/arm_hard_targets.yaml`:
+
+- Left/right lateral high reach.
+- Left/right lateral overhead reach.
+
+The two left grasp-frame positions are `0.171 m` apart. Each promoted target is
+at least `0.417 m` from every previous active target on the same side. All four
+targets are collision-free in both handless and MAGPIE models.
+
+### Confirmed Fall Detection
+
+Immediate exit at `0.35 rad` tilt falsely treated a transient severe tilt as a
+fall. Fall detection now records entry, persistence, recovery, and confirmation:
+
+- Entry: tilt above `0.35 rad` or pelvis height below `0.60 m`.
+- Immediate hard confirmation: tilt above `0.60 rad` or height below `0.75 m`.
+- Persistence confirmation: entry remains continuous for `0.75 s`.
+- Recovery: tilt below `0.25 rad` and height above `0.85 m`.
+- Observation: simulation and moving-arm control continue for two seconds after
+  a pending entry or confirmed fall.
+
+Only confirmed falls classify as `fall`; recovered or unconfirmed excursions are
+classified by the existing stumble and drift criteria. The supervisor, simulator,
+and moving-arm runtime share the same two-second observation duration. Every
+confirmed-fall video therefore includes the post-confirmation collapse window.
+
+The permanent `data/arm_fast_boundary_targets.yaml` group contains one paired
+amplitude condition from each of the four Cartesian-distinct families, selected
+before confirmed-fall reruns as the lowest tested scale with a frame fall in
+either mirrored side. The confirmed eight-condition evaluation produced:
+
+| Controller | Stable | Drift | Fall |
+|---|---:|---:|---:|
+| Frame task | 3 | 2 | 3 |
+| Momentum wide | 3 | 5 | 0 |
+
+All three confirmed frame falls became drift, with no regression. The previous
+`right_fast_fall_search_04_scale_76` label changed from fall to drift after the
+full observation window, demonstrating why immediate threshold termination was
+not suitable for final evidence.
+
+Confirmed boundary evidence:
+
+- `runs/hard_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
+
+### Final Fast Evaluation
+
+The final 16-target hard sweep produced:
+
+| Controller | Stable | Drift | Fall | Precise |
+|---|---:|---:|---:|---:|
+| Frame task | 6 | 6 | 4 | 12 |
+| Momentum wide | 7 | 6 | 3 | 14 |
+
+Matched changes were one fall-to-drift, two drift-to-stable, and one
+stable-to-drift transition. The final 20-target exploration sweep produced:
+
+| Controller | Stable | Drift | Fall | Precise |
+|---|---:|---:|---:|---:|
+| Frame task | 15 | 4 | 1 | 19 |
+| Momentum wide | 17 | 2 | 1 | 20 |
+
+Matched changes were two drift-to-stable transitions with zero regression.
+Moving-arm velocity command error remained below `1.2e-7 rad/s`.
+Counter model, solver, and collision fallbacks did not interrupt moving-arm
+publication. Changed-outcome videos were rendered for both final sweeps.
+
+Final evidence:
+
+- `runs/hard_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
+- `runs/hard_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
+
+## Final Fast Candidate
+
+`reactive_counter_balance_momentum_wide` is the final iteration-2 fast-profile
+candidate. It replaces the historical impulsive-only conservative promotion for
+nominal workshop evidence. The candidate is symmetric, bounded, uses no
+moving-arm-specific gate, and preserves the inherited moving-arm frame command.
+Its final hard-target evaluation has one stable-to-drift regression, which must
+be reported alongside its confirmed boundary and exploration improvements.
