@@ -328,7 +328,7 @@ It must not regress these known boundaries:
 The primary current-window FAME probe is:
 
 ```text
-runs/hard_sweep/20260819_080120_fame_sustained_tight_hard_probe
+runs/retired/20260819_080120_fame_sustained_tight_hard_probe
 ```
 
 | Target/profile | Frame | Aggressive tight | Sustained tight |
@@ -352,7 +352,7 @@ no classification regression in the gate.
 The side-aware gated hard retest is:
 
 ```text
-runs/hard_sweep/20260819_084502_fame_sustained_tight_hard_probe
+runs/retired/20260819_084502_fame_sustained_tight_hard_probe
 ```
 
 It keeps `right_upward_arc_05` stable at `0.0929 rad` and recovers the frame fall
