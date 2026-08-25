@@ -29,7 +29,7 @@ and stumbles take precedence over base-orientation drift.
 The focused current-window run is:
 
 ```text
-runs/almi_stumble_study/20260818_213501_left_upward_arc_02_almi_10s_review
+runs/archive/20260818_213501_left_upward_arc_02_almi_10s_review
 ```
 
 It evaluated `left_upward_arc_02` with seven controllers in both profiles.
@@ -53,7 +53,7 @@ step in both profiles.
 The replacement full ALMI sweep is stored at:
 
 ```text
-runs/full_sweep/20260819_003453_arm_reachability_all_candidates_almi
+runs/archive/20260819_003453_arm_reachability_all_candidates_almi
 ```
 
 It completed all 1,400 current-window trials without a fall, estop, runtime
@@ -168,7 +168,7 @@ corrected mappings. Include the right-arm mirror to test side symmetry. Compare:
 The corrected-mapping probe is:
 
 ```text
-runs/almi_stumble_study/20260819_073156_almi_observation_mapping_probe
+runs/archive/20260819_073156_almi_observation_mapping_probe
 ```
 
 | Target/profile | Controller | Current mapping | Corrected mapping |
@@ -233,7 +233,7 @@ The initial hypotheses are:
 The corrected-ALMI promotion gate is:
 
 ```text
-runs/almi_stumble_study/20260819_083103_almi_gated_sustained_tight_probe
+runs/archive/20260819_083103_almi_gated_sustained_tight_probe
 ```
 
 Ungated sustained tight stumbles on `left_upward_arc_03` and `_04` in both
@@ -270,7 +270,7 @@ aggressive-tight controller with an effectively constant balance scale through
 the post-motion window:
 
 ```text
-runs/almi_stumble_study/20260819_074130_almi_sustained_tight_probe
+runs/archive/20260819_074130_almi_sustained_tight_probe
 ```
 
 | Profile | Frame displacement | Aggressive tight | Sustained tight |
@@ -289,9 +289,9 @@ required before promotion.
 Three additional matched repeats are stored at:
 
 ```text
-runs/almi_stumble_study/20260819_074802_almi_sustained_tight_repeat_1
-runs/almi_stumble_study/20260819_074909_almi_sustained_tight_repeat_2
-runs/almi_stumble_study/20260819_075016_almi_sustained_tight_repeat_3
+runs/archive/20260819_074802_almi_sustained_tight_repeat_1
+runs/archive/20260819_074909_almi_sustained_tight_repeat_2
+runs/archive/20260819_075016_almi_sustained_tight_repeat_3
 ```
 
 Sustained tight remains stable in all six repeated profile cells, with
@@ -304,7 +304,7 @@ The implemented candidate uses an explicit `reactive_hold_duration: 10.0`
 rather than the probe's long-fade approximation. Its validation run is:
 
 ```text
-runs/almi_stumble_study/20260819_075508_almi_sustained_tight_probe
+runs/archive/20260819_075508_almi_sustained_tight_probe
 ```
 
 It reproduces stable feet at `0.0126 m` quasi-static and `0.0148 m` fast.
@@ -384,7 +384,7 @@ candidate therefore retains full right-arm-moving authority.
 The final corrected-ALMI matrix is:
 
 ```text
-runs/full_sweep/20260819_090636_arm_reachability_all_candidates_almi_iteration_1
+runs/archive/20260819_090636_arm_reachability_all_candidates_almi_iteration_1
 ```
 
 All 1,600 cells completed with no infrastructure failure, fall, or safety estop.
