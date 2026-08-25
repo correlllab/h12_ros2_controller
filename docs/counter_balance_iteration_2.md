@@ -597,6 +597,26 @@ Final evidence:
 - `runs/hard_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
 - `runs/hard_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
 
+### Full Directional And Overhang Evaluation
+
+The final fast FAME/MAGPIE full sweep combined the active directional and
+overhang target groups. A paired infrastructure failure on
+`left_forward_outward_high_05` was repaired with stable, precise frame and
+momentum-wide trials, then merged into the full matrix and reports.
+
+| Group | Frame task | Momentum wide | Matched changes |
+|---|---|---|---|
+| Directional, 50 targets | 49 stable, 1 drift | 50 stable | 1 drift-to-stable |
+| Overhang, 50 targets | 47 stable, 2 drift, 1 fall | 44 stable, 5 drift, 1 fall | 3 stable-to-drift |
+
+Momentum-wide is beneficial on the directional group but regresses three
+ordinary overhang conditions. The full sweep is therefore a scope check, not
+support for a universal controller-improvement claim.
+
+Evidence:
+
+- `runs/full_sweep/20260823_172208_fame_magpie_fast_full_reachability_momentum_wide`.
+
 ## Final Fast Candidate
 
 `reactive_counter_balance_momentum_wide` is the final iteration-2 fast-profile
