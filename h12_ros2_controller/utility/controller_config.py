@@ -83,6 +83,15 @@ def _validate_reactive_counter_balance(
     return reactive
 
 
+def _validate_counter_ddp(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'counter_ddp' not in raw:
+        return {}
+    counter_ddp = raw['counter_ddp']
+    if not isinstance(counter_ddp, dict):
+        raise ValueError('counter_ddp must be a mapping when provided')
+    return counter_ddp
+
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -204,6 +213,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     momentum_ddp = raw.get('momentum_ddp', {})
     zmp = _validate_zmp(raw)
     reactive_counter_balance = _validate_reactive_counter_balance(raw)
+    counter_ddp = _validate_counter_ddp(raw)
 
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
@@ -279,6 +289,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'momentum_ddp': momentum_ddp,
         'zmp': zmp,
         'reactive_counter_balance': reactive_counter_balance,
+        'counter_ddp': counter_ddp,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
