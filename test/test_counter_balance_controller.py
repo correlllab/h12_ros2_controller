@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import h12_ros2_controller.core.controller.counter_balance.controller as reactive
+import h12_ros2_controller.core.controller.counter_balance.counter_balance_controller as reactive
 import h12_ros2_controller.core.controller.counter_balance.objective as objective
 from h12_ros2_controller.core.controller.counter_balance import (
     CounterBalanceController,
