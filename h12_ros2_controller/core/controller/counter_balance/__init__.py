@@ -1,4 +1,4 @@
-from h12_ros2_controller.core.controller.counter_balance.controller import (
+from h12_ros2_controller.core.controller.counter_balance.counter_balance_controller import (
     CounterBalanceController,
     ReactiveCounterBalanceController,
 )

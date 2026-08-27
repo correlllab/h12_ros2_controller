@@ -38,14 +38,15 @@ Counter-balance implementation is isolated under:
 ```text
 h12_ros2_controller/core/controller/counter_balance/
     __init__.py
-    controller.py
+    counter_balance_controller.py
     objective.py
 ```
 
-`controller.py` owns target routing, model terms, counter-arm constraints,
-collision backtracking, publication, and diagnostics. `objective.py` owns the
-unchanged normalized bounded least-squares objective. Shared support-region code
-remains in `core/support_region.py` because simulation metrics also use it.
+`counter_balance_controller.py` owns target routing, model terms, counter-arm
+constraints, collision backtracking, publication, and diagnostics.
+`objective.py` owns the unchanged normalized bounded least-squares objective.
+Shared support-region code remains in `core/support_region.py` because
+simulation metrics also use it.
 
 The controller runs synchronously at the frame-controller rate. The four-variable
 counter solve does not justify a worker thread; one control thread keeps state and
