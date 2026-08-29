@@ -1332,7 +1332,7 @@ feedforward authority:
 
 \[
 g_m=\operatorname{clip}\left(
-\frac{\rho_m-2.2}{2.5-2.2},0,1
+\frac{\rho_m-1.5}{1.8-1.5},0,1
 \right).
 \]
 
@@ -1344,9 +1344,11 @@ g_m=\operatorname{clip}\left(
 \]
 
 The map is evaluated once at the current measured configuration before horizon
-construction. It adds no solver state, no target-specific branch, and no
-backend-specific condition. Stationary recovery remains the existing scalar
-gyro feedback.
+construction. Initial offline realized-momentum estimates used a different
+scale; shadow diagnostics calibrated the online current-map range to `1.5–1.8`
+before active comparison. The schedule adds no solver state, no target-specific
+branch, and no backend-specific condition. Stationary recovery remains the
+existing scalar gyro feedback.
 
 ### Controlled Variables
 
