@@ -26,6 +26,12 @@ def _harness(moving_arm='left', shadow=False):
     controller.gyro_rate_threshold = 0.04
     controller.gyro_rate_full_scale = 0.06
     controller.moving_velocity_threshold = 1e-3
+    controller.moving_feedforward_authority = 0.0
+    controller.stationary_gyro_feedback = False
+    controller.stationary_feedback_max_authority = 1.0
+    controller.moving_momentum_threshold = None
+    controller.moving_momentum_full_scale = None
+    controller.moving_momentum_max_authority = 1.0
     controller.max_forecast_age = 0.1
     controller.max_frozen_map_displacement = 0.1
     controller.metric_tolerance = 0.25
@@ -324,6 +330,16 @@ def test_configuration_parser_rejects_non_boolean_shadow():
         CounterDDPController._parse_ddp_config({'shadow': 'false'})
 
 
+def test_configuration_parser_requires_valid_momentum_risk_range():
+    with pytest.raises(ValueError, match='full scale'):
+        CounterDDPController._parse_ddp_config({
+            'activation': {
+                'moving_momentum_threshold': 2.2,
+                'moving_momentum_full_scale': 2.0,
+            },
+        })
+
+
 def test_configuration_parser_uses_short_realtime_defaults():
     settings = CounterDDPController._parse_ddp_config({})
 
@@ -370,9 +386,126 @@ def test_scalar_gyro_activation_ignores_standing_rate():
     assert np.allclose(activation, 0.0)
 
 
-def test_inactive_path_skips_solver_and_passes_through_arm_sample():
+def test_moving_feedforward_authority_precedes_gyro_response():
+    controller = _harness()
+    controller.moving_feedforward_authority = 0.25
+    controller.q_counter_ref = np.zeros(4)
+    controller.counter_wrist_ref = np.zeros(3)
+    controller.com_offset_ref = np.zeros(2)
+    controller._reference_captured = True
+    controller.robot_model.state['imu_state'].gyroscope = [0.0, 0.0, 0.0]
+    motor_q = np.copy(controller.robot_model.state['q'])
+    q, dq, _, _ = _horizon(controller)
+
+    _, activation = controller._build_knots(
+        motor_q, q, dq, authority_scale=1.0,
+    )
+
+    assert np.allclose(activation, 0.25)
+
+
+def test_moving_momentum_risk_raises_feedforward_authority():
+    controller = _harness()
+    controller.moving_feedforward_authority = 0.25
+    controller.moving_momentum_threshold = 1.0
+    controller.moving_momentum_full_scale = 2.0
+    controller.moving_momentum_max_authority = 1.0
+    _, dq, _, _ = _horizon(controller)
+    momentum_map = np.zeros((2, 7))
+    momentum_map[0, 0] = 10.0
+
+    activation = controller._activation(
+        np.zeros(2), dq, 1.0, momentum_map,
+    )
+
+    assert np.allclose(activation, 1.0)
+    assert controller.latest_moving_momentum_risk == pytest.approx(2.0)
+
+
+def test_moving_momentum_below_threshold_keeps_base_authority():
+    controller = _harness()
+    controller.moving_feedforward_authority = 0.25
+    controller.moving_momentum_threshold = 1.0
+    controller.moving_momentum_full_scale = 2.0
+    controller.moving_momentum_max_authority = 1.0
+    _, dq, _, _ = _horizon(controller)
+    momentum_map = np.zeros((2, 7))
+    momentum_map[0, 0] = 1.0
+
+    activation = controller._activation(
+        np.zeros(2), dq, 1.0, momentum_map,
+    )
+
+    assert np.allclose(activation, 0.25)
+
+
+def test_feedforward_authority_is_disabled_after_motion():
+    controller = _harness()
+    controller.moving_feedforward_authority = 1.0
+    controller.q_counter_ref = np.zeros(4)
+    controller.counter_wrist_ref = np.zeros(3)
+    controller.com_offset_ref = np.zeros(2)
+    controller._reference_captured = True
+    controller.robot_model.state['imu_state'].gyroscope = [0.0, 0.0, 0.0]
+    motor_q = np.copy(controller.robot_model.state['q'])
+    q, dq, _, _ = _horizon(controller)
+    dq[:] = 0.0
+
+    _, activation = controller._build_knots(
+        motor_q, q, dq, authority_scale=1.0,
+    )
+
+    assert np.allclose(activation, 0.0)
+
+
+def test_stationary_gyro_feedback_extends_response_after_motion():
+    controller = _harness()
+    controller.stationary_gyro_feedback = True
+    controller.q_counter_ref = np.zeros(4)
+    controller.counter_wrist_ref = np.zeros(3)
+    controller.com_offset_ref = np.zeros(2)
+    controller._reference_captured = True
+    controller.robot_model.state['imu_state'].gyroscope = [0.06, 0.0, 0.0]
+    motor_q = np.copy(controller.robot_model.state['q'])
+    q, dq, _, _ = _horizon(controller)
+    dq[:] = 0.0
+
+    _, activation = controller._build_knots(
+        motor_q, q, dq, authority_scale=1.0,
+    )
+
+    assert np.allclose(activation, 1.0)
+
+
+def test_stationary_gyro_feedback_respects_authority_cap():
+    controller = _harness()
+    controller.stationary_gyro_feedback = True
+    controller.stationary_feedback_max_authority = 0.25
+    controller.q_counter_ref = np.zeros(4)
+    controller.counter_wrist_ref = np.zeros(3)
+    controller.com_offset_ref = np.zeros(2)
+    controller._reference_captured = True
+    controller.robot_model.state['imu_state'].gyroscope = [0.2, 0.0, 0.0]
+    motor_q = np.copy(controller.robot_model.state['q'])
+    q, dq, _, _ = _horizon(controller)
+    dq[:] = 0.0
+
+    _, activation = controller._build_knots(
+        motor_q, q, dq, authority_scale=2.0,
+    )
+
+    assert np.allclose(activation, 0.25)
+
+
+def test_inactive_path_skips_horizon_build_and_passes_through_arm_sample(
+        monkeypatch):
     controller = _harness()
     q, dq, sample_times, generated_at = _horizon(controller)
+    monkeypatch.setattr(
+        controller,
+        '_build_knots',
+        lambda *args, **kwargs: pytest.fail('inactive path built horizon'),
+    )
 
     controller.control_horizon_step(
         q,
