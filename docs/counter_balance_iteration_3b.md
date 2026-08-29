@@ -64,12 +64,15 @@ Its paired artifacts are:
 - `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
 - `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
 
-`B0` FAME produced five improvements, including stumble-to-stable, with no
-single-run regression and unchanged survival. `B0` ALMI produced one
-drift-to-stumble change on `left_fast_fall_search_09_scale_78`; five fresh
-repetitions classified both frame task and `B0` as stumble in all five trials.
-`B0` reduced foot displacement in every repeated trial but did not convert
-majority severity.
+`B0` FAME produced five improvements with no regression, including one
+stumble-to-stable conversion, but no fall rescue. `B0` ALMI produced one
+single-panel drift-to-stumble change on `left_fast_fall_search_09_scale_78`;
+five fresh repetitions classified both frame task and `B0` as stumble in all
+five trials. It is not a majority regression.
+
+The later momentum-risk candidate is mechanism evidence, not `B0`: it rescued
+one FAME fall in a full panel without a repeated ALMI regression, but failed the
+repeated-rescue and real-time promotion gates.
 
 Freeze `B0` with the current controller code and configuration hashes. Run five
 repetitions for every stumble, improvement sentinel, and stochastic boundary
@@ -609,7 +612,8 @@ Add per-tick fields:
 - Time from release to foot-lift and displacement thresholds.
 - Minimum braking and excursion margins.
 
-Videos remain mandatory for every changed outcome and every stumble.
+Videos remain mandatory for every changed outcome, every stumble, and every
+fall.
 
 ## Implementation Boundaries
 

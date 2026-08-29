@@ -511,9 +511,9 @@ the required fresh 44-target cross-policy evaluation.
 
 ## Video Review Rule
 
-Video selection now renders both sides of every changed paired outcome and every
-latest stumble, including a stumble with no paired classification change. Replay
-is available without rerunning simulation:
+Video selection now renders both sides of every changed paired outcome, every
+latest stumble, and every latest fall, including outcomes without a paired
+classification change. Replay is available without rerunning simulation:
 
 ```bash
 uv run python -m h12_zmp_benchmark.sweep.arm_reachability_sweep \
@@ -529,7 +529,7 @@ videos below `EXISTING_RUN_DIR/videos/`.
 
 The FAME and ALMI Counter DDP hard-group configurations enable `640x480` replay
 by default. Future runs therefore render every selected changed outcome and
-every latest stumble automatically.
+every latest stumble and fall automatically.
 
 ## Current Limitations
 
@@ -701,8 +701,8 @@ The next iteration-3 experiment is a verified moving-arm momentum-risk schedule:
 - Compute the maximum predicted planar moving-arm momentum norm over the supplied
   horizon with the existing centroidal map.
 - Retain `0.25` moving authority below a preregistered risk threshold.
-- Smoothly raise authority toward `1.0` above a threshold near `2.2` in the
-  measured momentum units.
+- Smoothly raise authority toward `1.0` over the online current-map range
+  `1.5–1.8`.
 - Preserve scalar gyro feedback only for recovery.
 - Evaluate the three right-boundary rescues and the high-risk ALMI
   `left_fast_fall_search_09_scale_78` case before any full panel.
@@ -710,3 +710,57 @@ The next iteration-3 experiment is a verified moving-arm momentum-risk schedule:
 This is a general model-based activation variable, not a target, arm-side, or
 lower-policy branch. It must demonstrate FAME fall rescue without a majority
 ALMI guard regression before it replaces the selected `0.25` baseline.
+
+### Momentum-Risk Result
+
+The first `2.2–2.5` schedule never activated because current-configuration map
+risk was `1.58–1.81` on the FAME boundary falls. Zero-weight diagnostics were
+used to recalibrate the online range before active comparison.
+
+Calibrated screen artifacts:
+
+- FAME: `runs/key_findings/20260828_145327_iter3_momentum_risk_calibrated_fame`.
+- ALMI: `runs/key_findings/20260828_152300_iter3_momentum_risk_calibrated_almi`.
+
+The schedule rescued `right_fast_fall_search_09` and
+`right_fast_fall_search_11` in the compact FAME screen. All tested ALMI stable
+guards remained stable, and `left_fast_fall_search_09` improved from stumble to
+drift in that screen.
+
+Full paired artifacts:
+
+- FAME: `runs/hard_sweep/20260828_155338_iter3_momentum_risk_vs_frame_fame`.
+- ALMI: `runs/hard_sweep/20260828_163951_iter3_momentum_risk_vs_frame_almi`.
+
+FAME outcomes:
+
+| Controller | Stable | Drift | Stumble | Fall | Survived |
+|---|---:|---:|---:|---:|---:|
+| Frame task | 20 | 15 | 1 | 8 | 36 |
+| Momentum-risk DDP | 23 | 14 | 0 | 7 | 37 |
+
+The candidate produced five improvements and no regression, including one
+fall-to-drift rescue on `right_fast_fall_search_11_scale_78`.
+
+ALMI outcomes:
+
+| Controller | Stable | Drift | Stumble | Fall | Survived |
+|---|---:|---:|---:|---:|---:|
+| Frame task | 25 | 11 | 5 | 3 | 41 |
+| Momentum-risk DDP | 25 | 10 | 6 | 3 | 41 |
+
+The single changed case was `left_fast_fall_search_04_scale_76`, drift to
+stumble. Five fresh repetitions classified both frame task and momentum-risk DDP
+as drift in all five trials, so this is not a majority regression.
+
+Aggressive threshold, medium/wide excursion, and relaxed acceleration-slew
+ablations produced no additional FAME rescue. Medium excursion converted one
+ALMI boundary stumble to drift in a single screen but did not affect FAME fall
+recovery.
+
+The calibrated momentum-risk schedule remains an experimental candidate, not a
+promoted default. It has only one full-panel FAME fall rescue rather than the
+preregistered two repeated rescues. Its full ALMI panel also contains substantial
+pre-publication timing holds and `27.2 ms` p99 in one active manual-grasp case.
+The sweep defaults therefore remain the `0.25` feedforward plus stationary gyro
+baseline while iteration 3B addresses objective timing and computation cost.
