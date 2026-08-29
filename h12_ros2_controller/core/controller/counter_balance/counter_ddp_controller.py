@@ -46,6 +46,24 @@ class CounterDDPController(CounterBalanceController):
         self.moving_velocity_threshold = settings[
             'moving_velocity_threshold'
         ]
+        self.moving_feedforward_authority = settings[
+            'moving_feedforward_authority'
+        ]
+        self.stationary_gyro_feedback = settings[
+            'stationary_gyro_feedback'
+        ]
+        self.stationary_feedback_max_authority = settings[
+            'stationary_feedback_max_authority'
+        ]
+        self.moving_momentum_threshold = settings[
+            'moving_momentum_threshold'
+        ]
+        self.moving_momentum_full_scale = settings[
+            'moving_momentum_full_scale'
+        ]
+        self.moving_momentum_max_authority = settings[
+            'moving_momentum_max_authority'
+        ]
         self.max_forecast_age = settings['max_forecast_age']
         self.max_frozen_map_displacement = settings[
             'max_frozen_map_displacement'
@@ -137,7 +155,7 @@ class CounterDDPController(CounterBalanceController):
         counter_q = np.copy(measured_arm_q[self.counter_active_local])
         counter_dq = np.copy(motor_dq[self.counter_ids])
         try:
-            support, com, _, _, _ = self._model_terms(motor_q)
+            support, com, _, momentum_map, rotation = self._model_terms(motor_q)
         except Exception:
             return self._publish_ddp_hold(
                 motor_q, arm_q, arm_dq, tau_target,
@@ -155,14 +173,15 @@ class CounterDDPController(CounterBalanceController):
             )
 
         try:
-            knots, activation = self._build_knots(
-                motor_q, q_horizon, dq_horizon, authority_scale,
+            gyro, _ = self._torso_gyro(rotation)
+            activation = self._activation(
+                gyro[:2], dq_horizon, authority_scale,
+                momentum_map[:2, self.moving_v_indices],
             )
-            lower, upper = self._control_bounds(counter_q, counter_dq)
         except Exception:
             return self._publish_ddp_hold(
                 motor_q, arm_q, arm_dq, tau_target,
-                'problem_build_failure', started,
+                'activation_failure', started,
             )
         self.latest_activation_scale = float(np.max(activation))
         self.latest_balance_scale = self.latest_activation_scale
@@ -176,6 +195,17 @@ class CounterDDPController(CounterBalanceController):
                 started,
             )
 
+        try:
+            knots, _ = self._build_knots(
+                motor_q, q_horizon, dq_horizon, authority_scale,
+                activation=activation,
+            )
+            lower, upper = self._control_bounds(counter_q, counter_dq)
+        except Exception:
+            return self._publish_ddp_hold(
+                motor_q, arm_q, arm_dq, tau_target,
+                'problem_build_failure', started,
+            )
         try:
             result = self.ddp.solve(
                 np.concatenate([counter_q, counter_dq]),
@@ -351,6 +381,10 @@ class CounterDDPController(CounterBalanceController):
             'axis_activation': self.latest_axis_activation.tolist(),
             'gyro_rate': float(self.latest_gyro_rate),
             'moving_speed': float(self.latest_moving_speed),
+            'moving_momentum_risk': float(self.latest_moving_momentum_risk),
+            'moving_momentum_authority': float(
+                self.latest_moving_momentum_authority
+            ),
             'requested_counter_acceleration': (
                 self.latest_requested_counter_acceleration.tolist()
             ),
@@ -377,7 +411,8 @@ class CounterDDPController(CounterBalanceController):
         })
         return values
 
-    def _build_knots(self, motor_q, q_horizon, dq_horizon, authority_scale):
+    def _build_knots(self, motor_q, q_horizon, dq_horizon, authority_scale,
+                     activation=None):
         raw = []
         com_target = None
         q_lower, q_upper = self._effective_counter_position_limits()
@@ -422,22 +457,10 @@ class CounterDDPController(CounterBalanceController):
                 np.copy(moving_dq),
                 np.copy(gyro[:2]),
             ))
-        gyro_rate = float(np.linalg.norm(raw[0][7]))
-        moving_speed = float(np.max(np.linalg.norm(
-            dq_horizon[:, self.moving_local], axis=1,
-        )))
-        activation_scale = np.clip(
-            (gyro_rate - self.gyro_rate_threshold)
-            / (self.gyro_rate_full_scale - self.gyro_rate_threshold),
-            0.0,
-            1.0,
-        )
-        if moving_speed <= self.moving_velocity_threshold:
-            activation_scale = 0.0
-        activation_scale *= authority_scale
-        activation = np.full(2, activation_scale, dtype=np.float64)
-        self.latest_gyro_rate = gyro_rate
-        self.latest_moving_speed = moving_speed
+        if activation is None:
+            activation = self._activation(
+                raw[0][7], dq_horizon, authority_scale, raw[0][5],
+            )
         knots = []
         counter_q = motor_q[self.counter_ids]
         for values in raw:
@@ -460,6 +483,64 @@ class CounterDDPController(CounterBalanceController):
             ))
         self.latest_com_target = np.copy(com_target)
         return knots, activation
+
+    def _activation(self, gyro_xy, dq_horizon, authority_scale,
+                    moving_momentum_map=None):
+        gyro_rate = float(np.linalg.norm(gyro_xy))
+        moving_speed = float(np.max(np.linalg.norm(
+            dq_horizon[:, self.moving_local], axis=1,
+        )))
+        momentum_risk = 0.0
+        momentum_authority = self.moving_feedforward_authority
+        if (
+            self.moving_momentum_threshold is not None
+            and moving_momentum_map is not None
+        ):
+            moving_dq = dq_horizon[:, self.moving_local]
+            momentum = moving_dq @ np.asarray(
+                moving_momentum_map, dtype=np.float64,
+            ).T
+            momentum_risk = float(np.max(np.linalg.norm(momentum, axis=1)))
+            risk_scale = np.clip(
+                (momentum_risk - self.moving_momentum_threshold)
+                / (
+                    self.moving_momentum_full_scale
+                    - self.moving_momentum_threshold
+                ),
+                0.0,
+                1.0,
+            )
+            momentum_authority += (
+                self.moving_momentum_max_authority
+                - self.moving_feedforward_authority
+            ) * risk_scale
+        activation_scale = np.clip(
+            (gyro_rate - self.gyro_rate_threshold)
+            / (self.gyro_rate_full_scale - self.gyro_rate_threshold),
+            0.0,
+            1.0,
+        )
+        moving = moving_speed > self.moving_velocity_threshold
+        if not moving and not self.stationary_gyro_feedback:
+            activation_scale = 0.0
+        elif not moving:
+            activation_scale = min(
+                activation_scale * authority_scale,
+                self.stationary_feedback_max_authority,
+            )
+        elif moving:
+            activation_scale = max(
+                activation_scale,
+                momentum_authority,
+            )
+            activation_scale *= authority_scale
+        activation_scale = np.clip(activation_scale, 0.0, 1.0)
+        activation = np.full(2, activation_scale, dtype=np.float64)
+        self.latest_gyro_rate = gyro_rate
+        self.latest_moving_speed = moving_speed
+        self.latest_moving_momentum_risk = momentum_risk
+        self.latest_moving_momentum_authority = momentum_authority
+        return activation
 
     def _control_bounds(self, counter_q, counter_dq):
         lower = np.tile(-self.max_acceleration, (self.horizon_steps, 1))
@@ -809,6 +890,8 @@ class CounterDDPController(CounterBalanceController):
         self.latest_axis_activation = np.zeros(2, dtype=np.float64)
         self.latest_gyro_rate = 0.0
         self.latest_moving_speed = 0.0
+        self.latest_moving_momentum_risk = 0.0
+        self.latest_moving_momentum_authority = 0.0
         self.latest_requested_counter_acceleration = np.zeros(4)
         self.latest_applied_counter_acceleration = np.zeros(4)
         self.latest_solver_converged = False
@@ -883,6 +966,44 @@ class CounterDDPController(CounterBalanceController):
             raise ValueError(
                 'counter_ddp gyro rate full scale must exceed threshold',
             )
+        moving_momentum_threshold = activation.get(
+            'moving_momentum_threshold'
+        )
+        moving_momentum_full_scale = activation.get(
+            'moving_momentum_full_scale'
+        )
+        if moving_momentum_threshold is None:
+            if moving_momentum_full_scale is not None:
+                raise ValueError(
+                    'counter_ddp moving momentum threshold is required',
+                )
+        else:
+            moving_momentum_threshold = cls._ddp_scalar(
+                moving_momentum_threshold,
+                'activation.moving_momentum_threshold',
+                positive=False,
+            )
+            moving_momentum_full_scale = cls._ddp_scalar(
+                moving_momentum_full_scale,
+                'activation.moving_momentum_full_scale',
+                positive=True,
+            )
+            if moving_momentum_full_scale <= moving_momentum_threshold:
+                raise ValueError(
+                    'counter_ddp moving momentum full scale must exceed threshold',
+                )
+        moving_feedforward_authority = cls._unit_scalar(
+            activation.get('moving_feedforward_authority', 0.0),
+            'activation.moving_feedforward_authority',
+        )
+        moving_momentum_max_authority = cls._unit_scalar(
+            activation.get('moving_momentum_max_authority', 1.0),
+            'activation.moving_momentum_max_authority',
+        )
+        if moving_momentum_max_authority < moving_feedforward_authority:
+            raise ValueError(
+                'counter_ddp moving momentum authority must not reduce feedforward',
+            )
         shadow = cfg.get('shadow', True)
         if not isinstance(shadow, bool):
             raise ValueError('counter_ddp.shadow must be a boolean')
@@ -931,6 +1052,18 @@ class CounterDDPController(CounterBalanceController):
                 activation.get('moving_velocity_threshold', 1e-3),
                 'activation.moving_velocity_threshold',
                 positive=True,
+            ),
+            'moving_feedforward_authority': moving_feedforward_authority,
+            'moving_momentum_threshold': moving_momentum_threshold,
+            'moving_momentum_full_scale': moving_momentum_full_scale,
+            'moving_momentum_max_authority': moving_momentum_max_authority,
+            'stationary_gyro_feedback': cls._bool_value(
+                activation.get('stationary_gyro_feedback', False),
+                'activation.stationary_gyro_feedback',
+            ),
+            'stationary_feedback_max_authority': cls._unit_scalar(
+                activation.get('stationary_feedback_max_authority', 1.0),
+                'activation.stationary_feedback_max_authority',
             ),
             'max_forecast_age': cls._ddp_scalar(
                 cfg.get('max_forecast_age', 0.1),
@@ -981,6 +1114,19 @@ class CounterDDPController(CounterBalanceController):
         if not np.isfinite(value) or value < 0.0 or (positive and value == 0.0):
             requirement = 'positive' if positive else 'nonnegative'
             raise ValueError(f'counter_ddp.{name} must be finite and {requirement}')
+        return value
+
+    @classmethod
+    def _unit_scalar(cls, value, name):
+        value = cls._ddp_scalar(value, name, positive=False)
+        if value > 1.0:
+            raise ValueError(f'counter_ddp.{name} must not exceed one')
+        return value
+
+    @staticmethod
+    def _bool_value(value, name):
+        if not isinstance(value, bool):
+            raise ValueError(f'counter_ddp.{name} must be a boolean')
         return value
 
     @classmethod
