@@ -1090,8 +1090,8 @@ Candidate additions, one at a time:
 3. Add one weighted momentum-rate residual.
 4. Augment state with previous acceleration if a horizon-wide jerk residual is
    needed.
-5. Add an identified arm-command-to-base-response map only after held-out
-   validation.
+5. Defer any identified arm-command-to-base-response transition model to
+   iteration 4; iteration 3B may identify only arm-actuator gain and delay.
 
 Each addition requires a fresh one-term ablation. Do not combine identified
 base response, momentum rate, contact state, and a longer horizon in one change.
@@ -1297,3 +1297,104 @@ output must also wait for low-authority command-response and braking
 identification. This separation keeps the first code increment testable,
 preserves the verified baselines, and makes the value of finite-horizon control
 measurable rather than assumed.
+
+## Fall-Recovery Improvement Cycle
+
+### Observation
+
+Iteration 2 rescued three FAME right-boundary falls. At `0.5 s` after release,
+its counter arm had accumulated approximately two to five times more opposing
+pitch momentum than the selected iteration-3 controller. Iteration 3's later
+high velocity is corrective; the fall trajectory is already established.
+
+The selected iteration-3 baseline uses `0.25` moving-phase authority to avoid
+unnecessary ALMI interference. Raising all moving-phase authority to `1.0`
+restored FAME rescues in screening but introduced ALMI guard regressions.
+
+The existing moving-arm centroidal map provides a general discriminator:
+
+| Case family | Peak planar moving-arm momentum norm |
+|---|---:|
+| FAME right-boundary falls | `2.33–2.56` |
+| Corresponding ALMI right-side guards | `1.56–1.89` |
+
+ALMI `left_fast_fall_search_09_scale_78` also exceeds the high-risk range and is
+a mandatory guard rather than an excluded exception.
+
+### Hypothesis
+
+Use predicted moving-arm momentum magnitude to schedule only the moving-phase
+feedforward authority:
+
+\[
+\rho_m=\max_k\|A_{m,xy}(q_0)\dot q_{m,k}\|.
+\]
+
+\[
+g_m=\operatorname{clip}\left(
+\frac{\rho_m-2.2}{2.5-2.2},0,1
+\right).
+\]
+
+\[
+\alpha_{moving}=\max\left(
+\alpha_{gyro},
+0.25+(1.0-0.25)g_m
+\right).
+\]
+
+The map is evaluated once at the current measured configuration before horizon
+construction. It adds no solver state, no target-specific branch, and no
+backend-specific condition. Stationary recovery remains the existing scalar
+gyro feedback.
+
+### Controlled Variables
+
+Keep fixed:
+
+- Three intervals and one FDDP iteration.
+- All objective weights and physical scales.
+- Position, velocity, acceleration, slew, excursion, and collision limits.
+- Gyro thresholds and post-motion recovery behavior.
+- Moving-arm command and horizon.
+
+Change only the moving-phase authority schedule.
+
+### Development Screen
+
+FAME fall targets:
+
+- `right_fast_fall_search_06_scale_74`.
+- `right_fast_fall_search_09_scale_78`.
+- `right_fast_fall_search_11_scale_78`.
+- `right_lateral_overhead_reach`.
+- `right_inner_upward_overhang_pitch_minus`.
+
+FAME regression guards:
+
+- `left_fast_fall_search_09_scale_78`.
+- `left_inner_upward_overhang_pitch_plus`.
+- `left_lateral_overhead_reach`.
+
+ALMI guards:
+
+- `right_fast_fall_search_06_scale_74`.
+- `right_fast_fall_search_11_scale_78`.
+- `right_lateral_overhead_reach`.
+- `left_fast_fall_search_09_scale_78`.
+- `left_manual_grasp_pitch_plus`.
+- `left_manual_grasp_pitch_minus`.
+
+Compare paired frame task, selected iteration-3 baseline, and momentum-risk
+candidate from identical initial state where available.
+
+### Promotion Gate
+
+- At least two repeated FAME fall-to-survival conversions.
+- No majority ALMI severity regression.
+- No FAME stable-to-worse or drift-to-worse regression.
+- Moving-arm pass-through remains unchanged.
+- Controller p99 remains below `15 ms` and no late active command is accepted.
+
+If the candidate fails, do not add target-specific thresholds. Continue with
+iteration 3B momentum-rate identification instead.

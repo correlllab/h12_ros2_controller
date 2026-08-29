@@ -538,10 +538,12 @@ every latest stumble automatically.
 - The fixed-base model does not predict lower-body policy or contact response.
 - Moving-arm acceleration affects the forecast through future velocities, but
   arm-to-base dynamics are not identified.
-- Library defaults retain full feedforward authority for compatibility, while
-  the evaluated sweep configs use symmetric response-only divergence gates.
-- Recovery uses the same OCP with balance costs disabled; it does not yet have a
-  separately identified braking model or quiet-dwell state machine.
+- Library defaults are inactive feedforward and no stationary feedback. The
+  selected sweep configs use `0.25` moving-phase feedforward plus scalar gyro
+  feedback during and after manipulation.
+- Recovery uses the same OCP with gyro-scaled balance costs; it does not yet have
+  a separately identified braking model, quiet-dwell state machine, or bounded
+  pass-through handoff.
 - The active candidate validates future numerical state bounds but collision
   checks only the command being published. Full-horizon nonlinear validation is
   available through `validation_steps` for shadow analysis but missed the
@@ -556,16 +558,155 @@ every latest stumble automatically.
   write. Solver/model/torque work is guarded before publication, but a hard
   cancellable wall-clock deadline would require an asynchronous architecture.
 
+## Final Iteration-3 Candidate Tuning
+
+The first paired simplified-controller panels showed no fall rescue and produced
+two FAME regressions plus one ALMI drift-to-stumble change:
+
+- FAME:
+  `runs/hard_sweep/20260827_183616_counter_ddp_vs_frame_fame`.
+- ALMI:
+  `runs/hard_sweep/20260827_191147_counter_ddp_vs_frame_almi`.
+
+The scalar gyro gate generally crossed late, around `1.2–1.3 s` into the
+`1.5 s` motion. A structured screen varied only moving-phase feedforward
+authority at `0.25`, `0.50`, and `1.00`, then separately tested post-motion gyro
+recovery and horizon length.
+
+Key artifacts:
+
+- FAME authority screen:
+  `runs/key_findings/20260828_005054_iter3_feedforward_fame_screen`.
+- ALMI authority screen:
+  `runs/key_findings/20260828_010623_iter3_feedforward_almi_screen`.
+- FAME recovery screen:
+  `runs/key_findings/20260828_012256_iter3_recovery_fame_screen`.
+- ALMI recovery screen:
+  `runs/key_findings/20260828_012922_iter3_recovery_almi_screen`.
+- FAME horizon screen:
+  `runs/key_findings/20260828_013608_iter3_horizon_fame_screen`.
+
+Intermediate authority was not monotonic. The strongest general candidate uses:
+
+- `0.25` moving-phase feedforward authority.
+- Existing scalar gyro feedback during motion.
+- The same scalar gyro feedback after motion completion.
+- Three horizon intervals and one FDDP iteration.
+- Unchanged objective weights and safety limits.
+
+Five and eight intervals were rejected. Five steps lost all tested
+right-boundary rescues and had `20.6 ms` total-controller p99. Eight steps kept
+one rescue, had `32.4 ms` p99, and frequently exceeded the frozen-map trust
+region.
+
+### Paired Focused Panels
+
+Artifacts:
+
+- FAME:
+  `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
+- ALMI:
+  `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
+
+FAME outcomes over 44 targets:
+
+| Controller | Stable | Drift | Stumble | Fall | Survived |
+|---|---:|---:|---:|---:|---:|
+| Frame task | 17 | 18 | 1 | 8 | 36 |
+| Selected iteration 3 | 22 | 14 | 0 | 8 | 36 |
+
+The candidate produced five improvements and no regression:
+
+- `left_fast_fall_search_04_scale_76`: drift to stable.
+- `left_fast_fall_search_11_scale_78`: drift to stable.
+- `left_inner_upward_overhang_pitch_plus`: drift to stable.
+- `left_lateral_high_reach`: drift to stable.
+- `left_lateral_overhead_reach`: stumble to stable.
+
+It did not reduce the eight FAME falls in this panel.
+
+ALMI outcomes over 44 targets:
+
+| Controller | Stable | Drift | Stumble | Fall | Survived |
+|---|---:|---:|---:|---:|---:|
+| Frame task | 25 | 12 | 4 | 3 | 41 |
+| Selected iteration 3 | 25 | 11 | 5 | 3 | 41 |
+
+The single panel changed `left_fast_fall_search_09_scale_78` from drift to
+stumble. Five fresh repetitions showed that this case is a stochastic stumble
+for every controller:
+
+| Controller | Five-repeat result |
+|---|---|
+| Frame task | 5 stumble |
+| Selected iteration 3 | 5 stumble |
+| Full-feedforward capped recovery | 4 stumble, 1 drift |
+
+The selected candidate reduced foot displacement in every repeated trial but
+did not convert majority severity. It is therefore not a demonstrated ALMI
+regression under repeated majority evaluation, and it is also not an ALMI
+stumble improvement.
+
+### Timing
+
+Total-controller p99 was approximately `15.0 ms` on FAME and `16.7 ms` on ALMI.
+The behavioral candidate is the new iteration-3 baseline, but ALMI timing remains
+above the promotion target.
+
+The first iteration-3B foundation now evaluates activation before per-knot
+Pinocchio map construction. Post-change smokes are:
+
+- Inactive/low-risk ALMI:
+  `runs/key_findings/20260828_031218_iter3_final_inactive_timing_smoke`,
+  `8.8 ms` p99.
+- Active FAME:
+  `runs/key_findings/20260828_031331_iter3_final_active_smoke`,
+  `11.5 ms` p99 with one timing hold.
+
 ## Next Decisions
 
-Use the focused FAME and ALMI sweep outcomes to decide whether to:
+Use the iteration-3B design to:
 
-1. Retain full feedforward authority and tune only weights and excursion.
-2. Add symmetric predicted-risk activation to suppress benign ALMI and FAME
-   motion.
-3. Add measured directional recovery before increasing horizon length.
-4. Re-enable one-step nonlinear metric validation if timing remains below one
-   period across the full focused panels.
+1. Keep three steps until nominal-trajectory linearization and complete horizon
+   validation make longer horizons trustworthy.
+2. Add zero-weight momentum-rate diagnostics and arm-actuator identification.
+3. Test one momentum-rate objective weight at a time.
+4. Add event-based recovery and bounded handoff as separate ablations.
 
-Do not add momentum-rate cost or an identified base-response model until the
-current three-knot candidate has cross-policy outcome evidence.
+Do not continue scalar authority searches. The structured iteration-3 screens
+showed that no single early/recovery authority setting simultaneously converted
+ALMI stumbles and improved FAME falls reliably.
+
+## FAME Fall-Recovery Gap
+
+Iteration 2 rescued three right-boundary falls:
+
+- `right_fast_fall_search_06_scale_74`.
+- `right_fast_fall_search_09_scale_78`.
+- `right_fast_fall_search_11_scale_78`.
+
+At `0.5 s`, iteration 2 produced approximately two to five times more opposing
+counter-arm pitch momentum than the selected iteration-3 candidate. Its counter
+shoulder displacement at that instant was approximately `0.14–0.18 rad`, versus
+`0.04–0.08 rad` for iteration 3.
+
+The current three-step OCP with `0.25` moving authority remains near its counter
+reference through the early moving-arm momentum peak. Later large joint velocity
+is corrective rather than preventive. Full moving-phase authority restores three
+of four FAME boundary rescues in the compact screen, but created ALMI guard
+regressions when applied indiscriminately.
+
+The next iteration-3 experiment is a verified moving-arm momentum-risk schedule:
+
+- Compute the maximum predicted planar moving-arm momentum norm over the supplied
+  horizon with the existing centroidal map.
+- Retain `0.25` moving authority below a preregistered risk threshold.
+- Smoothly raise authority toward `1.0` above a threshold near `2.2` in the
+  measured momentum units.
+- Preserve scalar gyro feedback only for recovery.
+- Evaluate the three right-boundary rescues and the high-risk ALMI
+  `left_fast_fall_search_09_scale_78` case before any full panel.
+
+This is a general model-based activation variable, not a target, arm-side, or
+lower-policy branch. It must demonstrate FAME fall rescue without a majority
+ALMI guard regression before it replaces the selected `0.25` baseline.
