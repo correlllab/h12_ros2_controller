@@ -9,6 +9,9 @@ from h12_ros2_controller.core.controller.counter_balance import (
 from h12_ros2_controller.core.controller.counter_balance.counter_ddp_ocp import (
     CounterDDPOCP,
 )
+from h12_ros2_controller.core.controller.counter_balance.reaction_observer import (
+    ReactionObserver,
+)
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from test_counter_balance_controller import _harness as _reactive_harness
 
@@ -19,6 +22,7 @@ def _harness(moving_arm='left', shadow=False):
     controller.__dict__.update(reactive.__dict__)
     controller.shadow = shadow
     controller.horizon_steps = 3
+    controller.preview_steps = 3
     controller.max_acceleration = np.full(4, 25.0)
     controller.max_acceleration_change = np.full(4, 5.0)
     controller.max_velocity = np.ones(4)
@@ -32,6 +36,9 @@ def _harness(moving_arm='left', shadow=False):
     controller.moving_momentum_threshold = None
     controller.moving_momentum_full_scale = None
     controller.moving_momentum_max_authority = 1.0
+    controller.reaction_feedforward_gain = 0.3
+    controller.reaction_effectiveness = np.array([0.105, 0.115])
+    controller.reaction_diagnostics_enabled = True
     controller.max_forecast_age = 0.1
     controller.max_frozen_map_displacement = 0.1
     controller.metric_tolerance = 0.25
@@ -42,6 +49,7 @@ def _harness(moving_arm='left', shadow=False):
         horizon_steps=controller.horizon_steps,
         max_iterations=2,
     )
+    controller.reaction_observer = ReactionObserver()
     controller._previous_acceleration = np.zeros(4)
     controller._reset_ddp_diagnostics()
     return controller
@@ -94,6 +102,61 @@ def test_horizon_step_preserves_moving_position_velocity_and_torque():
     assert controller.diagnostics()['moving_velocity_command_error'] == 0.0
 
 
+def test_reaction_diagnostics_are_zero_weight_and_become_valid():
+    controller = _harness()
+    controller.moving_feedforward_authority = 0.25
+    q, dq, _, _ = _horizon(controller)
+
+    for _ in range(2):
+        generated_at = time.monotonic()
+        controller.control_horizon_step(
+            q,
+            dq,
+            sample_times=generated_at + np.arange(4) * controller.dt,
+            generated_at=generated_at,
+        )
+        time.sleep(0.02)
+
+    diagnostics = controller.diagnostics()
+    assert diagnostics['reaction_measurement_valid']
+    assert diagnostics['reaction_prediction_valid']
+    assert diagnostics['reaction_seed_valid']
+    assert len(diagnostics['measured_counter_momentum_rate']) == 2
+    assert len(diagnostics['predicted_total_arm_momentum_rate']) == 2
+
+
+def test_disabled_reaction_diagnostics_cannot_change_active_control(
+        monkeypatch):
+    controller = _harness()
+    controller.reaction_diagnostics_enabled = False
+    controller.moving_feedforward_authority = 0.25
+    monkeypatch.setattr(
+        controller.reaction_observer,
+        'update',
+        lambda *args: pytest.fail('disabled observer ran'),
+    )
+    monkeypatch.setattr(
+        controller,
+        '_record_disturbance_preview',
+        lambda *args: pytest.fail('disabled preview ran'),
+    )
+    monkeypatch.setattr(
+        controller,
+        '_record_reaction_seed_diagnostic',
+        lambda *args: pytest.fail('disabled seed diagnostic ran'),
+    )
+    q, dq, sample_times, generated_at = _horizon(controller)
+
+    controller.control_horizon_step(
+        q,
+        dq,
+        sample_times=sample_times,
+        generated_at=generated_at,
+    )
+
+    assert controller.latest_status in ('solved', 'best_effort')
+
+
 def test_shadow_solves_but_holds_counter_arm():
     controller = _harness(shadow=True)
     controller.robot_model.state['imu_state'].gyroscope = [0.1, 0.0, 0.0]
@@ -126,6 +189,41 @@ def test_invalid_horizon_shape_is_rejected_without_publication():
         )
 
     assert controller.low_cmd_handler.calls == []
+
+
+def test_preview_must_extend_the_exact_ocp_horizon():
+    controller = _harness()
+    controller.preview_steps = 5
+    q, dq, _, _ = _horizon(controller)
+    preview_q = np.zeros((6, 14))
+    preview_dq = np.zeros((6, 14))
+    preview_q[:4] = q
+    preview_dq[:4] = dq
+
+    validated_q, validated_dq = controller._validated_preview(
+        preview_q, preview_dq, q, dq,
+    )
+
+    assert validated_q.shape == (6, 14)
+    assert validated_dq.shape == (6, 14)
+
+
+def test_disturbance_preview_records_h3_and_long_preview_features():
+    controller = _harness()
+    controller.preview_steps = 5
+    preview_dq = np.zeros((6, 14))
+    preview_dq[:, controller.moving_local[0]] = [0.0, 0.1, 0.2, 0.4, 0.2, 0.0]
+    moving_map = np.zeros((2, 7))
+    moving_map[0, 0] = 2.0
+
+    controller._record_disturbance_preview(moving_map, preview_dq)
+
+    assert controller.latest_preview_moving_momentum.shape == (6, 2)
+    assert controller.latest_preview_peak_momentum_rate > 0.0
+    assert controller.latest_preview_peak_momentum_change > 0.0
+    assert controller.latest_preview_peak_momentum_rate >= (
+        controller.latest_h3_peak_momentum_rate
+    )
 
 
 def test_stale_forecast_holds_counter_and_preserves_moving_sample():
@@ -345,8 +443,18 @@ def test_configuration_parser_uses_short_realtime_defaults():
 
     assert settings['shadow']
     assert settings['horizon_steps'] == 5
+    assert settings['preview_steps'] == 5
+    assert not settings['reaction_diagnostics_enabled']
     assert settings['max_iterations'] == 2
     assert np.array_equal(settings['max_acceleration'], np.full(4, 25.0))
+
+
+def test_configuration_parser_rejects_preview_shorter_than_ocp():
+    with pytest.raises(ValueError, match='preview_steps'):
+        CounterDDPController._parse_ddp_config({
+            'horizon_steps': 5,
+            'preview_steps': 3,
+        })
 
 
 def test_scalar_gyro_activation_uses_moving_horizon():
@@ -366,6 +474,18 @@ def test_scalar_gyro_activation_uses_moving_horizon():
     assert len(knots) == controller.horizon_steps
     assert np.allclose(activation, 1.0)
     assert controller.latest_gyro_rate == pytest.approx(0.06)
+
+
+def test_response_diagnostics_record_divergence_without_changing_activation():
+    controller = _harness()
+    controller.tilt_reference = np.zeros(2)
+    controller._imu_tilt = lambda: np.array([0.1, -0.2])
+
+    controller._record_response_diagnostics(np.array([0.3, 0.4]))
+
+    assert np.allclose(controller.latest_response_tilt_error, [0.1, -0.2])
+    assert np.allclose(controller.latest_response_divergence, [0.03, -0.08])
+    assert controller.latest_response_divergence_norm == pytest.approx(0.03)
 
 
 def test_scalar_gyro_activation_ignores_standing_rate():

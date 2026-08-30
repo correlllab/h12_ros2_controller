@@ -9,6 +9,11 @@ from h12_ros2_controller.core.controller.counter_balance.counter_ddp_ocp import 
     CounterDDPOCP,
     FrozenBalanceKnot,
 )
+from h12_ros2_controller.core.controller.counter_balance.reaction_observer import (
+    ReactionObserver,
+    predict_frozen_momentum_rate,
+    reaction_seed_diagnostic,
+)
 from h12_ros2_controller.utility.controller_config import load_controller_config
 
 
@@ -37,6 +42,7 @@ class CounterDDPController(CounterBalanceController):
         )
         self.shadow = settings['shadow']
         self.horizon_steps = settings['horizon_steps']
+        self.preview_steps = settings['preview_steps']
         self.max_acceleration = settings['max_acceleration']
         self.max_acceleration_change = settings['max_acceleration_change']
         self.max_velocity = settings['max_velocity']
@@ -64,6 +70,13 @@ class CounterDDPController(CounterBalanceController):
         self.moving_momentum_max_authority = settings[
             'moving_momentum_max_authority'
         ]
+        self.reaction_feedforward_gain = settings[
+            'reaction_feedforward_gain'
+        ]
+        self.reaction_effectiveness = settings['reaction_effectiveness']
+        self.reaction_diagnostics_enabled = settings[
+            'reaction_diagnostics_enabled'
+        ]
         self.max_forecast_age = settings['max_forecast_age']
         self.max_frozen_map_displacement = settings[
             'max_frozen_map_displacement'
@@ -82,6 +95,7 @@ class CounterDDPController(CounterBalanceController):
             initial_regularization=settings['initial_regularization'],
             minimum_cost_improvement=settings['minimum_cost_improvement'],
         )
+        self.reaction_observer = ReactionObserver()
         self._previous_acceleration = np.zeros(4, dtype=np.float64)
         self._reset_ddp_diagnostics()
 
@@ -91,6 +105,8 @@ class CounterDDPController(CounterBalanceController):
             self.ddp.reset()
         if hasattr(self, '_previous_acceleration'):
             self._previous_acceleration[:] = 0.0
+        if hasattr(self, 'reaction_observer'):
+            self.reaction_observer.reset()
 
     def capture_reference(self):
         '''Capture a settled counter posture and support-relative CoM'''
@@ -106,7 +122,9 @@ class CounterDDPController(CounterBalanceController):
     def control_horizon_step(self, moving_q_horizon, moving_dq_horizon,
                              moving_tau=None, sample_times=None,
                              generated_at=None, authority_scale=1.0,
-                             forecast_source='explicit'):
+                             forecast_source='explicit',
+                             preview_q_horizon=None,
+                             preview_dq_horizon=None):
         '''Solve and apply one receding-horizon counter-arm command'''
         started = time.perf_counter()
         self._require_arm_ownership()
@@ -122,6 +140,18 @@ class CounterDDPController(CounterBalanceController):
         q_horizon, dq_horizon = self._validated_horizon(
             moving_q_horizon, moving_dq_horizon,
         )
+        preview_q, preview_dq = q_horizon, dq_horizon
+        if self.reaction_diagnostics_enabled:
+            try:
+                preview_q, preview_dq = self._validated_preview(
+                    preview_q_horizon,
+                    preview_dq_horizon,
+                    q_horizon,
+                    dq_horizon,
+                )
+                self.latest_preview_input_valid = True
+            except Exception:
+                self.latest_preview_input_valid = False
         tau_target = self._validated_tau(moving_tau)
         motor_q, motor_dq = self._measured_motor_state()
         measured_arm_q = np.copy(motor_q[self.arm_ids])
@@ -145,6 +175,7 @@ class CounterDDPController(CounterBalanceController):
                 'model_update_failure', started,
             )
         motor_q, motor_dq = self._measured_motor_state()
+        state_sample_time = time.perf_counter()
         measured_arm_q = np.copy(motor_q[self.arm_ids])
         arm_q, arm_dq, input_valid = self._moving_sample(
             q_horizon[0], dq_horizon[0], measured_arm_q,
@@ -174,15 +205,42 @@ class CounterDDPController(CounterBalanceController):
 
         try:
             gyro, _ = self._torso_gyro(rotation)
+            current_counter_map = np.copy(
+                momentum_map[:2, self.counter_v_indices],
+            )
+            current_moving_map = np.copy(
+                momentum_map[:2, self.moving_v_indices],
+            )
+            current_moving_dq = np.copy(
+                dq_horizon[0, self.moving_local],
+            )
             activation = self._activation(
                 gyro[:2], dq_horizon, authority_scale,
-                momentum_map[:2, self.moving_v_indices],
+                current_moving_map,
             )
         except Exception:
             return self._publish_ddp_hold(
                 motor_q, arm_q, arm_dq, tau_target,
                 'activation_failure', started,
             )
+        if self.reaction_diagnostics_enabled:
+            try:
+                self.latest_reaction_state_timestamp = state_sample_time
+                self._record_response_diagnostics(gyro[:2])
+                self._record_reaction_measurement(
+                    state_sample_time,
+                    counter_dq,
+                    current_counter_map @ counter_dq,
+                    current_moving_map @ motor_dq[self.moving_ids],
+                    gyro[:2],
+                )
+                if self.latest_preview_input_valid:
+                    self._record_disturbance_preview(
+                        current_moving_map, preview_dq,
+                    )
+            except Exception:
+                self.latest_reaction_measurement_valid = False
+                self.latest_preview_input_valid = False
         self.latest_activation_scale = float(np.max(activation))
         self.latest_balance_scale = self.latest_activation_scale
         self.latest_axis_activation = np.copy(activation)
@@ -206,6 +264,20 @@ class CounterDDPController(CounterBalanceController):
                 motor_q, arm_q, arm_dq, tau_target,
                 'problem_build_failure', started,
             )
+        if self.reaction_diagnostics_enabled:
+            try:
+                seed_lower, seed_upper = self._reaction_seed_bounds(
+                    counter_q, counter_dq, lower[0], upper[0],
+                )
+                self._record_reaction_seed_diagnostic(
+                    current_counter_map,
+                    counter_dq,
+                    knots[0],
+                    seed_lower,
+                    seed_upper,
+                )
+            except Exception:
+                self.latest_reaction_seed_valid = False
         try:
             result = self.ddp.solve(
                 np.concatenate([counter_q, counter_dq]),
@@ -225,6 +297,18 @@ class CounterDDPController(CounterBalanceController):
                 motor_q, arm_q, arm_dq, tau_target,
                 result.status, started,
             )
+        if self.reaction_diagnostics_enabled:
+            try:
+                self._record_reaction_prediction(
+                    current_counter_map,
+                    current_moving_map,
+                    counter_dq,
+                    current_moving_dq,
+                    knots[0],
+                    result.xs[1, 4:],
+                )
+            except Exception:
+                self.latest_reaction_prediction_valid = False
 
         valid, status, metric_error = self._validate_trajectory(
             motor_q, q_horizon, dq_horizon, knots, result.xs,
@@ -329,11 +413,20 @@ class CounterDDPController(CounterBalanceController):
         dq_horizon = np.repeat(
             dq_target[None, :], self.horizon_steps + 1, axis=0,
         )
+        preview_offsets = (
+            np.arange(self.preview_steps + 1)[:, None] * self.dt
+        )
+        preview_q = q_target[None, :] + preview_offsets * dq_target[None, :]
+        preview_dq = np.repeat(
+            dq_target[None, :], self.preview_steps + 1, axis=0,
+        )
         return self.control_horizon_step(
             q_horizon,
             dq_horizon,
             authority_scale=balance_scale,
             forecast_source='constant_velocity',
+            preview_q_horizon=preview_q,
+            preview_dq_horizon=preview_dq,
         )
 
     def _publish_position_command(self, q, dq, tau):
@@ -355,12 +448,23 @@ class CounterDDPController(CounterBalanceController):
         )
         q_horizon[0] = q_target
         dq_horizon[0] = dq_target
+        preview_offsets = (
+            np.arange(self.preview_steps + 1)[:, None] * self.dt
+        )
+        preview_q = q_target[None, :] + preview_offsets * forecast_dq[None, :]
+        preview_dq = np.repeat(
+            forecast_dq[None, :], self.preview_steps + 1, axis=0,
+        )
+        preview_q[0] = q_target
+        preview_dq[0] = dq_target
         self.control_horizon_step(
             q_horizon,
             dq_horizon,
             moving_tau=moving_tau,
             authority_scale=self._frame_balance_scale,
             forecast_source='inherited_constant_velocity',
+            preview_q_horizon=preview_q,
+            preview_dq_horizon=preview_dq,
         )
 
     def _apply_velocity_command(self, vel):
@@ -381,9 +485,120 @@ class CounterDDPController(CounterBalanceController):
             'axis_activation': self.latest_axis_activation.tolist(),
             'gyro_rate': float(self.latest_gyro_rate),
             'moving_speed': float(self.latest_moving_speed),
+            'response_tilt_error': self.latest_response_tilt_error.tolist(),
+            'response_gyro': self.latest_response_gyro.tolist(),
+            'response_divergence': self.latest_response_divergence.tolist(),
+            'response_divergence_norm': float(
+                self.latest_response_divergence_norm
+            ),
             'moving_momentum_risk': float(self.latest_moving_momentum_risk),
             'moving_momentum_authority': float(
                 self.latest_moving_momentum_authority
+            ),
+            'reaction_measurement_valid': bool(
+                self.latest_reaction_measurement_valid
+            ),
+            'reaction_prediction_valid': bool(
+                self.latest_reaction_prediction_valid
+            ),
+            'reaction_dt': self._finite_or_none(self.latest_reaction_dt),
+            'measured_counter_momentum': (
+                self.latest_measured_counter_momentum.tolist()
+            ),
+            'measured_moving_momentum': (
+                self.latest_measured_moving_momentum.tolist()
+            ),
+            'measured_total_arm_momentum': (
+                self.latest_measured_total_arm_momentum.tolist()
+            ),
+            'measured_counter_momentum_rate': (
+                self.latest_measured_counter_momentum_rate.tolist()
+            ),
+            'measured_moving_momentum_rate': (
+                self.latest_measured_moving_momentum_rate.tolist()
+            ),
+            'measured_total_arm_momentum_rate': (
+                self.latest_measured_total_arm_momentum_rate.tolist()
+            ),
+            'measured_counter_acceleration': (
+                self.latest_measured_counter_acceleration.tolist()
+            ),
+            'measured_base_angular_acceleration': (
+                self.latest_measured_base_angular_acceleration.tolist()
+            ),
+            'predicted_counter_momentum_rate': (
+                self.latest_predicted_counter_momentum_rate.tolist()
+            ),
+            'predicted_moving_momentum_rate': (
+                self.latest_predicted_moving_momentum_rate.tolist()
+            ),
+            'predicted_total_arm_momentum_rate': (
+                self.latest_predicted_total_arm_momentum_rate.tolist()
+            ),
+            'reaction_diagnostics_enabled': bool(
+                self.reaction_diagnostics_enabled
+            ),
+            'reaction_state_timestamp': self._finite_or_none(
+                self.latest_reaction_state_timestamp
+            ),
+            'reaction_command_timestamp': self._finite_or_none(
+                self.latest_reaction_command_timestamp
+            ),
+            'preview_input_valid': bool(self.latest_preview_input_valid),
+            'preview_configured_steps': int(self.preview_steps),
+            'preview_steps': int(self.latest_preview_actual_steps),
+            'preview_duration': float(self.latest_preview_actual_duration),
+            'preview_moving_momentum': (
+                self.latest_preview_moving_momentum.tolist()
+            ),
+            'preview_moving_momentum_rate': (
+                self.latest_preview_moving_momentum_rate.tolist()
+            ),
+            'preview_peak_momentum_rate': float(
+                self.latest_preview_peak_momentum_rate
+            ),
+            'preview_peak_momentum_change': float(
+                self.latest_preview_peak_momentum_change
+            ),
+            'preview_discounted_rate_exposure': float(
+                self.latest_preview_discounted_rate_exposure
+            ),
+            'preview_time_to_peak_rate': float(
+                self.latest_preview_time_to_peak_rate
+            ),
+            'h3_peak_momentum_rate': float(
+                self.latest_h3_peak_momentum_rate
+            ),
+            'h3_peak_momentum_change': float(
+                self.latest_h3_peak_momentum_change
+            ),
+            'h3_discounted_rate_exposure': float(
+                self.latest_h3_discounted_rate_exposure
+            ),
+            'h3_time_to_peak_rate': float(
+                self.latest_h3_time_to_peak_rate
+            ),
+            'reaction_seed_valid': bool(self.latest_reaction_seed_valid),
+            'reaction_seed_desired_rate': (
+                self.latest_reaction_seed_desired_rate.tolist()
+            ),
+            'reaction_seed_unbounded_acceleration': (
+                self.latest_reaction_seed_unbounded_acceleration.tolist()
+            ),
+            'reaction_seed_clipped_acceleration': (
+                self.latest_reaction_seed_clipped_acceleration.tolist()
+            ),
+            'reaction_seed_saturation_mask': (
+                self.latest_reaction_seed_saturation_mask.tolist()
+            ),
+            'reaction_seed_achieved_rate': (
+                self.latest_reaction_seed_achieved_rate.tolist()
+            ),
+            'reaction_seed_residual': (
+                self.latest_reaction_seed_residual.tolist()
+            ),
+            'reaction_seed_unbounded_feasible': bool(
+                self.latest_reaction_seed_unbounded_feasible
             ),
             'requested_counter_acceleration': (
                 self.latest_requested_counter_acceleration.tolist()
@@ -579,6 +794,27 @@ class CounterDDPController(CounterBalanceController):
         first_upper[infeasible_slew] = safety_upper[infeasible_slew]
         lower[0] = first_lower
         upper[0] = first_upper
+        return lower, upper
+
+    def _reaction_seed_bounds(
+            self, counter_q, counter_dq, control_lower, control_upper):
+        lower = np.copy(control_lower)
+        upper = np.copy(control_upper)
+        q_lower, q_upper = self._effective_counter_position_limits()
+        lower = np.maximum(
+            lower,
+            2.0 * (
+                q_lower - counter_q - self.dt * counter_dq
+            ) / self.dt ** 2,
+        )
+        upper = np.minimum(
+            upper,
+            2.0 * (
+                q_upper - counter_q - self.dt * counter_dq
+            ) / self.dt ** 2,
+        )
+        if np.any(lower > upper):
+            raise ValueError('reaction seed excursion bounds are infeasible')
         return lower, upper
 
     def _effective_counter_position_limits(self):
@@ -793,6 +1029,8 @@ class CounterDDPController(CounterBalanceController):
             arm_q[self.counter_local] = measured_arm_q[self.counter_local]
             arm_dq[self.counter_local] = 0.0
             self.latest_status = 'gravity_failure'
+        if self.reaction_diagnostics_enabled:
+            self.latest_reaction_command_timestamp = time.perf_counter()
         if not self._write_arm_command(arm_q, arm_dq, tau):
             return False
         self._record_moving_command_error(arm_q, arm_dq)
@@ -840,6 +1078,39 @@ class CounterDDPController(CounterBalanceController):
             raise ValueError('moving-arm horizon must be finite')
         return np.copy(q_horizon), np.copy(dq_horizon)
 
+    def _validated_preview(
+            self, q_preview, dq_preview, q_horizon, dq_horizon):
+        if q_preview is None and dq_preview is None:
+            if self.preview_steps != self.horizon_steps:
+                raise ValueError('configured preview horizon is missing')
+            return np.copy(q_horizon), np.copy(dq_horizon)
+        if q_preview is None or dq_preview is None:
+            raise ValueError('preview position and velocity must be provided together')
+        shape = (self.preview_steps + 1, 14)
+        q_preview = np.asarray(q_preview, dtype=np.float64)
+        dq_preview = np.asarray(dq_preview, dtype=np.float64)
+        if q_preview.shape != shape or dq_preview.shape != shape:
+            raise ValueError(f'moving preview must have shape {shape}')
+        if (
+            not np.all(np.isfinite(q_preview[:, self.moving_local]))
+            or not np.all(np.isfinite(dq_preview[:, self.moving_local]))
+        ):
+            raise ValueError('moving-arm preview must be finite')
+        if (
+            not np.allclose(
+                q_preview[:self.horizon_steps + 1, self.moving_local],
+                q_horizon[:, self.moving_local],
+                atol=1e-8,
+            )
+            or not np.allclose(
+                dq_preview[:self.horizon_steps + 1, self.moving_local],
+                dq_horizon[:, self.moving_local],
+                atol=1e-8,
+            )
+        ):
+            raise ValueError('moving preview must start with the OCP horizon')
+        return np.copy(q_preview), np.copy(dq_preview)
+
     def _validate_forecast_time(self, sample_times, generated_at):
         if sample_times is None and generated_at is None:
             return
@@ -886,12 +1157,197 @@ class CounterDDPController(CounterBalanceController):
         self.latest_solve_time = result.solve_time
         self.latest_warm_started = result.warm_started
 
+    def _record_reaction_measurement(
+            self, timestamp, counter_dq, counter_h, moving_h, gyro_xy):
+        sample = self.reaction_observer.update(
+            timestamp, counter_dq, counter_h, moving_h, gyro_xy,
+        )
+        self.latest_reaction_measurement_valid = sample.valid
+        self.latest_reaction_dt = sample.dt
+        self.latest_measured_counter_momentum = sample.counter_h
+        self.latest_measured_moving_momentum = sample.moving_h
+        self.latest_measured_total_arm_momentum = sample.total_h
+        self.latest_measured_counter_momentum_rate = sample.counter_hdot
+        self.latest_measured_moving_momentum_rate = sample.moving_hdot
+        self.latest_measured_total_arm_momentum_rate = sample.total_hdot
+        self.latest_measured_counter_acceleration = (
+            sample.counter_acceleration
+        )
+        self.latest_measured_base_angular_acceleration = (
+            sample.base_angular_acceleration
+        )
+
+    def _record_response_diagnostics(self, gyro_xy):
+        tilt_error = (
+            self._imu_tilt() - self.tilt_reference
+            if self.tilt_reference is not None else np.zeros(2)
+        )
+        gyro_xy = np.asarray(gyro_xy, dtype=np.float64)
+        divergence = tilt_error * gyro_xy
+        self.latest_response_tilt_error = tilt_error
+        self.latest_response_gyro = gyro_xy
+        self.latest_response_divergence = divergence
+        self.latest_response_divergence_norm = float(
+            np.linalg.norm(np.maximum(divergence, 0.0)),
+        )
+
+    def _record_reaction_prediction(
+            self, current_counter_map, current_moving_map,
+            current_counter_dq, current_moving_dq, knot, next_counter_dq):
+        counter_rate, moving_rate, total_rate = (
+            predict_frozen_momentum_rate(
+                current_counter_map,
+                current_moving_map,
+                current_counter_dq,
+                current_moving_dq,
+                knot.momentum_counter,
+                knot.momentum_moving,
+                next_counter_dq,
+                knot.moving_dq,
+                self.dt,
+            )
+        )
+        self.latest_predicted_counter_momentum_rate = counter_rate
+        self.latest_predicted_moving_momentum_rate = moving_rate
+        self.latest_predicted_total_arm_momentum_rate = total_rate
+        self.latest_reaction_prediction_valid = True
+
+    def _record_disturbance_preview(self, moving_map, preview_dq):
+        moving_map = np.asarray(moving_map, dtype=np.float64)
+        moving_dq = preview_dq[:, self.moving_local]
+        momentum = moving_dq @ moving_map.T
+        momentum_rate = np.diff(momentum, axis=0) / self.dt
+        rate_norm = np.linalg.norm(momentum_rate, axis=1)
+        momentum_change = momentum - momentum[0]
+        change_norm = np.linalg.norm(momentum_change, axis=1)
+        offsets = np.arange(1, len(momentum)) * self.dt
+        discount = np.exp(-offsets / max(self.preview_steps * self.dt, self.dt))
+        peak_index = int(np.argmax(rate_norm)) if len(rate_norm) else 0
+        h3_count = min(self.horizon_steps + 1, len(momentum))
+        h3_rate = momentum_rate[:max(0, h3_count - 1)]
+        h3_change = momentum_change[:h3_count]
+        h3_rate_norm = np.linalg.norm(h3_rate, axis=1)
+        h3_offsets = np.arange(1, h3_count) * self.dt
+        h3_discount = np.exp(
+            -h3_offsets / max(self.horizon_steps * self.dt, self.dt),
+        )
+        h3_peak_index = int(np.argmax(h3_rate_norm)) if len(h3_rate_norm) else 0
+
+        self.latest_preview_actual_steps = len(momentum) - 1
+        self.latest_preview_actual_duration = (
+            self.latest_preview_actual_steps * self.dt
+        )
+        self.latest_preview_moving_momentum = momentum
+        self.latest_preview_moving_momentum_rate = momentum_rate
+        self.latest_preview_peak_momentum_rate = (
+            float(rate_norm[peak_index]) if len(rate_norm) else 0.0
+        )
+        self.latest_preview_peak_momentum_rate_vector = (
+            np.copy(momentum_rate[peak_index])
+            if len(momentum_rate) else np.zeros(2)
+        )
+        self.latest_preview_peak_momentum_change = float(np.max(change_norm))
+        self.latest_preview_discounted_rate_exposure = float(
+            np.sum(discount * rate_norm) * self.dt
+        )
+        self.latest_preview_time_to_peak_rate = (
+            float((peak_index + 1) * self.dt) if len(rate_norm) else 0.0
+        )
+        self.latest_h3_peak_momentum_rate = (
+            float(np.max(np.linalg.norm(h3_rate, axis=1)))
+            if len(h3_rate) else 0.0
+        )
+        self.latest_h3_peak_momentum_change = (
+            float(np.max(np.linalg.norm(h3_change, axis=1)))
+            if len(h3_change) else 0.0
+        )
+        self.latest_h3_discounted_rate_exposure = float(
+            np.sum(h3_discount * h3_rate_norm) * self.dt
+        )
+        self.latest_h3_time_to_peak_rate = (
+            float((h3_peak_index + 1) * self.dt)
+            if len(h3_rate_norm) else 0.0
+        )
+
+    def _record_reaction_seed_diagnostic(
+            self, current_counter_map, current_counter_dq,
+            knot, control_lower, control_upper):
+        desired_rate = -self.reaction_feedforward_gain * (
+            self.latest_preview_peak_momentum_rate_vector
+        )
+        result = reaction_seed_diagnostic(
+            current_counter_map,
+            knot.momentum_counter,
+            current_counter_dq,
+            desired_rate,
+            self.reaction_effectiveness,
+            control_lower,
+            control_upper,
+            self.dt,
+        )
+        self.latest_reaction_seed_valid = result.valid
+        self.latest_reaction_seed_desired_rate = result.desired_measured_rate
+        self.latest_reaction_seed_unbounded_acceleration = (
+            result.unbounded_acceleration
+        )
+        self.latest_reaction_seed_clipped_acceleration = (
+            result.clipped_acceleration
+        )
+        self.latest_reaction_seed_saturation_mask = result.saturation_mask
+        self.latest_reaction_seed_achieved_rate = result.achieved_measured_rate
+        self.latest_reaction_seed_residual = result.residual
+        self.latest_reaction_seed_unbounded_feasible = (
+            result.unbounded_feasible
+        )
+
     def _reset_ddp_diagnostics(self):
         self.latest_axis_activation = np.zeros(2, dtype=np.float64)
         self.latest_gyro_rate = 0.0
         self.latest_moving_speed = 0.0
         self.latest_moving_momentum_risk = 0.0
         self.latest_moving_momentum_authority = 0.0
+        self.latest_response_tilt_error = np.zeros(2)
+        self.latest_response_gyro = np.zeros(2)
+        self.latest_response_divergence = np.zeros(2)
+        self.latest_response_divergence_norm = 0.0
+        self.latest_reaction_measurement_valid = False
+        self.latest_reaction_prediction_valid = False
+        self.latest_reaction_dt = np.nan
+        self.latest_measured_counter_momentum = np.zeros(2)
+        self.latest_measured_moving_momentum = np.zeros(2)
+        self.latest_measured_total_arm_momentum = np.zeros(2)
+        self.latest_measured_counter_momentum_rate = np.zeros(2)
+        self.latest_measured_moving_momentum_rate = np.zeros(2)
+        self.latest_measured_total_arm_momentum_rate = np.zeros(2)
+        self.latest_measured_counter_acceleration = np.zeros(4)
+        self.latest_measured_base_angular_acceleration = np.zeros(2)
+        self.latest_predicted_counter_momentum_rate = np.zeros(2)
+        self.latest_predicted_moving_momentum_rate = np.zeros(2)
+        self.latest_predicted_total_arm_momentum_rate = np.zeros(2)
+        self.latest_preview_moving_momentum = np.zeros((0, 2))
+        self.latest_preview_moving_momentum_rate = np.zeros((0, 2))
+        self.latest_preview_peak_momentum_rate = 0.0
+        self.latest_preview_peak_momentum_rate_vector = np.zeros(2)
+        self.latest_preview_peak_momentum_change = 0.0
+        self.latest_preview_discounted_rate_exposure = 0.0
+        self.latest_preview_time_to_peak_rate = 0.0
+        self.latest_preview_input_valid = False
+        self.latest_preview_actual_steps = 0
+        self.latest_preview_actual_duration = 0.0
+        self.latest_h3_peak_momentum_rate = 0.0
+        self.latest_h3_peak_momentum_change = 0.0
+        self.latest_h3_discounted_rate_exposure = 0.0
+        self.latest_h3_time_to_peak_rate = 0.0
+        self.latest_reaction_seed_valid = False
+        self.latest_reaction_seed_desired_rate = np.zeros(2)
+        self.latest_reaction_seed_unbounded_acceleration = np.zeros(4)
+        self.latest_reaction_seed_clipped_acceleration = np.zeros(4)
+        self.latest_reaction_seed_saturation_mask = np.zeros(4, dtype=bool)
+        self.latest_reaction_seed_achieved_rate = np.zeros(2)
+        self.latest_reaction_seed_residual = np.zeros(2)
+        self.latest_reaction_seed_unbounded_feasible = False
+        self.latest_reaction_state_timestamp = np.nan
+        self.latest_reaction_command_timestamp = np.nan
         self.latest_requested_counter_acceleration = np.zeros(4)
         self.latest_applied_counter_acceleration = np.zeros(4)
         self.latest_solver_converged = False
@@ -919,6 +1375,13 @@ class CounterDDPController(CounterBalanceController):
         horizon_steps = cls._positive_int(
             cfg.get('horizon_steps', 5), 'horizon_steps',
         )
+        preview_steps = cls._positive_int(
+            cfg.get('preview_steps', horizon_steps), 'preview_steps',
+        )
+        if preview_steps < horizon_steps:
+            raise ValueError(
+                'counter_ddp.preview_steps must cover horizon_steps',
+            )
         max_iterations = cls._nonnegative_int(
             cfg.get('max_iterations', 2), 'max_iterations',
         )
@@ -952,6 +1415,9 @@ class CounterDDPController(CounterBalanceController):
         activation = cfg.get('activation', {}) or {}
         if not isinstance(activation, dict):
             raise ValueError('counter_ddp.activation must be a mapping')
+        reaction_diagnostics = cfg.get('reaction_diagnostics', {}) or {}
+        if not isinstance(reaction_diagnostics, dict):
+            raise ValueError('counter_ddp.reaction_diagnostics must be a mapping')
         gyro_rate_threshold = cls._ddp_scalar(
             activation.get('gyro_rate_threshold', 0.08),
             'activation.gyro_rate_threshold',
@@ -1026,6 +1492,7 @@ class CounterDDPController(CounterBalanceController):
         return {
             'shadow': shadow,
             'horizon_steps': horizon_steps,
+            'preview_steps': preview_steps,
             'max_iterations': max_iterations,
             'weights': weights,
             'gains': gains,
@@ -1057,6 +1524,20 @@ class CounterDDPController(CounterBalanceController):
             'moving_momentum_threshold': moving_momentum_threshold,
             'moving_momentum_full_scale': moving_momentum_full_scale,
             'moving_momentum_max_authority': moving_momentum_max_authority,
+            'reaction_feedforward_gain': cls._ddp_scalar(
+                reaction_diagnostics.get('feedforward_gain', 0.3),
+                'reaction_diagnostics.feedforward_gain',
+                positive=False,
+            ),
+            'reaction_effectiveness': cls._axis_vector(
+                reaction_diagnostics.get('effectiveness', [0.105, 0.115]),
+                'reaction_diagnostics.effectiveness',
+                allow_zero=False,
+            ),
+            'reaction_diagnostics_enabled': cls._bool_value(
+                reaction_diagnostics.get('enabled', False),
+                'reaction_diagnostics.enabled',
+            ),
             'stationary_gyro_feedback': cls._bool_value(
                 activation.get('stationary_gyro_feedback', False),
                 'activation.stationary_gyro_feedback',
@@ -1145,6 +1626,20 @@ class CounterDDPController(CounterBalanceController):
             raise ValueError(
                 f'counter_ddp.{name} must contain {expected[0]} '
                 'finite values',
+            )
+        return np.copy(result)
+
+    @staticmethod
+    def _axis_vector(value, name, allow_zero):
+        result = np.asarray(value, dtype=np.float64)
+        if (
+            result.shape != (2,)
+            or not np.all(np.isfinite(result))
+            or np.any(result < 0.0)
+            or (not allow_zero and np.any(result == 0.0))
+        ):
+            raise ValueError(
+                f'counter_ddp.{name} must contain two finite values',
             )
         return np.copy(result)
 
