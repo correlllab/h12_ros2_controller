@@ -1,4 +1,4 @@
-# Counter-Balance Iteration 4 Design
+# Counter-Balance Iteration 4
 
 ## Status
 
@@ -26,6 +26,8 @@ Iteration 4A is deliberately narrow:
 - Validate it in double support.
 - Add a new H3 base-aware counter-arm controller in shadow mode.
 - Enable low-authority control only after causal and safety gates pass.
+- Use only observations that are available on the real robot from IMU, joint
+  position/velocity/torque, or quantities derived from them with Pinocchio.
 
 Longer OCP horizons and predicted contact-mode dynamics are follow-on work. They
 are not part of Iteration 4A.
@@ -99,15 +101,20 @@ action affect the measured base/support response of the closed-loop robot.
 Backend name is never a model feature, controller input, gate, cost, parameter,
 or model selector.
 
-Allowed features are measured physical quantities:
+Allowed features are real-compatible physical quantities available from the IMU,
+joint position/velocity/torque, or Pinocchio-derived estimates:
 
-- Base orientation and velocity.
+- Base orientation and angular velocity.
 - Support-relative CoM position and velocity.
 - Base height and vertical velocity.
 - Manipulation disturbance preview.
 - Counter-arm state and command.
-- Timestamped contact/load observations.
-- Validated support/CAM features.
+- Kinematic foot/support pose and velocity used only for support validity.
+- Validated model-derived balance features such as CAM or ZMP, if later justified.
+
+Do not use simulator-only privileged observations such as contact force, ground-truth
+contact state, or external force sensing as controller/model features or activation
+gates.
 
 Measured physical state may naturally reveal different closed-loop behavior.
 Policy blindness means excluding backend metadata and policy-specific models,
@@ -155,35 +162,41 @@ BaseObservation(
 
 All values include explicit frames, units, age, and validity.
 
-### 5.2 Contact Observation
+### 5.2 Proprioceptive Support Validity
 
-Before any active trial, add:
+Before any active trial, add a timestamped support-validity observation derived only
+from IMU/joint state and Pinocchio kinematics:
 
 ```python
-ContactObservation(
+SupportValidityObservation(
     monotonic_time,
-    left_normal_force,
-    right_normal_force,
-    left_contact,
-    right_contact,
+    left_foot_pose,
+    right_foot_pose,
+    left_foot_twist,
+    right_foot_twist,
+    double_support_valid,
     confidence,
 )
 ```
 
-The MuJoCo source uses per-foot normal load. Identify standing noise and contact
-transition distributions before freezing thresholds.
+Iteration 4A does not use foot contact force, simulator contact booleans, or other
+privileged contact information. `double_support_valid` means that the proprioceptive
+state remains consistent with stationary double support; it is not a direct contact
+measurement.
 
-Specify:
+Freeze and validate thresholds for:
 
-- Minimum per-foot double-support load.
-- Hysteresis.
-- Debounce sample count.
-- Maximum age, initially no more than two control intervals.
+- Left/right foot height and orientation relative to the settled support reference.
+- Left/right foot linear and angular velocity.
+- Relative foot transform change.
+- Hysteresis and debounce sample count.
+- Maximum observation age, initially no more than two control intervals.
 - Invalid/stale behavior.
 
-Contact remains diagnostic-only until this interface passes held-out transition
-tests. No active Iteration 4 trial occurs before contact and bounded handoff are
-implemented.
+The controller may enter `ACTIVE` only while this kinematic double-support validity
+gate is satisfied. If the feet begin moving consistently with a step or loss of the
+stationary support assumption, stop increasing counter reaction and enter bounded
+handoff.
 
 ### 5.3 Measured Counter and Support Observation
 
@@ -201,9 +214,9 @@ CounterStateObservation(
 Candidate and baseline response rollouts start from this same measured state.
 Upstream commands are never substituted for measured counter state.
 
-Add a support observation containing left/right foot pose and twist plus the
-derived support-frame pose and twist. Iteration 4A accepts only confident double
-support.
+Add a support observation containing left/right foot pose and twist from Pinocchio
+plus the derived support-frame pose and twist. Iteration 4A accepts only states that
+pass the proprioceptive double-support validity gate.
 
 Freeze the support-frame definition:
 
@@ -238,7 +251,7 @@ control_horizon_step(
     upstream_arm_tau_horizon,
     counter_state_observation,
     base_observation,
-    contact_observation,
+    support_validity_observation,
     support_observation,
     sample_times,
     generated_at,
@@ -268,26 +281,29 @@ missing or invalid, Iteration 4 cannot enter active mode.
 
 ### 5.5 Simulation Observation Source
 
-Iteration 4A is simulation-only.
+Iteration 4A is simulation-only, but the controller-facing observation contract must
+match future hardware availability. The simulator may use ground truth internally to
+produce sensor-equivalent IMU and joint measurements, but privileged simulator state
+must not enter the controller, identified model, acceptance gate, or support-validity
+gate.
 
-The MuJoCo process publishes one timestamped base/contact observation containing:
+The controller-facing inputs are limited to:
 
-- World base position, orientation, linear velocity, and angular velocity.
-- World CoM position and velocity.
-- Separately accumulated left/right foot normal loads.
-- Left/right foot contact-frame pose and twist.
-- Per-foot contact booleans and confidence.
+- IMU base orientation and angular velocity.
+- Joint position, velocity, and torque.
+- Pinocchio-derived CoM, CoM velocity, base/support geometry, foot pose/twist, CAM,
+  ZMP, or other explicitly model-derived quantities.
 
-Identify contacts using validated left-foot and right-foot geom/body sets.
-Exclude non-foot robot-ground and self contacts from foot load. Unit-test geom
-membership and force sign.
+Do not provide per-foot normal load, simulator contact booleans, exact external
+wrenches, or ground-truth contact mode to Iteration 4A. Simulation may log these only
+for offline diagnostics that do not affect controller/model development decisions.
 
-Transport uses the same monotonic time domain or an explicitly synchronized
-mapping with measured latency. Stale or missing observation selects pass-through
-or bounded handoff.
+Transport uses the same monotonic time domain or an explicitly synchronized mapping
+with measured latency. Stale or missing observation selects pass-through or bounded
+handoff.
 
-Hardware activation is prohibited until an estimator provides the same schema
-with validated latency and accuracy.
+Hardware activation requires the same controller-facing schema with validated
+latency and estimator behavior; it must not require adding a new sensing modality.
 
 ---
 
@@ -318,8 +334,8 @@ This state includes precursors to:
 Foot displacement is not optimized. Step outcomes are evaluated over the full
 physical trial, including the observed `0.7–1.0 s` delayed step window.
 
-Contact/load distribution is initially observed context and safety mode, not an
-optimized state.
+Proprioceptive support validity is an activation/safety gate, not an optimized
+state. No contact-force or load-distribution feature is used in Iteration 4A.
 
 ---
 
@@ -445,8 +461,10 @@ B_c(s)r_c
 \left(B_{c,0}+\sum_i s_i B_{c,i}\right)r_c,
 \]
 
-where `s` may be contact load distribution or arm configuration. A simple
-additive context bias is insufficient when control effectiveness changes.
+where `s` may be a real-compatible physical quantity such as arm configuration or
+a model-derived balance feature. Promote M3 only if M2 fails a predefined validation
+gate and the added feature is available from the same hardware observation contract.
+A simple additive context bias is insufficient when control effectiveness changes.
 
 ---
 
@@ -473,8 +491,8 @@ Establish causal counter influence using:
 Do not select excitation from measured divergence. That would confound counter
 input with outcome risk.
 
-Abort on safety, contact transition, stale observation, collision, or timing
-failure.
+Abort on safety, loss of proprioceptive double-support validity, stale
+observation, collision, or timing failure.
 
 Hypothesis: adding randomized counter input in `M2` improves held-out
 action-conditioned response prediction beyond `M1`.
@@ -559,7 +577,7 @@ If no model passes, do not implement active MPC.
 
 ## 12. Iteration 4A OCP Contract
 
-Iteration 4A uses H3 and confident double support only.
+Iteration 4A uses H3 and proprioceptively validated stationary double support only.
 
 ### 12.1 State
 
@@ -648,7 +666,7 @@ Handoff uses two phases:
 
 1. `BRAKE`: reduce counter velocity with bounded acceleration/slew while
    preserving stopping-distance, excursion, and collision margins.
-2. `RECONNECT`: once contact is confident double support, solve a deterministic
+2. `RECONNECT`: once stationary double-support validity is restored, solve a deterministic
    per-joint bounded-acceleration plan over at most `0.5 s` to the moving
    upstream counter position/velocity reference.
 
@@ -663,12 +681,12 @@ upstream torque horizon under an identified torque-rate limit. Validate the firs
 for position/velocity/acceleration slew, torque slew, excursion, and collision.
 
 If no feasible braking command exists, trigger automatic global estop. Do not
-publish an immediate zero-velocity command and call it bounded handoff. During
-single support, do not attempt posture return or upstream reconnection; perform
-only a validated conservative braking command.
+publish an immediate zero-velocity command and call it bounded handoff. While
+stationary double-support validity is lost, do not attempt posture return or
+upstream reconnection; perform only a validated conservative braking command.
 
-Candidate acceptance, contact-transition braking, and fault fallback use the
-same validated braking rollout implementation.
+Candidate acceptance, support-validity-transition braking, and fault fallback use
+the same validated braking rollout implementation.
 
 ---
 
@@ -723,9 +741,9 @@ frozen margin. It also requires no worst-case worsening beyond frozen tolerance
 for tilt, height, support-CoM, or braking components individually, and no
 component safety-margin crossing under any accepted model.
 
-Contact confidence is a measured activation/transition gate in Iteration 4A. It
-is not included in counterfactual candidate-versus-baseline cost until an
-action-conditioned contact/load predictor is separately validated.
+Proprioceptive double-support validity is an activation/transition gate in
+Iteration 4A. It is not included in the counterfactual candidate-versus-baseline
+cost. Iteration 4A does not require an action-conditioned contact/load predictor.
 
 ---
 
@@ -760,9 +778,9 @@ Reject candidate action when:
 
 ---
 
-## 15. Contact, Recovery, and Failure
+## 15. Support Validity, Recovery, and Failure
 
-Implement contact transition and bounded handoff before active control.
+Implement support-validity transition and bounded handoff before active control.
 
 Modes:
 
@@ -770,7 +788,7 @@ Modes:
 |---|---|
 | `PASS_THROUGH` | Exact upstream command. |
 | `MONITOR` | Model observes; no counter correction. |
-| `ACTIVE` | Robust predicted benefit in double support. |
+| `ACTIVE` | Robust predicted benefit while proprioceptive double support is valid. |
 | `RECOVERY` | Manipulation ended; response still unsafe. |
 | `HANDOFF` | Bounded convergence to upstream command. |
 | `FAULT_HOLD` | Global or counter-side safety fault. |
@@ -781,8 +799,8 @@ Failure behavior is state-dependent:
   command.
 - In `ACTIVE` or `RECOVERY`, failure enters bounded braking/handoff from the last
   accepted command.
-- During contact transition, stop increasing reaction and enter bounded
-  handoff. Do not issue immediate zero velocity.
+- When stationary double-support validity is lost, stop increasing reaction and
+  enter bounded handoff. Do not issue immediate zero velocity.
 - Global estop retains global authority.
 
 Specify acceleration, slew, collision, excursion, and completion tolerances for
@@ -803,7 +821,7 @@ It cannot validate candidate counterfactual response because the candidate is
 not applied.
 
 Candidate causal accuracy requires separately randomized low-authority applied
-trials after contact/handoff safety approval.
+trials after support-validity/handoff safety approval.
 
 ---
 
@@ -813,22 +831,25 @@ trials after contact/handoff safety approval.
 
 1. Freeze B0 code/config hashes.
 2. Freeze corrected target-level classification ledger and code revision.
-3. Add base/contact/counter/support observation schemas and timestamp tests.
-4. Collect passive contact/load/support distributions.
-5. Validate detector hysteresis, debounce, latency, and stale behavior on
-   held-out contact transitions.
+3. Add base/counter/support observation schemas and timestamp tests using only the
+   real-compatible observation contract.
+4. Collect passive foot-pose/twist distributions and freeze the proprioceptive
+   stationary double-support validity thresholds.
+5. Validate support-validity hysteresis, debounce, latency, and stale behavior on
+   held-out standing and step-initiation trajectories.
 6. Implement a conservative provisional braking validator from retained limits
    and worst-case delay/effectiveness bounds. Add automatic estop fallback.
-7. Implement contact transition and provisional bounded handoff.
+7. Implement loss-of-support-validity transition and provisional bounded handoff.
 8. Only after steps 3–7 pass, run guarded no-manipulation identification for
    command delay, realized braking effectiveness, acceleration, slew, and torque
    transition limits.
 9. Update the shared braking rollout with identified conservative parameters and
    revalidate it.
-10. Validate low-authority physical braking/handoff under paired double-to-single
-   support transitions.
+10. Validate low-authority physical braking/handoff across double-support to
+    step-initiation trajectories.
 
-Counter excitation is blocked until every Stage 0 contact/handoff gate passes.
+Counter excitation is blocked until every Stage 0 support-validity/handoff gate
+passes.
 
 ### Stage 1: Identification
 
@@ -949,9 +970,10 @@ uncertain benefit. The controller publishes exact pass-through.
 
 ### ALMI Stumble Motion
 
-Before contact transition, pass-through predicts growing base/CoM divergence.
-Counter action predicts robust stabilization. The controller reacts in double
-support. If a step begins, it brakes and hands off rather than fighting it.
+Before step initiation, pass-through predicts growing base/CoM divergence.
+Counter action predicts robust stabilization. The controller reacts while
+proprioceptive double support remains valid. If foot kinematics indicate step
+initiation, it brakes and hands off rather than fighting it.
 
 ---
 
@@ -962,7 +984,8 @@ Iteration 4A tests one consistent decision:
 > Apply counter-arm action only when a common, causally identified physical model
 > predicts robust short-horizon improvement over the exact upstream command.
 
-The design uses measured state and contact, not policy identity. It requires
-causal randomized identification, exact pass-through comparison, explicit delay
-state, complete Crocoddyl dynamics/derivatives, bounded handoff, and strict
-case-level no-regression gates before active promotion.
+The design uses real-compatible proprioceptive/model-derived state, not policy
+identity or simulator-only contact information. It requires causal randomized
+identification, exact pass-through comparison, explicit delay state, complete
+Crocoddyl dynamics/derivatives, bounded handoff, and strict case-level no-regression
+gates before active promotion.
