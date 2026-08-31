@@ -101,7 +101,7 @@ Outcomes over 44 targets:
 
 | Controller | Stable | Drift | Stumble | Fall | Survived |
 |---|---:|---:|---:|---:|---:|
-| Frame task | 17 | 18 | 1 | 8 | 36 |
+| Frame task | 17 | 19 | 0 | 8 | 36 |
 | Selected Iteration 3 | 22 | 14 | 0 | 8 | 36 |
 
 The selected controller produced five classification improvements and no regression:

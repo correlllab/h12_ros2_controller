@@ -78,7 +78,7 @@ B0 FAME:
 
 | Controller | Stable | Drift | Stumble | Fall | Survived |
 |---|---:|---:|---:|---:|---:|
-| Frame task | 17 | 18 | 1 | 8 | 36 |
+| Frame task | 17 | 19 | 0 | 8 | 36 |
 | B0 | 22 | 14 | 0 | 8 | 36 |
 
 B0 ALMI:
