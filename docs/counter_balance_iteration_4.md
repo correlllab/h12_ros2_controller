@@ -989,3 +989,74 @@ identity or simulator-only contact information. It requires causal randomized
 identification, exact pass-through comparison, explicit delay state, complete
 Crocoddyl dynamics/derivatives, bounded handoff, and strict case-level no-regression
 gates before active promotion.
+
+---
+
+## 23. Experiment Log
+
+### 23.1 Stage-0 Observation Contract
+
+Implemented:
+
+- Atomic LowState tick/sequence/monotonic snapshots.
+- Strict measured counter observation without command fallback.
+- IMU/Pinocchio-derived base and support observations.
+- Proprioceptive stationary-support validity with hysteresis/debounce.
+- Passive `counter_base_observer` benchmark variant.
+- Provisional discrete braking and reconnect validators.
+
+No privileged MuJoCo feature enters the controller observation.
+
+Initial first-message support reference and loop-start timestamp assumptions were
+rejected from passive evidence. Reference capture now occurs at release with
+fresh-sample retry, and age is evaluated when the snapshot is fetched.
+
+Frozen support thresholds are listed in
+`counter_balance_analysis_iteration_4.md`. Held-out tests retained stable ALMI
+support validity and exited before ALMI foot lift and FAME fall-pending entry.
+
+Decision: keep the support-validity mechanism. Counter excitation remains blocked
+until braking/handoff receives physical validation.
+
+### 23.2 Passive M0/M1 Identification
+
+Implemented:
+
+- Inspectable normalized affine response model.
+- Complete-run training/held-out loader.
+- State-increment fitting and 100 ms rollout evaluation.
+- Canonical left/right mirror transform.
+- Moving-arm momentum/rate disturbance feature.
+- Alternative support-twist and IMU-acceleration context ablations.
+
+Artifact:
+
+`runs/key_findings/iteration4_models/m01_passive_v4_balanced_report.json`.
+
+On the final corrected v4 split, M1 is worse than M0 on roll rate, pitch rate,
+both CoM-velocity axes, height rate, and pooled ALMI performance. Support twist,
+IMU acceleration, and structured rate dynamics do not resolve the failed axes.
+
+Decision:
+
+- Reject current M1 as an active-model candidate.
+- Do not begin randomized counter excitation or M2.
+- Do not implement the Crocoddyl action model yet.
+- Require a preregistered response-state/estimator redesign and new model-selection
+  evidence before resuming Stage 1.
+
+### 23.3 Review Corrections and Final Model Gate
+
+Independent review invalidated the first M1 conclusion until orientation/rate
+frames, fixed-duration transitions, collision-aware braking, strict IMU validity,
+canonical support context, and evidence hashes were corrected.
+
+After correction, new repeated passive datasets evaluated dense affine,
+state-history, manipulation-disturbance, support-twist, IMU-acceleration, and
+structured-rate models. Manipulation disturbance did not improve held-out
+multi-step response on both policies, and no common model passed roll-rate and
+lateral CoM-velocity gates.
+
+Decision: Stage 1 fails. Counter excitation, M2, and Crocoddyl implementation are
+blocked. B0 remains frozen. Iteration 4 may resume only with a preregistered
+real-compatible response-state redesign and new model-selection evidence.
