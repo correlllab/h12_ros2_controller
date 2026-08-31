@@ -146,6 +146,13 @@ class RobotModel:
             return self.state_subscriber.state
         # otherwise, fallback to local fields
         return {
+            'time_stamp': 0.0,
+            'arrival_monotonic': 0.0,
+            'tick': 0,
+            'unwrapped_tick': 0,
+            'tick_valid': False,
+            'sequence': 0,
+            'received': False,
             'q': np.copy(self._q),
             'dq': np.copy(self._dq),
             'ddq': np.copy(self._ddq),
@@ -306,6 +313,26 @@ class RobotModel:
             pin.forwardKinematics(self.model_body_reduced, self.data_body_reduced,
                                   self.state_reduced['q'], self.state_reduced['dq'])
             pin.updateFramePlacements(self.model_body_reduced, self.data_body_reduced)
+
+    def update_kinematics_from_snapshot(self, state):
+        '''Update full and body models from one immutable measured snapshot'''
+        q = np.asarray(state['q'], dtype=np.float64)
+        dq = np.asarray(state['dq'], dtype=np.float64)
+        if (
+            q.shape != (NUM_MOTOR,) or dq.shape != (NUM_MOTOR,)
+            or not np.all(np.isfinite(q)) or not np.all(np.isfinite(dq))
+        ):
+            raise ValueError('snapshot motor state is invalid')
+        imu = state.get('imu_state')
+        if imu is None:
+            raise ValueError('snapshot IMU state is unavailable')
+        q_full = self.full_q(q, imu_quat=imu.quaternion)
+        dq_full = self.full_v(dq)
+        pin.forwardKinematics(self.model, self.data, q_full, dq_full)
+        pin.updateFramePlacements(self.model, self.data)
+        pin.forwardKinematics(self.model_body, self.data_body, q, dq)
+        pin.updateFramePlacements(self.model_body, self.data_body)
+        return q_full, dq_full
 
     def _get_frame_transformation(self, frame_name, q: np.ndarray=None):
         frame_id = self.model.getFrameId(frame_name)
