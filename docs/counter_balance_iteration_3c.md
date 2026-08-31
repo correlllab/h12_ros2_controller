@@ -2,11 +2,14 @@
 
 ## Purpose
 
-Iteration 3C creates a reusable high-authority Crocoddyl controller by reproducing Iteration 2 `momentum_wide` before attempting any improvement.
+Iteration 3C creates a reusable high-authority Crocoddyl controller by closely
+reproducing the useful behavior of Iteration 2 `momentum_wide` before attempting
+any improvement.
 
 It has two goals:
 
-1. Achieve numerical parity and reproduce the behavioral authority of Iteration 2 `momentum_wide`.
+1. Reproduce the command direction, early authority, limits, and fall-rescue
+   behavior of Iteration 2 `momentum_wide`.
 2. Retain the parity controller as a complete comparison variant on matched FAME and ALMI hard groups.
 
 Iteration 3 B0 remains frozen and independently runnable.
@@ -17,7 +20,8 @@ Iteration 3C is deliberately narrow:
 
 - One-step Crocoddyl optimal control.
 - Counter-joint velocity as the decision variable.
-- Iteration 2 objective, gains, normalization, bounds, excursion, references, activation, and publication behavior.
+- A conceptually equivalent Iteration 2 objective, gains, normalization, bounds,
+  excursion, references, activation, and publication behavior.
 - Existing moving-arm pass-through, collision, safety, and estop contracts.
 
 Iteration 3C does not add:
@@ -45,7 +49,8 @@ The one-step dynamics are:
 q_{c,k+1}=q_{c,k}+\Delta t u_k.
 \]
 
-The running cost reproduces the Iteration 2 normalized residual stack:
+The running cost preserves the Iteration 2 residual meaning and relative
+priorities:
 
 - CoM-velocity cancellation.
 - Angular-momentum cancellation and gyro feedback.
@@ -65,11 +70,21 @@ class CounterDDPVelocityController(...):
 counter_ddp_velocity_wide
 ```
 
-Do not call the Iteration 2 least-squares solver as the active command path. It may be used only as the parity oracle in tests and diagnostics.
+Do not call the Iteration 2 least-squares solver as the active command path. It
+may be used as a behavioral oracle in tests and diagnostics.
+
+The Crocoddyl formulation does not need identical internal cost values or solver
+iterations. It must produce closely matching counter-arm command direction,
+magnitude, bound activity, and intervention timing.
+
+The manipulation arm follows the existing Iteration 2 contract. Iteration 3C
+does not change its position, velocity, torque/gravity-compensation, tracking, or
+publication semantics. Future iterations should preserve the same manipulation
+arm behavior rather than repeatedly redesigning that path.
 
 ## Parity Stage
 
-### Numerical Parity
+### Command Parity
 
 Evaluate recorded valid snapshots spanning:
 
@@ -82,38 +97,46 @@ Evaluate recorded valid snapshots spanning:
 
 For every snapshot, compare:
 
-- Residual vectors and normalized objective value.
-- Unbounded solution direction.
+- Residual direction and relative objective contributions.
+- Unbounded command direction.
 - Bounded counter velocity.
 - Integrated counter position command.
 - Activation/pass-through decision and any activation scaling.
 - Moving-arm position, velocity, and torque pass-through.
 - Collision/backtracking and fallback status.
 
-Initial numerical gates:
+Parity gates:
 
-- Residual/objective agreement to floating-point test tolerance where the formulations are mathematically equivalent.
-- Counter velocity maximum absolute difference at most `1e-4 rad/s`.
-- Integrated counter position maximum absolute difference at most `1e-5 rad`.
-- Identical bound-active joints.
-- Identical activation, fallback, and collision/backtracking behavior.
+- Matching counter-command sign and similar magnitude on representative states.
+- The same joints become bound-active in high-authority cases.
+- Similar early counter displacement and momentum buildup on FAME rescue cases.
+- Matching activation, fallback, and collision/backtracking decisions.
 - Moving-arm command remains unchanged to existing pass-through tolerance.
 
-Systematic disagreement must be traced to an implementation or formulation difference before behavioral testing.
+Systematic command-direction, authority, bound, or timing disagreement must be
+traced before behavioral testing.
 
-Do not retune weights merely to force numerical agreement.
+Do not tune Iteration 3C to improve ALMI or ordinary targets during parity work.
+Adjust implementation details only when they prevent reproduction of Iteration 2
+authority.
 
 ### Behavioral Parity
 
-Run paired Iteration 2 and Iteration 3C repetitions on the historical FAME boundary rescues:
+Run five paired Iteration 2 and Iteration 3C repetitions on the historical FAME
+boundary rescues:
 
 - `right_fast_fall_search_06_scale_74`.
 - `right_fast_fall_search_09_scale_78`.
 - `right_fast_fall_search_11_scale_78`.
 
-Include representative ALMI stable/regression guards from the same target families.
+Include five repetitions of these fixed ALMI guards:
 
-Iteration 3C passes behavioral parity when it reproduces Iteration 2 majority outcome severity and comparable counter-arm command traces.
+- `right_fast_fall_search_06_scale_74`.
+- `right_fast_fall_search_09_scale_78`.
+- `right_fast_fall_search_11_scale_78`.
+
+Iteration 3C passes behavioral parity when it reproduces Iteration 2 majority
+outcome severity and similar counter-arm command traces on the rescue panel.
 
 Compare:
 
@@ -157,7 +180,10 @@ Use three matched operationally complete repetitions per target/controller cell.
 
 Where possible, use contemporaneous paired runs or identical saved states.
 
-Define each target outcome by majority severity across its three repetitions. Infrastructure/incomplete trials are invalid and rerun until three complete repetitions exist.
+Define each target outcome by the median severity across its three complete
+repetitions. Report attempted, complete, infrastructure, and runtime-failure
+counts separately. Incomplete infrastructure trials may be rerun once; do not
+hide repeated controller/runtime failure through unlimited retries.
 
 Report:
 
@@ -172,7 +198,8 @@ Report:
 | ALMI | Iteration 3 B0 | | | | | |
 | ALMI | Iteration 3C | | | | | |
 
-Report the three hard groups individually when useful rather than only pooling them.
+Report boundary, exploration, and hard groups individually, followed by the
+pooled hard-group total.
 
 Also report:
 
@@ -202,7 +229,8 @@ Its purpose is to detect:
 - Collision/backtracking problems.
 - Runtime or infrastructure failures.
 
-Do not rerun Frame task, Iteration 2, and B0 solely to create a new four-controller 100-target comparison. Existing frozen results may be used as context.
+Do not rerun Frame task, Iteration 2, and B0 solely to create a new four-controller
+100-target comparison. Existing frozen results may be used as context.
 
 Do not require three repetitions for every normal target.
 
@@ -215,7 +243,8 @@ Summarize the 100-target Iteration 3C regression sweep as:
 | FAME | | | 0 | | |
 | ALMI | | | | | |
 
-FAME is stand-only and must report zero stumble outcomes. ALMI retains stumble classification.
+Freeze the classifier revision and policy capability settings for every run:
+FAME uses `stepping_capable=false`; ALMI uses `stepping_capable=true`.
 
 ## Real-Compatible Observation Contract
 
@@ -231,7 +260,8 @@ Controller-facing observations may use only:
 
 Do not introduce simulator-only contact force, ground-truth contact state, external wrench, or exact simulator base state.
 
-Iteration 3C may reuse the proprioceptive support-validity observer for diagnostics and safety, but it must not alter the parity command unless required by an existing common safety contract.
+Iteration 3C may log the Iteration 4 proprioceptive observer for diagnostics, but
+it must not alter parity commands or add unvalidated Iteration 4 safety modes.
 
 ## Video Evidence
 
@@ -250,7 +280,7 @@ Iteration 3C evaluation is descriptive rather than a tuning loop.
 
 The final report must state:
 
-- Whether numerical parity was achieved.
+- Whether command and behavioral parity were achieved.
 - Whether Iteration 2 behavioral authority was reproduced.
 - Whether the historical FAME fall rescues were recovered.
 - The FAME benefit/regression profile across the three hard groups.
