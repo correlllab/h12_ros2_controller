@@ -5,10 +5,14 @@ from h12_ros2_controller.core.controller.counter_balance.counter_balance_control
 from h12_ros2_controller.core.controller.counter_balance.counter_ddp_controller import (
     CounterDDPController,
 )
+from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_controller import (
+    CounterDDPVelocityController,
+)
 
 
 __all__ = [
     'CounterBalanceController',
     'CounterDDPController',
+    'CounterDDPVelocityController',
     'ReactiveCounterBalanceController',
 ]

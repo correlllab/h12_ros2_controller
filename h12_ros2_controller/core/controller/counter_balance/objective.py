@@ -20,6 +20,38 @@ def solve_bounded_velocity(com_counter, momentum_counter, com_rhs,
                            posture_weight, damping, com_velocity_scale,
                            momentum_scale, posture_velocity_scale):
     '''Solve the normalized bounded counter-arm least-squares objective'''
+    matrix, target = bounded_velocity_problem(
+        com_counter,
+        momentum_counter,
+        com_rhs,
+        momentum_rhs,
+        posture_target,
+        balance_scale,
+        com_weight,
+        momentum_weight,
+        posture_weight,
+        damping,
+        com_velocity_scale,
+        momentum_scale,
+        posture_velocity_scale,
+    )
+    values = (matrix, target, lower, upper)
+    if not all(np.all(np.isfinite(value)) for value in values):
+        raise ValueError('Least-squares input is nonfinite')
+    if np.any(lower > upper):
+        raise ValueError('Counter velocity bounds are empty')
+    result = lsq_linear(matrix, target, bounds=(lower, upper))
+    if not result.success:
+        raise RuntimeError('Bounded least-squares solve failed')
+    return np.asarray(result.x, dtype=np.float64)
+
+
+def bounded_velocity_problem(
+        com_counter, momentum_counter, com_rhs, momentum_rhs,
+        posture_target, balance_scale, com_weight, momentum_weight,
+        posture_weight, damping, com_velocity_scale, momentum_scale,
+        posture_velocity_scale):
+    '''Build the normalized Iteration 2 least-squares matrix and target'''
     blocks = []
     targets = []
     terms = (
@@ -51,12 +83,4 @@ def solve_bounded_velocity(com_counter, momentum_counter, com_rhs,
             targets.append(root * np.asarray(target, dtype=np.float64))
     matrix = np.vstack(blocks)
     target = np.concatenate(targets)
-    values = (matrix, target, lower, upper)
-    if not all(np.all(np.isfinite(value)) for value in values):
-        raise ValueError('Least-squares input is nonfinite')
-    if np.any(lower > upper):
-        raise ValueError('Counter velocity bounds are empty')
-    result = lsq_linear(matrix, target, bounds=(lower, upper))
-    if not result.success:
-        raise RuntimeError('Bounded least-squares solve failed')
-    return np.asarray(result.x, dtype=np.float64)
+    return matrix, target
