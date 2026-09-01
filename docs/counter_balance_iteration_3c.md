@@ -292,3 +292,11 @@ The final report must state:
 Do not modify Iteration 3C to repair ALMI or ordinary-case regressions after the evaluation.
 
 Any policy-blind selection or base-response logic belongs in a separate controller/iteration and may choose between exact pass-through, B0, and the frozen Iteration 3C authority baseline.
+
+## Result
+
+Iteration 3C was implemented and frozen as `counter_ddp_velocity_wide`.
+
+Command and five-repeat behavioral parity passed. Three-repeat hard-group and
+single-pass full-panel results are recorded in
+`counter_balance_analysis_iteration_3c.md`.

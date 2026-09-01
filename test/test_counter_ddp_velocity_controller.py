@@ -80,3 +80,16 @@ def test_velocity_controller_exposes_crocoddyl_diagnostics():
 
     assert diagnostics['velocity_ocp_available']
     assert diagnostics['velocity_ocp_solve_time'] > 0.0
+
+
+def test_velocity_controller_reports_infeasible_excursion_as_safety_hold():
+    _, controller = _controllers()
+    controller.max_excursion = np.full(4, 0.01)
+    q_target = np.zeros(14)
+    dq_target = np.zeros(14)
+    controller.control_configuration_step(q_target, dq_target)
+    controller.robot_model.state['q'][controller.counter_ids] += 0.1
+
+    controller.control_configuration_step(q_target, dq_target)
+
+    assert controller.latest_status == 'counter_bounds_infeasible'

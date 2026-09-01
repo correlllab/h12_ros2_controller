@@ -1,4 +1,4 @@
-# Counter-Balance Iteration 4
+# Counter-Balance Iteration 4A
 
 ## Status
 
@@ -1012,7 +1012,7 @@ rejected from passive evidence. Reference capture now occurs at release with
 fresh-sample retry, and age is evaluated when the snapshot is fetched.
 
 Frozen support thresholds are listed in
-`counter_balance_analysis_iteration_4.md`. Held-out tests retained stable ALMI
+`counter_balance_analysis_iteration_4a.md`. Held-out tests retained stable ALMI
 support validity and exited before ALMI foot lift and FAME fall-pending entry.
 
 Decision: keep the support-validity mechanism. Counter excitation remains blocked
