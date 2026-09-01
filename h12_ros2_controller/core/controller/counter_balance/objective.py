@@ -2,6 +2,10 @@ import numpy as np
 from scipy.optimize import lsq_linear
 
 
+class CounterVelocityBoundsError(ValueError):
+    '''Report an empty safe counter-velocity interval'''
+
+
 def reaction_targets(com_moving, momentum_moving, moving_dq, com_error,
                      gyro, balance_scale, com_gain, gyro_gain):
     '''Build CoM and momentum targets for the counter arm'''
@@ -39,7 +43,7 @@ def solve_bounded_velocity(com_counter, momentum_counter, com_rhs,
     if not all(np.all(np.isfinite(value)) for value in values):
         raise ValueError('Least-squares input is nonfinite')
     if np.any(lower > upper):
-        raise ValueError('Counter velocity bounds are empty')
+        raise CounterVelocityBoundsError('Counter velocity bounds are empty')
     result = lsq_linear(matrix, target, bounds=(lower, upper))
     if not result.success:
         raise RuntimeError('Bounded least-squares solve failed')

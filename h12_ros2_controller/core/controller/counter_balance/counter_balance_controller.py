@@ -2,6 +2,7 @@ import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.controller.counter_balance.objective import (
+    CounterVelocityBoundsError,
     reaction_targets,
     solve_bounded_velocity,
 )
@@ -257,6 +258,13 @@ class CounterBalanceController(FrameController):
                 lower,
                 upper,
                 balance_scale=balance_scale,
+            )
+        except CounterVelocityBoundsError:
+            return self._publish_counter_hold(
+                motor_q,
+                arm_q,
+                arm_dq,
+                'counter_bounds_infeasible',
             )
         except Exception:
             return self._publish_counter_hold(
