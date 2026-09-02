@@ -510,3 +510,14 @@ Stop adding complexity when:
 Freeze the simplest candidate that passes the compact gates. If no adaptive
 candidate surpasses 3C and B0 jointly, retain them as separate baselines rather
 than forcing a more complex Iteration 4B.
+
+## Result
+
+The progressive workflow was executed through combined adaptive authority and
+the minimal H3-0 temporal experiment. Results are recorded in
+`counter_balance_analysis_iteration_4b.md`.
+
+Combined authority retained the two repeated FAME rescues but did not satisfy the
+preregistered ordinary-improvement gate. H3-0 introduced ALMI regressions and
+missed the timing gate. No Iteration 4B candidate was promoted; B0 and Iteration
+3C remain the practical controllers.
