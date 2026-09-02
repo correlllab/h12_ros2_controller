@@ -88,6 +88,15 @@ def _validate_adaptive_authority(raw: dict[str, Any]) -> dict[str, Any]:
     return adaptive
 
 
+def _validate_decoupled_feedback(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'decoupled_feedback' not in raw:
+        return {}
+    feedback = raw['decoupled_feedback']
+    if not isinstance(feedback, dict):
+        raise ValueError('decoupled_feedback must be a mapping when provided')
+    return feedback
+
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -227,6 +236,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     reactive_counter_balance = _validate_reactive_counter_balance(raw)
     counter_ddp = _validate_counter_ddp(raw)
     adaptive_authority = _validate_adaptive_authority(raw)
+    decoupled_feedback = _validate_decoupled_feedback(raw)
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
@@ -304,6 +314,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'reactive_counter_balance': reactive_counter_balance,
         'counter_ddp': counter_ddp,
         'adaptive_authority': adaptive_authority,
+        'decoupled_feedback': decoupled_feedback,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
