@@ -89,9 +89,10 @@ Only three complete rescue repetitions were obtained; repetitions four and five
 were infrastructure failures. The required five-repeat gate was not met, which
 independently prevents promotion.
 
-Combined-authority total-controller p99 was approximately `14.8 ms` on the FAME
-repeat panel and `13.5 ms` on the ALMI repeat panel. Rare maxima exceeded one
-period and remain infrastructure/timing evidence rather than promotion support.
+Deduplicated combined-authority total-controller p99 was approximately
+`14.92 ms` on the FAME repeat panel and `15.33 ms` on the ALMI repeat panel.
+ALMI therefore also missed the `<15 ms` timing gate; rare maxima exceeded one
+period.
 
 Decision: combined authority retains both rescues and adds no severe regression,
 but fails the required ordinary-case improvement gate.
@@ -117,8 +118,12 @@ Results:
 - FAME target `11` remained drift; target `06` remained fall.
 - ALMI right-boundary guards regressed from stable/drift to drift/stumble in the
   initial screen.
-- H3 solve/trajectory rejection dominated active ticks.
-- Total-controller p99 was approximately `15.2–15.7 ms`.
+- H3 lifecycle logs contained approximately 890 solved and 66 solver-failure
+  ticks. Failures were significant but did not dominate actual controller
+  executions; earlier raw summary counts were inflated by repeated steady-state
+  diagnostics.
+- Deduplicated total-controller p99 was approximately `18.89 ms` on FAME and
+  `17.72 ms` on ALMI, failing the timing gate on both panels.
 
 Decision: reject H3-0. Since the minimal temporal formulation fails, no optional
 H3 residual or longer horizon is justified.

@@ -92,6 +92,15 @@ def _validate_counter_ddp(raw: dict[str, Any]) -> dict[str, Any]:
     return counter_ddp
 
 
+def _validate_adaptive_authority(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'adaptive_authority' not in raw:
+        return {}
+    adaptive = raw['adaptive_authority']
+    if not isinstance(adaptive, dict):
+        raise ValueError('adaptive_authority must be a mapping when provided')
+    return adaptive
+
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -214,6 +223,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     zmp = _validate_zmp(raw)
     reactive_counter_balance = _validate_reactive_counter_balance(raw)
     counter_ddp = _validate_counter_ddp(raw)
+    adaptive_authority = _validate_adaptive_authority(raw)
 
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
@@ -290,6 +300,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'zmp': zmp,
         'reactive_counter_balance': reactive_counter_balance,
         'counter_ddp': counter_ddp,
+        'adaptive_authority': adaptive_authority,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
