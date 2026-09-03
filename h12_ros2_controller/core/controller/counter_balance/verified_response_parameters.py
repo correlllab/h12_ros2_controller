@@ -28,6 +28,17 @@ class VerifiedH2Models:
     n5_error_bound: np.ndarray
 
 
+@dataclass(frozen=True)
+class VerifiedH3Models:
+    '''Store source-bound verified Iteration 5B response models'''
+
+    u5: ContextualU5Model
+    u5_carryover: np.ndarray
+    r5: ContextualR5Model
+    n5: N5Model
+    n5_error_bound: np.ndarray
+
+
 def verified_h2_models():
     '''Construct the frozen verified response model package'''
     u5 = ContextualU5Model(
@@ -133,3 +144,70 @@ def verified_h2_models():
     ])
     error_bound.setflags(write=False)
     return VerifiedH2Models(u5, r5, n5, error_bound)
+
+
+def verified_h3_models():
+    '''Construct the frozen verified 60 ms response model package'''
+    h2 = verified_h2_models()
+    r5 = ContextualR5Model(
+        coefficients=np.array([
+            [
+                [-0.053634186902897424, 0.0047469361210610815,
+                 -0.009761751734199162, -0.0010812686178624547,
+                 0.008048820770958512, 0.005311446118591436],
+                [0.05305327145596866, -0.03980556245658364,
+                 0.010108822837507907, -0.0033344394368414487,
+                 0.004878932312147209, 0.028157018454283617],
+            ],
+            [
+                [-0.0805122900048564, -0.0036788020834746873,
+                 -0.017895783695287045, 0.006340946149227041,
+                 0.010622213530567958, -0.04245259879972554],
+                [-0.287466073538806, 0.03138023831532889,
+                 -0.017847330660745075, -0.006454927486889056,
+                 -0.0058120617649878, -0.015876935916452718],
+            ],
+        ]),
+        context_center=np.array([
+            -0.0026888287779091684,
+            -0.018047975018793704,
+            -0.003855944958353718,
+            0.003903256621075433,
+            -0.25,
+        ]),
+        context_scale=np.array([
+            0.018557470007422874,
+            0.018040683518193455,
+            0.02485859090206848,
+            0.02642552925086448,
+            0.9682458365518543,
+        ]),
+    )
+    n5 = N5Model(
+        rate_trend_gain=np.array([
+            0.10719404684757934,
+            0.17287439624900938,
+        ]),
+        validity=h2.n5.validity,
+        moving_momentum_gain=np.array([
+            [0.03666381236792148, 0.02931759233832672],
+            [-0.020197169402921714, -0.03988962121373786],
+        ]),
+        nominal_momentum_gain=np.array([
+            [0.08342456269984842, 0.018565714579158423],
+            [0.05927090943883043, -0.061038158352030185],
+        ]),
+    )
+    carryover = np.array([
+        0.4603534444724387,
+        0.5235796273972086,
+        0.0,
+        0.3409621141164678,
+    ])
+    error_bound = np.array([
+        0.05173746707119781,
+        0.023508335232659466,
+    ])
+    carryover.setflags(write=False)
+    error_bound.setflags(write=False)
+    return VerifiedH3Models(h2.u5, carryover, r5, n5, error_bound)

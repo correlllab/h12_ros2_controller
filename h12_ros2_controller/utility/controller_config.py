@@ -117,6 +117,15 @@ def _validate_iteration5_h2(raw: dict[str, Any]) -> dict[str, Any]:
     return h2
 
 
+def _validate_iteration5b_h3(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5b_h3' not in raw:
+        return {}
+    h3 = raw['iteration5b_h3']
+    if not isinstance(h3, dict):
+        raise ValueError('iteration5b_h3 must be a mapping when provided')
+    return h3
+
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -259,6 +268,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     decoupled_feedback = _validate_decoupled_feedback(raw)
     iteration5_residual_probe = _validate_iteration5_residual_probe(raw)
     iteration5_h2 = _validate_iteration5_h2(raw)
+    iteration5b_h3 = _validate_iteration5b_h3(raw)
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
@@ -339,6 +349,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'decoupled_feedback': decoupled_feedback,
         'iteration5_residual_probe': iteration5_residual_probe,
         'iteration5_h2': iteration5_h2,
+        'iteration5b_h3': iteration5b_h3,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
