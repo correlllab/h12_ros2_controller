@@ -1,0 +1,32 @@
+{
+    "schema_version": 1,
+    "purpose": "Pre-Iteration-5 frozen 3C source parity oracle",
+    "controller_git_commit": "0ed45b5251fbf10bc43014b1e732482bf1bfe95d",
+    "canonical_iteration3c_manifest": "runs/key_findings/iteration3c/reports/iter3c_implementation_manifest.json",
+    "canonical_iteration3c_combined_sha256": "9c37c1b33e6b604a0ab1465c4d4ab5ee8f4515a9ef9b3f0d907dcd3794524801",
+    "pre_refactor_physical_oracle_run": "runs/key_findings/20260902_160412_20260902_iter5_3c_oracle_fame11",
+    "pre_refactor_test_result": "44 passed",
+    "source_oracle_sequence_parity": {
+        "result": "passed",
+        "stateful_cases": 3,
+        "comparison": "exact arrays/scalars excluding wall-clock timing"
+    },
+    "post_refactor_physical_parity_run": "runs/key_findings/20260902_162253_20260902_iter5_3c_refactor_fame11",
+    "post_refactor_physical_result": "drift with precise tracking",
+    "files": {
+        "h12_ros2_controller/core/controller/counter_balance/counter_balance_controller.py": {
+            "git_blob": "69384524e218beeaefc5d6b9550c300b21a35d2a",
+            "sha256": "aa14a47a9d9da8c2a71c92f82c7f374ac1ee58a63142229a8d30f4dce8450ec3"
+        },
+        "h12_ros2_controller/core/controller/counter_balance/counter_ddp_velocity_controller.py": {
+            "sha256": "4f1abbe38fed5b1ec11925bff4edd344e01f6c6d65a3ee0d4a2816545b674651"
+        },
+        "h12_ros2_controller/core/controller/counter_balance/counter_velocity_ocp.py": {
+            "sha256": "32edeec6c40022fa2ef7b665de9a4560baa57268998c0de6a420665c9fc8bcd6"
+        },
+        "h12_ros2_controller/core/controller/counter_balance/objective.py": {
+            "sha256": "612a3b775a7803b41ccdfac78e866934dc375175fe02c8bae5d4a30c53ccf738"
+        }
+    },
+    "recovery": "git show 0ed45b5251fbf10bc43014b1e732482bf1bfe95d:h12_ros2_controller/core/controller/counter_balance/counter_balance_controller.py"
+}

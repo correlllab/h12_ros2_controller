@@ -14,6 +14,12 @@ from h12_ros2_controller.core.controller.counter_balance.counter_adaptive_veloci
 from h12_ros2_controller.core.controller.counter_balance.counter_decoupled_velocity_controller import (
     CounterDecoupledVelocityController,
 )
+from h12_ros2_controller.core.controller.counter_balance.counter_residual_probe_controller import (
+    CounterResidualProbeController,
+)
+from h12_ros2_controller.core.controller.counter_balance.counter_residual_h2_controller import (
+    CounterResidualH2Controller,
+)
 
 
 __all__ = [
@@ -22,5 +28,7 @@ __all__ = [
     'CounterDDPVelocityController',
     'CounterAdaptiveVelocityController',
     'CounterDecoupledVelocityController',
+    'CounterResidualProbeController',
+    'CounterResidualH2Controller',
     'ReactiveCounterBalanceController',
 ]

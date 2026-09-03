@@ -6,6 +6,9 @@ from h12_ros2_controller.core.controller.counter_balance.counter_balance_control
 from h12_ros2_controller.core.controller.counter_balance.counter_velocity_ocp import (
     CounterVelocityOCP,
 )
+from h12_ros2_controller.core.controller.counter_balance.frozen_3c_planner import (
+    Frozen3CVelocitySolve,
+)
 from h12_ros2_controller.core.controller.counter_balance.objective import (
     CounterVelocityBoundsError,
     bounded_velocity_problem,
@@ -39,6 +42,24 @@ class CounterDDPVelocityController(CounterBalanceController):
     def _solve_bounded_velocity(
             self, com_counter, momentum_counter, com_rhs, momentum_rhs,
             posture_target, lower, upper, balance_scale=1.0):
+        solved = self._isolated_velocity_solve(
+            com_counter,
+            momentum_counter,
+            com_rhs,
+            momentum_rhs,
+            posture_target,
+            lower,
+            upper,
+            balance_scale,
+        )
+        self.latest_velocity_ocp_result = solved.diagnostics
+        if not solved.accepted:
+            raise RuntimeError('Crocoddyl velocity solve returned invalid output')
+        return solved.requested_counter_dq
+
+    def _isolated_velocity_solve(
+            self, com_counter, momentum_counter, com_rhs, momentum_rhs,
+            posture_target, lower, upper, balance_scale):
         if any(lower[index] > upper[index] for index in range(4)):
             raise CounterVelocityBoundsError(
                 'Counter velocity bounds are empty',
@@ -65,10 +86,16 @@ class CounterDDPVelocityController(CounterBalanceController):
             lower,
             upper,
         )
-        self.latest_velocity_ocp_result = result
-        if not result.accepted:
-            raise RuntimeError('Crocoddyl velocity solve returned invalid output')
-        return result.velocity
+        return Frozen3CVelocitySolve(
+            requested_counter_dq=result.velocity,
+            accepted=result.accepted,
+            diagnostics=result,
+            objective_matrix=matrix,
+            objective_target=target,
+        )
+
+    def _commit_nominal_plan(self, nominal):
+        self.latest_velocity_ocp_result = nominal.solve_diagnostics
 
     def diagnostics(self):
         '''Return reactive and Crocoddyl parity diagnostics'''

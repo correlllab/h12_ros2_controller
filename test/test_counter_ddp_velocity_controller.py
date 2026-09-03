@@ -6,6 +6,9 @@ from h12_ros2_controller.core.controller.counter_balance import (
 from h12_ros2_controller.core.controller.counter_balance.counter_velocity_ocp import (
     CounterVelocityOCP,
 )
+from h12_ros2_controller.core.controller.counter_balance.frozen_3c_planner import (
+    Frozen3CNominalInput,
+)
 from test_counter_balance_controller import _harness as _reactive_harness
 
 
@@ -93,3 +96,30 @@ def test_velocity_controller_reports_infeasible_excursion_as_safety_hold():
     controller.control_configuration_step(q_target, dq_target)
 
     assert controller.latest_status == 'counter_bounds_infeasible'
+
+
+def test_nominal_planning_commits_diagnostics_only_after_explicit_commit():
+    _, controller = _controllers()
+    inputs = Frozen3CNominalInput(
+        moving_dq=np.zeros(7),
+        counter_q=np.zeros(4),
+        counter_q_ref=np.zeros(4),
+        com_error=np.zeros(2),
+        gyro=np.zeros(3),
+        com_moving=np.zeros((2, 7)),
+        com_counter=np.eye(2, 4),
+        momentum_moving=np.zeros((2, 7)),
+        momentum_counter=np.eye(2, 4, k=2),
+        balance_scale=1.0,
+        lower=-np.ones(4),
+        upper=np.ones(4),
+        com_rhs_offset=np.zeros(2),
+        momentum_rhs_offset=np.zeros(2),
+    )
+
+    plan = controller._plan_counter_velocity(inputs)
+
+    assert controller.latest_velocity_ocp_result is None
+    assert plan.solve_diagnostics is not None
+    controller._commit_nominal_plan(plan)
+    assert controller.latest_velocity_ocp_result is plan.solve_diagnostics

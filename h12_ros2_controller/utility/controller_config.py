@@ -97,6 +97,26 @@ def _validate_decoupled_feedback(raw: dict[str, Any]) -> dict[str, Any]:
     return feedback
 
 
+def _validate_iteration5_residual_probe(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5_residual_probe' not in raw:
+        return {}
+    probe = raw['iteration5_residual_probe']
+    if not isinstance(probe, dict):
+        raise ValueError(
+            'iteration5_residual_probe must be a mapping when provided'
+        )
+    return probe
+
+
+def _validate_iteration5_h2(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5_h2' not in raw:
+        return {}
+    h2 = raw['iteration5_h2']
+    if not isinstance(h2, dict):
+        raise ValueError('iteration5_h2 must be a mapping when provided')
+    return h2
+
+
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
         return np.full((NUM_MOTOR,), float(value), dtype=np.float64)
@@ -237,6 +257,8 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     counter_ddp = _validate_counter_ddp(raw)
     adaptive_authority = _validate_adaptive_authority(raw)
     decoupled_feedback = _validate_decoupled_feedback(raw)
+    iteration5_residual_probe = _validate_iteration5_residual_probe(raw)
+    iteration5_h2 = _validate_iteration5_h2(raw)
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
@@ -315,6 +337,8 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'counter_ddp': counter_ddp,
         'adaptive_authority': adaptive_authority,
         'decoupled_feedback': decoupled_feedback,
+        'iteration5_residual_probe': iteration5_residual_probe,
+        'iteration5_h2': iteration5_h2,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
