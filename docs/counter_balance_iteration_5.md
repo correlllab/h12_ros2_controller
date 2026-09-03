@@ -4,19 +4,32 @@
 
 ## Status and Hypothesis
 
-Iteration 5 is a proposed experimental controller. B0 and frozen Iteration 3C
-`counter_ddp_velocity_wide` remain the baselines. Iteration 4C remains an
-unpromoted diagnostic controller.
+Iteration 5 is implemented and frozen as an unpromoted experimental controller.
+B0 and frozen Iteration 3C `counter_ddp_velocity_wide` remain independently
+runnable operational baselines. Iteration 4C remains diagnostic evidence.
 
 The hypothesis is:
 
 > Frozen 3C provides a proven nominal counter-balancing action. Crocoddyl can use
-> verified causal response gradients to optimize small residual corrections that
-> know when to continue, brake, or reverse.
+> verified causal response gradients to optimize bounded residual corrections
+> that know when to continue, brake, or reverse.
 
-Start with H2 at the existing velocity-control level. Progress to H3 and then H5
-only when a measured event lies beyond the shorter horizon and prediction,
-behavior, and timing evidence justify expansion.
+The architecture is:
+
+\[
+\boxed{
+\text{pure 3C nominal planner}
++
+\text{delay-aware verified residual-response model}
++
+\text{H2 Crocoddyl residual MPC}
++
+\text{single shared safety/publication path}
+}
+\]
+
+Start at velocity-level H2. Progress to H3 and then H5 only when H2 exposes a
+specific verified horizon limitation and behavior and timing justify expansion.
 
 ## 1. Frozen Evidence
 
@@ -25,33 +38,29 @@ Iteration 5 must preserve these conclusions:
 - Frozen 3C's immediate manipulation feedforward produces the repeated FAME
   rescues `right_fast_fall_search_09_scale_78` and
   `right_fast_fall_search_11_scale_78`.
-- Iteration 4A's common full-state passive model failed roll-rate and lateral
-  support-relative CoM-velocity gates. Do not rebuild it as an Iteration 5
-  prerequisite.
+- Iteration 4A's common full-state model failed roll-rate and lateral
+  support-relative CoM-velocity gates. Do not rebuild it as a prerequisite.
 - Iteration 4B preview-only scaling lost rescue `09`. Measured response is
-  necessary, but one scalar applied to the complete controller did not improve
-  the ordinary tradeoff.
+  necessary, but scalar combined authority did not improve the ordinary tradeoff.
 - Iteration 4B H3-0 repeated 3C costs without verified action-conditioned
   response or a useful terminal objective. It was behaviorally worse and too
   slow.
-- Iteration 4C proved that measured response can modify counter action without
-  losing 3C's feedforward, rescue behavior, or timing margin.
-- Iteration 4C's tilt/rate gains could not reliably select braking or reversal.
-  Strong gains worsened ALMI and produced KKT-invalid trials.
+- Iteration 4C preserved both rescues and timing margin with decoupled feedback,
+  but local tilt/rate rules could not select braking or reversal consistently.
 
-Iteration 5 therefore identifies the incremental physical effect of a residual
-action. It does not tune another authority scheduler or fit the complete nominal
-humanoid response.
+Iteration 5 identifies only the incremental physical effect of a residual action
+around 3C. It does not fit the complete humanoid response or tune another
+authority scheduler.
 
-## 2. Controller Contract
+## 2. Runtime Contract
 
-The runtime controller is:
+Iteration 5 remains:
 
 - Velocity-level and receding-horizon.
 - Policy-blind and target-blind.
 - Limited to the existing four proximal counter-arm joints.
 - Compatible with IMU, measured joint position/velocity/torque, and justified
-  Pinocchio quantities.
+  Pinocchio-derived quantities.
 - Identical to 3C for manipulation-arm ownership and publication.
 - Subject to frozen joint, excursion, collision, estop, and atomic publication
   safeguards.
@@ -59,98 +68,127 @@ The runtime controller is:
 It must not use policy identity, target identity, historical outcome labels,
 simulator contact truth, external-force truth, or exact simulator base state.
 
-## 3. Complete 3C Nominal Plus Residual
+Preserve the validated Iteration 4A/4C observation safeguards:
+
+- One coherent immutable state snapshot per control execution.
+- Valid tick ordering and sequence metadata.
+- Bounded monotonic sample age.
+- Finite synchronized IMU and joint measurements.
+- The existing real-compatible Pinocchio path.
+
+Do not simplify these checks away or build new freshness infrastructure unless an
+observed failure requires it.
+
+## 3. Pure Frozen-3C Nominal Planner
 
 The command is:
 
 \[
-u_k = u^{3C}_k + \delta u_k.
+u^{candidate}_k=u^{3C}_{nominal,k}+\delta u_k.
 \]
 
-`u_3C,k` is the complete frozen 3C command, including its proven manipulation
-feedforward, measured feedback, bounds, and safety handling. It is not only the
-feedforward term.
+The algebraic command above is the requested four-joint counter velocity before
+final collision backtracking and publication. At zero residual, the complete
+published position, velocity, and torque behavior must match frozen 3C.
 
-The implementation contract is:
+The existing `control_configuration_step()` cannot be called to obtain the
+nominal because it backtracks, mutates command state, and publishes. Refactor its
+mathematical command generation into a non-publishing helper, for example:
 
-- Compute the current 3C command through the frozen 3C path.
-- Optimize only the correction sequence `delta U`.
-- Apply safety constraints to the combined command.
-- Publish only the first combined action.
-- Replan from a fresh atomic observation every control tick.
-- At `delta u = 0`, reproduce the complete 3C command bit-for-bit before final
-  transport serialization and within the frozen numeric tolerance after it.
-- If MPC observation, model, solve, timing, or safety is invalid, publish the
-  frozen 3C result while support remains valid.
+```text
+plan_frozen_3c_velocity(explicit_state, model_terms, references, moving_command)
+    -> Frozen3CNominalPlan
+```
 
-The residual trust region must preserve 3C's early authority. While the known
-manipulation disturbance is rising, `delta u_0` may add damping or an orthogonal
-correction but may not reduce the nominal feedforward-aligned projection unless
-the verified model predicts a braking benefit larger than its uncertainty.
+`Frozen3CNominalPlan` contains at least:
 
-Continue, brake, and reverse are descriptions of the correction's projection
-onto the nominal action. They are not policy-, target-, or outcome-specific
-modes.
+- Requested four-joint counter velocity.
+- Counter velocity and excursion bounds.
+- CoM, momentum, and posture targets/residual terms.
+- Lifecycle and activation scales.
+- Solver status, KKT, and timing diagnostics.
 
-## 4. Matched Branching for Causal Identification
+The helper receives explicit prepared inputs and has no publication, collision
+backtracking, reference-capture, command-state, or final safety side effects.
+Preallocated solver workspaces may update internal numeric buffers, but no robot
+or controller command state may be committed.
 
-Saved-state matched branching is primarily an offline simulation identification
-and validation tool. It is not part of runtime control.
+Use one shared execution path:
 
-At selected physical states, save enough state to reproduce the future exactly:
+1. Acquire and validate the atomic state snapshot.
+2. Update references/lifecycle exactly as frozen 3C does.
+3. Compute Pinocchio terms once.
+4. Call the pure 3C nominal planner.
+5. Select `delta u = 0` for 3C or solve residual H2 for Iteration 5.
+6. Form `u_candidate = u_3C_nominal + delta u`.
+7. Run existing backtracking, safety validation, command-state update, and atomic
+   publication exactly once.
 
-- MuJoCo positions, velocities, actuators, time, and deterministic seeds.
-- Lower-body policy internal state and command history.
-- Controller references, filters, delays, and lifecycle state.
-- Pending communication samples or equivalent deterministic replay state.
+Iteration 3C is behavior- and configuration-frozen, but its source may be
+refactored to use this helper. Preserve the complete pre-refactor 3C source and
+implementation hash as the parity oracle throughout the extraction. First run
+the new helper and shared finalization path against that oracle on retained
+recorded states without changing the normal 3C runtime route. Only after all
+recorded-state and published-command parity gates pass may normal 3C be routed
+through the shared helper. Its configurations and observable behavior remain
+unchanged.
 
-From the identical saved state, execute matched branches:
+Verify before any MPC work:
 
-1. Frozen 3C nominal.
+- Nominal requested velocity and objective terms match the frozen implementation.
+- Backtrack scale, candidate position, applied velocity, and status match.
+- Final manipulation/counter position, velocity, and torque commands match within
+  the established parity tolerance.
+- No nominal planning call publishes or mutates final command state.
+
+## 4. Offline Residual Identification
+
+Saved-state matched branching is an offline simulation identification and
+validation tool, never a runtime dependency.
+
+For a candidate saved state, compare:
+
+1. Frozen 3C.
 2. `3C + delta u` for one or more bounded correction ticks.
-3. Optional symmetric `3C - delta u` for central differences.
+3. Optional `3C - delta u` for central differences.
 
-Measure causal differences such as:
+Measure causal response differences:
 
 \[
 \Delta\omega_{k+j}
 =
 \omega^{3C+\delta u}_{k+j}
 -
-\omega^{3C}_{k+j},
+\omega^{3C}_{k+j}.
 \]
+
+A branch set is causal-matched only when repeated zero-correction branches agree
+within a preregistered short-horizon tolerance. Restore lower-policy/controller
+history, hidden state, delays, or command queues only as needed to pass that
+empirical equality gate. Discard branch sets that do not pass. Do not turn exact
+MuJoCo replay into an unrelated infrastructure project.
+
+Randomized corrections, bounded pulses, and approximately matched states form a
+separate statistical identification/validation dataset. Do not treat their
+differences as direct counterfactual subtraction.
+
+Use basis corrections, symmetric signs where practical, and at least two small
+amplitudes across rising disturbance, near peak, early return, and pre-step
+response. Only real-compatible features may enter fitted models. Simulator truth
+may audit equality or explain failures, never enter runtime control.
+
+## 5. Compact Runtime State
+
+The initial physical response state is:
 
 \[
-\Delta x_{k+1}
-\approx
-B(x_k)\delta u_k.
+x_k=[e_{\theta,k},\ \omega_k,\ q_{c,k},\ \dot q_{c,k}],
 \]
 
-Matched branches cancel the shared nominal lower-body response. Iteration 5 does
-not need to relearn that response at global accuracy to identify whether a
-correction improves the next few ticks.
+with measured support validity as context. Known manipulation momentum/rate and
+the frozen 3C command provide short preview.
 
-Branch states must cover rising disturbance, near peak, early return, and
-pre-step response. Use basis corrections, symmetric signs, and at least two
-small amplitudes to establish sign, local linearity, and the trusted action
-radius.
-
-Only real-compatible features may enter the fitted model. Simulator truth and
-contact state may be used offline to audit branch equality or explain failures,
-never as runtime features.
-
-## 5. Minimum Runtime State and Model
-
-The initial response state is:
-
-\[
-x_k = [e_{\theta,k},\ \omega_k,\ q_{c,k},\ \dot q_{c,k}],
-\]
-
-with measured support validity as context. Known manipulation momentum and rate
-provide short disturbance preview.
-
-Use structured transitions:
+Use structured integration:
 
 \[
 e_{\theta,k+1}
@@ -166,130 +204,146 @@ q_{c,k}
 +\frac{\Delta t}{2}(\dot q_{c,k}+\dot q_{c,k+1}).
 \]
 
-Predict a common compact 3C nominal trajectory `x_bar_3C` over H2 using current
-measurements, recent angular evolution, known manipulation preview, and frozen
-3C commands. Candidate trajectories are deviations from that common nominal:
+Do not require support-relative lateral CoM velocity, a full contact state, or a
+learned viability state for H2.
+
+## 6. Minimum Verified Models
+
+### 6.1 U5: Residual Command Realization
+
+U5 maps requested `delta u` to realized counter velocity and momentum response.
+Identify:
+
+- Command delay and pending action carryover.
+- Velocity gain/lag and position-dependent effectiveness.
+- Counter-arm momentum response from measured state and Pinocchio.
+- Clipping, backtracking, excursion, and weak directions.
+
+U5 passes when zero correction is identical to 3C, response sign is correct,
+delay is predicted within one tick, useful gain excludes zero inside the trusted
+region, and one/two-step realization beats command-equals-realization and
+zero-response baselines.
+
+Matched simulation data may identify U5 densely. Bounded active pulses using the
+same real-compatible observations must confirm sign, delay, and useful gain
+before active MPC relies on it.
+
+### 6.2 R5: Delay-Aware Incremental Response
+
+R5 predicts correction-induced angular-rate response, not complete base motion.
+U5 first maps requested residual velocity to realized counter velocity and
+counter-arm momentum, including delay and carryover. R5 then maps that realized
+residual action/momentum to incremental angular rate with a short FIR model:
 
 \[
-\Delta x_0 = 0,
+\Delta\omega_{k+1}=G_{0,k}\Delta h^c_k,
 \]
 
 \[
-\Delta x_{j+1}
+\Delta\omega_{k+2}
 =
-A_j\Delta x_j
-+B_j\delta u_j,
+G_{1,k}\Delta h^c_k
++G_{0,k}\Delta h^c_{k+1}.
 \]
 
+Evaluate the local `G0,k` and `G1,k` from the current measured state/support
+context and hold them fixed for one H2 solve. Reidentify or interpolate them at
+the next control tick. This avoids requiring unverified derivatives of a
+state-dependent gain model. Add such derivatives later only if an ablation
+demonstrates that fixed local gains limit action ranking.
+
+U5, not R5, owns requested-command delay, velocity realization, and the mapping
+to `Delta h_c`. `G0,k` and `G1,k` contain only the uncertain short angular-rate
+response to realized residual momentum. `G0,k` may be zero when realized action
+cannot affect the first predicted sample. Known carryover from previously
+published residuals must enter as fixed context.
+
+Obtain incremental counter position by integrating U5's realized counter
+velocity. Obtain incremental tilt by integrating R5's incremental angular rate
+with the structured equations in Section 5. Do not fit `G0/G1` terms for tilt or
+counter position.
+
+For Crocoddyl's Markov interface, represent FIR memory with the smallest exact
+augmented state containing pending residual action/effect. The queue shift is
+structured; only the uncertain response gains are identified. Use an alternative
+augmented formulation only if it is simpler and produces identical gradients.
+
+Do not add an autonomous `A` matrix unless state-perturbation experiments
+explicitly identify it. Multi-step residual pulses should identify U5 and the
+R5 `G0/G1` terms separately.
+
+### 6.3 N5: Minimal 3C Nominal-Phase Predictor
+
+Matched subtraction identifies residual effects, but the terminal cost still
+depends on absolute future tilt/rate. N5 supplies one common short 3C nominal
+trajectory for all candidate corrections.
+
+Use current tilt/rate, recent measured angular evolution, known manipulation
+preview, and the frozen 3C nominal sequence. Prefer structured extrapolation and
+fit only terms required to preserve local phase.
+
+Over H2, N5 must predict with calibrated uncertainty:
+
+- Tilt and angular-rate sign.
+- Divergence versus recovery.
+- Peak ordering.
+- Zero-crossing timing within one tick when present.
+
+Global humanoid-state accuracy is not required. Failure of unrelated absolute
+state metrics does not reject R5 when residual gradients and action ranking pass,
+but an invalid N5 phase blocks MPC publication for that tick.
+
+Predicted candidates are:
+
 \[
-x_{j}=\bar{x}^{3C}_{j}+\Delta x_j.
-\]
-
-The common nominal predictor need only preserve the local phase well enough for
-H2 action comparison. Fit `A` and `B` from matched differences and active
-validation; do not fit an unconstrained full-humanoid transition.
-
-## 6. Minimum Verified Components
-
-### 6.1 O5: Observation
-
-Reuse the validated atomic Iteration 4A/4C path:
-
-- Timestamped IMU orientation and angular velocity.
-- Measured moving/counter joint state and torque.
-- Release-time references.
-- One Pinocchio update per control tick.
-- Proprioceptive foot pose/twist and support validity.
-
-Recheck timestamp age and finite-difference consistency before identification.
-H2 does not require support-relative lateral CoM velocity.
-
-### 6.2 U5: Correction Realization
-
-U5 maps requested `delta u` to realized counter velocity and momentum difference.
-Identify command delay, lag, position-dependent effectiveness, clipping,
-backtracking, and weak directions.
-
-U5 passes when:
-
-- Zero-correction branches are identical.
-- Response sign is correct on every retained axis.
-- Delay is predicted within one control tick.
-- Expected response gain excludes zero within the trusted region.
-- One/two-step realization beats command-equals-realization and zero-response
-  baselines.
-
-Matched simulation branches provide dense identification. Bounded active pulses
-using the same real-compatible observations must confirm sign, delay, and useful
-gain before active MPC relies on U5.
-
-### 6.3 R5: Incremental Angular Response
-
-R5 predicts the correction-induced difference, not the complete base response:
-
-\[
-\Delta\omega_{k+1}
+x^{candidate}_{k+j}
 =
-B_\omega(x_k,s_k)\delta u_k+r_k.
+\bar{x}^{3C}_{k+j}
++
+\Delta x_{k+j}.
 \]
 
-Use exact tilt integration and fit only uncertain angular-rate sensitivity and a
-bounded residual. Factor the model through realized counter momentum when U5 and
-Pinocchio provide a better-conditioned physical representation.
+### 6.4 Reproducible Action-Ranking Gate
 
-R5 passes on held-out branch states when:
+Define distinguishability before evaluation:
 
-- Roll and pitch pass separate sign and error gates.
-- Symmetric corrections produce consistent central-difference gradients.
-- Gradient sign remains correct across retained action amplitudes.
-- Relative continue/brake/reverse ranking agrees with measured branch outcomes
-  on at least `90%` of materially distinguishable cases.
-- Braking direction and zero crossing are predicted within one tick when they
-  occur inside H2.
-- Model uncertainty blocks extrapolation outside the verified state/action
-  region.
+1. Estimate branch/pulse noise from repeated zero and repeated correction trials.
+2. Define a weighted physical response norm over tilt/rate change.
+3. Set a minimum physical effect threshold before held-out evaluation.
+4. Require the confidence interval for a candidate-pair difference to exceed
+   both the noise bound and minimum effect threshold.
+5. Evaluate ranking accuracy only on distinguishable comparisons.
 
-Prioritize physical sign, relative ranking, and useful gradients over global
-state-prediction accuracy.
+Use complete family-grouped held-out splits. Report coverage: the fraction of
+all comparisons that are distinguishable. R5 passes only if roll/pitch gradient
+signs are correct and continue/brake/reverse ranking is at least `90%` on that
+fixed distinguishable set. Do not change the threshold after viewing rankings.
 
-### 6.4 S5: Support and Step Onset
-
-Use existing proprioceptive support-validity and step-onset signals as context.
-Do not block H2 on a full contact or foot-placement model.
-
-- Valid standing support: allow normal residual optimization.
-- Incipient support motion: tighten correction and excursion limits.
-- Moving or uncertain support: stop claiming stumble prevention and hand off
-  conservatively to the verified baseline/safety path.
-- Recovered support: initially remain with the baseline; post-step recovery is
-  outside the first Iteration 5 scope.
-
-Measure support-signal latency on held-out stumbles. It may change H2 costs or
-constraints only if its conservative latency is useful before support motion.
-
-## 7. H2 Crocoddyl Formulation
+## 7. H2 Crocoddyl Residual MPC
 
 Use a fixed-size discrete Crocoddyl `ActionModelAbstract` with two running knots
-and one terminal knot. The decision is:
+and one terminal knot:
 
 \[
 \delta U=[\delta u_0,\delta u_1].
 \]
 
-`calc()` evaluates the common 3C nominal plus the incremental U5/R5 transition.
-`calcDiff()` exposes the verified local `A` and `B` gradients. Check every
-analytic derivative against finite differences throughout the trusted region.
-Wrong-sign or unsupported gradients invalidate the MPC action.
+`calc()` combines N5 nominal state with delay-aware U5 realization, R5 FIR
+angular-rate response, and structured tilt/position integration. `calcDiff()`
+chains the U5 realization Jacobians with fixed local `G0,k/G1,k` response
+gradients and exact queue/integration derivatives. Check analytic derivatives
+against finite differences throughout the trusted region. Wrong-sign or
+unsupported gradients invalidate the MPC result.
 
-Initial running costs are limited to:
+Initial running costs contain only:
 
 - Predicted tilt, angular-rate, and positive-divergence reduction.
-- Small residual magnitude and action change.
+- Residual magnitude and change.
 - Counter velocity, acceleration, excursion, and return reserve.
-- Deviation outside the identified state/action trust region.
+- U5/R5 trust-region and uncertainty penalties.
 - Conservative support-context penalties.
 
-Use an interpretable terminal braking objective:
+Use an interpretable terminal objective:
 
 \[
 \ell_N
@@ -300,146 +354,114 @@ w_\theta\|e_{\theta,N}\|^2
 +w_r\|q_{c,N}-q_{c,ref}\|^2.
 \]
 
-Do not add a learned terminal viability model initially.
+Do not add learned terminal viability initially.
 
-Hard constraints include combined-command joint/velocity limits, per-step
-acceleration, frozen excursion, first-action collision/safety validity,
-manipulation ownership, and the U5/R5 trust region.
+Constrain the combined command by joint/velocity limits, per-step acceleration,
+frozen excursion, first-action collision/safety validity, manipulation ownership,
+and the U5/R5 state/action trust region.
 
-## 8. ALMI Scope
+## 8. Support and ALMI Scope
 
-The initial ALMI target is stumble prevention, not general post-step recovery.
-Iteration 5 should keep a trajectory that would otherwise initiate a protective
-step inside standing support by choosing an earlier continue, brake, or reverse
-correction.
+Use existing proprioceptive support-validity and step-onset signals as context.
+Do not block H2 on a full contact or foot-placement model.
 
-Once support is already moving, use conservative handoff. Reduced torso motion
-or foot travel after step onset is diagnostic evidence, not a stumble-to-standing
-claim for the initial controller.
+The initial ALMI goal is pre-step stumble prevention: keep a trajectory that
+would otherwise initiate a protective step inside standing support.
 
-## 9. Progressive Workflow
+- Valid standing support: allow residual optimization.
+- Incipient support motion: tighten residual and excursion bounds.
+- Moving/uncertain support or invalid MPC: set `delta u = 0` and return to the
+  frozen 3C/current shared safety path.
+- Recovered support: remain with the baseline initially.
 
-### Stage 0: Stable Baselines
+Iteration 5 introduces no new braking/reconnect or post-step controller until
+that behavior is separately validated. Reduced torso motion after step onset is
+diagnostic evidence, not a stumble-to-standing claim.
 
-- Use serial, headless trials.
-- Terminate stale simulation, ROS, policy, bridge, logging, and sweep processes.
-- Check CPU, GPU, memory, swap, and disk health.
-- Interleave contemporaneous Frame, B0, and 3C trials.
-- Profile complete timing from the first shadow execution.
+## 9. Implementation Workflow
 
-### Stage 1: Matched Identification
+1. Extract and verify the pure 3C nominal helper.
+2. Revalidate the existing real-compatible observation path.
+3. Identify U5 delay and residual command realization.
+4. Identify delay-aware `G0/G1` gradients with matched branches and/or bounded
+   residual pulses.
+5. Validate the minimal N5 nominal-phase predictor.
+6. Implement fixed-size H2 Crocoddyl `calc()/calcDiff()` and derivative tests.
+7. Run H2 in shadow while publishing frozen 3C.
+8. Activate a small residual trust region on low-risk ordinary cases.
+9. Expand to interleaved FAME rescue and ALMI stumble-prevention trials only
+   after prediction, timing, safety, and ordinary-case gates pass.
+10. Consider H3/H5 or one additional state only when H2 exposes a specific
+    verified limitation.
 
-- Verify zero-correction branch identity.
-- Identify U5 delay and realization.
-- Fit R5 one/two-step incremental gradients.
-- Hold out complete state families and both arm ownership directions.
-- Reject the model if action sign or ranking is unreliable.
+Change one model, cost, bound, signal, or horizon mechanism at a time.
 
-Do not wait for CoM, ZMP, a full contact model, or learned terminal viability.
+## 10. H3/H5 and State Expansion
 
-### Stage 2: H2 Shadow
-
-Run H2 every tick while publishing frozen 3C.
-
-Require:
-
-- Exact zero-correction command parity.
-- Runtime inputs limited to real-compatible O5 signals.
-- Predicted nominal and incremental responses inside calibrated uncertainty.
-- All candidate actions inside the trusted region.
-- Shadow total-controller p99 below `10 ms`.
-- No stale, infeasible, or late result accepted.
-
-### Stage 3: H2 Active
-
-Start on low-risk ordinary cases with a small correction radius. Change one
-model, cost, bound, or horizon mechanism at a time. Inspect matched-branch and
-active predicted-versus-measured traces after every changed outcome.
-
-Expand to rescue and stumble-prevention cases only after ordinary behavior is no
-worse than 3C, gradients remain calibrated, and active total-controller p99 is
-below `15 ms`.
-
-### Stage 4: H3 and H5
-
-Increase the horizon only when H2 repeatedly selects the wrong phase because a
-measured braking point or zero crossing lies beyond two ticks.
-
-Progress in order:
+Increase the horizon only when H2 repeatedly chooses the wrong phase because a
+verified braking point or zero crossing lies beyond two ticks:
 
 1. H2 with the minimum model.
 2. H3 with identical model, costs, and constraints.
-3. H5 only if H3 still misses a verified event that H5 captures.
+3. H5 only if H3 still misses an event that H5 predicts correctly.
 
 Do not change horizon and model content together. Return to the shorter horizon
 if behavior does not improve repeatedly or timing margin is lost.
 
-### Stage 5: Evidence-Selected State Extensions
+Add CoM, capture point, ZMP, support margin, richer support transition, or a
+learned terminal model only when active H2 evidence identifies that specific
+missing state. Every extension must improve held-out prediction and active
+behavior in a separate ablation.
 
-Add one quantity only when active H2 evidence identifies a specific missing
-state:
+## 11. Crocoddyl and Timing
 
-- CoM or capture point when angular ranking is correct but standing-support
-  outcomes remain wrong.
-- Pinocchio ZMP or support margin when it predicts pre-step loss better than the
-  compact angular state and passes real-compatible consistency checks.
-- A richer support-transition model when prevention fails specifically because
-  step onset is detected too late.
-- Learned terminal viability only when H3/H5 remains myopic despite accurate
-  local incremental dynamics and the simple terminal cost.
+Crocoddyl is the default few-step solver. Avoid H3-0's repeated computation:
 
-Every extension must improve held-out prediction and active behavior in a
-separate ablation.
-
-## 10. Crocoddyl and Timing
-
-Crocoddyl is the default few-step solver. Use the existing BoxFDDP/BoxQP path
-where compatible, while avoiding H3-0's repeated computation:
-
-- Preallocate fixed H2 state, action, residual, cost, and solver data.
+- Preallocate fixed state, action, residual, cost, and solver data.
 - Update numeric terms in place.
-- Reuse one Pinocchio update and one manipulation preview per tick.
+- Reuse one atomic snapshot, Pinocchio update, and manipulation preview per tick.
 - Warm-start from the shifted previous residual sequence.
 - Start with one BoxFDDP real-time iteration.
 - Apply BoxQP polishing only when required by the KKT gate.
-- Log one compact record per actual solve, not per internal knot or logger tick.
+- Log one compact record per solve, not per internal knot or logger tick.
 - Reject late results atomically.
 
-Total-controller p99 must remain below `15 ms`, preferably below `10 ms` for H2
-and H3.
+Shadow total-controller p99 should be below `10 ms`. Active total-controller p99
+must be below `15 ms`, preferably with substantial margin.
 
-## 11. Compact Experimental Panel
+## 12. Experimental Ladder
 
-Randomize or interleave Frame, B0, 3C, and Iteration 5 in the same stable machine
-session.
+Use serial, headless experiments. Before each batch, clear stale processes and
+check CPU, GPU, memory, swap, and disk health. Randomize or interleave Frame, B0,
+3C, and Iteration 5 in the same stable machine session.
 
 Required FAME cells:
 
 - `right_fast_fall_search_09_scale_78`: existing repeated 3C rescue.
 - `right_fast_fall_search_11_scale_78`: existing repeated 3C rescue.
 - `right_fast_fall_search_06_scale_74`: major surpass-previous-iterations
-  challenge. Iteration 2 historically rescued it, but 3C did not reproduce that
-  recovery.
+  challenge. Iteration 2 historically rescued it, but later 3C did not reproduce
+  that recovery.
 - One ordinary 3C regression and one nonduplicate ordinary geometry.
 
-Any Iteration 5 rescue claim for `06` requires contemporaneous, interleaved
-Frame, 3C, and Iteration 5 trials from the same stable machine session.
+Any Iteration 5 rescue claim for `06` requires contemporaneous/interleaved Frame,
+3C, and Iteration 5 trials in the same stable machine session.
 
 Required ALMI cells:
 
 - Right target `11` as the ordinary guard.
-- Manual-grasp-minus and one second repeated stumble family as prevention tests.
+- Manual-grasp-minus and one second repeated stumble family for prevention.
 
 Use three complete repetitions for screening and five for every rescue,
 regression, stochastic, or changed cell before promotion. Report infrastructure
 failures separately.
 
-Required traces include nominal 3C, residual actions, realized counter response,
-predicted/measured incremental tilt and rate, gradient uncertainty, action
-projection, support onset, foot motion, excursion, clipping/backtracking,
-tracking error, KKT, and complete timing.
+Required traces include 3C nominal and residual actions, realized response,
+N5/R5 predicted versus measured tilt/rate, FIR gradients and uncertainty, action
+ranking, support onset, foot motion, excursion, backtracking, tracking error, KKT,
+and complete timing.
 
-## 12. Success Hierarchy
+## 13. Success Hierarchy
 
 Required:
 
@@ -462,22 +484,102 @@ Ultimate target:
 - Combine all existing FAME fall rescues, B0-or-better ordinary behavior, and
   repeatable stumble prevention in one policy-blind, real-compatible controller.
 
-Stop and retain B0/3C if U5/R5 cannot predict correction sign reliably, H2 loses
-an existing rescue, ordinary behavior does not improve, timing exceeds the gate,
-or improvement requires policy, target, or simulator-truth gates.
+Stop and retain B0/3C if U5/R5 cannot predict residual sign reliably, N5 cannot
+identify H2 phase, H2 loses an existing rescue, ordinary behavior does not
+improve, timing exceeds the gate, or improvement requires policy, target, or
+simulator-truth gates.
 
-## 13. Initial Deliverable
+## 14. Initial Deliverable
 
-The first implementation should contain:
+The first implementation contains:
 
-- Source-bound matched-branch datasets and U5/R5 validation reports.
-- Complete frozen 3C command generation with exact zero-residual parity.
-- A fixed-size H2 Crocoddyl action model exposing verified gradients.
+- A pure frozen-3C nominal helper plus a single shared finalization path.
+- Recorded-state parity tests proving unchanged standalone 3C behavior.
+- Source-bound U5, R5, and N5 datasets and validation reports.
+- A delay-aware H2 Crocoddyl model with verified `calc()/calcDiff()`.
 - Bounded residual trust regions and existing safety checks.
-- Existing support-validity context with conservative moving-support handoff.
-- Parity, gradient, constraint, fallback, and timing tests.
+- Exact residual-zero fallback on moving/uncertain support or MPC invalidity.
 - One H2 shadow panel followed by one low-risk active panel.
 
-This minimum implementation directly tests the Iteration 5 hypothesis. Additional
-state, horizon, support prediction, or learned terminal value is justified only
-by a specific measured failure.
+This minimum implementation tests the Iteration 5 hypothesis directly. No large
+estimator, full-state model, simulator runtime, or learned terminal prerequisite
+is permitted without specific H2 evidence.
+
+## 15. Execution Record
+
+### 15.1 Verified Model Package
+
+The final model uses one-tick U5 realization, a full contextual `2x2` R5
+gradient, and confidence-gated N5 phase prediction. Runtime features are limited
+to IMU tilt/rate, counter joint state, ownership, and Pinocchio momentum terms.
+
+- U5 retains joints 0/1/3 and masks joint 2.
+- U5 retained-joint sign accuracy is `1.00/1.00/0.969`.
+- R5 targeted H2 sign accuracy is `1.00/1.00`.
+- R5 continue/brake ranking is `0.906` over `128/128` pairs.
+- N5 confidence-gated phase sign is `1.00/0.992` over `34/128` samples.
+
+### 15.2 H2 Shadow
+
+The fixed-size 12-state H2 model contains incremental tilt/rate, counter position,
+and pending residual action. Knot 0 stores the residual; knot 1 applies U5/R5
+after the measured one-tick delay. `calc()/calcDiff()` pass finite differences.
+
+Across final FAME `09/11/04`, ALMI `11`, and ALMI manual shadow runs:
+
+- Model-valid decisions: `103`.
+- Model-valid H2 sign: `1.00/0.968` roll/pitch.
+- Model-valid H2 RMSE: `0.0195/0.0146 rad/s`.
+- Decisions: 29 continue, 74 brake, zero reverse.
+- H2 p99/max: `3.52/5.29 ms`.
+- Full-controller p99/max: `8.95/20.10 ms`.
+- Published behavior remained exact frozen 3C.
+
+Per-axis abstention replaced the rejected requirement that both axes be
+simultaneously confident. A right-arm MuJoCo address bug exposed by ALMI manual
+was corrected using named joint addresses and the model was reverified before
+active control.
+
+### 15.3 Active Development
+
+The first `0.01 rad/s` active trust region with default regularization produced
+sub-distinguishable corrections and no ordinary benefit. It was rejected.
+
+The only retained cost change reduced generic action/change regularization from
+`1.0/0.5` to `0.01/0.005`, leaving model, horizon, trust, and safety unchanged.
+The frozen controller alias is `counter_residual_h2_frozen`. The combined frozen
+planner/model/H2/harness/config SHA-256 is
+`258ccac38b325a2158f44da6aa506526e6046468b98bcb58381e0b48b5540e9a`.
+
+Retained active timing across 14 development runs:
+
+- H2 p50/p95/p99/max: `1.12/2.85/3.48/5.06 ms`.
+- Full-controller p50/p95/p99/max: `3.16/7.07/8.80/25.89 ms`.
+- H2 model failures: zero.
+- One underlying frozen-3C solver failure occurred on the ALMI stumble cell.
+
+### 15.4 Outcome Evidence
+
+| Cell | 3C | Frozen H2 | Decision |
+| --- | --- | --- | --- |
+| FAME `04` ordinary | Stable 2/3 | Stable 3/3 | Small majority improvement |
+| ALMI right `11` ordinary | Drift 3/3 | Drift 3/3 | No B0-level improvement |
+| FAME rescue `09` | Drift 3/3 | Drift 3/3 | Rescue retained; neutral continuously |
+| FAME rescue `11` | Drift 3/3 | Drift 3/3 | Rescue retained; peak/RMS improved |
+| FAME challenge `06` | Fall 1/1 | Fall 1/1 | No additional rescue |
+| ALMI manual minus | Stumble; one solver failure | Stumble; one solver failure | No prevention |
+
+For rescue `11`, median peak drift improved from `0.1661` to `0.1558` and RMS
+from `0.1101` to `0.1052`. Rescue `09` remained effectively unchanged. H2 did
+not improve ALMI ordinary severity to B0 and did not produce stumble prevention.
+
+### 15.5 Final Decision
+
+Iteration 5 is **frozen but not promoted**. It passes rescue-retention, tracking,
+model, gradient, and p99 timing gates and provides the best defensible H2 result.
+It does not pass the B0-or-better ALMI, additional-rescue, or stumble-prevention
+goals.
+
+H3/H5 were not attempted. With one-tick realization delay, H2 has one effective
+terminal residual action. H3 requires separately verified 60 ms nominal phase
+and response evidence; extending the horizon without it would repeat H3-0.

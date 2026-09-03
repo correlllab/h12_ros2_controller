@@ -520,6 +520,24 @@ def test_step_preserves_live_lower_body_and_publishes_atomically():
     assert controller.diagnostics()['moving_velocity_command_error'] == 0.0
 
 
+def test_shared_finalizer_applies_selected_residual_and_publishes_once():
+    controller = _harness()
+    captured = {}
+
+    def select(context, nominal):
+        captured['nominal'] = np.copy(nominal.requested_counter_dq)
+        return nominal.requested_counter_dq + np.array([0.1, 0.0, 0.0, 0.0])
+
+    controller._select_requested_counter_velocity = select
+    controller.control_configuration_step(np.zeros(14), np.zeros(14))
+
+    assert len(controller.low_cmd_handler.calls) == 1
+    assert np.allclose(
+        controller.latest_requested_counter_dq,
+        captured['nominal'] + [0.1, 0.0, 0.0, 0.0],
+    )
+
+
 def test_counter_collision_cannot_block_moving_arm():
     controller = _harness()
     controller.robot_model.check_collision_free = lambda unused: False

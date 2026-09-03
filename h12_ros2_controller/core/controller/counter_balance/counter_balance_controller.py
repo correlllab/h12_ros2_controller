@@ -1,6 +1,13 @@
 import numpy as np
 import pinocchio as pin
 
+from h12_ros2_controller.core.controller.counter_balance.frozen_3c_planner import (
+    CounterCommandContext,
+    Frozen3CNominalInput,
+    Frozen3CPlannerConfig,
+    Frozen3CVelocitySolve,
+    plan_frozen_3c_velocity,
+)
 from h12_ros2_controller.core.controller.counter_balance.objective import (
     CounterVelocityBoundsError,
     reaction_targets,
@@ -230,7 +237,7 @@ class CounterBalanceController(FrameController):
         com_counter = com_jacobian[:2, self.counter_v_indices]
         momentum_moving = momentum_map[:2, self.moving_v_indices]
         momentum_counter = momentum_map[:2, self.counter_v_indices]
-        com_rhs, momentum_rhs = self._reaction_targets(
+        com_rhs_offset, momentum_rhs_offset = self._reaction_target_offsets(
             com_moving,
             momentum_moving,
             moving_dq,
@@ -238,27 +245,30 @@ class CounterBalanceController(FrameController):
             gyro,
             balance_scale,
         )
-
-        posture_target = -self.posture_gain * (
-            counter_q - self.q_counter_ref
-        )
         lower, upper = self._counter_velocity_bounds(counter_q)
         lower, upper = self._counter_excursion_bounds(
             counter_q,
             lower,
             upper,
         )
+        planner_input = Frozen3CNominalInput(
+            moving_dq=np.copy(moving_dq),
+            counter_q=np.copy(counter_q),
+            counter_q_ref=np.copy(self.q_counter_ref),
+            com_error=np.copy(com_error),
+            gyro=np.copy(gyro),
+            com_moving=np.copy(com_moving),
+            com_counter=np.copy(com_counter),
+            momentum_moving=np.copy(momentum_moving),
+            momentum_counter=np.copy(momentum_counter),
+            balance_scale=balance_scale,
+            lower=np.copy(lower),
+            upper=np.copy(upper),
+            com_rhs_offset=np.copy(com_rhs_offset),
+            momentum_rhs_offset=np.copy(momentum_rhs_offset),
+        )
         try:
-            requested = self._solve_bounded_velocity(
-                com_counter,
-                momentum_counter,
-                com_rhs,
-                momentum_rhs,
-                posture_target,
-                lower,
-                upper,
-                balance_scale=balance_scale,
-            )
+            nominal = self._plan_counter_velocity(planner_input)
         except CounterVelocityBoundsError:
             return self._publish_counter_hold(
                 motor_q,
@@ -273,6 +283,30 @@ class CounterBalanceController(FrameController):
                 arm_dq,
                 'solver_failure',
             )
+        self._commit_nominal_plan(nominal)
+        if not nominal.accepted:
+            return self._publish_counter_hold(
+                motor_q,
+                arm_q,
+                arm_dq,
+                'solver_failure',
+            )
+        context = CounterCommandContext(
+            motor_q=np.copy(motor_q),
+            arm_q=np.copy(arm_q),
+            arm_dq=np.copy(arm_dq),
+            counter_q=np.copy(counter_q),
+            moving_dq=np.copy(moving_dq),
+            com_error=np.copy(com_error),
+            gyro=np.copy(gyro),
+            com_moving=np.copy(com_moving),
+            com_counter=np.copy(com_counter),
+            momentum_moving=np.copy(momentum_moving),
+            momentum_counter=np.copy(momentum_counter),
+            balance_scale=balance_scale,
+        )
+        requested = self._select_requested_counter_velocity(context, nominal)
+        requested = np.asarray(requested, dtype=np.float64)
         if requested.shape != (4,) or not np.all(np.isfinite(requested)):
             return self._publish_counter_hold(
                 motor_q,
@@ -280,14 +314,60 @@ class CounterBalanceController(FrameController):
                 arm_dq,
                 'nonfinite_solution',
             )
+        return self._finalize_counter_velocity(context, requested)
+
+    def _reaction_target_offsets(
+            self, com_moving, momentum_moving, moving_dq,
+            com_error, gyro, balance_scale):
+        return (
+            np.zeros(2, dtype=np.float64),
+            np.zeros(2, dtype=np.float64),
+        )
+
+    def _plan_counter_velocity(self, inputs):
+        return plan_frozen_3c_velocity(
+            inputs,
+            Frozen3CPlannerConfig(
+                com_gain=self.com_gain,
+                gyro_gain=self.gyro_gain,
+                posture_gain=self.posture_gain,
+            ),
+            self._isolated_velocity_solve,
+        )
+
+    def _isolated_velocity_solve(
+            self, com_counter, momentum_counter, com_rhs, momentum_rhs,
+            posture_target, lower, upper, balance_scale):
+        requested = self._solve_bounded_velocity(
+            com_counter,
+            momentum_counter,
+            com_rhs,
+            momentum_rhs,
+            posture_target,
+            lower,
+            upper,
+            balance_scale=balance_scale,
+        )
+        return Frozen3CVelocitySolve(
+            requested_counter_dq=requested,
+            accepted=True,
+        )
+
+    def _commit_nominal_plan(self, nominal):
+        pass
+
+    def _select_requested_counter_velocity(self, context, nominal):
+        return nominal.requested_counter_dq
+
+    def _finalize_counter_velocity(self, context, requested):
+        motor_q = context.motor_q
+        arm_q = context.arm_q
+        arm_dq = context.arm_dq
+        counter_q = context.counter_q
 
         self.latest_requested_counter_dq = np.copy(requested)
         result, failure_status = self._backtrack_counter(
-            motor_q,
-            arm_q,
-            arm_dq,
-            counter_q,
-            requested,
+            motor_q, arm_q, arm_dq, counter_q, requested,
         )
         if result is None:
             return self._publish_counter_hold(
@@ -309,15 +389,15 @@ class CounterBalanceController(FrameController):
             'collision_backtracked' if scale < 1.0 else 'solved'
         )
         self._set_predicted_residuals(
-            com_moving,
-            com_counter,
-            momentum_moving,
-            momentum_counter,
-            moving_dq,
+            context.com_moving,
+            context.com_counter,
+            context.momentum_moving,
+            context.momentum_counter,
+            context.moving_dq,
             applied,
-            com_error,
-            gyro,
-            balance_scale,
+            context.com_error,
+            context.gyro,
+            context.balance_scale,
         )
         if not self._publish_arm_command(candidate_q, command_dq, motor_q):
             return np.zeros(14, dtype=np.float64)

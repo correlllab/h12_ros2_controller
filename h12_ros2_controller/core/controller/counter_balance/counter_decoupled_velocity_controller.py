@@ -53,6 +53,19 @@ class CounterDecoupledVelocityController(CounterDDPVelocityController):
             gyro,
             balance_scale,
         )
+        com_offset, momentum_offset = self._reaction_target_offsets(
+            com_moving,
+            momentum_moving,
+            moving_dq,
+            com_error,
+            gyro,
+            balance_scale,
+        )
+        return com_rhs + com_offset, momentum_rhs + momentum_offset
+
+    def _reaction_target_offsets(
+            self, com_moving, momentum_moving, moving_dq,
+            com_error, gyro, balance_scale):
         tilt_error, available = self._measured_tilt_error()
         clipped = np.clip(
             tilt_error,
@@ -74,7 +87,7 @@ class CounterDecoupledVelocityController(CounterDDPVelocityController):
             tilt_error * gyro[:2],
             0.0,
         )
-        return com_rhs, momentum_rhs + feedback
+        return np.zeros(2, dtype=np.float64), feedback
 
     def _measured_tilt_error(self):
         reference = np.asarray(self.tilt_reference, dtype=np.float64)
