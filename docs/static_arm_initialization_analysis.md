@@ -2,9 +2,11 @@
 
 ## Status
 
-The static initialization side quest is complete. Two independent ALMI stumble
-families show the same repeated static-pose boundary between alpha `0.50` and
-`0.75`, with no arm motion or impulse.
+The original timestamped static sweep artifacts were removed during policy-root
+cleanup. The clean ALMI matrix is now `runs/static_arm_initialization/almi/` and
+contains one alpha `0.25/0.50/0.75/1.00` run per target. Historical repeated
+boundary values below remain design evidence but are not current clean-artifact
+claims.
 
 ## 1. Implementation
 
@@ -131,22 +133,16 @@ stumble: the terminal/intermediate pose itself crosses a static policy boundary.
 
 ## 8. Artifacts
 
-Main videos:
+Videos:
 
-`runs/static_arm_initialization/20260904_012711_almi_stumble_cases_v2/videos/upper_fixed/`.
-
-Boundary-repeat videos:
-
-- `runs/static_arm_initialization/20260904_014030_almi_boundary_r2/videos/upper_fixed/`.
-- `runs/static_arm_initialization/20260904_014500_almi_boundary_r3/videos/upper_fixed/`.
+`runs/static_arm_initialization/almi/videos/upper_fixed/`.
 
 Every executed case has a rendered WebM. The main manifest contains exact source
 hashes and full sampled vectors.
 
 ## 9. Validation
 
-- Main discovery videos: 10.
-- Boundary-repeat videos: 8.
+- Clean ALMI policy-root videos: 16.
 - Benchmark-owned test suite: `142 passed`.
 - Python compilation and staged/unstaged diff checks: passed.
 - Static experiment implementation/config/test SHA-256:
