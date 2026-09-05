@@ -76,14 +76,10 @@ Any apparent static transition must be repeated before a strong OOD claim.
 
 ## Results
 
-The corrected retained sweep is:
+The clean policy-root sweeps are under:
 
-`runs/static_arm_initialization/20260904_012711_almi_stumble_cases_v2`.
+`runs/static_arm_initialization/<policy>/`.
 
-Boundary repeats are:
-
-- `runs/static_arm_initialization/20260904_014030_almi_boundary_r2`.
-- `runs/static_arm_initialization/20260904_014500_almi_boundary_r3`.
-
-Both families were stable through alpha `0.50` and stumbled from alpha `0.75`.
-The repeated boundary is documented in `static_arm_initialization_analysis.md`.
+Every policy uses alpha `0.25/0.50/0.75/1.00` across manual-minus, overhead,
+and FAME rescue `09/11`. The ALMI boundary is documented in
+`static_arm_initialization_analysis.md`.
