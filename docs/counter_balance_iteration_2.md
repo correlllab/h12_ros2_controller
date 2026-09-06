@@ -465,8 +465,8 @@ velocity command error remained approximately `1e-7 rad/s` in both sweeps.
 
 Evidence:
 
-- `runs/key_findings/20260821_010114_fame_magpie_fast_hard_targets_pass_through`.
-- `runs/key_findings/20260821_012331_fame_magpie_fast_exploration_pass_through`.
+- `runs/archive/key_findings/20260821_010114_fame_magpie_fast_hard_targets_pass_through`.
+- `runs/archive/key_findings/20260821_012331_fame_magpie_fast_exploration_pass_through`.
 
 ### Temporary Fall Discovery
 
@@ -517,7 +517,7 @@ are reported below.
 
 Candidate evidence:
 
-- `runs/key_findings/20260821_015146_fame_magpie_fast_confirmed_fall_candidates`.
+- `runs/archive/key_findings/20260821_015146_fame_magpie_fast_confirmed_fall_candidates`.
 - `runs/model_sweep/20260821_020533_fame_magpie_fast_counter_tuning`.
 - `runs/retired/20260821_023032_fame_magpie_fast_boundary_candidates`.
 - `runs/retired/20260821_024359_fame_magpie_fast_momentum_authority_tuning`.

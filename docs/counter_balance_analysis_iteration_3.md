@@ -116,7 +116,7 @@ iteration did not modify named configurations or the planner.
 
 Artifact:
 
-`runs/key_findings/20260826_231220_counter_ddp_fame_smoke`
+`runs/archive/key_findings/20260826_231220_counter_ddp_fame_smoke`
 
 The first active implementation used five knots, two FDDP iterations, and no
 in-solve state-limit cost.
@@ -140,7 +140,7 @@ bounds also could not override safety recovery.
 
 Artifact:
 
-`runs/key_findings/20260826_231449_counter_ddp_fame_smoke_v2`
+`runs/archive/key_findings/20260826_231449_counter_ddp_fame_smoke_v2`
 
 Changes:
 
@@ -167,7 +167,7 @@ nonlinear validation did not fit the 50 Hz timing budget.
 
 Artifact:
 
-`runs/key_findings/20260826_231828_counter_ddp_fame_smoke_v4`
+`runs/archive/key_findings/20260826_231828_counter_ddp_fame_smoke_v4`
 
 Changes:
 
@@ -229,7 +229,7 @@ evidence.
 
 Artifact:
 
-`runs/key_findings/20260826_233128_counter_ddp_fame_smoke_v5`
+`runs/archive/key_findings/20260826_233128_counter_ddp_fame_smoke_v5`
 
 An independent code review found and corrected four command and evidence
 contracts before the focused sweep:
@@ -391,7 +391,7 @@ axis gate changes.
 Artifacts:
 
 - Frozen DDP:
-  `runs/key_findings/20260827_095515_counter_ddp_entry_fame_final`.
+  `runs/archive/key_findings/20260827_095515_counter_ddp_entry_fame_final`.
 - Matched frame baseline source:
   `runs/hard_sweep/20260826_233226_counter_ddp_fame_hard_groups_final`.
 
@@ -419,7 +419,7 @@ reported separately from accepted solver timing.
 Artifacts:
 
 - Frozen DDP:
-  `runs/key_findings/20260827_101112_counter_ddp_entry_almi_final`.
+  `runs/archive/key_findings/20260827_101112_counter_ddp_entry_almi_final`.
 - Matched frame baseline source:
   `runs/hard_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
 
@@ -498,11 +498,11 @@ controller needs a fresh focused comparison before promotion.
 Clean post-simplification smokes:
 
 - FAME `left_fast_fall_search_06_scale_74`:
-  `runs/key_findings/20260827_134410_counter_ddp_simple_fame_passthrough_smoke`.
+  `runs/archive/key_findings/20260827_134410_counter_ddp_simple_fame_passthrough_smoke`.
   The frame baseline falls; simplified DDP drifts and survives with 11 active
   ticks and `5.87 ms` p99 controller time.
 - ALMI `right_fast_fall_search_11_scale_78`:
-  `runs/key_findings/20260827_134317_counter_ddp_simple_almi_passthrough_smoke`.
+  `runs/archive/key_findings/20260827_134317_counter_ddp_simple_almi_passthrough_smoke`.
   The frame baseline is stable; simplified DDP is stable with zero active ticks
   and `5.32 ms` p99 controller time.
 
@@ -576,15 +576,15 @@ recovery and horizon length.
 Key artifacts:
 
 - FAME authority screen:
-  `runs/key_findings/20260828_005054_iter3_feedforward_fame_screen`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_005054_iter3_feedforward_fame_screen`.
 - ALMI authority screen:
-  `runs/key_findings/20260828_010623_iter3_feedforward_almi_screen`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_010623_iter3_feedforward_almi_screen`.
 - FAME recovery screen:
-  `runs/key_findings/20260828_012256_iter3_recovery_fame_screen`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_012256_iter3_recovery_fame_screen`.
 - ALMI recovery screen:
-  `runs/key_findings/20260828_012922_iter3_recovery_almi_screen`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_012922_iter3_recovery_almi_screen`.
 - FAME horizon screen:
-  `runs/key_findings/20260828_013608_iter3_horizon_fame_screen`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_013608_iter3_horizon_fame_screen`.
 
 Intermediate authority was not monotonic. The strongest general candidate uses:
 
@@ -657,10 +657,10 @@ The first iteration-3B foundation now evaluates activation before per-knot
 Pinocchio map construction. Post-change smokes are:
 
 - Inactive/low-risk ALMI:
-  `runs/key_findings/20260828_031218_iter3_final_inactive_timing_smoke`,
+  `runs/archive/key_findings/iteration3_tuning/20260828_031218_iter3_final_inactive_timing_smoke`,
   `8.8 ms` p99.
 - Active FAME:
-  `runs/key_findings/20260828_031331_iter3_final_active_smoke`,
+  `runs/archive/key_findings/iteration3_tuning/20260828_031331_iter3_final_active_smoke`,
   `11.5 ms` p99 with one timing hold.
 
 ## Next Decisions
@@ -719,8 +719,8 @@ used to recalibrate the online range before active comparison.
 
 Calibrated screen artifacts:
 
-- FAME: `runs/key_findings/20260828_145327_iter3_momentum_risk_calibrated_fame`.
-- ALMI: `runs/key_findings/20260828_152300_iter3_momentum_risk_calibrated_almi`.
+- FAME: `runs/archive/key_findings/iteration3_tuning/20260828_145327_iter3_momentum_risk_calibrated_fame`.
+- ALMI: `runs/archive/key_findings/iteration3_tuning/20260828_152300_iter3_momentum_risk_calibrated_almi`.
 
 The schedule rescued `right_fast_fall_search_09` and
 `right_fast_fall_search_11` in the compact FAME screen. All tested ALMI stable

@@ -13,8 +13,8 @@ mode for diagnostics and future research.
 
 Artifacts:
 
-- `runs/key_findings/20260901_174522_iter4b_shadow2_fame`.
-- `runs/key_findings/20260901_175415_iter4b_shadow2_almi`.
+- `runs/archive/key_findings/20260901_174522_iter4b_shadow2_fame`.
+- `runs/archive/key_findings/20260901_175415_iter4b_shadow2_almi`.
 - `runs/key_findings/iter4b_shadow_parameters.json`.
 
 Pooled frozen values:
@@ -44,8 +44,8 @@ preserve every rescue or suppress ordinary false-positive authority.
 
 Artifacts:
 
-- `runs/key_findings/20260901_180606_iter4b_preview_fame`.
-- `runs/key_findings/20260901_182310_iter4b_preview_almi`.
+- `runs/archive/key_findings/20260901_180606_iter4b_preview_fame`.
+- `runs/archive/key_findings/20260901_182310_iter4b_preview_almi`.
 
 Preview-only authority:
 
@@ -63,12 +63,12 @@ single next mechanism.
 Artifacts:
 
 - Initial screen:
-  - `runs/key_findings/20260901_183708_iter4b_combined_fame`.
-  - `runs/key_findings/20260901_184907_iter4b_combined_almi`.
+  - `runs/archive/key_findings/20260901_183708_iter4b_combined_fame`.
+  - `runs/archive/key_findings/20260901_184907_iter4b_combined_almi`.
 - Repeated rescue/guard runs:
-  - `runs/key_findings/20260901_190236_iter4b_combined_fame_r1` through the
+  - `runs/archive/key_findings/20260901_190236_iter4b_combined_fame_r1` through the
     subsequent FAME repetitions.
-  - `runs/key_findings/20260901_192904_iter4b_combined_almi_r1` through the
+  - `runs/archive/key_findings/20260901_192904_iter4b_combined_almi_r1` through the
     subsequent ALMI repetitions.
 
 Repeated physical outcomes:
@@ -101,8 +101,8 @@ but fails the required ordinary-case improvement gate.
 
 Artifacts:
 
-- `runs/key_findings/20260901_195505_iter4b_h3_fame`.
-- `runs/key_findings/20260901_200848_iter4b_h3_almi`.
+- `runs/archive/key_findings/20260901_195505_iter4b_h3_fame`.
+- `runs/archive/key_findings/20260901_200848_iter4b_h3_almi`.
 
 H3-0 used only:
 

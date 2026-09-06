@@ -125,17 +125,17 @@ tuning with the current authority would be ad hoc.
 
 Passive signal roots:
 
-- `runs/key_findings/20260903_193923_20260904_iter5c_signal_manual_quasi12`.
-- `runs/key_findings/20260903_194032_20260904_iter5c_signal_manual_nominal`.
-- `runs/key_findings/20260903_194123_20260904_iter5c_signal_overhead_quasi12`.
-- `runs/key_findings/20260903_194226_20260904_iter5c_signal_overhead_nominal`.
+- `runs/archive/key_findings/20260903_193923_20260904_iter5c_signal_manual_quasi12`.
+- `runs/archive/key_findings/20260903_194032_20260904_iter5c_signal_manual_nominal`.
+- `runs/archive/key_findings/20260903_194123_20260904_iter5c_signal_overhead_quasi12`.
+- `runs/archive/key_findings/20260903_194226_20260904_iter5c_signal_overhead_nominal`.
 
 Residual-sensitivity roots:
 
-- `runs/key_findings/20260903_194602_20260904_iter5c_foot_probe_manual_plus`.
-- `runs/key_findings/20260903_194650_20260904_iter5c_foot_probe_manual_minus`.
-- `runs/key_findings/20260903_194739_20260904_iter5c_foot_probe_overhead_plus`.
-- `runs/key_findings/20260903_194822_20260904_iter5c_foot_probe_overhead_minus`.
+- `runs/archive/key_findings/20260903_194602_20260904_iter5c_foot_probe_manual_plus`.
+- `runs/archive/key_findings/20260903_194650_20260904_iter5c_foot_probe_manual_minus`.
+- `runs/archive/key_findings/20260903_194739_20260904_iter5c_foot_probe_overhead_plus`.
+- `runs/archive/key_findings/20260903_194822_20260904_iter5c_foot_probe_overhead_minus`.
 
 - Benchmark-owned tests: `139 passed`.
 - Python compilation and staged/unstaged diff checks: passed.

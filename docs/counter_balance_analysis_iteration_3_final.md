@@ -170,10 +170,10 @@ The first Iteration 3B foundation moved activation before per-knot Pinocchio map
 Post-change smokes were:
 
 - inactive / low-risk ALMI:
-  `runs/key_findings/iteration3_tuning/20260828_031218_iter3_final_inactive_timing_smoke`,
+  `runs/archive/key_findings/iteration3_tuning/20260828_031218_iter3_final_inactive_timing_smoke`,
   approximately `8.8 ms` p99;
 - active FAME:
-  `runs/key_findings/iteration3_tuning/20260828_031331_iter3_final_active_smoke`,
+  `runs/archive/key_findings/iteration3_tuning/20260828_031331_iter3_final_active_smoke`,
   approximately `11.5 ms` p99 with one timing hold.
 
 This supports retaining a short active OCP and avoiding unnecessary map construction when inactive.
@@ -248,9 +248,9 @@ Zero-weight diagnostics were therefore used to calibrate a lower online range ar
 Calibrated compact-screen artifacts:
 
 - FAME:
-  `runs/key_findings/iteration3_tuning/20260828_145327_iter3_momentum_risk_calibrated_fame`;
+  `runs/archive/key_findings/iteration3_tuning/20260828_145327_iter3_momentum_risk_calibrated_fame`;
 - ALMI:
-  `runs/key_findings/iteration3_tuning/20260828_152300_iter3_momentum_risk_calibrated_almi`.
+  `runs/archive/key_findings/iteration3_tuning/20260828_152300_iter3_momentum_risk_calibrated_almi`.
 
 The calibrated compact screen recovered `right_fast_fall_search_09` and `right_fast_fall_search_11`.
 All tested ALMI stable guards remained stable.
