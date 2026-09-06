@@ -72,13 +72,13 @@ Decision-grade benchmark artifacts:
 - ALMI full panel:
   `runs/full_sweep/20260825_164531_almi_magpie_fast_full_reachability_momentum_wide`.
 - FAME confirmed boundary panel:
-  `runs/hard_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
+  `runs/challenge_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
 - FAME confirmed hard panel:
-  `runs/hard_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
+  `runs/challenge_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
 - FAME confirmed exploration panel:
-  `runs/hard_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
+  `runs/challenge_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
 - ALMI matched hard groups:
-  `runs/hard_sweep/20260825_155330_almi_magpie_fast_hard_groups_momentum_wide`.
+  `runs/challenge_sweep/20260825_155330_almi_magpie_fast_hard_groups_momentum_wide`.
 
 ### Latest Outcome Summary
 

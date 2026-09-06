@@ -52,9 +52,9 @@ environment/outcome change shared by the reference and parity controller.
 
 Final BoxQP parity artifacts:
 
-- `runs/key_findings/iteration3c/parity/20260901_035544_iter3c_boxqp_parity_fame`
+- `runs/key_findings_reports/iteration3c/parity/20260901_035544_iter3c_boxqp_parity_fame`
   and the adjacent FAME repetitions.
-- `runs/key_findings/iteration3c/parity/20260901_040228_iter3c_boxqp_parity_almi`
+- `runs/key_findings_reports/iteration3c/parity/20260901_040228_iter3c_boxqp_parity_almi`
   and the adjacent ALMI repetitions.
 
 ## Three-Hard-Group Comparison
@@ -65,7 +65,7 @@ infrastructure cells; attempted and infrastructure counts remain reported.
 
 Artifact:
 
-`runs/key_findings/iteration3c/reports/iter3c_boxqp_hard_group_majority_summary.json`.
+`runs/key_findings_reports/iteration3c/reports/iter3c_boxqp_hard_group_majority_summary.json`.
 
 All final case cells contain three complete physical outcomes. Superseded
 pre-polish/incomplete attempts and their bounded-hold relabeling remain visible
@@ -75,7 +75,7 @@ every controller/target cell.
 
 Implementation binding:
 
-`runs/key_findings/iteration3c/reports/iter3c_implementation_manifest.json`.
+`runs/key_findings_reports/iteration3c/reports/iter3c_implementation_manifest.json`.
 
 The combined implementation hash is recorded in the final parity, hard-group,
 retry, and full-panel manifests.
@@ -187,7 +187,7 @@ Across the hard-group Iteration 3C runs:
 
 Runtime artifact:
 
-`runs/key_findings/iteration3c/reports/iter3c_boxqp_runtime_summary.json`.
+`runs/key_findings_reports/iteration3c/reports/iter3c_boxqp_runtime_summary.json`.
 
 Accepted-command maximum KKT violation was below `5e-4`. Moving-arm velocity
 pass-through error remained below `1.2e-7 rad/s`; maximum recorded position error

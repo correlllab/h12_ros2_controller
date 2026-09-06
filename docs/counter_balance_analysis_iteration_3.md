@@ -202,9 +202,9 @@ convergence Boolean.
 Artifacts:
 
 - DDP:
-  `runs/hard_sweep/20260826_231934_counter_ddp_almi_smoke`.
+  `runs/challenge_sweep/20260826_231934_counter_ddp_almi_smoke`.
 - Frame task:
-  `runs/hard_sweep/20260826_232026_counter_ddp_almi_smoke_frame`.
+  `runs/challenge_sweep/20260826_232026_counter_ddp_almi_smoke_frame`.
 
 Target: `right_upward_overhang_pitch_plus`.
 
@@ -288,9 +288,9 @@ need for response gating.
 Artifacts:
 
 - FAME:
-  `runs/hard_sweep/20260826_233226_counter_ddp_fame_hard_groups_final`.
+  `runs/challenge_sweep/20260826_233226_counter_ddp_fame_hard_groups_final`.
 - ALMI:
-  `runs/hard_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
+  `runs/challenge_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
 
 FAME outcomes over 44 targets:
 
@@ -393,7 +393,7 @@ Artifacts:
 - Frozen DDP:
   `runs/archive/key_findings/20260827_095515_counter_ddp_entry_fame_final`.
 - Matched frame baseline source:
-  `runs/hard_sweep/20260826_233226_counter_ddp_fame_hard_groups_final`.
+  `runs/challenge_sweep/20260826_233226_counter_ddp_fame_hard_groups_final`.
 
 Outcomes over 44 targets:
 
@@ -421,7 +421,7 @@ Artifacts:
 - Frozen DDP:
   `runs/archive/key_findings/20260827_101112_counter_ddp_entry_almi_final`.
 - Matched frame baseline source:
-  `runs/hard_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
+  `runs/challenge_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
 
 Outcomes over 44 targets:
 
@@ -564,9 +564,9 @@ The first paired simplified-controller panels showed no fall rescue and produced
 two FAME regressions plus one ALMI drift-to-stumble change:
 
 - FAME:
-  `runs/hard_sweep/20260827_183616_counter_ddp_vs_frame_fame`.
+  `runs/challenge_sweep/20260827_183616_counter_ddp_vs_frame_fame`.
 - ALMI:
-  `runs/hard_sweep/20260827_191147_counter_ddp_vs_frame_almi`.
+  `runs/challenge_sweep/20260827_191147_counter_ddp_vs_frame_almi`.
 
 The scalar gyro gate generally crossed late, around `1.2–1.3 s` into the
 `1.5 s` motion. A structured screen varied only moving-phase feedforward
@@ -604,9 +604,9 @@ region.
 Artifacts:
 
 - FAME:
-  `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
+  `runs/challenge_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
 - ALMI:
-  `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
+  `runs/challenge_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
 
 FAME outcomes over 44 targets:
 
@@ -729,8 +729,8 @@ drift in that screen.
 
 Full paired artifacts:
 
-- FAME: `runs/hard_sweep/20260828_155338_iter3_momentum_risk_vs_frame_fame`.
-- ALMI: `runs/hard_sweep/20260828_163951_iter3_momentum_risk_vs_frame_almi`.
+- FAME: `runs/challenge_sweep/20260828_155338_iter3_momentum_risk_vs_frame_fame`.
+- ALMI: `runs/challenge_sweep/20260828_163951_iter3_momentum_risk_vs_frame_almi`.
 
 FAME outcomes:
 

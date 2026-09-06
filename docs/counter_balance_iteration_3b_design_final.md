@@ -70,9 +70,9 @@ B0 does not directly optimize arm momentum rate or predict base response.
 Paired B0 artifacts:
 
 - FAME:
-  `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`;
+  `runs/challenge_sweep/20260828_014310_iter3_candidate_vs_frame_fame`;
 - ALMI:
-  `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
+  `runs/challenge_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
 
 B0 FAME:
 

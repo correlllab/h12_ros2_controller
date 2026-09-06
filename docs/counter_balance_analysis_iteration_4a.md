@@ -157,7 +157,7 @@ section are retained as experiment history and superseded by Section 6.
 
 Artifact:
 
-`runs/key_findings/iteration4_models/m01_passive_v2_context_report.json`.
+`runs/key_findings_reports/iteration4_models/m01_passive_v2_context_report.json`.
 
 M1 `100 ms` held-out metrics include:
 
@@ -277,7 +277,7 @@ No counter excitation was applied.
 
 Final artifact:
 
-`runs/key_findings/iteration4_models/m01_passive_v4_balanced_report.json`.
+`runs/key_findings_reports/iteration4_models/m01_passive_v4_balanced_report.json`.
 
 The balanced repeated M1 model failed the manipulation-feature gate. Its final
 `100 ms` held-out metrics were:

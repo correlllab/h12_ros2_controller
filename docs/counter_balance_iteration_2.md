@@ -195,7 +195,7 @@ The drift boundaries were:
 
 Evidence:
 
-- `runs/hard_sweep/20260820_014142_fame_magpie_fast_frame_rank5_overhang_hard_screen`.
+- `runs/challenge_sweep/20260820_014142_fame_magpie_fast_frame_rank5_overhang_hard_screen`.
 
 ### Farther And Named Targets
 
@@ -209,7 +209,7 @@ isolated overhead targets drifted.
 
 Evidence:
 
-- `runs/hard_sweep/20260820_020745_fame_magpie_extra_fast_frame_rank6_named_extreme_screen`.
+- `runs/challenge_sweep/20260820_020745_fame_magpie_extra_fast_frame_rank6_named_extreme_screen`.
 
 ### Speed Selection
 
@@ -229,8 +229,8 @@ workshop stress condition, not a nominal manipulation-speed claim.
 
 Evidence:
 
-- `runs/hard_sweep/20260820_020432_fame_magpie_extra_fast_frame_speed_pilot`.
-- `runs/hard_sweep/20260820_021450_fame_magpie_impulsive_frame_speed_pilot`.
+- `runs/challenge_sweep/20260820_020432_fame_magpie_extra_fast_frame_speed_pilot`.
+- `runs/challenge_sweep/20260820_021450_fame_magpie_impulsive_frame_speed_pilot`.
 
 ### Hard-Target Neighborhood
 
@@ -254,8 +254,8 @@ basin around five failure modes, not 25 independent failure mechanisms.
 
 Evidence:
 
-- `runs/hard_sweep/20260820_021755_fame_magpie_impulsive_frame_rank5_overhang_hard_screen`.
-- `runs/hard_sweep/20260820_024735_fame_magpie_impulsive_frame_hard_neighborhood_screen`.
+- `runs/challenge_sweep/20260820_021755_fame_magpie_impulsive_frame_rank5_overhang_hard_screen`.
+- `runs/challenge_sweep/20260820_024735_fame_magpie_impulsive_frame_hard_neighborhood_screen`.
 
 ### Current-Candidate Fall Panel
 
@@ -277,7 +277,7 @@ converting six falls only to drift.
 
 Evidence and workshop videos:
 
-- `runs/hard_sweep/20260820_025617_fame_magpie_impulsive_fall_panel_current_candidates`.
+- `runs/challenge_sweep/20260820_025617_fame_magpie_impulsive_fall_panel_current_candidates`.
 
 ### Full Hard-Target Evaluation
 
@@ -308,7 +308,7 @@ rendered: frame and reactive videos for each of the 20 recovered targets.
 
 Evidence and workshop videos:
 
-- `runs/hard_sweep/20260820_135559_fame_magpie_impulsive_all_hard_conservative_evaluation`.
+- `runs/challenge_sweep/20260820_135559_fame_magpie_impulsive_all_hard_conservative_evaluation`.
 
 ### Unresolved Manual-Grasp Family
 
@@ -325,8 +325,8 @@ honest limitation rather than hidden from the panel.
 
 Evidence:
 
-- `runs/hard_sweep/20260820_032340_fame_magpie_impulsive_manual_fall_authority_probe`.
-- `runs/hard_sweep/20260820_032753_fame_magpie_impulsive_manual_fall_extended_authority_probe`.
+- `runs/challenge_sweep/20260820_032340_fame_magpie_impulsive_manual_fall_authority_probe`.
+- `runs/challenge_sweep/20260820_032753_fame_magpie_impulsive_manual_fall_extended_authority_probe`.
 
 ## Final Full Evaluation
 
@@ -441,10 +441,10 @@ inner-upward-overhang targets with frame and aggressive-tight control:
 
 Evidence:
 
-- `runs/hard_sweep/20260820_201743_counter_balance_refactor_left_manual_frame_smoke`.
-- `runs/hard_sweep/20260820_201809_counter_balance_refactor_left_manual_tight_smoke`.
-- `runs/hard_sweep/20260820_201836_counter_balance_refactor_right_overhang_frame_smoke`.
-- `runs/hard_sweep/20260820_201912_counter_balance_refactor_right_overhang_tight_smoke`.
+- `runs/challenge_sweep/20260820_201743_counter_balance_refactor_left_manual_frame_smoke`.
+- `runs/challenge_sweep/20260820_201809_counter_balance_refactor_left_manual_tight_smoke`.
+- `runs/challenge_sweep/20260820_201836_counter_balance_refactor_right_overhang_frame_smoke`.
+- `runs/challenge_sweep/20260820_201912_counter_balance_refactor_right_overhang_tight_smoke`.
 
 ## Fast-Profile Redesign
 
@@ -568,7 +568,7 @@ not suitable for final evidence.
 
 Confirmed boundary evidence:
 
-- `runs/hard_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
+- `runs/challenge_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
 
 ### Final Fast Evaluation
 
@@ -594,8 +594,8 @@ publication. Changed-outcome videos were rendered for both final sweeps.
 
 Final evidence:
 
-- `runs/hard_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
-- `runs/hard_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
+- `runs/challenge_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
+- `runs/challenge_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
 
 ### Full Directional And Overhang Evaluation
 
