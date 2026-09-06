@@ -37,7 +37,7 @@ not make manual-minus alpha `0.75+` viable.
 Static roots:
 
 - `runs/static_arm_initialization/mjlab_almi_stand/`.
-- `runs/static_arm_initialization/mjlab_almi_manip/`.
+- `runs/static_arm_initialization/mjlab_almi_manip_1/`.
 
 ## 3. Complete Dynamic Envelope
 

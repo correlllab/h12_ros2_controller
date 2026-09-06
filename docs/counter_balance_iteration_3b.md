@@ -61,8 +61,8 @@ panels. Baseline `B0` is:
 
 Its paired artifacts are:
 
-- `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
-- `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
+- `runs/challenge_sweep/20260828_014310_iter3_candidate_vs_frame_fame`.
+- `runs/challenge_sweep/20260828_021447_iter3_candidate_vs_frame_almi`.
 
 `B0` FAME produced five improvements with no regression, including one
 stumble-to-stable conversion, but no fall rescue. `B0` ALMI produced one
@@ -86,7 +86,7 @@ every later acceptance comparison.
 
 The ungated DDP panel retained five ALMI stumble outcomes:
 
-`runs/hard_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
+`runs/challenge_sweep/20260827_041156_counter_ddp_almi_hard_groups_final`.
 
 Relative to frame task, ungated DDP changed the peak metrics as follows:
 

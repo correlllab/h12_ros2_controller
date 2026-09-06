@@ -51,7 +51,7 @@ count. No threshold or state changed.
 
 The final report is:
 
-`runs/key_findings/iteration5/models/iteration5b_h3_model_gate_final.json`.
+`runs/key_findings_reports/iteration5/models/iteration5b_h3_model_gate_final.json`.
 
 ## 3. H3 Implementation
 

@@ -143,9 +143,9 @@ and were not justified.
 
 Primary reports:
 
-- `runs/key_findings/iteration5/models/fame11_pilot.json`.
-- `runs/key_findings/iteration5/models/fame11_central_pairs.json`.
-- `runs/key_findings/iteration5/models/fame11_high_central_pairs.json`.
+- `runs/key_findings_reports/iteration5/models/fame11_pilot.json`.
+- `runs/key_findings_reports/iteration5/models/fame11_central_pairs.json`.
+- `runs/key_findings_reports/iteration5/models/fame11_high_central_pairs.json`.
 
 ## 6. N5 Result
 
@@ -287,7 +287,7 @@ pass.
 
 Primary report:
 
-`runs/key_findings/iteration5/models/fame11_momentum_innovation_v2.json`.
+`runs/key_findings_reports/iteration5/models/fame11_momentum_innovation_v2.json`.
 
 ### 10.4 Narrow Mechanical Branch
 
@@ -320,7 +320,7 @@ closed-loop response.
 
 Primary report:
 
-`runs/key_findings/iteration5/models/fame11_mechanical_response_aggregate.json`.
+`runs/key_findings_reports/iteration5/models/fame11_mechanical_response_aggregate.json`.
 
 ### 10.5 Continued Decision
 
@@ -391,7 +391,7 @@ branch samples from FAME `11`, mirrored FAME `04`, and ALMI `11`:
 
 Primary report:
 
-`runs/key_findings/iteration5/models/cross_policy_verified_response_model.json`.
+`runs/key_findings_reports/iteration5/models/cross_policy_verified_response_model.json`.
 
 ### 11.4 Final N5 Confidence Gate
 
@@ -411,7 +411,7 @@ and ALMI `11`:
 
 Primary report:
 
-`runs/key_findings/iteration5/models/cross_policy_nominal_phase_confidence.json`.
+`runs/key_findings_reports/iteration5/models/cross_policy_nominal_phase_confidence.json`.
 
 ### 11.5 Revised H2 Decision
 

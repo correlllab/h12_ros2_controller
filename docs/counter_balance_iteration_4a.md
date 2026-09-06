@@ -1031,7 +1031,7 @@ Implemented:
 
 Artifact:
 
-`runs/key_findings/iteration4_models/m01_passive_v4_balanced_report.json`.
+`runs/key_findings_reports/iteration4_models/m01_passive_v4_balanced_report.json`.
 
 On the final corrected v4 split, M1 is worse than M0 on roll rate, pitch rate,
 both CoM-velocity axes, height rate, and pooled ALMI performance. Support twist,

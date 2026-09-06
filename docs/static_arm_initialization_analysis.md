@@ -35,9 +35,9 @@ joints in target order.
 
 ### Manual-Grasp-Minus
 
-| Alpha | Left-arm configuration |
-| ---: | --- |
-| `0.00` | `[0, 0, 0, 0, 0, 0, 0]` |
+| Alpha  | Left-arm configuration                                                       |
+| ------:| ---------------------------------------------------------------------------- |
+| `0.00` | `[0, 0, 0, 0, 0, 0, 0]`                                                      |
 | `0.25` | `[0.182693, 0.833449, -0.097783, -0.025865, -0.719067, 0.115409, -0.165697]` |
 | `0.50` | `[0.365386, 1.666898, -0.195567, -0.051731, -1.438134, 0.230818, -0.331393]` |
 | `0.75` | `[0.548079, 2.500348, -0.293350, -0.077596, -2.157201, 0.346227, -0.497090]` |
@@ -45,9 +45,9 @@ joints in target order.
 
 ### Overhead
 
-| Alpha | Left-arm configuration |
-| ---: | --- |
-| `0.00` | `[0, 0, 0, 0, 0, 0, 0]` |
+| Alpha  | Left-arm configuration      |
+| ------:| --------------------------- |
+| `0.00` | `[0, 0, 0, 0, 0, 0, 0]`     |
 | `0.25` | `[0, 0.725, 0, 0, 0, 0, 0]` |
 | `0.50` | `[0, 1.450, 0, 0, 0, 0, 0]` |
 | `0.75` | `[0, 2.175, 0, 0, 0, 0, 0]` |
@@ -59,30 +59,30 @@ The manifest records full 14-arm, 15-upper, and 46-qpos vectors for every sample
 
 ### Manual-Grasp-Minus
 
-| Alpha | Outcome | Peak drift | Foot displacement | Foot lift |
-| ---: | --- | ---: | ---: | ---: |
-| `0.00` | Stable | `0.012` | `0.020 m` | `0.0004 m` |
-| `0.25` | Stable | Small | Below threshold | Below threshold |
-| `0.50` | Stable | `0.060` | `0.028 m` | `0.0007 m` |
-| `0.75` | Stumble | `0.028` | `2.529 m` | `0.0175 m` |
-| `1.00` | Stumble | `0.036` | `3.499 m` | `0.0442 m` |
+| Alpha  | Outcome | Peak drift | Foot displacement | Foot lift       |
+| ------:| ------- | ----------:| -----------------:| ---------------:|
+| `0.00` | Stable  | `0.012`    | `0.020 m`         | `0.0004 m`      |
+| `0.25` | Stable  | Small      | Below threshold   | Below threshold |
+| `0.50` | Stable  | `0.060`    | `0.028 m`         | `0.0007 m`      |
+| `0.75` | Stumble | `0.028`    | `2.529 m`         | `0.0175 m`      |
+| `1.00` | Stumble | `0.036`    | `3.499 m`         | `0.0442 m`      |
 
 ### Overhead
 
-| Alpha | Outcome | Peak drift | Foot displacement | Foot lift |
-| ---: | --- | ---: | ---: | ---: |
-| `0.00` | Stable | `0.016` | `0.018 m` | `0.0005 m` |
-| `0.25` | Stable | `0.011` | `0.016 m` | `0.0002 m` |
-| `0.50` | Stable | `0.015` | `0.013 m` | `0.0007 m` |
-| `0.75` | Stumble | `0.076` | `0.644 m` | `0.0172 m` |
-| `1.00` | Stumble | `0.043` | `3.071 m` | `0.0241 m` |
+| Alpha  | Outcome | Peak drift | Foot displacement | Foot lift  |
+| ------:| ------- | ----------:| -----------------:| ----------:|
+| `0.00` | Stable  | `0.016`    | `0.018 m`         | `0.0005 m` |
+| `0.25` | Stable  | `0.011`    | `0.016 m`         | `0.0002 m` |
+| `0.50` | Stable  | `0.015`    | `0.013 m`         | `0.0007 m` |
+| `0.75` | Stumble | `0.076`    | `0.644 m`         | `0.0172 m` |
+| `1.00` | Stumble | `0.043`    | `3.071 m`         | `0.0241 m` |
 
 ## 4. Boundary Repetitions
 
-| Family | Alpha `0.50` | Alpha `0.75` |
-| --- | --- | --- |
+| Family       | Alpha `0.50`                     | Alpha `0.75`                      |
+| ------------ | -------------------------------- | --------------------------------- |
 | Manual minus | Stable 3/3; foot `0.028-0.031 m` | Stumble 3/3; foot `2.520-2.538 m` |
-| Overhead | Stable 3/3; foot `0.012-0.013 m` | Stumble 3/3; foot `0.397-1.039 m` |
+| Overhead     | Stable 3/3; foot `0.012-0.013 m` | Stumble 3/3; foot `0.397-1.039 m` |
 
 The transition is repeated, family-independent at the sampled resolution, and
 large relative to classification thresholds.

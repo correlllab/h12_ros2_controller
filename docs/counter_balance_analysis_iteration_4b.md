@@ -15,7 +15,7 @@ Artifacts:
 
 - `runs/archive/key_findings/20260901_174522_iter4b_shadow2_fame`.
 - `runs/archive/key_findings/20260901_175415_iter4b_shadow2_almi`.
-- `runs/key_findings/iter4b_shadow_parameters.json`.
+- `runs/key_findings_reports/iter4b_shadow_parameters.json`.
 
 Pooled frozen values:
 

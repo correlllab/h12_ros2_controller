@@ -95,7 +95,7 @@ It is not whole-body MPC and does not predict the lower-body policy or contact d
 
 Artifacts:
 
-- `runs/hard_sweep/20260828_014310_iter3_candidate_vs_frame_fame`
+- `runs/challenge_sweep/20260828_014310_iter3_candidate_vs_frame_fame`
 
 Outcomes over 44 targets:
 
@@ -121,7 +121,7 @@ The controller is useful, but the remaining failure mode is not solved by the cu
 
 Artifacts:
 
-- `runs/hard_sweep/20260828_021447_iter3_candidate_vs_frame_almi`
+- `runs/challenge_sweep/20260828_021447_iter3_candidate_vs_frame_almi`
 
 Outcomes over 44 targets:
 
@@ -263,9 +263,9 @@ This was useful mechanism evidence and justified a full paired comparison.
 Artifacts:
 
 - FAME:
-  `runs/hard_sweep/20260828_155338_iter3_momentum_risk_vs_frame_fame`;
+  `runs/challenge_sweep/20260828_155338_iter3_momentum_risk_vs_frame_fame`;
 - ALMI:
-  `runs/hard_sweep/20260828_163951_iter3_momentum_risk_vs_frame_almi`.
+  `runs/challenge_sweep/20260828_163951_iter3_momentum_risk_vs_frame_almi`.
 
 FAME:
 
