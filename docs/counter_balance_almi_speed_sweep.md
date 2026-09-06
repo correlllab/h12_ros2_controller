@@ -77,7 +77,7 @@ configuration validation before simulation. The corrected profile duration was
 set to `move_duration + 10 s` while preserving the same hold. The retained
 discovery root is:
 
-`runs/key_findings/20260903_184645_20260904_almi_h2_speed_discovery_v2`.
+`runs/archive/key_findings/20260903_184645_20260904_almi_h2_speed_discovery_v2`.
 
 Because all controllers still stumbled at `6 s`, the grid was extended to
 `quasi_12s` (`0.125x` nominal speed). Missing interrupted cells were rerun as

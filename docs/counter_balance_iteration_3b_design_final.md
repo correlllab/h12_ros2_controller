@@ -1360,7 +1360,7 @@ rate and test short-window momentum change before any weighted objective.
 
 ### Result
 
-Artifacts are stored under `runs/key_findings/iteration3b/a0_reaction_identification/`.
+Artifacts are stored under `runs/archive/key_findings/iteration3b/a0_reaction_identification/`.
 Three B0 repetitions were run for each development case without changing the
 objective or controller behavior.
 
@@ -1387,8 +1387,8 @@ The initial runs used controller-entry time as the sample timestamp. After
 diagnostic isolation and source-state timestamp correction, confirmation runs
 retained the one-tick delay:
 
-- `runs/key_findings/iteration3b/timestamp_confirmation/20260829_072134_iter3b_a0_timestamp_confirm_fame_right11`.
-- `runs/key_findings/iteration3b/timestamp_confirmation/20260829_072257_iter3b_a0_timestamp_confirm_almi_right11`.
+- `runs/archive/key_findings/iteration3b/timestamp_confirmation/20260829_072134_iter3b_a0_timestamp_confirm_fame_right11`.
+- `runs/archive/key_findings/iteration3b/timestamp_confirmation/20260829_072257_iter3b_a0_timestamp_confirm_almi_right11`.
 
 Corrected FAME correlation/gain was `[0.644, 0.519]` / `[0.078, 0.104]`.
 Corrected ALMI correlation/gain was `[0.785, 0.762]` / `[0.122, 0.128]`.
@@ -1452,10 +1452,10 @@ diagnostics are established.
 
 Artifacts:
 
-- `runs/key_findings/iteration3b/a1_disturbance_preview/20260829_021008_iter3b_a1_fame_right11`.
-- `runs/key_findings/iteration3b/a1_disturbance_preview/20260829_021130_iter3b_a1_fame_lateral_overhead`.
-- `runs/key_findings/iteration3b/a1_disturbance_preview/20260829_021252_iter3b_a1_almi_left09`.
-- `runs/key_findings/iteration3b/a1_disturbance_preview/20260829_021406_iter3b_a1_almi_right11`.
+- `runs/archive/key_findings/iteration3b/a1_disturbance_preview/20260829_021008_iter3b_a1_fame_right11`.
+- `runs/archive/key_findings/iteration3b/a1_disturbance_preview/20260829_021130_iter3b_a1_fame_lateral_overhead`.
+- `runs/archive/key_findings/iteration3b/a1_disturbance_preview/20260829_021252_iter3b_a1_almi_left09`.
+- `runs/archive/key_findings/iteration3b/a1_disturbance_preview/20260829_021406_iter3b_a1_almi_right11`.
 
 The frozen-current-map preview predicted future moving-arm momentum with planar
 correlation between `0.73` and `0.96`. Pitch correlation was `0.95–0.96` in all
@@ -1520,9 +1520,9 @@ motion without measured-response justification.
 
 Artifacts:
 
-- `runs/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_021914_iter3b_a2_fame_right11`.
-- `runs/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_022036_iter3b_a2_almi_left09`.
-- `runs/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_022151_iter3b_a2_almi_right11`.
+- `runs/archive/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_021914_iter3b_a2_fame_right11`.
+- `runs/archive/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_022036_iter3b_a2_almi_left09`.
+- `runs/archive/key_findings/iteration3b/a2_reaction_seed_feasibility/20260829_022151_iter3b_a2_almi_right11`.
 
 The candidate reaction seed was infeasible in `88–92%` of active samples and
 saturated at least one joint in the same fraction. Median relative reaction
@@ -1561,9 +1561,9 @@ divergence norm. Do not change B0 activation or recovery.
 
 Artifacts:
 
-- `runs/key_findings/iteration3b/a3_response_diagnostics/20260829_022616_iter3b_a3_fame_right11`.
-- `runs/key_findings/iteration3b/a3_response_diagnostics/20260829_022737_iter3b_a3_almi_left09`.
-- `runs/key_findings/iteration3b/a3_response_diagnostics/20260829_022851_iter3b_a3_almi_right11`.
+- `runs/archive/key_findings/iteration3b/a3_response_diagnostics/20260829_022616_iter3b_a3_fame_right11`.
+- `runs/archive/key_findings/iteration3b/a3_response_diagnostics/20260829_022737_iter3b_a3_almi_left09`.
+- `runs/archive/key_findings/iteration3b/a3_response_diagnostics/20260829_022851_iter3b_a3_almi_right11`.
 
 Post-motion divergence peaks were:
 

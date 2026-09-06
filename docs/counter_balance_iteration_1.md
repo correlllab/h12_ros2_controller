@@ -168,7 +168,7 @@ corrected mappings. Include the right-arm mirror to test side symmetry. Compare:
 The corrected-mapping probe is:
 
 ```text
-runs/key_findings/20260819_073156_almi_observation_mapping_probe
+runs/archive/key_findings/20260819_073156_almi_observation_mapping_probe
 ```
 
 | Target/profile | Controller | Current mapping | Corrected mapping |
