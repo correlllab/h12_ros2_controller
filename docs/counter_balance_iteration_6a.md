@@ -9,7 +9,8 @@ The H2 architecture is mature. This iteration diagnoses remaining FAME falls
 before selecting one minimal, verified change. Execution is complete; the
 confidence candidate failed its offline gates and no new controller is promoted.
 The subsequent detector correction and five full-duration 06 drifts revise the
-classification conclusion, not the controller. See
+classification conclusion, not the controller. The finalized benchmark refresh
+adds 22 completed sweeps without tuning or a new iteration. See
 [the revised analysis](counter_balance_analysis_iteration_6a.md).
 
 Read together with the finalized design and analysis for
@@ -29,6 +30,42 @@ The source review also includes the finalized analyses for
 [5E](counter_balance_analysis_iteration_5e.md), the
 [checkpoint protocol](counter_balance_almi_checkpoint_sweep.md), and
 [ALMI-Manip training notes](../../h12_mjlab/docs/almi_manip.md).
+
+## Finalized Benchmark Refresh
+
+The [refresh index][refresh] and [final campaign report][refresh-report] replace
+deprecated broad-sweep evidence. Each of FAME and corrected ALMI-Manip v2 has
+100 full plus 44 challenge trials per controller, comparing Frame, frozen 3C,
+and robust H2. The 144 named IDs represent 140 geometries per policy; aliases
+do not create independent rescue families. Optional v3 was not run and has no
+fresh result in this campaign.
+
+All 22 sweeps are complete, including FAME `confirm_r4/r5` and the two ALMI
+reliability cells through five repetitions. FAME has 54 three-run screen cells,
+11 extended to five; ALMI has three screen cells, two extended to five.
+Initial, focused, health, and original 116-trial diagnostics remain separate.
+The index gives exact aggregates, every target-level transition, video links,
+tracking anomalies, retained attempts, reproduction, and cleanup provenance.
+
+Under the corrected full-window criterion, right 06/09/11 each gives Frame
+fall 5/5 versus both 3C and robust H2 drift 5/5 with precise counter-controller
+tracking. This closes the matched-comparison gap for those three controllers,
+not a frozen-H2 comparison or an isolated residual attribution. Both counter
+controllers also repeat right inner-forward 01/02 stable-to-drift regressions
+5/5; right inner-upward 05 remains fall 4/5 for each. Manual and distinct
+overhang failures remain specific diagnosis priorities.
+
+ALMI is stable/precise 144/144 per controller initially and 13/13 in the
+focused panel. Genuine 3C nominal failures remain in those stable runs;
+robust H2 retains zero solver failures with bounded fallback. This supports
+solver reliability, not a new physical ALMI boundary. The two readiness
+failures in FAME r1/r2 were repaired with attempts preserved; true solver
+failures were not retried as infrastructure. `controller_complete` is distinct
+from operational and run completion, as detailed in the analysis.
+
+Retain robust H2 and the frozen contract. The immediate conclusion is specific
+FAME phase/momentum-feasibility and shared-regression diagnosis, not broad
+ALMI speed search or ad-hoc controller tuning.
 
 ## Frozen Contract
 
@@ -53,7 +90,7 @@ regressions in 5D. The accepted 5E change repaired solver reliability without
 adding FAME authority. None justifies a larger residual, unverified support cost,
 longer horizon, or target-specific rule in 6A.
 
-## Targets and Repetitions
+## Original Focused Targets and Repetitions
 
 Use the existing Magpie catalogs without changing geometry or classification:
 
@@ -187,14 +224,21 @@ diagnostic, not an online-policy counterfactual or authorization to expand trust
 
 ## Artifact Locations
 
-Canonical evidence lives under `runs/key_findings_reports/iteration6a/`, grouped
+Original diagnostic evidence stays under `runs/key_findings_reports/iteration6a/`, grouped
 into `characterization/`, `confirmation/`, `expansion/`, and
 `classification_recheck/`. Each timestamped
 sweep retains its manifest, `configs/sweep.yaml`, classifications, full JSONL
 controller traces, simulation replay arrays, and logs. The standard sweep CLI
 is the entry point; the one-time 6A runner has been retired.
 
-Cross-run results and figures live in `reports/`; source hashes and relocation
+Broad refresh sweeps live in `runs/full_sweep/` and `runs/challenge_sweep/`,
+not under `key_findings_reports/`. Within `iteration6a/`, the refresh index is
+`benchmark_results.md`, reports are in `reports/benchmark/`, and videos are in
+`videos/`. Refresh repetitions live directly in `focused_repetitions/`, named
+`<timestamp>_iter6a_<policy>_<screen_rN/confirm_rN>`; health checks live directly
+in `health/`, named `<timestamp>_iter6a_<policy>_check`.
+
+Original cross-run results and figures live in `reports/`; source hashes and relocation
 provenance live in `reports/provenance/`. Videos use each sweep's
 `videos/<controller>/` directory. The current collection is
 `classification_recheck/videos/index.html`; the obsolete four-drift/one-fall
@@ -204,7 +248,7 @@ See the [artifact index][6a-evidence] for paths and diagnostic commands.
 `historical_repeated_summary.json` retains the old labels and signal reductions
 without presenting them as current 06 reliability conclusions.
 
-## Execution Decision
+## Original Focused Execution Decision
 
 The 111-trial historical campaign preserves 09/11 at five robust-H2 drifts
 against five Frame runs reaching hard fall criteria each. The additional five
@@ -225,3 +269,5 @@ analysis. Do not extend confidence, residual authority, horizon, or lifecycle
 based on the rejected diagnostics.
 
 [6a-evidence]: ../../../runs/key_findings_reports/iteration6a/README.md
+[refresh]: ../../../runs/key_findings_reports/iteration6a/benchmark_results.md
+[refresh-report]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json

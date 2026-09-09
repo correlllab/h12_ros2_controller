@@ -3,8 +3,10 @@
 ## Status
 
 Iteration 6A retains `counter_residual_h2_robust`; no new controller is promoted.
-The campaign now contains 116 physical trials: 111 historical trials and five
-fresh robust-H2 classification checks. Target 06 completes **5/5 full-duration
+The finalized refresh contains 22 completed sweeps with no pending work.
+Its exact broad and repeated evidence is summarized below, separately from
+the original 116 physical trials: 111 historical trials and five
+robust-H2 classification checks. In that original recheck, target 06 completes **5/5 full-duration
 drifts with precise tracking** under the corrected 0.50-rad soft threshold.
 The previous 4/5 result was a detector artifact, not demonstrated physical
 recovery inconsistency. Established 09/11 evidence remains supported; manual
@@ -12,6 +14,147 @@ and distinct overhang limitations remain. No additional independent rescue
 geometry or H2-residual advantage over frozen 3C has been established.
 See [the 6A design](counter_balance_iteration_6a.md) for the frozen contract,
 preregistered comparison panel, and promotion gates.
+
+## Finalized Refresh Results
+
+The [refresh index][refresh] is the current broad evidence source, backed by
+the [final campaign JSON][refresh-report], [target-level CSV][refresh-csv],
+and [key-video index][refresh-videos]. It replaces deprecated broad-root
+numbers rather than layering historical broad tables. No controller,
+policy, geometry, gain, residual authority, or lifecycle tuning was performed.
+
+Broad refresh runs live in the dedicated `runs/full_sweep/` and
+`runs/challenge_sweep/` directories. Under `runs/key_findings_reports/iteration6a/`,
+`benchmark_results.md` indexes them; `reports/benchmark/` and `videos/` hold
+refresh reports and videos. Refresh repetitions and health checks live directly
+in `focused_repetitions/` and `health/`, separate from the unchanged original
+`characterization/`, `classification_recheck/`, `confirmation/`, and `expansion/`.
+
+Each policy/controller has 100 full-catalog plus 44 challenge observations.
+The named denominator is 144 IDs but only 140 geometries per policy. Both-side
+lateral-high/Boundary-04 and lateral-overhead/Boundary-06 aliases are not new
+independent families. Counts below are stable/drift/stumble/fall, from the
+final report; all initial latest attempts have zero infrastructure/unknown
+classifications.
+
+| Policy | Controller | Full 100 | Challenge 44 | Total 144 |
+| --- | --- | --- | --- | --- |
+| FAME | Frame | 96/3/0/1 | 24/12/0/8 | 120/15/0/9 |
+| FAME | Frozen 3C | 95/4/0/1 | 28/12/0/4 | 123/16/0/5 |
+| FAME | Robust H2 | 94/5/0/1 | 28/12/0/4 | 122/17/0/5 |
+| ALMI v2 | Frame | 100/0/0/0 | 44/0/0/0 | 144/0/0/0 |
+| ALMI v2 | Frozen 3C | 100/0/0/0 | 44/0/0/0 | 144/0/0/0 |
+| ALMI v2 | Robust H2 | 100/0/0/0 | 44/0/0/0 | 144/0/0/0 |
+
+All target-level transitions and metric differences are linked in the refresh
+index, which also tabulates every initial FAME category change. Initially,
+Frame-to-3C has 10 improvements/3 regressions/131 unchanged, Frame-to-H2 has
+10/4/130, and 3C-to-H2 has 1/2/141. ALMI has no category changes. These are
+named-target observations, not residual-only rescue counts.
+
+### Focused Confirmation and Attribution
+
+FAME has 54 three-repetition screen cells, with 11 extended to five by the
+completed `confirm_r4/r5`: 184 trials per controller. ALMI has three screen
+cells, two extended to five: 13 per controller. Do not count all screened
+cells as five-run confirmations or add the initial screen to their denominators.
+Eight health sweeps remain separate. There are no classified stumbles.
+
+| Focused policy | Controller | Stable | Drift | Fall | Precise tracking |
+| --- | --- | ---: | ---: | ---: | ---: |
+| FAME | Frame | 126 | 26 | 32 | 156/184 |
+| FAME | Frozen 3C | 138 | 30 | 16 | 178/184 |
+| FAME | Robust H2 | 141 | 27 | 16 | 177/184 |
+| ALMI v2 | Frame | 13 | 0 | 0 | 13/13 |
+| ALMI v2 | Frozen 3C | 13 | 0 | 0 | 13/13 |
+| ALMI v2 | Robust H2 | 13 | 0 | 0 | 13/13 |
+
+Right 06/09/11 each gives Frame fall **5/5**, 3C drift **5/5**, and robust-H2
+drift **5/5**, with precise tracking in both counter controllers. These fresh,
+matched corrected-detector runs close the old Frame/3C/robust-H2 comparison
+gap, not a frozen-H2 comparison or causal residual ablation. No H2 residual
+credit is warranted where 3C gives the same rescue.
+
+The full eleven-cell confirmation table is in the refresh index. Its other
+conclusions are not uniformly favorable:
+
+- **Shared regressions:** right inner-forward 01/02 each gives Frame stable
+    5/5 versus both counter controllers drift 5/5.
+- **Unreliable additional rescue:** right inner-upward 05 gives Frame fall 5/5,
+    3C stable 1/fall 4, and H2 drift 1/fall 4. This is not a repeatable rescue.
+- **Shared drift improvements:** left inner-overhang pitch minus and right
+    upward-arc 05/rank 6 each give Frame drift 5/5 and both counters stable 5/5.
+- **Category-boundary differences:** left overhead gives Frame drift 5,
+    3C stable 1/drift 4, H2 stable 4/drift 1; left 06 gives Frame drift 5,
+    3C stable 4/drift 1, H2 stable 5. These do not isolate residual causality.
+- **Unrecovered physical failures:** left manual plus/minus and right
+    inner-overhang rank 6/pitch minus still fall 3/3 for every controller.
+    They remain three-run screens, not five-run claims.
+
+The initial H2-only drift regressions on left Boundary 04 and left inner-upward
+05 do not repeat: all controllers are stable 3/3 in each focused cell. This
+does not erase the two repeatedly shared right inner-forward regressions.
+
+### Tracking, Reliability, and Completion
+
+Initial precise tracking is Frame 135/144 versus 3C/H2 142/144 on FAME;
+ALMI is 144/144 for all three. Precision does not mean no tracking cost:
+right inner-forward 01 final error spans `0.000286943-0.000288850 rad` for
+Frame, `0.005686214-0.005728236 rad` for 3C, and
+`0.005684605-0.005704811 rad` for H2 over five runs. Its maximum angular
+drift spans `0.097524-0.098952 rad`, `0.111527-0.112942 rad`, and
+`0.106917-0.113239 rad` respectively. Report `max_base_drift` and
+`rms_base_drift` in **rad**, relative to the pre-release steady roll/pitch
+reference, not meters. Height and foot displacement/lift remain in meters.
+
+Both counter controllers remain imprecise 3/3 on each manual failure, but
+precise 3/3 on each right overhang failure. Stable-but-imprecise outliers also
+remain: Frame left inner-upward 05 is imprecise 1/3 (maximum error
+`0.059900513 rad`), and H2 right overhang-upward 03 is imprecise 1/3
+(`0.039683621 rad`). Do not hide this H2 tracking anomaly behind stable labels.
+
+FAME has zero initial solver failures; focused 3C has two on left overhead,
+while H2 has zero failures and no fallback. ALMI initially has three 3C
+failures versus zero H2 failures and three fallback activations. Focused ALMI
+has 16 3C failures versus zero H2 failures and 13 fallbacks. Specifically,
+right overhang-upward 05 has 9 3C failures and 6 H2 fallbacks over five runs;
+right upward-overhang pitch minus has 7 and 7. Both are stable/precise 5/5
+for all controllers. Left inner-overhang rank 6 stays a stable/precise
+three-run guard. Robust H2's ALMI nominal-solver reliability benefit is retained,
+without creating a physical ALMI boundary.
+
+`controller_complete` means no counted controller solver failures, not
+successful process execution. `operational_complete` means no logged runtime
+errors; `run_complete` requires the simulation window, release log, and
+operational completion. Stable, precise, operationally complete runs can have
+`controller_complete=false`. Even `passed` does not independently certify
+solver reliability. Accepted `best_effort`, abstention, and successful bounded
+fallback are distinct from a solver failure. Campaign timing ranges summarize
+per-trial statistics, not pooled quantiles or a universal `15 ms` timing pass.
+
+The two readiness failures in FAME r1/r2 were repaired in attempt 2, with
+attempt 1 retained: 3C right inner-forward 01 is drift/precise and H2 right
+upward-arc 01 is stable/precise, both with zero solver failures. Neither
+original attempt reached release. The final latest-attempt tables contain no
+infrastructure outcomes. Genuine 3C failures were not rerun as infrastructure;
+the separate repetitions retain that reliability evidence. See the refresh
+index for the exact retry record and cleanup provenance.
+
+### Immediate Decision
+
+Retain robust H2 without a new controller iteration. Optional v3 was not run;
+there is no fresh v3 generalization claim. ALMI v2 stays physically stable and
+is a reliability/regression guard, not a discovered physical limit. Specific
+FAME phase/model coverage, collision-feasible momentum timing, shared nominal
+regressions, and tracking anomalies take priority over broad ALMI speed search.
+The original rejected-confidence and mechanical diagnostics below remain valid
+within their stated scope; this refresh does not authorize tuning.
+
+## Separate Original 116-Trial Evidence
+
+The sections below preserve the original focused diagnostic campaign and its
+detector correction. Historical labels, timing, tests, and unmatched-controller
+limitations describe that cohort only, not the finalized refresh above.
 
 ## Starting Evidence
 
@@ -116,9 +259,10 @@ runs, all nine rank-6 runs, all six pitch-minus overhang runs, and the three
 Frame lateral-overhead alias runs. Thus the remaining failure families and
 historical Frame contrast survive the detector review.
 
-The new cohort verifies repeatable robust-H2 drift on 06. A contemporaneous
+The original recheck cohort verifies repeatable robust-H2 drift on 06. A contemporaneous
 Frame/3C/frozen-H2/robust-H2 comparison under one criterion is still needed to
-rank controllers or credit H2 residuals. No such new comparison was run here.
+rank all four controllers or credit H2 residuals. No such comparison was run
+in this original cohort; the refresh above now compares Frame/3C/robust H2.
 Historical tables below retain original labels solely for provenance.
 
 ## Repeated Core and 06 Confirmation Results
@@ -464,7 +608,7 @@ therefore a retained reliability concern, not a demonstrated common cause of
 the unrecovered falls. Host health and resource use were recorded; the machine
 was not an isolated real-time host.
 
-## Decision and 6B/6C Handoff
+## Original Decision and Research Handoff
 
 Retain `counter_residual_h2_robust` and all existing frozen terminology. There
 is no accepted 6A controller change and no new independent repeatable rescue.
@@ -486,8 +630,9 @@ five complete robust-H2 drifts without changing H2.
     the corrected criterion. Audit moderate-tilt fall labels before treating
     them as control failures. Retain 06 as a regression/attribution case; compare
     Frame, 3C, frozen H2, and robust H2 with full windows under one criterion
-    before ranking recovery or assigning H2 credit. Do not tune H2 to fix the
-    six unsupported historical labels.
+    before ranking all four controllers or assigning H2 credit. The finalized
+    refresh now shows the same 06/09/11 rescue labels for 3C and robust H2.
+    Do not tune H2 to fix the six unsupported historical labels.
 - **Regression and timing:** preserve 09/11, ordinary tracking, collision checks,
     and independently runnable frozen controllers. Any future active candidate
     must pass three development repetitions, five final rescue repetitions,
@@ -530,3 +675,7 @@ source hashes and test counts describe the original campaign snapshot.
 [rank6-detail]: ../../../runs/key_findings_reports/iteration6a/reports/figures/right_inner_upward_overhang_rank6_intervention.png
 
 [6a-recheck]: ../../../runs/key_findings_reports/iteration6a/classification_recheck/README.md
+[refresh]: ../../../runs/key_findings_reports/iteration6a/benchmark_results.md
+[refresh-report]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json
+[refresh-csv]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.csv
+[refresh-videos]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/key_video_index.html
