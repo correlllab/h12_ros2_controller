@@ -2,13 +2,26 @@
 
 ## 1. Purpose and Status
 
-This document is the implementation reference for the two active H2 controller
-variants:
+This document retains the frozen H2 mathematics and the **archived historical
+Croc-first robust H2** implementation reference. As of 2026-09-09, the existing
+robust runtime name instead selects a shared SciPy-primary nominal refactor
+**source-frozen for numerical/implementation validation with a physical
+limitation**. This is not unconditional physical nonregression or speed readiness.
+See [Iteration 6B preparation](counter_balance_iteration_6b_preparation.md) for
+the current source/API contract, completed gates, and evidence limits.
+
+Unless explicitly marked current, the Croc-first robust descriptions, source
+map, diagnostics, timing results, and verification requirements below refer to
+archived controller revision `9256ab6`, not the current robust implementation.
+The source/config archives and identity manifest are under benchmark-root
+`runs/key_findings_reports/iteration6b_preparation/nominal_refactor/provenance/`.
+
+Runtime identities are:
 
 | Benchmark controller ID | Runtime variant | Python class | Status |
 | --- | --- | --- | --- |
 | `counter_residual_h2_frozen` | `counter_residual_h2` | `CounterResidualH2Controller` | Frozen Iteration-5 controller. |
-| `counter_residual_h2_robust` | `counter_residual_h2_robust` | `CounterResidualH2RobustController` | Iteration-5E reliability improvement and current starting point. |
+| `counter_residual_h2_robust` | `counter_residual_h2_robust` | `CounterResidualH2RobustController` | Historical Croc-first behavior archived; current SciPy-primary source frozen with physical limitation. |
 
 The benchmark controller ID is an overlay name defined by the benchmark sweep
 configuration. The runtime variant selects a controller class. Therefore,
@@ -16,16 +29,35 @@ configuration. The runtime variant selects a controller class. Therefore,
 non-shadow configuration of `CounterResidualH2Controller`.
 
 Frozen H2 combines the frozen Iteration-3C nominal counter-arm planner with a
-small, delay-aware residual model-predictive controller. Robust H2 changes only
-how a rejected nominal solve is handled. It does not change the H2 model,
-residual objective, authority, confidence gates, safety path, or publication
-path.
+small, delay-aware residual model-predictive controller. Historical robust H2
+changes only how a rejected nominal solve is handled. It does not change the H2
+model, residual objective, authority, confidence gates, safety path, or
+publication path.
+
+Current robust H2 and new `counter_ddp_velocity_robust` share
+`ScipyNominalMixin` and `scipy_nominal_planner.py`: BVLS primary plus at most one
+TRF retry, each with `lsq_solver='exact'`, `tol=1e-10`, `max_iter=100`, exact
+fixed-coordinate elimination, and independent original-bound/objective/KKT
+checks (`5e-4`). Neither constructs a nominal OCP. Only the H2 variant loads H2
+models and constructs the residual Crocoddyl OCP. Legacy 3C behavior remains
+unchanged. The final manifest records `source_frozen=true`, 150 physical trials
+(132 main + 8 health + 10 outer-timing), 39,359 numerical problems, and 12,964
+first-repeat exact finalizer contexts. Current source archive
+`current_source.tar.gz` has SHA-256
+`9712a1dc1f6a3737e242301ae56c4b982099dfa00584212cb8cf6f281a460c8a` under the
+benchmark-root provenance directory above. Old source/config archives remain.
+
+**ALMI holds remain about 91.4% for both new paths versus 61.7% for old wide.**
+Source comparison and identical-input replay prove the collision/hold trap is
+inherited, but online entry probability remains unresolved. No objective,
+collision, or hold tuning was made. The scoped freeze does not authorize ALMI
+speed work; separate trajectory-bank preparation has not started.
 
 The controller runs at `50 Hz`, with `dt = 0.02 s`. It is policy-blind,
 checkpoint-blind, target-blind, and limited to real-compatible IMU, joint, and
 Pinocchio-derived measurements.
 
-## 2. Source Map
+## 2. Frozen and Historical Source Map
 
 | Responsibility | Source file |
 | --- | --- |
@@ -36,8 +68,8 @@ Pinocchio-derived measurements.
 | H2 dynamics, costs, derivatives, and Box-FDDP solve | `h12_ros2_controller/core/controller/counter_balance/counter_residual_h2_ocp.py` |
 | U5, R5, and N5 model definitions | `h12_ros2_controller/core/controller/counter_balance/residual_response_model.py` |
 | Frozen fitted model parameters | `h12_ros2_controller/core/controller/counter_balance/verified_response_parameters.py` |
-| Robust nominal fallback | `h12_ros2_controller/core/controller/counter_balance/counter_residual_h2_robust_controller.py` |
-| Nominal least-squares objective and SciPy fallback | `h12_ros2_controller/core/controller/counter_balance/objective.py` |
+| Historical robust nominal fallback at `9256ab6`, not current file behavior | `h12_ros2_controller/core/controller/counter_balance/counter_residual_h2_robust_controller.py` |
+| Shared nominal least-squares objective and historical SciPy fallback | `h12_ros2_controller/core/controller/counter_balance/objective.py` |
 | One-step nominal Crocoddyl OCP and acceptance test | `h12_ros2_controller/core/controller/counter_balance/counter_velocity_ocp.py` |
 
 The source-bound model report hashes are:
@@ -146,7 +178,7 @@ The nominal lower and upper velocity bounds are the intersection of:
 
 An empty interval raises `CounterVelocityBoundsError` and selects a counter hold.
 
-### 4.3 Primary Crocoddyl Solve
+### 4.3 Frozen and Historical Primary Crocoddyl Solve
 
 `CounterVelocityOCP` represents the four-joint least-squares problem as one
 running knot and a zero-cost terminal knot. Its implementation:
@@ -163,14 +195,14 @@ running knot and a zero-cost terminal knot. Its implementation:
 Box-FDDP convergence is diagnostic. The final acceptance decision is based on
 the polished command validity and KKT test.
 
-### 4.4 Frozen H2 Versus Robust H2
+### 4.4 Frozen H2 Versus Historical Robust H2
 
 Frozen H2 requires the primary nominal result to be accepted. A rejected result
 causes the shared controller to publish a counter hold without invoking H2.
 
-Robust H2 first runs this exact primary path. If the primary returns an accepted
-result, robust H2 returns that same `Frozen3CVelocitySolve` object and remains
-command-identical to frozen H2.
+Historical robust H2 first runs this exact primary path. If the primary returns
+an accepted result, historical robust H2 returns that same
+`Frozen3CVelocitySolve` object and remains command-identical to frozen H2.
 
 If the primary returns a result with `accepted = false`, robust H2 rebuilds the
 same normalized matrix and target and calls SciPy `lsq_linear` with the same
@@ -589,10 +621,16 @@ onto the nominal command:
 These labels describe joint-space command relation. They are diagnostics, not a
 separate state machine or proof of whole-body momentum direction.
 
-## 9. Robust H2 Difference
+## 9. Historical Robust H2 Difference
 
-`CounterResidualH2RobustController` inherits the complete frozen H2 class and
-overrides only `_isolated_velocity_solve()`.
+This section describes archived `9256ab6` only. Current robust H2 uses the
+SciPy-primary mixin described in Section 1 and the 6B preparation reference;
+the accepted-old-Croc result identity below is not its current API contract.
+
+At archived revision `9256ab6`, `CounterResidualH2RobustController` inherits
+the complete frozen H2 class and overrides the isolated nominal solve for
+fallback, with per-tick reset and diagnostic hooks. This is not the current
+SciPy-primary mixin implementation.
 
 ```text
 run primary one-step Crocoddyl nominal solve
@@ -622,7 +660,7 @@ Robust H2 intentionally does not add:
 - A second finalizer or publisher.
 - Additional FAME fall-rescue authority.
 
-## 10. Failure and Safety Behavior
+## 10. Frozen and Historical Failure Behavior
 
 | Condition | Published behavior |
 | --- | --- |
@@ -693,13 +731,16 @@ fields below:
 | Local models | `h2_u5_gain`, `h2_r5_gain` |
 | Action | `h2_residual`, `h2_pending_residual`, `h2_decision` |
 | Timing and optimizer | `h2_solve_time`, `h2_total_time`, `h2_iterations`, `h2_stopping_criterion`, `h2_seed_cost`, `h2_optimized_cost`, `h2_warm_started` |
-| Robust nominal path | `nominal_fallback_used`, `nominal_primary_accepted` |
+| Historical robust nominal path | `nominal_fallback_used`, `nominal_primary_accepted` |
 
 The nominal diagnostics separately expose Crocoddyl convergence, cost, solve
 time, iterations, stopping criterion, KKT violation, regularization, BoxQP
-polishing, and complete velocity-controller time.
+polishing, and complete velocity-controller time. In the current SciPy-primary
+runtime, `nominal_backend`, `nominal_retry_used`, and `nominal_status` identify
+the new path. `nominal_fallback_used` means a TRF retry was attempted, and
+`nominal_primary_accepted` refers to the first SciPy attempt, not Crocoddyl.
 
-## 13. Sweep Integration and Interpretation
+## 13. Historical Sweeps and Current Timing
 
 The arm reachability and hard-target sweeps replay identical saved 14-joint
 trajectories across controller variants. Controller overlays are merged into the
@@ -715,7 +756,7 @@ physical severity transition, followed by video and margin review. A rejected
 nominal solve that leaves a physically stable trajectory is still an operational
 controller failure and cannot be counted as a completed stable result.
 
-The checkpoint sweep established the distinction between the variants:
+The historical checkpoint sweep established the distinction between the variants:
 
 | Cell | Frozen H2 | Robust H2 |
 | --- | --- | --- |
@@ -726,14 +767,32 @@ The checkpoint sweep established the distinction between the variants:
 Across the nine robust checkpoint reliability runs, the complete-controller
 timing was `2.73/6.27/7.87/19.05 ms` at p50/p95/p99/max. The fallback activated
 on eight controller ticks, and every robust run completed operationally. This
-passes the `15 ms` p99 gate and the `20 ms` command period.
+met the reported historical timing thresholds; it does not certify the current
+refactor. Current validation uses complete-controller p99 `< 15 ms` for each
+run, with maxima and actual-published late samples retained. Main/health timing
+used an inner kernel including validation/retries/finalization but excluding
+outer resets. Main H2 maxima were `32.044 ms` (FAME) and `28.912 ms` (ALMI),
+each including one actual-published `>20 ms` sample. The ten separate outermost
+timing runs passed: new 3C worst per-run p99/max `5.546/7.098 ms`, new H2
+`8.305/9.594 ms`, with no `>15`/`>20 ms` samples. These are not end-to-end DDS
+latencies. A pooled p99 is not a per-run gate or a deadline guarantee.
 
-Robust H2 is promoted only as a reliability improvement. It preserves accepted
-frozen-H2 commands and the established FAME `09/11` rescue behavior. It does not
+Historical robust H2 was promoted only as a reliability improvement. It preserves
+accepted frozen-H2 commands and the established FAME `09/11` rescue behavior. It does not
 establish an additional rescue for FAME `06`, does not recover the left manual
 falls, and does not justify increasing residual authority.
 
-## 14. Verification Requirements
+## 14. Historical Verification Requirements
+
+The accepted-primary identity and fallback-only checks below describe archived
+Croc-first robust H2. For the current SciPy-primary acceptance, fixed-coordinate,
+shared-finalizer, and per-run timing gates, use the 6B preparation reference.
+The listed test commands are retained as historical instructions, not evidence
+that tests were executed for this documentation update. Final 6B
+`provenance/validation_tests.json` records 217 root, 38 evidence, and 90 focused
+controller passes, plus six evidence subtests and dependency warnings. Prior
+176 targeted passes are separate earlier evidence; baseline lint/smoke limits
+are not a universally passing submodule suite. See the 6B final report for scope.
 
 The focused submodule tests are:
 
@@ -779,5 +838,8 @@ remain in:
 - `counter_balance_almi_speed_sweep.md`.
 
 Those documents explain why the architecture and constants were selected. This
-document describes the resulting frozen runtime implementation and the exact
-difference introduced by robust H2.
+document retains the resulting frozen H2 implementation and the historical
+robust-H2 difference. The linked 6B preparation document is the current
+SciPy-primary nominal-refactor freeze reference. Its numerical/implementation
+gates are complete; the ALMI hold-entry probability and broader physical/speed
+readiness remain unresolved.

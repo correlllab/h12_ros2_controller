@@ -65,7 +65,7 @@ class CounterResidualH2Controller(CounterDDPVelocityController):
         except Exception as error:
             self.latest_h2_status = 'model_failure'
             self.latest_h2_error = f'{type(error).__name__}: {error}'
-            self.h2_ocp.reset()
+            self._reset_h2_solver()
             residual = np.zeros(4)
         finally:
             self.latest_h2_total_time = time.perf_counter() - started
@@ -98,7 +98,7 @@ class CounterResidualH2Controller(CounterDDPVelocityController):
         return super()._publish_counter_hold(*args, **kwargs)
 
     def _run_h2(self, context, nominal):
-        state = self.robot_model.state
+        state = self._control_observation_state()
         counter_dq = np.asarray(
             state.get('dq', np.zeros(27)), dtype=np.float64,
         )
@@ -239,6 +239,9 @@ class CounterResidualH2Controller(CounterDDPVelocityController):
         self._h2_previous_moving_momentum = np.copy(moving_momentum)
         self._h2_previous_nominal_momentum = np.copy(nominal_momentum)
         return result.residual if model_valid and result.accepted else np.zeros(4)
+
+    def _reset_h2_solver(self):
+        self.h2_ocp.reset()
 
     def _context_valid(self, counter_q, counter_dq, side, r5_context):
         u5 = self.h2_models.u5

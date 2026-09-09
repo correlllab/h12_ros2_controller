@@ -20,9 +20,12 @@ class CounterDDPVelocityController(CounterBalanceController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.velocity_ocp = CounterVelocityOCP(dt=self.dt)
+        self.velocity_ocp = self._create_velocity_ocp()
         self.latest_velocity_ocp_result = None
         self.latest_velocity_total_time = 0.0
+
+    def _create_velocity_ocp(self):
+        return CounterVelocityOCP(dt=self.dt)
 
     def control_configuration_step(
             self, moving_q_target_14, moving_dq_target_14,

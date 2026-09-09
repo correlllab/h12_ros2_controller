@@ -176,6 +176,7 @@ class CounterBalanceController(FrameController):
             raise ValueError('moving-arm command must be finite')
         try:
             self.update_robot_model()
+            self._capture_control_observation()
         except Exception:
             return self._publish_counter_hold(
                 motor_q,
@@ -667,7 +668,7 @@ class CounterBalanceController(FrameController):
         return q_indices, v_indices
 
     def _measured_motor_state(self):
-        state = self.robot_model.state
+        state = self._control_observation_state()
         q = np.asarray(state.get('q'), dtype=np.float64)
         dq = np.asarray(state.get('dq'), dtype=np.float64)
         fallback_q = np.asarray(self.low_cmd_handler.q_cmd, dtype=np.float64)
@@ -681,6 +682,12 @@ class CounterBalanceController(FrameController):
         q = np.where(np.isfinite(q), q, 0.0)
         dq = np.where(np.isfinite(dq), dq, 0.0)
         return np.copy(q), np.copy(dq)
+
+    def _capture_control_observation(self):
+        pass
+
+    def _control_observation_state(self):
+        return self.robot_model.state
 
     def _moving_sample(self, q_target, dq_target, measured_arm_q):
         arm_q = np.copy(measured_arm_q)
@@ -764,7 +771,7 @@ class CounterBalanceController(FrameController):
         )
 
     def _torso_gyro(self, torso_rotation):
-        state = self.robot_model.state
+        state = self._control_observation_state()
         sources = (state.get('imu_state'), self.robot_model)
         for source in sources:
             if source is None:
@@ -790,7 +797,7 @@ class CounterBalanceController(FrameController):
         return np.zeros(3, dtype=np.float64), False
 
     def _imu_tilt(self):
-        imu_state = self.robot_model.state.get('imu_state')
+        imu_state = self._control_observation_state().get('imu_state')
         quaternion = getattr(imu_state, 'quaternion', None)
         if quaternion is None:
             return np.zeros(2, dtype=np.float64)
