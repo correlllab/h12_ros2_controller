@@ -1,82 +1,46 @@
-from h12_ros2_controller.core.controller.counter_balance.counter_balance_controller import (
-    CounterBalanceController,
-)
-from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_controller import (
-    CounterDDPVelocityController,
+import numpy as np
+
+from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_robust_controller import (
+    ScipyNominalMixin,
 )
 from h12_ros2_controller.core.controller.counter_balance.counter_residual_h2_controller import (
     CounterResidualH2Controller,
 )
-from h12_ros2_controller.core.controller.counter_balance.frozen_3c_planner import (
-    Frozen3CVelocitySolve,
-)
 
 
-class CounterResidualH2RobustController(CounterResidualH2Controller):
-    '''Use SciPy nominal fallback only after rejected Crocoddyl output'''
+class CounterResidualH2RobustController(
+        ScipyNominalMixin, CounterResidualH2Controller):
+    '''Apply verified H2 residuals to the shared SciPy nominal plan'''
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.latest_nominal_fallback_used = False
-        self.latest_nominal_primary_result = None
-
-    def control_configuration_step(
-            self, moving_q_target_14, moving_dq_target_14,
-            balance_scale=1.0):
-        '''Run robust H2 while preserving accepted frozen-H2 behavior'''
-        self.latest_nominal_fallback_used = False
-        self.latest_nominal_primary_result = None
-        return super().control_configuration_step(
-            moving_q_target_14,
-            moving_dq_target_14,
-            balance_scale=balance_scale,
+    def _run_h2(self, context, nominal):
+        residual = np.asarray(super()._run_h2(context, nominal), dtype=np.float64)
+        lower = np.maximum(
+            -self.h2_trust_velocity,
+            nominal.lower - nominal.requested_counter_dq,
         )
+        upper = np.minimum(
+            self.h2_trust_velocity,
+            nominal.upper - nominal.requested_counter_dq,
+        )
+        if not self.latest_h2_accepted:
+            raise ValueError('H2 residual is rejected or invalid')
+        for value in (self.latest_h2_residual, residual):
+            value = np.asarray(value, dtype=np.float64)
+            if (
+                value.shape != (4,)
+                or not np.all(np.isfinite(value))
+                or np.any(value < lower)
+                or np.any(value > upper)
+                or value[2] != 0.0
+            ):
+                raise ValueError('H2 residual is rejected or invalid')
+        return residual
 
-    def _isolated_velocity_solve(
-            self, com_counter, momentum_counter, com_rhs, momentum_rhs,
-            posture_target, lower, upper, balance_scale):
-        primary = CounterDDPVelocityController._isolated_velocity_solve(
-            self,
-            com_counter,
-            momentum_counter,
-            com_rhs,
-            momentum_rhs,
-            posture_target,
-            lower,
-            upper,
-            balance_scale,
-        )
-        self.latest_nominal_primary_result = primary.diagnostics
-        if primary.accepted:
-            return primary
-        requested = CounterBalanceController._solve_bounded_velocity(
-            self,
-            com_counter,
-            momentum_counter,
-            com_rhs,
-            momentum_rhs,
-            posture_target,
-            lower,
-            upper,
-            balance_scale=balance_scale,
-        )
-        self.latest_nominal_fallback_used = True
-        return Frozen3CVelocitySolve(
-            requested_counter_dq=requested,
-            accepted=True,
-            diagnostics=primary.diagnostics,
-            objective_matrix=primary.objective_matrix,
-            objective_target=primary.objective_target,
-        )
-
-    def diagnostics(self):
-        '''Return H2 and nominal-fallback diagnostics'''
-        values = super().diagnostics()
-        values.update({
-            'nominal_fallback_used': bool(self.latest_nominal_fallback_used),
-            'nominal_primary_accepted': bool(
-                self.latest_nominal_primary_result is not None
-                and self.latest_nominal_primary_result.accepted
-            ),
-        })
-        return values
+    def _reset_h2_solver(self):
+        self.latest_h2_accepted = False
+        self.latest_h2_residual = np.zeros(4)
+        self.latest_h2_decision = 'abstain'
+        try:
+            super()._reset_h2_solver()
+        except Exception as error:
+            self.latest_h2_error += f'; reset {type(error).__name__}: {error}'

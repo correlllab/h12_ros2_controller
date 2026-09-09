@@ -8,6 +8,9 @@ from h12_ros2_controller.core.controller.counter_balance.counter_ddp_controller 
 from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_controller import (
     CounterDDPVelocityController,
 )
+from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_robust_controller import (
+    CounterDDPVelocityRobustController,
+)
 from h12_ros2_controller.core.controller.counter_balance.counter_adaptive_velocity_controller import (
     CounterAdaptiveVelocityController,
 )
@@ -32,6 +35,7 @@ __all__ = [
     'CounterBalanceController',
     'CounterDDPController',
     'CounterDDPVelocityController',
+    'CounterDDPVelocityRobustController',
     'CounterAdaptiveVelocityController',
     'CounterDecoupledVelocityController',
     'CounterResidualProbeController',
