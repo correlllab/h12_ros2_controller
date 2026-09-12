@@ -2,9 +2,9 @@
 
 ## Status
 
-Iteration 6B's straight-line speed study is **executed**: the full ten
-`directional` and ten `overhang` entries were swept at `1.0/0.8/0.5/0.4x` on both
-the ALMI and FAME policies, Frame versus frozen 3C-robust, and compared against the
+Iteration 6B's rebuilt-bank straight-line speed study is **executed**: the full ten
+`directional` and ten `overhang` entries were swept at `1.0/0.8/0.6/0.5/0.4/0.3x` on both
+the ALMI-Manip-v2 and FAME policies, Frame versus frozen 3C-robust, and compared against the
 existing `new_challenge` endpoint sweeps. The [protocol](counter_balance_iteration_6b.md)
 freezes controllers and defines this primary straight-line study and the
 still-queued endpoint-duration study.
@@ -18,11 +18,31 @@ a conservative bank-generation constant, not a runtime limit -- the runtime gate
 velocity and torque, not joint acceleration -- so speed exploration raises it as an
 explicit runtime override (`45` at `0.8x`, `100` at `0.5x`, `160 rad/s^2` at `0.4x`)
 while `6 rad/s` velocity stays the binding real limit and the immutable bank is
-untouched. Headline result: the counter-balance advantage over Frame emerges
-significantly with speed (paired `0.4x` vs `1.0x`, Wilcoxon `p=0.012`), and on the
-FAME challenge endpoints 3C gives 6 paired improvements and 0 regressions
-(`12 -> 7` falls). Endpoint speed evaluation remains queued behind an applicable
-moving-arm acceleration contract. Missing experiments are not null results.
+untouched.
+
+**Superseded timed-only headline (retained for comparison):** after rebuilding
+the banks -- FAME `overhang_forward` start-pose reworked (largely fixed; 2 marginal
+init cells remain, see below), and `directional` redesigned into extended-arm/
+natural-wrist straight lines -- the full `1.0/0.8/0.6/0.5/0.4/0.3x` grid was swept
+on both banks and policies (`97.9%` stable, `230/240` complete pairs). The counter-balance advantage
+grows monotonically with speed and is now a **significant absolute-level win at fast
+speed on both banks**: overhang fast-pooled `+1.62 mm`, Wilcoxon `p=0.003`;
+directional fast-pooled `+0.82 mm`, `p=0.040`. At true nominal (`1.0x`) 3C is
+net-negative (overhang `-2.13 mm`, `p=0.045`) -- the crossover as base disturbance
+grows with speed. The redesigned directional bank now reveals the advantage (the old
+near-body bank was flat, `p >= 0.22`). On the FAME challenge endpoints 3C also gives
+6 paired improvements and 0 regressions (`12 -> 7` falls). Endpoint speed evaluation
+remains queued behind an applicable moving-arm acceleration contract. Missing
+experiments are not null results.
+
+The [finalized spatial analysis](#finalized-spatial-analysis) below is the
+authoritative current-bank metric reduction and supersedes the timed-only ranking,
+the claim of monotonic improvement across the full speed grid, and the pooled-speed
+significance claims in the historical sections. Segment Spatial RMS and Uniform
+Spatial RMS are now the primary spatial-accuracy measures. Ideal / Timed RMS is
+retained unchanged as the temporal-plus-spatial task metric. No simulation, run
+repair, reclassification, trajectory redesign or threshold change was performed
+for this metric finalization.
 
 ## Evidence Index
 
@@ -31,10 +51,12 @@ one per policy/bank/speed, mirroring the nominal `frame_vs_3c` comparison sweeps
 The speed sweeps always cover the full ten `directional_traj` and ten
 `overhang_traj` entries for general coverage, never a favourable subset.
 
-- Straight-line trajectory sweeps (Frame vs 3C, full 20 each):
-    `*_iter6b_<bank>_traj10_frame_vs_3c_<policy>` (`1.0x`) and
-    `*_iter6b_speed{08,05,04}_<bank>_frame_vs_3c_<policy>` for `directional`/
-    `overhang` and `almi`/`fame`.
+- Straight-line trajectory sweeps (Frame vs 3C, full 20 each), rebuilt-bank grid:
+    `*_iter6b_speed{10,08,06,05,04,03}_<bank>_frame_vs_3c_<policy>` for
+    `directional`/`overhang` and `almi`/`fame` (`speed10` = `1.0x` nominal). These are
+    the canonical iter6b run set (dated `20260912`); the pre-rebuild overhang-only
+    campaign (old banks, dated `20260910/11`) was superseded and archived, npz-stripped,
+    to `runs/archive/traj_sweep_prerebuild_iter6b/`.
 - Challenge-group endpoint sweeps: `runs/challenge_sweep/*new_challenge40_frame_vs_3c_{almi,fame}`.
 - Visual inspection set: `runs/traj_sweep/iter6b_speed_visuals/` (three-view
     world-path overlay plots and side-by-side Frame|3C replay videos, with a
@@ -44,8 +66,9 @@ The speed sweeps always cover the full ten `directional_traj` and ten
     retained 3-repetition confirmation of the headline cell); tuning regression
     record `runs/challenge_sweep/tuning_regression/regression_results.json`.
 
-Ranking is by signed Frame-minus-3C timed world-position RMS (positive favours
-3C). The superseded quasi-static overhang-only campaign under the old
+Current spatial ranking uses signed Frame-minus-3C Segment Spatial RMS and Uniform
+Spatial RMS, with Ideal / Timed RMS alongside (positive favours 3C). Earlier sections
+ranked timed world-position RMS alone. The superseded quasi-static overhang-only campaign under the old
 `iteration6b/` tree, and the exploratory `iter6b_tuning*` sweeps, were removed;
 their conclusions are retained in this document.
 
@@ -54,6 +77,9 @@ rerun; original artifacts remain under `health_checks/initial_preflight/`. This
 was provenance repair, not a change to the checkpoint or physical experiment.
 
 ## Fresh Preflight Results
+
+Historical evidence begins here. These preflight and pre-rebuild results explain
+the campaign's development; they are not rows in the finalized current-bank tables.
 
 | Check | Directional | Overhang | Total |
 | --- | --- | --- | --- |
@@ -202,11 +228,33 @@ tilt-induced wrist swing, and regresses when the counter-arm's own reaction tilt
 the base more than it saves -- which is why the sign is geometry- and
 direction-dependent.
 
-### Fast-Speed Arm-Tracking Ceiling (Directional Bank, `0.5x`/`0.4x`)
+### Bank Rebuilds (6B bank rebuild)
 
-Visual inspection of `left_diagonal` and `left_forward_outward_high` at `0.5x`/`0.4x`
-showed the wrist bowing off the commanded line: the elbow lags, the shoulder swings
-first, then the elbow pitches down late. This was investigated as a possible joint
+Two bank changes preceded the clean grid above:
+
+- **Overhang `overhang_forward` fix.** On FAME the original entry started in an
+    abducted pose (`sh_roll ~1.4`) that toppled the robot during the readiness hold.
+    The direction was brought inward (`y 0.40 -> 0.30`) and only that left/right pair
+    regenerated (the other 18 overhang entries are byte-identical); FAME now stands
+    and executes it, giving a clean 10/10 overhang set.
+- **Directional redesign.** The old near-body bank (`cross_body`, `forward`,
+    `diagonal`, `forward_outward_high`, `upward_arc`) is retired to
+    `directional_traj_legacy`. The new `directional_traj` is five extended-arm,
+    shoulder-driven straight lines with the **wrist held at natural extension** (joint
+    positions near zero, global orientation free to follow the arm -- minimising
+    wrist-joint travel), `0.30 m` each, base durations unified to `1.5-1.73 s`. This
+    both keeps them feasible fast (no elbow saturation, see the ceiling section below,
+    which describes the *legacy* bank) and loads the base enough to expose 3C.
+- **Target-catalog cleanup.** `new_challenge.yaml -> challenge_targets.yaml`; the
+    per-scan `arm_*_targets.yaml` catalogs archived under `data/archive/`; a
+    deduplicated `challenge_targets_legacy.yaml` records the old challenge definition.
+
+### Fast-Speed Arm-Tracking Ceiling (Legacy Directional Bank, `0.5x`/`0.4x`)
+
+This section documents the *legacy* near-body directional bank and motivated the
+redesign above. Visual inspection of `left_diagonal` and `left_forward_outward_high`
+at `0.5x`/`0.4x` showed the wrist bowing off the commanded line: the elbow lags, the
+shoulder swings first, then the elbow pitches down late. This was investigated as a possible joint
 limit masking the controller comparison. It is **not** a relaxable limit -- it is the
 arm's own dynamic capability, and it is **identical for Frame and 3C**, so it adds a
 controller-independent artifact rather than hiding a 3C advantage.
@@ -263,80 +311,216 @@ gain `+2.81 mm`, about 12 percent) in
 world-path overlays for this cell, the largest ALMI gain, and the largest
 regression are in `iter6b_speed08_analysis/`.
 
-### Speed Progression (1.0x to 0.4x)
+### Speed Progression (1.0x to 0.3x) -- 6B Rebuilt Banks
 
-Because `0.8x` does not separate the controllers, the study time-scales the same
-frozen geometry faster: `0.5x` (envelope `100 rad/s^2`) and `0.4x` (envelope
-`160 rad/s^2`), always the full 20 entries on both policies, with velocity staying
-under the real `6 rad/s` limit (`~4.9 rad/s` at `0.4x`). All 160 fast trials stood;
-no falls. The counter-balance advantage emerges monotonically with speed:
+The banks were rebuilt before this clean sweep (see *Bank Rebuilds*, above): the
+`overhang` bank now stands cleanly on both policies at all 10 targets (the FAME
+`overhang_forward` start-pose failure was fixed), and `directional` was redesigned
+from near-body reaches into **extended-arm, shoulder-driven straight lines at natural
+wrist extension** (`outward_horizontal`, `front_to_back`, `diagonal_outward_up`,
+`push_sideway_forward`, `push_forward_up`; all `0.30 m`, `1.5-1.73 s` base). The
+full `1.0/0.8/0.6/0.5/0.4/0.3x` grid was then swept on both banks and both policies
+-- 24 sweeps, 480 trials, **470 stable / 8 infrastructure / 2 init** (`97.9%`
+stable; `230/240` complete Frame-vs-3C pairs), with swap free and no orphaned
+processes (the process-group teardown fix held). Every run produced `sim.npz` (no
+hard crashes); the 8 `infrastructure` trials are scattered 3C DDP deadline
+singletons (window truncated, execution-window metrics still valid), not the
+swap-thrash contamination of the earlier v2 attempt. The 2 remaining `init` cells
+are both `left_overhang_forward` under FAME (`1.0x` 3C, `0.6x` Frame): that
+forward+overhead start pose sits at FAME's **standing-stability boundary** and the
+robot tips during the pre-trajectory standing phase (base collapses to tilt `~pi`
+at `t~19.7 s` -- an active fall, not a timeout), reliably across three retries, so
+those two cells have `n=9`. The same pose stands fine under FAME at `0.8/0.4x` and
+under ALMI everywhere; it is a marginal-pose physical limit, not an infrastructure
+defect.
 
-| Speed | ALMI gain | ALMI win | FAME gain | FAME win |
-| --- | --- | --- | --- | --- |
-| `1.0x` | -1.15 | 10/20 | -0.08 | 10/19 |
-| `0.8x` | -0.42 | 10/20 | -0.13 | 9/19 |
-| `0.5x` | +0.49 | 10/20 | +1.11 | 9/19 |
-| `0.4x` | +0.84 | 13/20 | +0.95 | 11/19 |
+Frame-minus-3C timed world RMS (mm); positive favours 3C. Pooled over both policies:
 
-Frame-minus-3C timed world RMS (mm); positive favours 3C. Both controllers' errors
-grow with speed (Frame vibrates more), and 3C moves from slightly worse at nominal
-to better at `0.4x`, where the win rate first exceeds `50%`.
+| Speed | overhang gain (win) | directional gain (win) |
+| --- | --- | --- |
+| `1.0x` | -2.13 (6/17) | -0.50 (9/19) |
+| `0.8x` | +0.07 (10/19) | -0.48 (9/19) |
+| `0.5x` | +0.75 (12/19) | +0.55 (9/19) |
+| `0.4x` | **+2.55 (12/18)** | **+1.07 (14/20)** |
+
+The advantage grows **monotonically with speed on both banks**. At true nominal
+(`1.0x`) 3C is net-negative -- significantly so on overhang (`-2.13`, `p=0.045`):
+when the base is barely disturbed, the counter-arm's own hold activity adds error.
+As speed rises the base disturbance grows and 3C crosses over, reaching its widest
+lead at `0.4x`.
 
 ### Statistics
 
-Frame versus 3C is paired per trajectory, so the `~2 mm` between-trajectory spread
-is a nuisance removed by paired tests (pooled ALMI+FAME, `n=39`):
+**Historical, superseded inference:** the pooled-speed tests below reuse the same
+trajectory at different speeds without a justified independent sampling unit.
+They are not accepted significance evidence for the finalized spatial comparison.
+The new report keeps policy, bank, trajectory, speed and attempt explicit and
+reports descriptive paired means and win counts without a new significance test.
 
-- **Speed effect** (paired `gain@0.4x - gain@1.0x`): mean `+1.53`, `25/39`,
-    t `p=0.018`, Wilcoxon `p=0.012` -- **significant**. Speeding up reliably shifts
-    the balance to 3C.
-- **Level at `0.4x`** (is 3C better outright): mean `+0.90`, `24/39` (`62%`),
-    t `p=0.055`, Wilcoxon `p=0.088` -- borderline, best of any speed, not yet
-    `< 0.05`.
+Frame versus 3C is paired per trajectory; the between-trajectory spread is removed
+by a one-sample Wilcoxon on the paired gains. The defensible headline is the
+**absolute-level win at fast speed, now significant on both banks**:
 
-The defensible claim is the significant speed effect, not an absolute per-speed
-win. The level is limited by the left/right bimodality (3C helps roughly half the
-geometries and hurts the other half) and by FAME plateauing near `0.4x` (torque
-saturation at `156 rad/s^2`); directional entries hit the `6 rad/s` velocity limit
-near `~0.33x`, so there is little room faster on the full 20.
+- **Overhang, fast pooled** (`0.5x`+`0.4x`, both policies, `n=37`): mean `+1.62 mm`,
+    `24/37`, Wilcoxon **`p=0.003`** -- significant; both policies positive.
+- **Directional, fast pooled** (`n=39`): mean `+0.82 mm`, `23/39`, Wilcoxon
+    **`p=0.040`** -- significant.
+- **Per-speed pooled level**: overhang `0.4x` `+2.55`, `p=0.018`; directional `0.4x`
+    `+1.07`, `p=0.036`. The `1.0x` overhang cell is significantly *negative*
+    (`p=0.045`), which is the crossover story, not noise.
 
-### The Absolute Win Is Concentrated in the Overhang (Raised-Arm) Bank
+Both banks retain a left/right and policy bimodality (e.g. directional `0.4x` is
+ALMI `+2.15`, `9/10`, `p=0.01` but FAME `~0`), so per-cell results vary; the pooled
+fast tests are the robust claim.
 
-Splitting the timed-RMS gain by bank sharpens the level result. The full-20 pool
-mixes two mechanisms: `overhang_traj` raises the arm (a small pelvis tilt swings the
-wrist far, so base stability dominates), while `directional_traj` keeps the arm near
-the body (the base is barely disturbed, and at `0.4x`/`0.5x` the wrist error is
-dominated by the elbow arm-tracking ceiling, not the base). They separate cleanly
-(Frame-minus-3C timed world RMS, mm; positive favours 3C):
+### The Directional Redesign Now Reveals the Advantage (Both Banks Positive)
 
-| Bank | `0.8x` | `0.5x` | `0.4x` |
-| --- | --- | --- | --- |
-| `overhang` (both policies) | -0.35 (9/18) | +1.53 (10/19) | +1.69 (13/19) |
-| `directional` (both policies) | -0.37 (8/19) | +0.15 (9/19) | +0.08 (10/19) |
+This is the key change from the earlier 6B result. The *old* directional bank was
+flat and non-significant at every speed (`p >= 0.22`) because near-body reaches
+barely disturb the base and their large elbow excursions saturated the arm-tracking
+ceiling. The rebuilt directional bank -- extended arm, wrist at natural extension,
+shoulder-driven -- both stays feasible fast (no elbow saturation) and actually
+loads the base, so it now shows a **significant fast-speed 3C win** (`p=0.040`)
+alongside overhang. Overhang remains the stronger showcase, but the advantage is no
+longer overhang-only.
 
-The entire speed-driven advantage lives in the overhang bank; directional is flat and
-non-significant at every speed (Wilcoxon `p >= 0.22`). Restricting the level test to
-the overhang bank at fast speed (`0.5x` and `0.4x` pooled, both policies, `n=38`)
-gives mean `+1.61 mm`, `23/38`, one-sample **Wilcoxon `p=0.022` -- significant**, with
-both policies positive (ALMI `+1.29`, FAME `+1.97`). Per single fast speed the
-overhang bank is borderline (`0.4x` `p=0.104`, `n=19`); the significance needs the
-two fast speeds pooled.
+Strongest individual 3C wins (timed world RMS, mm):
 
-The strongest clean-tracking individual cells (arm fidelity `87-100%`, so the wrist
-path is faithfully executed and the error is genuinely the base term):
+| Policy | Speed | Bank | Target | Frame | 3C | gain |
+| --- | --- | --- | --- | --- | --- | --- |
+| FAME | `0.4x` | overhang | `right_overhang_upward` | 39.0 | 29.6 | **+9.39** (24%) |
+| ALMI | `0.4x` | overhang | `right_overhang_sideways` | 48.6 | 39.8 | +8.79 |
+| ALMI | `0.4x` | overhang | `left_overhang_sideways` | 54.1 | 46.6 | +7.59 |
+| FAME | `0.8x` | overhang | `right_overhang_forward` | 21.4 | 14.0 | +7.37 |
+| ALMI | `0.5x` | directional | `right_push_sideway_forward` | 42.3 | 35.9 | +6.37 |
+| ALMI | `0.4x` | directional | `left_push_sideway_forward` | 55.4 | 50.4 | +4.99 |
 
-| Policy | Speed | Target | Frame | 3C | gain |
-| --- | --- | --- | --- | --- | --- |
-| FAME | `0.4x` | `right_overhang_upward` | 38.8 | 29.3 | **+9.53** (25%) |
-| FAME | `0.4x` | `right_overhang_sideways` | 48.8 | 41.1 | +7.72 |
-| FAME | `0.5x` | `right_overhang_sideways` | 39.4 | 32.9 | +6.56 |
-| ALMI | `0.4x` | `right_overhang_sideways` | 48.4 | 41.8 | +6.54 |
-| ALMI | `0.5x` | `right_overhang_sideways` | 38.2 | 32.5 | +5.72 |
+Overhang `sideways`/`upward` dominate, but the redesigned directional
+`push_sideway_forward` now contributes real wins -- confirming the redesign worked.
 
-The takeaway: the fast straight-line showcase for 3C is the **overhang bank**, not
-directional. `right_overhang_sideways` and `right_overhang_upward` are the clearest
-undisturbed-reach cells (this is the same `right_overhang_sideways` that is the
-`0.8x` headline case above, and its lead widens with speed).
+### Base-Isolated Metric (What 3C Actually Controls)
+
+This historical decomposition remains a mechanism diagnostic, not the primary
+spatial path reference. The finalized metrics use the desired segment registered
+from the original stable-standing capture, never the base-fixed executed path.
+Identical commanded joints do not guarantee identical measured arm tracking;
+the diagnostic must not be treated as exact cancellation of all servo error.
+
+`timed_position_rms` is dominated by the arm's own PD/gain tracking error, which is
+**common to both controllers** (they command the identical arm path), so the 3C gain
+reads as a small `2-7%` of the total. To isolate the part 3C can change, decompose the
+measured wrist:
+
+```
+world_wrist = frozen_pelvis_fk (arm-only, pelvis held at the stable capture)
+            + base-induced displacement (world - frozen_pelvis_fk)
+```
+
+`frozen_pelvis_fk` uses the trial's actual measured arm joints with the pelvis frozen,
+so `|world - frozen_pelvis_fk|` is purely the pelvis motion's effect on the wrist --
+the only thing counter-balancing acts on. Everything below is measured over the
+**trajectory-execution window only** (line start to line start + execution duration;
+**not** the 10 s hold, which is the separate `hold_position_rms` where 3C's counter-arm
+settling costs it). Reported **separately per policy** because the two emphasise
+opposite parts of the one base disturbance (FAME trades tilt down / translation up;
+ALMI cuts translation) -- see "How to read these tables" below. Cells are
+`Frame->3C (%↓)`, positive % favours 3C:
+
+- **Ideal RMS** (`timed_position_rms`): measured wrist vs the *ideal* planned straight
+    line. The task metric; contains arm-tracking error (common to both) plus base effect.
+- **Execution RMS** (`|world - frozen_pelvis_fk|`): measured wrist vs the *base-fixed
+    executed* arm path -- i.e. deviation from what the arm actually achieves with the
+    pelvis held still. This isolates the base-induced error, the part 3C controls. (Read
+    it as "deviation from the base-fixed execution reference", not "total execution error".)
+- **max tilt** = peak pelvis tilt; **pelvis drift** = peak pelvis translation.
+
+#### FAME -- 3C reduces pelvis tilt (trades some translation)
+
+| Bank | Speed | Ideal RMS (F->3C) | win | Execution RMS | max tilt (deg) | pelvis drift |
+| --- | --- | --- | --- | --- | --- | --- |
+| overhang | 1.0x | 15.7->17.7 (-13%) | 3/9 | 10.5->12.7 (-21%) | 2.82->2.76 (+2%) | 15.6->19.4 (-25%) |
+| overhang | 0.8x | 17.4->16.9 (+3%) | 4/9 | 8.8->9.2 (-4%) | 2.52->2.36 (+6%) | 14.2->17.0 (-20%) |
+| overhang | 0.6x | 21.9->20.9 (+4%) | 5/9 | 6.8->7.3 (-9%) | 2.24->2.17 (+3%) | 11.1->14.1 (-26%) |
+| overhang | 0.5x | 25.9->25.2 (+3%) | 7/10 | 5.1->5.2 (-2%) | 2.24->2.16 (+3%) | 9.5->11.3 (-19%) |
+| overhang | 0.4x | 34.4->31.3 (**+9%**) | 5/8 | 5.6->5.0 (+11%) | 2.16->2.12 (+2%) | 8.6->10.0 (-16%) |
+| overhang | 0.3x | 45.1->43.5 (+4%) | 6/10 | 3.6->3.9 (-9%) | 2.25->2.05 (+9%) | 5.6->6.6 (-19%) |
+| directional | 1.0x | 20.2->21.1 (-4%) | 5/10 | 10.9->11.2 (-2%) | 2.77->2.59 (+6%) | 16.1->15.2 (+5%) |
+| directional | 0.8x | 21.8->22.7 (-4%) | 3/10 | 8.7->9.4 (-7%) | 2.66->2.35 (**+12%**) | 14.1->13.3 (+6%) |
+| directional | 0.6x | 28.8->29.4 (-2%) | 4/10 | 7.6->8.5 (-11%) | 2.46->2.17 (**+12%**) | 11.6->11.6 (+1%) |
+| directional | 0.5x | 35.8->35.7 (+0%) | 4/9 | 7.0->6.9 (+1%) | 2.37->2.03 (**+14%**) | 9.7->9.9 (-2%) |
+| directional | 0.4x | 47.4->47.4 (-0%) | 5/10 | 7.5->7.9 (-5%) | 2.18->2.01 (+8%) | 8.4->9.2 (-9%) |
+| directional | 0.3x | 66.0->65.8 (+0%) | 4/10 | 8.4->7.2 (+14%) | 2.05->1.94 (+5%) | 6.8->7.1 (-4%) |
+
+FAME 3C **reduces peak pelvis tilt at every speed** (`+5-14%`), most strongly on
+directional, but **adds pelvis translation drift** (overhang `-16..-26%`). Execution
+RMS is the net of the two so it reads mixed. Because tilt is what swings a
+raised/extended arm off the line, the tilt reduction is what carries FAME's Ideal
+RMS gain (clearest on fast overhang, `+9%`). This is the same mechanism as the FAME
+challenge-group fall-prevention.
+
+#### ALMI -- 3C reduces base motion (translation-dominated)
+
+| Bank | Speed | Ideal RMS (F->3C) | win | Execution RMS | max tilt (deg) | pelvis drift |
+| --- | --- | --- | --- | --- | --- | --- |
+| overhang | 1.0x | 15.1->17.3 (-15%) | 3/8 | 8.4->9.9 (-18%) | 1.46->1.57 (-8%) | 10.0->11.6 (-17%) |
+| overhang | 0.8x | 19.2->19.5 (-1%) | 6/10 | 7.4->8.2 (-11%) | 1.36->1.41 (-4%) | 8.7->9.8 (-12%) |
+| overhang | 0.6x | 24.4->23.3 (+5%) | 7/9 | 6.7->6.7 (-1%) | 1.19->1.24 (-4%) | 7.4->7.9 (-7%) |
+| overhang | 0.5x | 27.8->27.0 (+3%) | 5/9 | 6.6->6.8 (-3%) | 1.12->1.16 (-4%) | 7.4->7.2 (+3%) |
+| overhang | 0.4x | 36.0->34.0 (**+6%**) | 7/10 | 6.7->5.6 (+16%) | 1.08->1.08 (-0%) | 7.2->6.0 (+16%) |
+| overhang | 0.3x | 45.6->43.9 (+4%) | 7/9 | 7.0->6.2 (+11%) | 1.06->1.13 (-6%) | 7.3->6.4 (+12%) |
+| directional | 1.0x | 18.1->18.2 (-0%) | 4/9 | 10.9->12.4 (-14%) | 1.21->1.20 (+0%) | 12.8->14.2 (-10%) |
+| directional | 0.8x | 22.7->22.6 (+0%) | 6/9 | 9.2->10.5 (-14%) | 1.14->1.14 (-1%) | 10.9->12.7 (-16%) |
+| directional | 0.6x | 30.4->29.4 (+3%) | 5/10 | 7.7->7.8 (-1%) | 1.16->1.15 (+0%) | 8.5->9.1 (-7%) |
+| directional | 0.5x | 37.6->36.6 (+3%) | 5/10 | 8.0->7.0 (+13%) | 1.19->1.16 (+3%) | 7.9->7.9 (-0%) |
+| directional | 0.4x | 50.3->48.1 (**+4%**) | 9/10 | 9.2->7.1 (**+23%**) | 1.25->1.16 (+7%) | 7.7->6.8 (+11%) |
+| directional | 0.3x | 69.1->67.6 (+2%) | 7/10 | 11.1->8.3 (**+25%**) | 1.33->1.21 (+9%) | 8.0->6.2 (+23%) |
+
+ALMI's tilt is small (`~1.1-1.5 deg`) and roughly neutral; ALMI 3C's benefit is
+**cutting Execution RMS / pelvis drift at fast speed** (crossover: worse below `0.6x`,
+`+15-25%` better at `0.4x`/`0.3x`).
+
+**How to read these tables:**
+
+- **One base disturbance, two coupled parts.** The robot is a floating-base humanoid
+    (the pelvis is a free joint, `qpos[0:7]`); it stands on foot contact and never steps,
+    but the pelvis body itself does move in world. There is a *single* SE3 base
+    disturbance -- the pelvis deviating from its captured pose `(R0, p0)` -- with a
+    **rotational part** (tilt = `norm(roll, pitch)` of the pelvis quaternion, yaw
+    excluded) and a **translational part** (`pelvis_world_position`, i.e. MuJoCo
+    `data.xpos[pelvis]`, the pelvis-origin translation, measured directly -- not derived
+    from tilt). Both are logged independently.
+- **Tilt and translation are coupled, not identical.** Because the base pivots roughly
+    about the feet, most pelvis translation is tilt re-expressed through a lever:
+    empirically `corr(horiz drift, tilt) ~ 0.6-0.9` on fast overhang. But the coupling
+    is not a rigid single pivot -- the *effective* pivot sits only `~0.2-0.4 m` below the
+    pelvis (a pure ankle pivot ~0.9 m would give `~2x` more horizontal drift than
+    observed), and there is genuine `6-12 mm` vertical drift and `~0.5-0.9 deg` yaw, both
+    invisible to `tilt`. So translation carries real information beyond tilt: it is the
+    ankle+hip balancing strategy and foot compliance, not tilt alone.
+- **The two are independently controllable -- that is why we split the policies.** FAME
+    3C *reduces tilt* (`+5-14%`) while *increasing* translation (overhang `-16..-26%`);
+    if tilt and translation were one rigid rotation you could not push them in opposite
+    directions, so FAME is genuinely trading tilt for a more hip/translation strategy.
+    ALMI 3C instead leaves tilt flat and cuts translation. FAME attacks the rotational
+    part; ALMI attacks the translational part. (Pooling the policies -- an earlier
+    version of this section -- averaged the two opposing trades and made Execution RMS
+    look flat.) These are two emphases of one controller on one disturbance, not two
+    separate physical mechanisms.
+- **Execution RMS lumps both parts (no double-count).** Execution RMS
+    (`|world - frozen_pelvis_fk|`) decomposes exactly as `(p(t) - p0)` (pelvis
+    translation) `+ (R(t) - R0) . r_arm` (tilt+yaw through the arm lever), so it is the
+    *total* base-induced wrist error. `pelvis drift` is the translation term only (no arm
+    lever); `max tilt` is the rotation magnitude only. 3C can therefore cut tilt while
+    Execution RMS worsens (FAME `0.6-0.8x`) -- it traded tilt for translation, not a
+    contradiction.
+- **Window matters.** Over the full line+hold window 3C's base motion is larger
+    (counter-arm settling) -- the real, separate `hold_position_rms` cost below.
+- **Magnitude != task gain.** Execution RMS is a vector deviation; its magnitude does
+    not map 1:1 to line error. On overhang a small tilt reduction swings the long
+    raised-arm lever far *perpendicular* to the line, coupling into Ideal RMS at ~2.8x
+    vs ~1.2x on directional -- which is why overhang leads the task metric even where
+    directional shows a larger raw Execution RMS %. Headline Ideal RMS
+    (`timed_position_rms`, the task metric); use these as the mechanism diagnostic.
 
 ### Accuracy Metrics
 
@@ -467,6 +651,42 @@ regression-guarded controller-tuning study; and three-view overlays plus
 side-by-side replay videos under `runs/traj_sweep/iter6b_speed_visuals/`.
 
 Still open:
+
+**Active priorities (queued 2026-09-12, do the metric first, before any fix):**
+
+- **[METRIC COMPLETE] Spatial metric finalization.** The complete current-bank
+    reduction is in [Finalized Spatial Analysis](#finalized-spatial-analysis).
+    Segment Spatial RMS is sample/dwell weighted, not timing-invariant. Uniform
+    Spatial RMS removes that weighting by resampling chronological measured arc
+    length. Both retain the original fixed desired segment and are accompanied by
+    Ideal / Timed RMS, completion, endpoint, progress, path length and outcome.
+    No base-fixed executed-path substitution or run repair was performed.
+- **[OVERHANG RETUNE] Re-explore the `left_overhang_forward` target so the overhang
+    group is fully executable.** That forward+overhead reach sits at FAME's
+    standing-stability boundary: the robot reliably tips during the *pre-trajectory
+    standing phase* (base collapses to tilt `~pi` at `t~19.7 s`, an active fall not a
+    timeout), reproduced across three retries, leaving 2 init cells at `n=9` (`1.0x` 3C,
+    `0.6x` Frame). The earlier start-pose rework helped but did not fully stabilise it.
+    Re-run a targeted reachability/standing exploration for this one target (start-pose
+    CoM offset, arm pre-load, or a slightly less forward endpoint) to find a pose that
+    stands on FAME at all speeds without disturbing the other 9 overhang entries or
+    changing the immutable bank semantics.
+- **[INFRA FIX, DEFERRED] The 8 latest-attempt `infrastructure` trials are a 3C real-time-jitter artifact, not
+    crashes -- recover them.** All 8 are the `counter_ddp_velocity_robust` (3C) variant
+    (7 ALMI, 1 FAME). In every case the trajectory line executed fully
+    (`line_complete=True`) and `sim.npz` holds the complete, gap-free (5 ms) line+10 s
+    hold; several actually *pass* on the real metrics (e.g. `left_overhang_inner_forward`
+    `1.0x`: timed 12.9 mm, hold 9.9 mm, endpoint 10.6 mm -- all inside tol). They are
+    flagged only because `window_complete=False`: the online evaluator saw a `>50 ms` gap
+    in the *live command/record stream* (a DDP compute spike / DDS delivery hiccup on the
+    heavier 3C controller) that the regular physics clock never contains. No data is lost.
+    Offline physics metrics have now been recovered without changing those flags.
+    There are nine infrastructure attempts when the superseded attempt before a
+    successful retry is retained. Physics coverage alone does not certify live
+    command continuity, so the prior proposal to automatically reclassify from
+    `sim.npz` is not an accepted repair. Investigation of timing/coverage and any
+    proposed runtime change belongs to a separately authorized task; the 50 ms
+    gate and all recorded classifications remain unchanged.
 
 - **Matched endpoint speed-up on ALMI** (and FAME): ALMI stands so stably that the
     saved-line and nominal-endpoint tasks barely disturb it, so a duration-scaled
