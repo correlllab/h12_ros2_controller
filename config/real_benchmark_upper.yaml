@@ -1,5 +1,5 @@
 # operator approval of the mechanical model, interface and DDS domain is required
-# network values are placeholders, not approval to use a robot bus
+# network matches the real robot bus: domain 0 on enx00e04c681314
 # standard upper relay must preserve lower joints and handle the global envelope
 mode: debug
 
@@ -8,8 +8,8 @@ topics:
   low_state: rt/lowstate
 
 network:
-  domain_id: 1
-  interface: ''
+  domain_id: 0
+  interface: 'enx00e04c681314'
 
 controller:
   v_lim: 1.0
