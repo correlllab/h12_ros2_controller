@@ -2,9 +2,10 @@
 
 ## Status And Question
 
-Iteration 6C is a new experiment. Stage 1 is in progress; no faster discovery
-motion is authorized until the endpoint execution contract passes. Iteration 6B
-remains closed and its spatial result is not reinterpreted.
+Iteration 6C is **COMPLETE**: 640 discovery runs, 516 fresh confirmation runs and
+16 additional headline runs, for 1,172 unique new simulations. The 160 nominal
+observations are historical context, not new repetitions. Iteration 6B remains
+closed and its spatial result is not reinterpreted.
 
 **Does frozen robust 3C expand the manipulation-speed stability envelope relative
 to Frame?** Physical classification is primary, not trajectory RMS optimization.
@@ -223,13 +224,58 @@ both improvements and meaningful regressions.
 
 ## Artifacts And Completion Rule
 
-Use benchmark-root `runs/challenge_sweep/iteration6c/` with `preflight/`,
-`discovery/`, `confirmation/`, `reports/`, `videos/` and `health_checks/`. Maintain
-an artifact index and resumable progress JSON with source/config/target/checkpoint
-hashes, run identities, exclusions, health and exact commands. Do not mutate or
-copy nominal evidence unnecessarily; link verified baseline records in place.
+The completed physical sweeps use shallow roots under `runs/challenge_sweep/`:
+`20260912_iter6c_initial_discovery`, `20260912_iter6c_discovery_analysis_v2`,
+`20260913_iter6c_speed_discovery_frame_vs_3c`, `iter6c_repetitions/confirmation`,
+and `20260913_iter6c_headline_repetitions`. Each follows the regular sweep layout
+with configs, runs, summaries, results and `plots/index.html`. Reports describe
+their own raw run set, not cumulative carried records. There are no compatibility
+symlinks or active continuation directories.
+
+The [central artifact index](../../../runs/key_findings_reports/iteration6c/README.md)
+contains combined reports, preflight and existing video links. Health checks are
+recorded in the stage ledgers. Historical nominal roots remain separate; no
+recorded outcomes are changed by layout cleanup.
 
 Final outputs are per-duration classifications, paired transitions, all 40 targets'
 non-fall/stable speed envelopes, and policy-separated conclusions. A genuine
 executability/safety blocker stops launch and remains explicit; unperformed
 experiments are not null results or evidence for a paper claim.
+
+## Completed Confirmation And Result
+
+The post-discovery focused set contains 86 comparison cells and three fresh,
+rotated paired repetitions each: 516 runs. It retains every observed signed
+disagreement, adjacent class-boundary endpoint, existing near-threshold candidate
+and the genuine runtime-health ambiguity. The broader candidate pool is retained
+as metadata, but purely sampled-publication uncertainty does not itself require
+rerunning physically unambiguous cases. Selection was fixed before repetitions.
+
+| Policy | Selected Paired Repetitions | Improvements | Regressions | Unchanged |
+| --- | ---: | ---: | ---: | ---: |
+| FAME | 189 | 81 | 1 | 107 |
+| ALMI-Manip-v2 | 69 | 13 | 11 | 45 |
+
+The signed headline rule chose two improvements and two regressions before
+additional repetitions four and five. Each result repeats in all five pairs:
+
+| Policy | Target | T (s) | Frame -> 3C |
+| --- | --- | --- | --- |
+| FAME | `left_extended_up_rear_03` | 1.5 | Fall -> stable |
+| FAME | `left_fast_fall_search_09_scale_78` | 0.6 | Fall -> stable |
+| ALMI-Manip-v2 | `right_extended_down_rear_03` | 0.6 | Stable -> drift |
+| ALMI-Manip-v2 | `right_extended_horizontal_rear_03` | 0.6 | Stable -> drift |
+
+The result supports policy-specific FAME robustness, not generally increasing
+benefit with speed across both policies. ALMI has no observed nonfall separation
+through gamma=2.5 and has repeatable fastest-duration stability regressions.
+Commanded gamma is not certified physical speed: saturation, actual motion and
+delivery qualifications remain visible. The [final analysis](counter_balance_analysis_iteration_6c.md)
+contains the complete duration and per-target tables and confirmation boundaries.
+
+Existing paired videos were generated only after confirmation, from recorded
+states without new controller execution. Their first-repetition selection,
+fixed-camera release alignment, mixed cases and end-of-recording labels remain
+preserved. No video was rerendered during report/layout repair. No H2 evaluation,
+controller tuning, target redesign, payload change or selected-policy change was
+performed, and no new iteration is started by this completion.
