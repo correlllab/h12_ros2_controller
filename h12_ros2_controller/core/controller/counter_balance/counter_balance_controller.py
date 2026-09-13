@@ -39,6 +39,9 @@ class CounterBalanceController(FrameController):
         self._load_reactive_config(
             resolved_config.get('reactive_counter_balance', {})
         )
+        # the inherited staged startup publishes before the overlay exists
+        self.arm_ids = list(LEFT_ARM_INDEX) + list(RIGHT_ARM_INDEX)
+        self.moving_arm = None
         super().__init__(
             urdf_path=urdf_path,
             urdf_sphere_path=urdf_sphere_path,
@@ -49,9 +52,7 @@ class CounterBalanceController(FrameController):
             config=resolved_config,
         )
 
-        self.arm_ids = list(LEFT_ARM_INDEX) + list(RIGHT_ARM_INDEX)
         self.motor_q_indices, self.motor_v_indices = self._body_indices()
-        self.moving_arm = None
         self.counter_arm = None
         self.moving_ids = []
         self.counter_arm_ids = []
@@ -406,6 +407,9 @@ class CounterBalanceController(FrameController):
 
     def _publish_position_command(self, q, dq, tau):
         '''Route inherited frame tracking through the counter-arm overlay'''
+        if self.moving_arm is None:
+            # staged startup and torso motion predate arm ownership
+            return super()._publish_position_command(q, dq, tau)
         q = np.asarray(q, dtype=np.float64)
         dq = np.asarray(dq, dtype=np.float64)
         self.control_configuration_step(

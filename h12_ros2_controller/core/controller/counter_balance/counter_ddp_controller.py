@@ -431,6 +431,9 @@ class CounterDDPController(CounterBalanceController):
 
     def _publish_position_command(self, q, dq, tau):
         '''Route inherited frame control without changing moving-arm semantics'''
+        if self.moving_arm is None:
+            # staged startup and torso motion predate the horizon settings
+            return super()._publish_position_command(q, dq, tau)
         q = np.asarray(q, dtype=np.float64)
         dq = np.asarray(dq, dtype=np.float64)
         tau = np.asarray(tau, dtype=np.float64)
