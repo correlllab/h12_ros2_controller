@@ -196,12 +196,16 @@ def test_plan_between_named_configs_smoke():
         path_mod.SRDF_MAGPIE_SPHERE_PATH,
     )
 
+    # named configs are pruned over time; keep only the ones still defined
     candidate_names = [
-        'home',
-        'arms_front_45',
-        'arms_asym',
-        't_pose_elbow',
-        'elbow_only',
+        name for name in (
+            'home',
+            'arms_front_45',
+            'arms_asym',
+            't_pose_elbow',
+            'elbow_only',
+        )
+        if name in config_mod.NAMED_CONFIGS
     ]
     valid_pairs = []
     for start_name in candidate_names:
