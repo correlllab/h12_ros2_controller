@@ -11,6 +11,10 @@ to Frame? The result is policy-specific:
 
 - **FAME:** repeatable nonfall protection and observed speed-boundary improvements
     on important targets. The benefit does not grow monotonically with speed.
+- **Reproduction:** 26 of the 39 changed discovery cells reproduce their signed
+    transition in all three fresh paired repetitions, and 35 of 39 in at least
+    two. Thirteen cells are not 3/3 consistent, so no global all-changes-reproduce
+    claim is made. See the three-repetition reproduction audit below.
 - **ALMI-Manip-v2:** no observed nonfall separation through gamma=2.5, and confirmed
     fastest-duration stable-to-drift regressions. A general increasing advantage
     with speed is not supported.
@@ -206,11 +210,151 @@ estimate of 1.0. Nonmonotonic stable outcomes remain explicit. The confirmation
 subset does not retest every duration of every target; the boundary CSV states
 the actual common tested durations for each repetition.
 
+## Three-Repetition Reproduction Audit
+
+Every baseline-versus-3C outcome change reported in the Full Discovery Results
+table was matched against its three fresh paired confirmation repetitions. This
+audit covers all changed cells, not only the headline cases.
+
+The changed set is 39 policy/target/duration cells: 30 FAME and 9 ALMI-Manip-v2.
+That is exactly the improvement and regression counts of the discovery table,
+historical nominal rows included. All 39 fall inside the 86-comparison
+confirmation set, and each has exactly three paired repetitions; none is missing
+or partially covered. The audit reads the 516 per-repetition confirmation records
+and their `summary.json` physical outcomes directly, one comparison at a time. It
+does not infer agreement from the improving/regressing totals above. Re-deriving
+the fall flag independently from each `summary.json` agrees with the recorded
+per-run classification in 516/516 runs.
+
+A repetition **reproduces** a cell when its signed class transition has the same
+sign as the discovery transition: an improvement stays an improvement, a
+regression stays a regression. Exact class-pair agreement is stricter and is
+reported separately. Classes are abbreviated S/D/F for stable/drift/fall.
+
+| Audit Result | Cells |
+| --- | ---: |
+| Changed discovery cells audited | 39 |
+| Cells with three located paired repetitions | 39 |
+| Reproduced in **3/3** repetitions | 26 |
+| Exact class pair in 3/3 repetitions | 25 |
+| Reproduced in at least 2/3 repetitions | 35 |
+| Not 3/3 consistent | 13 |
+
+**The global 3/3 claim is therefore not supported and is not made.** Thirteen of
+the 39 changed cells do not reproduce their discovery transition in all three
+paired repetitions.
+
+| Policy | Target | T (s) | Discovery | Rep 1 | Rep 2 | Rep 3 | Reproduced |
+| --- | --- | ---: | --- | --- | --- | --- | --- |
+| FAME | `left_arm_overhead` | 1.5 | D->S | D->S | D->D | D->S | 2/3 |
+| FAME | `left_cross_body_rank6` | 0.6 | D->S | D->S | D->S | D->S | **3/3** |
+| FAME | `left_extended_horizontal_rear_04` | 1.5 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `left_extended_horizontal_rear_04` | 1.25 | F->D | F->D | F->D | F->F | 2/3 |
+| FAME | `left_extended_up_rear_03` | 1.5 | F->S | F->S | F->S | F->S | **3/3** |
+| FAME | `left_extended_up_rear_03` | 1.25 | F->D | F->D | F->S | F->D | **3/3** |
+| FAME | `left_extended_up_rear_03` | 1 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `left_extended_up_rear_03` | 0.8 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `left_extended_up_rear_03` | 0.6 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `left_fast_fall_search_04_scale_76` | 0.6 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `left_fast_fall_search_09_scale_78` | 1 | D->S | D->S | D->S | D->S | **3/3** |
+| FAME | `left_fast_fall_search_09_scale_78` | 0.6 | F->S | F->S | F->S | F->S | **3/3** |
+| FAME | `left_fast_fall_search_11_scale_78` | 1.25 | D->S | S->S | S->D | S->S | 0/3 |
+| FAME | `left_fast_fall_search_11_scale_78` | 0.6 | D->S | D->S | D->S | D->S | **3/3** |
+| FAME | `right_diagonal_rank6` | 0.8 | D->S | D->S | S->S | D->S | 2/3 |
+| FAME | `right_diagonal_rank6` | 0.6 | D->S | D->S | D->S | D->S | **3/3** |
+| FAME | `right_extended_up_rear_03` | 1.5 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_04_scale_76` | 1.25 | F->D | D->D | D->D | D->D | 0/3 |
+| FAME | `right_fast_fall_search_04_scale_76` | 1 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_04_scale_76` | 0.8 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_04_scale_76` | 0.6 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_09_scale_78` | 1.5 | F->D | D->D | F->D | F->D | 2/3 |
+| FAME | `right_fast_fall_search_09_scale_78` | 1.25 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_09_scale_78` | 1 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_09_scale_78` | 0.8 | F->D | F->D | F->F | F->D | 2/3 |
+| FAME | `right_fast_fall_search_11_scale_78` | 1.5 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_11_scale_78` | 1.25 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_11_scale_78` | 1 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_fast_fall_search_11_scale_78` | 0.8 | F->D | F->D | F->D | F->D | **3/3** |
+| FAME | `right_forward_outward_high_rank6` | 0.6 | F->D | F->D | F->D | F->D | **3/3** |
+| ALMI | `left_forward_outward_high_rank6` | 1.25 | S->D | S->S | S->S | S->S | 0/3 |
+| ALMI | `right_extended_down_rear_03` | 1 | D->S | D->D | D->S | D->S | 2/3 |
+| ALMI | `right_extended_down_rear_03` | 0.8 | D->S | D->S | D->S | D->S | **3/3** |
+| ALMI | `right_extended_horizontal_rear_03` | 1.5 | D->S | D->S | D->D | D->D | 1/3 |
+| ALMI | `right_extended_horizontal_rear_03` | 1.25 | D->S | D->S | D->S | D->S | **3/3** |
+| ALMI | `right_extended_horizontal_rear_03` | 1 | D->S | D->S | D->S | D->D | 2/3 |
+| ALMI | `right_extended_horizontal_rear_03` | 0.8 | D->S | D->S | S->S | D->S | 2/3 |
+| ALMI | `right_extended_horizontal_rear_03` | 0.6 | S->D | S->D | S->D | S->D | **3/3** |
+| ALMI | `right_extended_horizontal_rear_04` | 1.25 | S->D | S->S | S->D | S->D | 2/3 |
+
+### Exceptions
+
+These thirteen cells are listed rather than averaged away. `Frame differs` and
+`3C differs` count the repetitions whose class on that side differs from the
+discovery record, which identifies whether the baseline or the counter-balance
+side moved.
+
+| Policy | Target | T (s) | Discovery | Agreement | Frame differs | 3C differs |
+| --- | --- | ---: | --- | ---: | ---: | ---: |
+| FAME | `left_fast_fall_search_11_scale_78` | 1.25 | D->S | 0/3 | 3 | 1 |
+| FAME | `right_fast_fall_search_04_scale_76` | 1.25 | F->D | 0/3 | 3 | 0 |
+| ALMI | `left_forward_outward_high_rank6` | 1.25 | S->D | 0/3 | 0 | 3 |
+| ALMI | `right_extended_horizontal_rear_03` | 1.5 | D->S | 1/3 | 0 | 2 |
+| FAME | `left_arm_overhead` | 1.5 | D->S | 2/3 | 0 | 1 |
+| FAME | `left_extended_horizontal_rear_04` | 1.25 | F->D | 2/3 | 0 | 1 |
+| FAME | `right_diagonal_rank6` | 0.8 | D->S | 2/3 | 1 | 0 |
+| FAME | `right_fast_fall_search_09_scale_78` | 0.8 | F->D | 2/3 | 0 | 1 |
+| FAME | `right_fast_fall_search_09_scale_78` | 1.5 | F->D | 2/3 | 1 | 0 |
+| ALMI | `right_extended_down_rear_03` | 1.0 | D->S | 2/3 | 0 | 1 |
+| ALMI | `right_extended_horizontal_rear_03` | 0.8 | D->S | 2/3 | 1 | 0 |
+| ALMI | `right_extended_horizontal_rear_03` | 1.0 | D->S | 2/3 | 0 | 1 |
+| ALMI | `right_extended_horizontal_rear_04` | 1.25 | S->D | 2/3 | 0 | 1 |
+
+Three cells reproduce in no repetition, all at T=1.25. In two of them the Frame
+baseline itself reclassified, so the discovery transition had no room to appear.
+FAME `right_fast_fall_search_04_scale_76` has a non-falling Frame run in all three
+repetitions, the same boundary correction already recorded above as a Frame
+maximum of gamma 1.2 rather than the discovery estimate of 1.0; its 3C side drifts
+in all three, matching discovery. FAME `left_fast_fall_search_11_scale_78` has a
+stable Frame run in all three, and its 3C side is stable twice and drifts once, so
+that cell also contains one repetition in which 3C is the worse of the pair. The
+third, ALMI `left_forward_outward_high_rank6`, is the opposite case: the discovery
+`stable->drift` regression does not appear at all, with both controllers stable in
+3/3, consistent with the nonmonotonic `2.5RN` marker in the ALMI envelope table.
+
+Nine of the remaining ten exceptions differ in exactly one of their three
+repetitions, each on one side only and by one observed class step; no stumbles
+occurred, so fall and drift are adjacent here. The fastest tested duration is the
+most reproducible: every changed cell at T=0.6 reproduces in 3/3, while the
+exceptions concentrate at T=0.8 and slower (3 at 0.8, 2 at 1.0, 5 at 1.25,
+3 at 1.5). This does not rescue a general monotonic speed claim. It means the
+near-nominal boundary cells are the noisy ones, and both policies contribute
+exceptions (7 FAME, 6 ALMI).
+
+The audit consumes only existing artifacts. The changed-cell list is
+[`discovery_signed_transitions.csv`](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv),
+cross-checked against the 400 rows of
+[`discovery_pairs.csv`](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
+The repetition outcomes come from the per-run rows and `summary.json` files of the
+canonical confirmation root
+`runs/challenge_sweep/iter6c_repetitions/confirmation`, which
+[`provenance.json`](../../../runs/key_findings_reports/iteration6c/reports/final/provenance.json)
+records as the confirmation stage root. No simulation was run, no classification
+threshold was changed, and no physical label or runtime flag was rewritten for
+this audit.
+
 ## Five-Repetition Cases
 
 The signed headline rule selected two improvements and two regressions before
 fresh repetitions four and five. Existing confirmation repetitions are reused
-in this five-pair summary, not counted as new simulations.
+in this five-pair summary, not counted as new simulations. These four cases are
+additional depth on selected cells; the three-repetition audit above does not
+rest on them, and their 5/5 agreement is not evidence about the other 35 changed
+cells. Two of them, FAME `left_extended_up_rear_03` at T=1.5 and FAME
+`left_fast_fall_search_09_scale_78` at T=0.6, are also 3/3 in that audit. The
+ALMI `right_extended_down_rear_03` T=0.6 case is a repetition-stage finding:
+discovery recorded `drift->drift` at that duration, so the cell is not one of the
+39 changed discovery cells, and its `stable->drift` regression rests on the
+repetition runs alone.
 
 | Policy | Target | T (s) | Frame -> 3C | Agreement |
 | --- | --- | --- | --- | --- |
@@ -299,6 +443,10 @@ Reproduce with `python -m h12_zmp_benchmark.experiment.iteration6c_base_motion`.
 - One discovery and one confirmation run retain a solver-failure flag and false
     controller-completion flag despite raw physical stability. No physical label
     or runtime flag is rewritten to favor a result.
+- Thirteen of the 39 changed discovery cells do not reproduce their signed
+    transition in all three paired repetitions. Discovery class labels at a single
+    boundary cell are therefore not by themselves repeatable evidence, and the
+    audit's per-cell table should be consulted before a cell is cited.
 - Nominal runs are compatible historical context, not fresh confirmation.
 - Reported envelopes are maxima over finite tested samples, with censoring and
     nonmonotonic outcomes. There is no continuous or hardware-safety certificate.
@@ -333,6 +481,7 @@ are labeled separately and do not inflate the primary discovery report.
 - [Discovery pairs](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
 - [All target envelopes](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_envelopes.csv).
 - [Confirmed boundaries](../../../runs/key_findings_reports/iteration6c/reports/final/confirmation_boundaries.csv).
+- [Changed discovery cells](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv), the 39 cells audited against three repetitions.
 - [Headline cases](../../../runs/key_findings_reports/iteration6c/reports/final/headline_cells.csv).
 - [Preserved paired videos and plots](../../../runs/key_findings_reports/iteration6c/videos/README.md).
 
@@ -342,6 +491,15 @@ the first fresh repetition, fixed-camera release alignment and visible
 end-of-recording labels, not favorable-error selection or new physics.
 
 ## Final Conclusions
+
+All 39 baseline-versus-3C outcome changes in the discovery sweep were audited
+against three fresh paired repetitions each. Twenty-six reproduce the same signed
+transition in 3/3 trials and 35 in at least 2/3, but thirteen are not 3/3
+consistent, so the claim that all observed baseline--counter-balance outcome
+changes were reproduced consistently across three paired repetitions is **not**
+supported and is not made. Every changed cell at the fastest tested duration
+T=0.6 does reproduce in 3/3; the exceptions sit at T=0.8 and slower and include
+both policies.
 
 FAME has repeatable policy-specific protection and observed nonfall boundary
 shifts. ALMI has no observed nonfall separation and clear fastest-duration
