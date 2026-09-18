@@ -1,5 +1,5 @@
 # operator approval of the mechanical model, interface and DDS domain is required
-# network matches the real robot bus: domain 0 on enx00e04c681314
+# network matches the real robot bus: domain 0 on eno1
 # standard upper relay must preserve lower joints and handle the global envelope
 mode: debug
 
@@ -9,7 +9,7 @@ topics:
 
 network:
   domain_id: 0
-  interface: 'enx00e04c681314'
+  interface: 'eno1'
 
 controller:
   v_lim: 1.0
