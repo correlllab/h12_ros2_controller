@@ -125,10 +125,11 @@ coverage rather than residual authority.
 
 ## Merged Full Artifacts
 
-The repaired complete result artifacts are:
+The repaired complete result artifacts have approved numerical destinations
+under the [2026-09-24 archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24):
 
-- `runs/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_2/`.
-- `runs/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_3/`.
+- `runs/archive/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_2/`.
+- `runs/archive/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_3/`.
 
 Each artifact contains the complete 44-target Frame/frozen-H2 matrix and actual
 robust-H2 repair rows, a source-run manifest, regenerated balance/tracking plots,

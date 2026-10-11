@@ -224,26 +224,28 @@ diagnostic, not an online-policy counterfactual or authorization to expand trust
 
 ## Artifact Locations
 
-Original diagnostic evidence stays under `runs/key_findings_reports/iteration6a/`, grouped
+The approved numerical archive destination is
+`runs/archive/key_findings_reports/iteration6a/`, grouped
 into `characterization/`, `confirmation/`, `expansion/`, and
 `classification_recheck/`. Each timestamped
-sweep retains its manifest, `configs/sweep.yaml`, classifications, full JSONL
-controller traces, simulation replay arrays, and logs. The standard sweep CLI
-is the entry point; the one-time 6A runner has been retired.
+sweep retains its manifest, `configs/sweep.yaml`, classifications, CSV tables,
+and metadata. The 2026-09-24 profile retires NPZ, JSONL, videos, HTML, images,
+and logs; historical CSV rows are frozen and cannot be reclassified without
+raw telemetry. Publication is pending safety validation; see the
+[bounded archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24).
 
-Broad refresh sweeps live in `runs/full_sweep/` and `runs/challenge_sweep/`,
+Broad refresh numerical destinations are `runs/archive/full_sweep/` and
+`runs/challenge_sweep/legacy/`,
 not under `key_findings_reports/`. Within `iteration6a/`, the refresh index is
-`benchmark_results.md`, reports are in `reports/benchmark/`, and videos are in
-`videos/`. Refresh repetitions live directly in `focused_repetitions/`, named
+`benchmark_results.md` and numerical reports are in `reports/benchmark/`.
+Refresh repetitions live directly in `focused_repetitions/`, named
 `<timestamp>_iter6a_<policy>_<screen_rN/confirm_rN>`; health checks live directly
 in `health/`, named `<timestamp>_iter6a_<policy>_check`.
 
-Original cross-run results and figures live in `reports/`; source hashes and relocation
-provenance live in `reports/provenance/`. Videos use each sweep's
-`videos/<controller>/` directory. The current collection is
-`classification_recheck/videos/index.html`; the obsolete four-drift/one-fall
-collection was removed while preserving canonical recordings in their runs.
-See the [artifact index][6a-evidence] for paths and diagnostic commands.
+Original cross-run numerical results live in `reports/`; source hashes and
+relocation provenance live in `reports/provenance/`. Visual galleries and raw
+recordings are not retained by this profile. See the [artifact index][6a-evidence]
+for historical methods and retained metadata, not runnable raw-data reductions.
 `reports/classification_audit.json` audits all 116 saved trial windows;
 `historical_repeated_summary.json` retains the old labels and signal reductions
 without presenting them as current 06 reliability conclusions.
@@ -268,6 +270,6 @@ coverage and collision-feasible momentum timing into 6B/6C, as specified in the
 analysis. Do not extend confidence, residual authority, horizon, or lifecycle
 based on the rejected diagnostics.
 
-[6a-evidence]: ../../../runs/key_findings_reports/iteration6a/README.md
-[refresh]: ../../../runs/key_findings_reports/iteration6a/benchmark_results.md
-[refresh-report]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json
+[6a-evidence]: ../../../runs/archive/key_findings_reports/iteration6a/README.md
+[refresh]: ../../../runs/archive/key_findings_reports/iteration6a/benchmark_results.md
+[refresh-report]: ../../../runs/archive/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json

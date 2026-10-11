@@ -18,15 +18,20 @@ preregistered comparison panel, and promotion gates.
 ## Finalized Refresh Results
 
 The [refresh index][refresh] is the current broad evidence source, backed by
-the [final campaign JSON][refresh-report], [target-level CSV][refresh-csv],
-and [key-video index][refresh-videos]. It replaces deprecated broad-root
+the [final campaign JSON][refresh-report] and [target-level CSV][refresh-csv].
+It replaces deprecated broad-root
 numbers rather than layering historical broad tables. No controller,
 policy, geometry, gain, residual authority, or lifecycle tuning was performed.
 
-Broad refresh runs live in the dedicated `runs/full_sweep/` and
-`runs/challenge_sweep/` directories. Under `runs/key_findings_reports/iteration6a/`,
-`benchmark_results.md` indexes them; `reports/benchmark/` and `videos/` hold
-refresh reports and videos. Refresh repetitions and health checks live directly
+The approved broad refresh numerical destinations are `runs/archive/full_sweep/`
+and `runs/challenge_sweep/legacy/`. Under
+`runs/archive/key_findings_reports/iteration6a/`, `benchmark_results.md` indexes
+them and `reports/benchmark/` retains numerical reports. Publication is pending
+safety validation under the
+[2026-09-24 policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24).
+NPZ, JSONL, videos, HTML, images, and logs are retired; CSV and metadata remain
+as independent regular files without filesystem links. Historical CSV rows are
+frozen, not reclassifiable or replayable. Refresh repetitions and health checks live directly
 in `focused_repetitions/` and `health/`, separate from the unchanged original
 `characterization/`, `classification_recheck/`, `confirmation/`, and `expansion/`.
 
@@ -645,18 +650,14 @@ ad-hoc tuning of the mature H2 architecture.
 
 ## Reproducibility and Validation
 
-The local [artifact index][6a-evidence] lists all sweep
-directories, exact rerun commands, diagnostics, and exclusions. Representative
-[rank-6 traces][rank6-traces]
-and [manual-plus traces][manual-traces]
-show commands, realized momentum, torso response, model decisions, and timing.
-The [rank-6 intervention detail][rank6-detail] enlarges the early phase;
-prediction curves include only model-valid, pitch-confident samples.
-Full numerical timelines and repeated statistics are under
-the owning trials' `counter_response.npz` files and the evidence group's
-`reports/`; illustrative first runs do not replace repeats. One-time scripts
-and duplicate reductions have been retired. Reusable reduction and plotting
-commands are documented in the benchmark's counter-response diagnostic guide.
+The local [artifact index][6a-evidence] documents sweep directories, original
+commands, diagnostics, and exclusions. The [retained numerical reports][6a-reports]
+preserve reduced statistics and metadata; illustrative first runs do not replace
+repeats. The approved numerical profile retires representative rank-6/manual-plus
+figures, intervention-detail images, and the owning trials' `counter_response.npz`
+timelines. Historical methods and source locators do not imply those raw artifacts
+remain available. Reusable reduction and plotting commands require new or separately
+retained raw evidence, not these frozen numerical capsules.
 
 The source-preservation audit verifies all 28 initial controller/model and
 target hashes unchanged, plus residual/mask constraints and all 504 matched
@@ -669,13 +670,10 @@ was changed. The subsequent soft fall-evaluation threshold changed to 0.50 rad;
 source hashes and test counts describe the original campaign snapshot.
 
 [mujoco-api]: https://github.com/google-deepmind/mujoco/blob/main/doc/APIreference/functions.rst
-[6a-evidence]: ../../../runs/key_findings_reports/iteration6a/README.md
-[rank6-traces]: ../../../runs/key_findings_reports/iteration6a/reports/figures/right_inner_upward_overhang_rank6.png
-[manual-traces]: ../../../runs/key_findings_reports/iteration6a/reports/figures/left_manual_grasp_pitch_plus.png
-[rank6-detail]: ../../../runs/key_findings_reports/iteration6a/reports/figures/right_inner_upward_overhang_rank6_intervention.png
+[6a-evidence]: ../../../runs/archive/key_findings_reports/iteration6a/README.md
+[6a-reports]: ../../../runs/archive/key_findings_reports/iteration6a/reports/
 
-[6a-recheck]: ../../../runs/key_findings_reports/iteration6a/classification_recheck/README.md
-[refresh]: ../../../runs/key_findings_reports/iteration6a/benchmark_results.md
-[refresh-report]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json
-[refresh-csv]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.csv
-[refresh-videos]: ../../../runs/key_findings_reports/iteration6a/reports/benchmark/campaign/key_video_index.html
+[6a-recheck]: ../../../runs/archive/key_findings_reports/iteration6a/classification_recheck/README.md
+[refresh]: ../../../runs/archive/key_findings_reports/iteration6a/benchmark_results.md
+[refresh-report]: ../../../runs/archive/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.json
+[refresh-csv]: ../../../runs/archive/key_findings_reports/iteration6a/reports/benchmark/campaign/campaign_summary.csv
