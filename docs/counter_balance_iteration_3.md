@@ -65,20 +65,21 @@ Controller documents:
   distinction between arm momentum and momentum rate, finite-stroke limits,
   braking, and lower-policy interaction.
 
-Decision-grade benchmark artifacts:
+Decision-grade benchmark numerical destinations (full-sweep publication pending
+under the [2026-09-24 archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)):
 
 - FAME full panel:
-  `runs/full_sweep/20260823_172208_fame_magpie_fast_full_reachability_momentum_wide`.
+  `runs/archive/full_sweep/20260823_172208_fame_magpie_fast_full_reachability_momentum_wide`.
 - ALMI full panel:
-  `runs/full_sweep/20260825_164531_almi_magpie_fast_full_reachability_momentum_wide`.
+  `runs/archive/full_sweep/20260825_164531_almi_magpie_fast_full_reachability_momentum_wide`.
 - FAME confirmed boundary panel:
-  `runs/challenge_sweep/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
+  `runs/challenge_sweep/legacy/20260821_141252_fame_magpie_fast_boundary_targets_confirmed`.
 - FAME confirmed hard panel:
-  `runs/challenge_sweep/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
+  `runs/challenge_sweep/legacy/20260821_145537_fame_magpie_fast_hard_targets_confirmed_final`.
 - FAME confirmed exploration panel:
-  `runs/challenge_sweep/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
+  `runs/challenge_sweep/legacy/20260821_151104_fame_magpie_fast_exploration_confirmed_final`.
 - ALMI matched hard groups:
-  `runs/challenge_sweep/20260825_155330_almi_magpie_fast_hard_groups_momentum_wide`.
+  `runs/challenge_sweep/legacy/20260825_155330_almi_magpie_fast_hard_groups_momentum_wide`.
 
 ### Latest Outcome Summary
 

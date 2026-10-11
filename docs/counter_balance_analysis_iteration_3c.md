@@ -152,7 +152,9 @@ new matched comparison.
 
 Artifact:
 
-`runs/full_sweep/20260901_053845_iter3c_boxqp_fame_full`.
+`runs/archive/full_sweep/20260901_053845_iter3c_boxqp_fame_full`
+(approved numerical destination; see the
+[archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)).
 
 | Stable | Drift | Stumble | Fall | Survived |
 |---:|---:|---:|---:|---:|
@@ -165,7 +167,8 @@ the same survival count with one additional stable case.
 
 Artifact:
 
-`runs/full_sweep/20260901_061348_iter3c_boxqp_almi_full`.
+`runs/archive/full_sweep/20260901_061348_iter3c_boxqp_almi_full`
+(approved numerical destination under the same policy).
 
 | Stable | Drift | Stumble | Fall | Survived |
 |---:|---:|---:|---:|---:|

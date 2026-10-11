@@ -690,8 +690,11 @@ speed sweeps, overlay/video inspection, and pooled-speed tests. It is retained o
 as concise methodological history and archive provenance. The pre-rebuild 20260910/11
 campaign is under `runs/archive/traj_sweep_prerebuild_iter6b/`; it contains useful
 negative and regression evidence but no longer contributes to final aggregates.
-The pre-rebuild analysis/visual capsules are moved under
+The pre-rebuild references are under
 `runs/archive/traj_sweep_prerebuild_iter6b/references/` with an explicit cleanup
-manifest. Old claims of general fast-speed spatial
+manifest. The [approved numerical profile](../../../docs/archive.md#approved-numerical-archive-2026-09-24)
+preserves their CSV and metadata while retiring raw telemetry and visual
+artifacts; it does not touch the 24 current trajectory roots.
+Old claims of general fast-speed spatial
 improvement, H2 selection uncertainty, solved timing-gate blockers, debugging
 narratives, and proposals to collect runs merely to reach `p < 0.05` are superseded.

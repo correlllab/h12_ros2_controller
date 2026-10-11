@@ -77,7 +77,9 @@ evidence status. The final tables are derived from this inventory before pairing
     `runs/challenge_sweep/`, retained without modification.
 - Superseded scientific evidence: the pre-rebuild 20260910/11 overhang campaign,
     already under `runs/archive/traj_sweep_prerebuild_iter6b/`, and the archived
-    pre-rebuild analysis/visual capsules listed in the closeout manifest.
+    pre-rebuild references listed in the historical closeout manifest. The
+    [approved numerical profile](../../../docs/archive.md#approved-numerical-archive-2026-09-24)
+    retains their CSV and metadata, not raw telemetry or visual artifacts.
 - Historical negative/regression evidence: retained in the pre-rebuild archive and
     its manifests. It is not deleted merely because it does not favor 3C.
 
