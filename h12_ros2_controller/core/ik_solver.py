@@ -202,10 +202,13 @@ class IKSolver:
         frame_id = self.robot_model.model.getFrameId(frame_name)
         return frame_id < len(self.robot_model.model.frames)
 
-    def update_configurations(self):
-        '''Update Pink configurations with current robot state'''
-        self.configuration.update(self.robot_model.state['q'])
-        self.configuration_reduced.update(self.robot_model.state_reduced['q'])
+    def update_configurations(self, q=None):
+        '''Update Pink configurations with q (motor-only, 27; default: measured state)'''
+        if q is None:
+            q = self.robot_model.state['q']
+        q = np.asarray(q, dtype=float)
+        self.configuration.update(q)
+        self.configuration_reduced.update(q[self.robot_model.reduced_mask])
 
     def set_from_configuration(self):
         '''Set initial targets for all tasks from current configuration'''

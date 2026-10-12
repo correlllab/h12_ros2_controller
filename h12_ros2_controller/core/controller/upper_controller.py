@@ -17,6 +17,17 @@ from h12_ros2_controller.utility.joint_definition import (
     UPPER_BODY_INDEX,
 )
 
+# Max per-joint gap [rad] between the last commanded and the measured arm
+# position for a new move to start from the command. A larger gap means the arm
+# is blocked or was pushed, so the move restarts from the measured position and
+# drops the held torque bias, releasing the force instead of continuing it.
+COMMAND_SEED_MAX_GAP = 0.1
+# Time constant [s] over which the steady-state torque bias fades once a new
+# move starts commanding positions. Carrying it over keeps the arm from sagging
+# at the start of a move; fading it hands the load back to gravity
+# compensation as the arm leaves the pose the bias was integrated for.
+TAU_BIAS_FADE_SEC = 1.0
+
 class UpperController:
     def __init__(self,
                  urdf_path: str,
@@ -38,6 +49,10 @@ class UpperController:
         # global multiplier on commanded arm speed (1.0 = full speed); set
         # below 1.0 (e.g. 0.25 for slow mode) to move the arms more slowly
         self.speed_scale = 1.0
+        # steady-state I-control torque bias [Nm, motor order]; integrated
+        # while holding, faded by _apply_joint_position while moving
+        self._tau_bias = np.zeros(self.robot_model.model_body.nv)
+        self._tau_bias_decay = float(np.exp(-self.dt / TAU_BIAS_FADE_SEC))
         self.d_min = float(controller_cfg.get('d_min', 0.02))
         self.torso_target = float(controller_cfg.get('torso_target', 0.0))
         self.visualize = visualize
@@ -266,8 +281,29 @@ class UpperController:
         # every arm frame by a constant ~15 mm that IK can never converge away
         self.robot_model.rebuild_reduced_model()
         self.ik_solver.rebuild_reduced()
-        # update IK solver with the latest robot configuration
-        self.ik_solver.update_configurations()
+        # start IK from the last command, not the measured state: the arm sits
+        # below its command (gravity, PD lag), and restarting from the measured
+        # position would step the command down and drop the arm
+        q_seed, from_command = self._command_seed()
+        if not from_command:
+            self._tau_bias[:] = 0.0
+        self.ik_solver.update_configurations(q_seed)
+
+    def _command_seed(self):
+        '''
+        Return (q, from_command): the motor-order configuration a new move
+        starts from. Enabled joints take the last commanded position when it
+        is within COMMAND_SEED_MAX_GAP of the measured position on every
+        enabled joint; otherwise the whole seed is the measured state.
+        '''
+        q_seed = np.copy(self.robot_model.state['q'])
+        q_cmd = self.low_cmd_handler.q_cmd
+        ids = self.enabled_ids
+        gap = np.max(np.abs(q_cmd[ids] - q_seed[ids]))
+        if not np.isfinite(gap) or gap > COMMAND_SEED_MAX_GAP:
+            return q_seed, False
+        q_seed[ids] = q_cmd[ids]
+        return q_seed, True
 
     def _as_reduced_path(self, path):
         # normalize path input and enforce reduced-model waypoint shape
@@ -308,9 +344,9 @@ class UpperController:
         )
 
     def plan_to_configuration(self, q_reduced, start=None, active_mask=None):
-        '''Plan from current reduced state to a reduced joint target'''
+        '''Plan from the move's start configuration to a reduced joint target'''
         if start is None:
-            start = self.robot_model.state_reduced['q']
+            start = self._command_seed()[0][self.robot_model.reduced_mask]
         q_reduced = np.asarray(q_reduced, dtype=float)
         moving_speed, max_interpolation_steps = self._planner_speed_overrides()
         result = self.planner.plan_configuration(
@@ -337,10 +373,9 @@ class UpperController:
             raise RuntimeError('IK failed to resolve current targets')
 
         q_goal = ik_result.q[self.robot_model.reduced_mask]
-        start_q = start if start is not None else self.robot_model.state_reduced['q']
         return self.plan_to_configuration(
             q_goal,
-            start=start_q,
+            start=start,
             active_mask=active_mask,
         )
 
@@ -531,10 +566,13 @@ class UpperController:
         return vel
 
     def init_steady_state(self):
-        '''Initialize steady-state I control from the final IK command'''
+        '''
+        Initialize steady-state I control from the final IK command. The
+        integration resumes from the current torque bias so the hand-off from
+        a move to a hold is continuous.
+        '''
         self._steady_q_cmd = np.copy(self.low_cmd_handler.q_cmd)
         self._steady_dq_cmd = np.zeros(self.robot_model.model_body.nv)
-        self._steady_tau_bias = np.zeros(self.robot_model.model_body.nv)
         ki = self.config.get('gains', {}).get('ki')
         if ki is None:
             self._steady_ki = np.zeros(self.robot_model.model_body.nv)
@@ -584,7 +622,7 @@ class UpperController:
             tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
                 self.robot_model.state['q']
             )
-            tau_cmd = tau_gravity + self._steady_tau_bias
+            tau_cmd = tau_gravity + self._tau_bias
             self.low_cmd_handler.set_joint_commands(
                 self._steady_q_cmd,
                 self._steady_dq_cmd,
@@ -593,9 +631,9 @@ class UpperController:
             self.update_robot_model()
             return True
         else:
-            self._steady_tau_bias += tau_bias_increment
-            self._steady_tau_bias = np.clip(
-                self._steady_tau_bias,
+            self._tau_bias += tau_bias_increment
+            self._tau_bias = np.clip(
+                self._tau_bias,
                 -self._steady_tau_bias_limit,
                 self._steady_tau_bias_limit,
             )
@@ -604,7 +642,7 @@ class UpperController:
             tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
                 self.robot_model.state['q']
             )
-            tau_cmd = tau_gravity + self._steady_tau_bias
+            tau_cmd = tau_gravity + self._tau_bias
             self.low_cmd_handler.set_joint_commands(
                 self._steady_q_cmd,
                 self._steady_dq_cmd,
@@ -650,8 +688,11 @@ class UpperController:
         return vel_scaled
 
     def _apply_joint_position(self, q):
-        # get gravity compensation torque
+        # gravity compensation plus the held steady-state bias, which fades
+        # by one control step per call
         tau = self.robot_model.dynamics.get_gravity_compensation(self.robot_model.state['q'])
+        tau = tau + self._tau_bias
+        self._tau_bias *= self._tau_bias_decay
         dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(q, dq, tau)
 
