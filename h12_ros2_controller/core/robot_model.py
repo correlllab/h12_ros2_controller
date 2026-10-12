@@ -292,6 +292,13 @@ class RobotModel:
         if self.visualizer is not None:
             self.visualizer.update_visualizer()
 
+    @property
+    def state_staleness_ms(self):
+        '''How stale the subscribed low state is [ms]; 0 without a subscriber'''
+        if self.state_subscriber is None:
+            return 0.0
+        return self.state_subscriber.staleness_ms
+
     def init_subscriber(self, low_state_topic='rt/lowstate'):
         self.state_subscriber = StateSubscriber(low_state_topic=low_state_topic)
         print('StateSubscriber initialized.', flush=True)

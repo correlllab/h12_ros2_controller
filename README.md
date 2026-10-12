@@ -79,7 +79,8 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
             - `frame_controller.py` provides functions to add frame tasks for any frame and move the upper body accordingly.
             - `gravity_comp_controller.py` provides functions to fix upper body in any fixed pose using I-control.
             - `impedance_controller.py` provides functions to control end-effectors with impedance.
-        - `channel_interface.py` implements a publisher for motor commands and a subscriber for motor states using the Unitree Python SDK.
+        - `channel_interface.py` implements a publisher for motor commands and a latest-only reader for motor states (`latest_reader.py`) using the Unitree Python SDK.
+        - `latest_reader.py` reads the newest DDS sample without a receive-thread callback, so state cannot queue up and arrive seconds late; on the real robot (DDS domain 0) motion stops when `rt/lowstate` is staler than `controller.max_state_lag_ms` (default 50 ms).
         - `ik_solver` solves inverse kinematics with self-collision avoidance.
         - `low_cmd_handler` sends command through `low_cmd_publisher` and monitors robot states from `robot_model` to trigger active e-stop.
         - `robot_model.py` tracks robot states and provides useful functions for kinematics, Jacobians, etc., using Pinocchio.

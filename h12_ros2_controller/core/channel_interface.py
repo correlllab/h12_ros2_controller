@@ -4,7 +4,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from h12_ros2_controller.utility.controller_config import get_publisher_clip_limits
-from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelPublisher
+from unitree_sdk2py.core.channel import ChannelPublisher
+from h12_ros2_controller.core.latest_reader import LatestReader, TickLagTracker, sdk_participant
 
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import MotorStates_, MotorCmds_, MotorCmd_
 from unitree_sdk2py.idl.default import unitree_go_msg_dds__MotorCmd_ as MotorCmd_default
@@ -42,29 +43,36 @@ class StateSubscriber:
         self._sensor = np.zeros((NUM_MOTOR, 2), dtype=np.uint32)
         self._motor_state = np.zeros(NUM_MOTOR, dtype=np.uint32)
 
-        # subscribe low state
+        # low state is read latest-only, on demand (see LatestReader)
         self._subscriber_lock = threading.Lock()
-        self._low_state_subscriber = ChannelSubscriber(low_state_topic, LowState_)
-        self._low_state_subscriber.Init(self._subscribe_low_state, 10)
+        self._low_state_reader = LatestReader(sdk_participant(), low_state_topic, LowState_)
+        self._lag_tracker = TickLagTracker()
+        self._lag_ms = 0.0
 
-    def _subscribe_low_state(self, msg: LowState_):
-        with self._subscriber_lock:
-            self._time_stamp = time.time()
-            self._imu_state = msg.imu_state
-            for i in range(NUM_MOTOR):
-                self._mode[i] = msg.motor_state[i].mode
-                self._q[i] = msg.motor_state[i].q
-                self._dq[i] = msg.motor_state[i].dq
-                self._ddq[i] = msg.motor_state[i].ddq
-                self._tau[i] = msg.motor_state[i].tau_est
-                self._temperature[i] = msg.motor_state[i].temperature
-                self._vol[i] = msg.motor_state[i].vol
-                self._sensor[i] = msg.motor_state[i].sensor
-                self._motor_state[i] = msg.motor_state[i].motorstate
+    def _poll_locked(self):
+        '''Copy in the newest low state if one arrived since the last read'''
+        msg = self._low_state_reader.take_latest()
+        if msg is None:
+            return
+        now = time.time()
+        self._time_stamp = now
+        self._lag_ms = self._lag_tracker.update(msg.tick, now)
+        self._imu_state = msg.imu_state
+        for i in range(NUM_MOTOR):
+            self._mode[i] = msg.motor_state[i].mode
+            self._q[i] = msg.motor_state[i].q
+            self._dq[i] = msg.motor_state[i].dq
+            self._ddq[i] = msg.motor_state[i].ddq
+            self._tau[i] = msg.motor_state[i].tau_est
+            self._temperature[i] = msg.motor_state[i].temperature
+            self._vol[i] = msg.motor_state[i].vol
+            self._sensor[i] = msg.motor_state[i].sensor
+            self._motor_state[i] = msg.motor_state[i].motorstate
 
     @property
     def state(self):
         with self._subscriber_lock:
+            self._poll_locked()
             return {
                 'time_stamp': self._time_stamp,
                 'imu_state': self._imu_state,
@@ -79,8 +87,22 @@ class StateSubscriber:
                 'motor_state': self._motor_state.copy(),
             }
 
+    @property
+    def staleness_ms(self):
+        '''
+        How stale the newest low state is [ms]: the larger of its arrival
+        delay against the robot's tick clock and the time since any new
+        sample arrived. Both read near zero on a healthy 500 Hz stream.
+        '''
+        with self._subscriber_lock:
+            self._poll_locked()
+            if self._time_stamp == 0.0:
+                return float('inf')
+            age_ms = (time.time() - self._time_stamp) * 1000.0
+            return max(self._lag_ms, age_ms)
+
     def shutdown(self):
-        self._low_state_subscriber.Close()
+        self._low_state_reader.close()
         print('StateSubscriber shutdown', flush=True)
 
 class CommandPublisher(ABC):
@@ -281,25 +303,30 @@ class HandSubscriber:
         # variables tracking hand states
         self._q = np.zeros(NUM_HAND_DOF, dtype=np.float32)
 
-        # subscribe hand state
-        self.hand_state_subscriber = ChannelSubscriber(TOPIC_HANDSTATE, MotorStates_)
-        self.hand_state_subscriber.Init(self.subscribe_hand_state, 10)
+        # hand state is read latest-only, on demand (see LatestReader)
+        self._lock = threading.Lock()
+        self._hand_state_reader = LatestReader(sdk_participant(), TOPIC_HANDSTATE, MotorStates_)
 
-    def subscribe_hand_state(self, msg: MotorStates_):
-        for i in range(NUM_HAND_DOF):
-            self._q[i] = msg.states[i].q
+    def _poll(self):
+        '''Return the newest hand q, updated if a new sample arrived'''
+        with self._lock:
+            msg = self._hand_state_reader.take_latest()
+            if msg is not None:
+                for i in range(NUM_HAND_DOF):
+                    self._q[i] = msg.states[i].q
+            return np.copy(self._q)
 
     @property
     def q(self):
-        return np.copy(self._q)
+        return self._poll()
 
     @property
     def q_right(self):
-        return np.copy(self._q[0:6])
+        return self._poll()[0:6]
 
     @property
     def q_left(self):
-        return np.copy(self._q[6:12])
+        return self._poll()[6:12]
 
 class HandPublisher:
     def __init__(self, dt=0.005):

@@ -204,6 +204,9 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     threshold_joint = float(controller.get('threshold_joint', 0.01))
     threshold_linear = float(controller.get('threshold_linear', 0.002))
     threshold_angular = float(controller.get('threshold_angular', 0.01))
+    # refuse/abort motion when rt/lowstate is staler than this; enforced only
+    # on DDS domain 0 (the sims stamp tick in sim steps); <= 0 disables
+    max_state_lag_ms = float(controller.get('max_state_lag_ms', 50.0))
 
     return {
         'mode': mode,
@@ -226,6 +229,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_joint': threshold_joint,
             'threshold_linear': threshold_linear,
             'threshold_angular': threshold_angular,
+            'max_state_lag_ms': max_state_lag_ms,
         },
         'planner': dict(planner),
         'frequency': {
@@ -264,6 +268,11 @@ def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:
         else int(network['domain_id'])
     )
     return domain_id, network['interface']
+
+
+def dds_domain_id(config: dict[str, Any]) -> int:
+    '''DDS domain the channel factory joins (ROS_DOMAIN_ID wins over config)'''
+    return _channel_factory_settings(config)[0]
 
 
 def init_channel_factory(config: dict[str, Any]) -> None:

@@ -7,7 +7,7 @@ from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.core.planner import PlannerConfig, PlannerClient
-from h12_ros2_controller.utility.controller_config import load_controller_config
+from h12_ros2_controller.utility.controller_config import dds_domain_id, load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
     BODY_JOINTS,
@@ -27,6 +27,13 @@ COMMAND_SEED_MAX_GAP = 0.1
 # at the start of a move; fading it hands the load back to gravity
 # compensation as the arm leaves the pose the bias was integrated for.
 TAU_BIAS_FADE_SEC = 1.0
+# DDS domain of the real robot's command bus; the sims refuse to run on it
+REAL_ROBOT_DOMAIN_ID = 0
+
+
+class StaleStateError(RuntimeError):
+    '''rt/lowstate is too stale to control on'''
+
 
 class UpperController:
     def __init__(self,
@@ -54,6 +61,13 @@ class UpperController:
         self._tau_bias = np.zeros(self.robot_model.model_body.nv)
         self._tau_bias_decay = float(np.exp(-self.dt / TAU_BIAS_FADE_SEC))
         self.d_min = float(controller_cfg.get('d_min', 0.02))
+        # controlling on stale state winds up the hold I-term and seeds moves
+        # from where the arm was, so motion stops when state is staler than
+        # this; real robot only, since the sims stamp tick in sim steps
+        self.max_state_lag_ms = (
+            float(controller_cfg.get('max_state_lag_ms', 50.0))
+            if dds_domain_id(self.config) == REAL_ROBOT_DOMAIN_ID else 0.0
+        )
         self.torso_target = float(controller_cfg.get('torso_target', 0.0))
         self.visualize = visualize
 
@@ -274,7 +288,19 @@ class UpperController:
     def right_ee_pose(self):
         return np.concatenate([self.right_ee_position, self.right_ee_rpy])
 
+    def check_state_fresh(self):
+        '''Raise StaleStateError if rt/lowstate is too stale to control on'''
+        if self.max_state_lag_ms <= 0.0:
+            return
+        staleness_ms = self.robot_model.state_staleness_ms
+        if staleness_ms > self.max_state_lag_ms:
+            raise StaleStateError(
+                f'rt/lowstate is {staleness_ms:.0f} ms stale '
+                f'(> {self.max_state_lag_ms:.0f} ms); holding the last command'
+            )
+
     def update_ik_solver(self):
+        self.check_state_fresh()
         # re-lock the frozen joints (torso, legs) at their measured angles so
         # reduced-model FK agrees with the robot's actual kinematics (and the
         # TF tree); frozen-at-zero, a torso holding e.g. -0.04 rad offsets
@@ -301,6 +327,11 @@ class UpperController:
         ids = self.enabled_ids
         gap = np.max(np.abs(q_cmd[ids] - q_seed[ids]))
         if not np.isfinite(gap) or gap > COMMAND_SEED_MAX_GAP:
+            print(
+                f'Command-to-measured gap {gap:.3f} rad > '
+                f'{COMMAND_SEED_MAX_GAP} rad; starting from the measured state',
+                flush=True,
+            )
             return q_seed, False
         q_seed[ids] = q_cmd[ids]
         return q_seed, True
@@ -424,6 +455,7 @@ class UpperController:
         step_period = self.dt
         for q_reduced in tqdm(path, desc='Executing path', leave=False):
             step_start_time = time.time()
+            self.check_state_fresh()
             if validate:
                 # keep execution guarded by the same reduced validity checks
                 if not self.robot_model.check_within_limits_reduced(q_reduced):
@@ -461,6 +493,7 @@ class UpperController:
         )
 
     def goto_configuration(self, q):
+        self.check_state_fresh()
         # solve IK and apply control
         vel = self.ik_solver.goto_configuration(q)
         vel = self._limit_joint_vel(vel)
@@ -494,6 +527,7 @@ class UpperController:
         self.ik_solver.config_task.set_target(q_reduced)
 
     def goto_reduced_configuration(self, q_reduced):
+        self.check_state_fresh()
         # solve IK and apply control
         vel = self.ik_solver.goto_reduced_configuration(q_reduced)
         vel = self._limit_joint_vel(vel)
@@ -521,6 +555,7 @@ class UpperController:
 
     def control_step(self, com=False):
         '''Solve IK for all tasks'''
+        self.check_state_fresh()
         # solve IK and apply the control
         vel = self.ik_solver.ik_step(com=com)
         vel = self._limit_joint_vel(vel)
@@ -532,6 +567,7 @@ class UpperController:
 
     def control_step_reduced(self, com=False):
         '''Solve IK for all tasks with the reduced model'''
+        self.check_state_fresh()
         # solve IK and apply the control
         vel = self.ik_solver.ik_step_reduced(com=com)
         vel = self._limit_joint_vel(vel)
@@ -606,6 +642,7 @@ class UpperController:
 
     def steady_state_step(self, threshold=1e-3):
         '''Run one steady-state I-control tick and return convergence'''
+        self.check_state_fresh()
         if not hasattr(self, '_steady_q_cmd'):
             self.init_steady_state()
 

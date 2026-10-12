@@ -11,6 +11,7 @@ import numpy as np
 from custom_ros_messages.msg import StringArray
 from custom_ros_messages.action import FrameTask, NamedConfig
 from h12_ros2_controller.core.controller.frame_controller import FrameController
+from h12_ros2_controller.core.controller.upper_controller import StaleStateError
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import (
     init_channel_factory,
@@ -157,10 +158,25 @@ class FrameTaskServer(Node):
         except (AttributeError, KeyError):
             pass
 
+    def _abort_stale(self, goal_handle, result, err):
+        '''Abort a goal because rt/lowstate went stale; the last command holds'''
+        self.get_logger().error(f'Aborting goal: {err}')
+        goal_handle.abort()
+        result.success = False
+        return result
+
     def frame_task_callback(self, goal_handle):
+        try:
+            return self._frame_task_callback(goal_handle)
+        except StaleStateError as err:
+            return self._abort_stale(goal_handle, FrameTask.Result(), err)
+
+    def _frame_task_callback(self, goal_handle):
         with self._controller_lock:
             self.get_logger().info('Received goal')
             goal = goal_handle.request
+            # relative targets are resolved against the measured pose
+            self.controller.check_state_fresh()
 
             # resolve targets to absolute pelvis-frame poses before the
             # current tasks are cleared
@@ -398,6 +414,12 @@ class FrameTaskServer(Node):
         goal_handle.publish_feedback(feedback_msg)
 
     def named_config_callback(self, goal_handle):
+        try:
+            return self._named_config_callback(goal_handle)
+        except StaleStateError as err:
+            return self._abort_stale(goal_handle, NamedConfig.Result(), err)
+
+    def _named_config_callback(self, goal_handle):
         with self._controller_lock:
             self.get_logger().info('Received named config goal')
             goal = goal_handle.request
