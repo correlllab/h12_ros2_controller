@@ -242,6 +242,7 @@ class FrameTaskServer(Node):
         start_time = time.time()
         ik_converged = False
         steady_state_converged = False
+        blocked = None
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             if not ik_converged:
@@ -275,6 +276,9 @@ class FrameTaskServer(Node):
                         'IK converged; entering steady-state hold'
                     )
             else:
+                blocked = self._limit_block_reason()
+                if blocked is not None:
+                    break
                 steady_state_converged = steady_state_converged or (
                     len(errors_linear) > 0 and
                     len(errors_angular) > 0 and
@@ -291,10 +295,8 @@ class FrameTaskServer(Node):
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
-        elif not steady_state_converged:
-            self.get_logger().warn('Timed out during steady-state hold')
         else:
-            self.get_logger().info('Goal reached')
+            self._log_hold_outcome(steady_state_converged, blocked)
 
         # set result
         success = ik_converged and steady_state_converged
@@ -344,6 +346,7 @@ class FrameTaskServer(Node):
         self.controller.init_steady_state()
         start_time = time.time()
         steady_state_converged = False
+        blocked = None
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
 
@@ -363,6 +366,9 @@ class FrameTaskServer(Node):
                 errors_angular,
             )
 
+            blocked = self._limit_block_reason()
+            if blocked is not None:
+                break
             steady_state_converged = (
                 len(errors_linear) > 0 and
                 len(errors_angular) > 0 and
@@ -377,15 +383,29 @@ class FrameTaskServer(Node):
                 self.controller.dt - (time.time() - frame_start_time)
             ))
 
-        if steady_state_converged:
-            self.get_logger().info('Goal reached')
-        else:
-            self.get_logger().warn('Timed out during steady-state hold')
+        self._log_hold_outcome(steady_state_converged, blocked)
 
         goal_handle.succeed()
         result = FrameTask.Result()
         result.success = bool(steady_state_converged)
         return result
+
+    def _limit_block_reason(self):
+        '''The joints pinning the steady-state hold at a position limit, or None'''
+        limited = self.controller.steady_state_limited_joints
+        if not limited:
+            return None
+        return ', '.join(
+            f'{name} q={q:+.3f} (limit {limit:+.3f})' for name, q, limit in limited
+        )
+
+    def _log_hold_outcome(self, converged, blocked):
+        if blocked is not None:
+            self.get_logger().warn(f'Hold blocked at a joint position limit: {blocked}')
+        elif converged:
+            self.get_logger().info('Goal reached')
+        else:
+            self.get_logger().warn('Timed out during steady-state hold')
 
     def _frame_task_errors(self):
         errors_linear = []
@@ -471,6 +491,7 @@ class FrameTaskServer(Node):
         start_time = time.time()
         ik_converged = False
         steady_state_converged = False
+        blocked = None
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
             if not ik_converged:
@@ -500,6 +521,9 @@ class FrameTaskServer(Node):
                         'IK converged; entering steady-state hold'
                     )
             else:
+                blocked = self._limit_block_reason()
+                if blocked is not None:
+                    break
                 steady_state_converged = (
                     steady_state_converged or
                     joint_error < self.threshold_joint
@@ -515,10 +539,8 @@ class FrameTaskServer(Node):
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
-        elif not steady_state_converged:
-            self.get_logger().warn('Timed out during steady-state hold')
         else:
-            self.get_logger().info('Goal reached')
+            self._log_hold_outcome(steady_state_converged, blocked)
 
         goal_handle.succeed()
         result = NamedConfig.Result()
@@ -555,6 +577,7 @@ class FrameTaskServer(Node):
         self.controller.init_steady_state()
         start_time = time.time()
         steady_state_converged = False
+        blocked = None
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
 
@@ -571,6 +594,9 @@ class FrameTaskServer(Node):
             # publish joint-space feedback during the hold phase
             self._publish_named_config_feedback(goal_handle, joint_error)
 
+            blocked = self._limit_block_reason()
+            if blocked is not None:
+                break
             steady_state_converged = (
                 steady_state_converged or
                 joint_error < self.threshold_joint
@@ -583,10 +609,7 @@ class FrameTaskServer(Node):
                 self.controller.dt - (time.time() - frame_start_time)
             ))
 
-        if steady_state_converged:
-            self.get_logger().info('Goal reached')
-        else:
-            self.get_logger().warn('Timed out during steady-state hold')
+        self._log_hold_outcome(steady_state_converged, blocked)
 
         goal_handle.succeed()
         result = NamedConfig.Result()

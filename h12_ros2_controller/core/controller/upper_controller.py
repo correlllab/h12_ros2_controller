@@ -620,28 +620,36 @@ class UpperController:
         if tau_clip_limits is not None:
             self._steady_tau_bias_limit = np.asarray(tau_clip_limits, dtype=np.float64)
 
+        # (joint name, q, limit) for joints the hold is pinned against
+        self.steady_state_limited_joints = []
         self._steady_q_clip_limits = None
         q_clip_limits = self.config.get('limits', {}).get('q_clip_limits')
         if q_clip_limits is not None:
             self._steady_q_clip_limits = np.asarray(q_clip_limits, dtype=np.float64)
 
-    def _steady_state_hits_position_clip(self, q_state, tau_bias_increment, threshold):
+    def _steady_state_limited_joints(self, q_state, tau_bias_increment, threshold):
+        '''
+        (joint name, q, limit) for each upper-body joint within `threshold` of
+        a position clip limit that the I-term is pushing further into
+        '''
         if self._steady_q_clip_limits is None:
-            return False
-
-        q_limits = self._steady_q_clip_limits[self.upper_ids]
-        q_state = q_state[self.upper_ids]
-        tau_bias_increment = tau_bias_increment[self.upper_ids]
-
-        near_upper = q_state >= (q_limits[:, 1] - threshold)
-        near_lower = q_state <= (q_limits[:, 0] + threshold)
-        push_upper = tau_bias_increment > 0.0
-        push_lower = tau_bias_increment < 0.0
-
-        return bool(np.any((near_upper & push_upper) | (near_lower & push_lower)))
+            return []
+        limited = []
+        for i in self.upper_ids:
+            low, high = self._steady_q_clip_limits[i]
+            if q_state[i] >= high - threshold and tau_bias_increment[i] > 0.0:
+                limited.append((BODY_JOINTS[i], float(q_state[i]), float(high)))
+            elif q_state[i] <= low + threshold and tau_bias_increment[i] < 0.0:
+                limited.append((BODY_JOINTS[i], float(q_state[i]), float(low)))
+        return limited
 
     def steady_state_step(self, threshold=1e-3):
-        '''Run one steady-state I-control tick and return convergence'''
+        '''
+        Run one steady-state I-control tick and return convergence. A hold
+        pinned against a joint position limit cannot converge: the I-term is
+        frozen, steady_state_limited_joints names the joints, and this
+        returns False.
+        '''
         self.check_state_fresh()
         if not hasattr(self, '_steady_q_cmd'):
             self.init_steady_state()
@@ -651,11 +659,12 @@ class UpperController:
         q_error = self._steady_q_cmd - q_state
         tau_bias_increment = self._steady_ki * q_error * self.dt
         # close to clipping limit
-        if self._steady_state_hits_position_clip(
+        self.steady_state_limited_joints = self._steady_state_limited_joints(
             q_state,
             tau_bias_increment,
             threshold,
-        ):
+        )
+        if self.steady_state_limited_joints:
             tau_gravity = self.robot_model.dynamics.get_gravity_compensation(
                 self.robot_model.state['q']
             )
@@ -666,7 +675,7 @@ class UpperController:
                 tau_cmd,
             )
             self.update_robot_model()
-            return True
+            return False
         else:
             self._tau_bias += tau_bias_increment
             self._tau_bias = np.clip(
