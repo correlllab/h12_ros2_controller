@@ -280,11 +280,14 @@ class IKSolver:
         return q
 
     def _default_seed_items(self):
+        # solve_ik* returns the first seed that converges, so the measured
+        # pose goes first: it yields the solution nearest the arm, and the
+        # named configs are fallbacks for when it does not converge.
         return [
+            ('current', self.robot_model.state['q']),
             ('home', NAMED_CONFIGS['home']),
             ('t_pose', NAMED_CONFIGS['t_pose']),
             ('arms_front_45', NAMED_CONFIGS['arms_front_45']),
-            ('current', self.robot_model.state['q']),
         ]
 
     def _extra_seed_items(self, initial_positions):
