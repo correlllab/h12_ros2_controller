@@ -20,13 +20,13 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__IMUState_ as IMUState
 
 from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, NUM_HAND_DOF
 
-TOPIC_LOWCMD_DEFAULT = 'rt/lowcmd'
+# Controllers publish only to the safety layer's inputs; h12_safety_layer is
+# the sole publisher of rt/lowcmd
+SAFETY_TOPIC_PREFIX = 'rt/safety/'
+TOPIC_LOWCMD_DEFAULT = 'rt/safety/lowcmd_upper_in'
 TOPIC_LOWSTATE_DEFAULT = 'rt/lowstate'
-TOPIC_ARM_SDK_DEFAULT = 'rt/arm_sdk'
 TOPIC_HANDSTATE = 'rt/inspire/state'
 TOPIC_HANDCMD = 'rt/inspire/cmd'
-
-INDEX_NOT_USED = NUM_MOTOR
 
 class StateSubscriber:
     def __init__(self, low_state_topic=TOPIC_LOWSTATE_DEFAULT):
@@ -238,6 +238,11 @@ class CommandPublisher(ABC):
 class LowCmdPublisher(CommandPublisher):
     '''Wrapper class of publisher publishing to LowCmd topic'''
     def __init__(self, dt=0.002, low_cmd_topic=TOPIC_LOWCMD_DEFAULT, clip_limits=None):
+        if not low_cmd_topic.startswith(SAFETY_TOPIC_PREFIX):
+            raise ValueError(
+                f'refusing to publish commands on {low_cmd_topic!r}: controllers '
+                f'publish only to the safety layer ({SAFETY_TOPIC_PREFIX}*)'
+            )
         self._low_cmd_topic = low_cmd_topic
         super().__init__(dt=dt, clip_limits=clip_limits)
 
@@ -265,37 +270,6 @@ class LowCmdPublisher(CommandPublisher):
         super().enable_motors(motor_ids, init_q)
         with self.data_lock:
             self.mode[motor_ids] = 1
-            self.q[motor_ids] = init_q
-
-class ArmSDKPublisher(CommandPublisher):
-    '''ARM SDK command publisher using the shared Python thread loop'''
-    def __init__(self, dt=0.002, arm_sdk_topic=TOPIC_ARM_SDK_DEFAULT, clip_limits=None):
-        self._arm_sdk_topic = arm_sdk_topic
-        super().__init__(dt=dt, clip_limits=clip_limits)
-
-    def _init_low_cmd(self):
-        # initialize low command message
-        self._crc = CRC()
-        self._low_cmd = LowCmd_default()
-
-    def _init_publisher(self):
-        '''Initialize ARM SDK publisher'''
-        self._publisher = ChannelPublisher(self._arm_sdk_topic, LowCmd_)
-        self._publisher.Init()
-
-    def _init_thread(self):
-        '''Initialize threading for ARM SDK publisher'''
-        self._publishing_thread = threading.Thread(
-            target=self._publish_command,
-            name='arm_sdk_thread',
-            daemon=True
-        )
-
-    def enable_motors(self, motor_ids, init_q):
-        '''Override to add ARM SDK specific enable logic'''
-        super().enable_motors(motor_ids, init_q)
-        with self.data_lock:
-            self._low_cmd.motor_cmd[INDEX_NOT_USED].q = 1.0
             self.q[motor_ids] = init_q
 
 class HandSubscriber:

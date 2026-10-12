@@ -26,7 +26,6 @@ class GravityCompServer(Node):
             init=True,
             dt=dt,
             visualize=False,
-            sport_mode=False,
         )
 
         self._loop_thread = None

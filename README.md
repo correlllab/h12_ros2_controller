@@ -67,7 +67,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 ## Files
 
 - `assets/` contains robot description files. Only used when running the programs without ros environment.
-- `config/` contains configurations for the controller.
+- `config/` contains configurations for the controller. `topics.low_cmd` must be an `h12_safety_layer` input (`rt/safety/*`): the safety layer is the only publisher of `rt/lowcmd`.
 - `data/` contains saved data such as joint positions.
 - `figures` contains generated figures.
 - `h12_ros2_controller/`: contains source code.
@@ -96,9 +96,9 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - Run arm controller that prompt for target end-effector positions in command line.
 
     ```bash
-    # choose config file depending on usage
-    uv run h12_ros2_controller/arm_controller_goto.py --config debug.yaml # default
-    uv run h12_ros2_controller/arm_controller_goto.py --config sport.yaml # sport mode
+    # choose config file depending on usage; every config publishes to an
+    # h12_safety_layer input (rt/safety/*), so run the safety layer alongside
+    uv run h12_ros2_controller/arm_controller_goto.py --config debug.yaml # default (safety layer full-body input)
     uv run h12_ros2_controller/arm_controller_goto.py --config safety_full.yaml # safety layer full-body mode
     uv run h12_ros2_controller/arm_controller_goto.py --config safety_split.yaml # safety layer split mode
     ```
@@ -110,8 +110,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
                                    'assets/h1_2/h1_2_sphere.urdf',
                                    'assets/h1_2/h1_2_sphere_collision.srdf',
                                    dt=0.02,
-                                   visualize=True, # use this to turn on meshcat visualization
-                                   sport_mode=False)
+                                   visualize=True) # use this to turn on meshcat visualization
     ```
 
 - Change `arm_controller.control_step_reduced()` to `arm_controller.sim_step_reduced()`
@@ -133,7 +132,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
     ```bash
     ros2 run h12_ros2_controller dual_arm_server --config debug.yaml # default
-    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
+    # other available configs: safety_full.yaml, safety_split.yaml
     ```
 
 - Then launch the client and enter either a named config goal targets for both wrists.
@@ -151,7 +150,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
     ```bash
     ros2 run h12_ros2_controller frame_task_server --config debug.yaml # default
-    # other available configs: sport.yaml, safety_full.yaml, safety_split.yaml
+    # other available configs: safety_full.yaml, safety_split.yaml
     ```
 
 - Then launch the client and enter either a named config or manual frame targets.

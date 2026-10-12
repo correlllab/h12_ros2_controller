@@ -43,8 +43,21 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return loaded
 
 def _validate_mode(mode):
-    if mode not in ('debug', 'sport'):
-        raise ValueError(f"Config mode must be 'debug' or 'sport', got: {mode}")
+    if mode != 'debug':
+        raise ValueError(f"Config mode must be 'debug', got: {mode}")
+
+
+# Controllers publish only to the safety layer's inputs; h12_safety_layer is
+# the sole publisher of rt/lowcmd
+SAFETY_TOPIC_PREFIX = 'rt/safety/'
+
+
+def _validate_low_cmd_topic(topic):
+    if not topic.startswith(SAFETY_TOPIC_PREFIX):
+        raise ValueError(
+            f'topics.low_cmd must be a safety layer input ({SAFETY_TOPIC_PREFIX}*), '
+            f'got: {topic}'
+        )
 
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
@@ -181,6 +194,9 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
 
+    low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
+    _validate_low_cmd_topic(low_cmd_topic)
+
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
     check_hz = float(frequency.get('check_hz', 1000.0))
@@ -211,7 +227,7 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     return {
         'mode': mode,
         'topics': {
-            'low_cmd': str(topics.get('low_cmd', 'rt/lowcmd')),
+            'low_cmd': low_cmd_topic,
             'low_state': str(topics.get('low_state', 'rt/lowstate')),
         },
         'network': {
@@ -300,9 +316,6 @@ def init_channel_factory_guard(config: dict[str, Any]) -> None:
         if confirmation.strip().lower() != 'y':
             raise SystemExit('DDS channel factory initialization cancelled')
     init_channel_factory(config)
-
-def resolve_sport_mode(config):
-    return config.get('mode', 'debug') == 'sport'
 
 def maybe_start_controller_logging(controller):
     logging_cfg = controller.config.get('logging', {})

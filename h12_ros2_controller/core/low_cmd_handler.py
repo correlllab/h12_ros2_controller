@@ -6,12 +6,9 @@ from typing import Optional, List
 
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 from h12_ros2_controller.utility.joint_limits import setup_gains
-from h12_ros2_controller.utility.controller_config import (
-    load_controller_config,
-    resolve_sport_mode,
-)
+from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.core.robot_model import RobotModel
-from h12_ros2_controller.core.channel_interface import LowCmdPublisher, ArmSDKPublisher
+from h12_ros2_controller.core.channel_interface import TOPIC_LOWCMD_DEFAULT, LowCmdPublisher
 
 class LowCmdHandler:
     def __init__(self,
@@ -34,7 +31,7 @@ class LowCmdHandler:
         self._tau_estop_limits = limits_cfg.get('tau_estop_limits')
 
         topics_cfg = self._config.get('topics', {})
-        low_cmd_topic = topics_cfg.get('low_cmd', 'rt/lowcmd')
+        low_cmd_topic = topics_cfg.get('low_cmd', TOPIC_LOWCMD_DEFAULT)
         clip_limits = None
         if self._q_clip_limits is not None and self._dq_clip_limits is not None and self._tau_clip_limits is not None:
             clip_limits = {
@@ -45,20 +42,12 @@ class LowCmdHandler:
                 'velocity_clip': self._dq_clip_limits,
                 'torque_clip': self._tau_clip_limits,
             }
-        sport_mode = resolve_sport_mode(self._config)
         # intialize command publisher
-        if sport_mode:
-            self._command_publisher = ArmSDKPublisher(
-                publisher_dt,
-                arm_sdk_topic=low_cmd_topic,
-                clip_limits=clip_limits,
-            )
-        else:
-            self._command_publisher = LowCmdPublisher(
-                publisher_dt,
-                low_cmd_topic=low_cmd_topic,
-                clip_limits=clip_limits,
-            )
+        self._command_publisher = LowCmdPublisher(
+            publisher_dt,
+            low_cmd_topic=low_cmd_topic,
+            clip_limits=clip_limits,
+        )
         setup_gains(self._command_publisher, self._config.get('gains'))
 
         # background safety monitoring thread
