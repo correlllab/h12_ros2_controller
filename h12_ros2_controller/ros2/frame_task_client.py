@@ -26,12 +26,13 @@ class FrameTaskClient(Node):
         self.goal_handle = None
 
     def send_frame_task_goal(self, frame_names=None, frame_targets=None,
-                             plan=False):
+                             plan=False, relative=False):
         goal_msg = FrameTask.Goal()
 
         goal_msg.frame_names = frame_names if frame_names is not None else []
         goal_msg.frame_targets = frame_targets if frame_targets is not None else []
         goal_msg.plan = plan
+        goal_msg.relative = relative
 
         self.get_logger().info('Waiting for action server...')
         self.action_client.wait_for_server()

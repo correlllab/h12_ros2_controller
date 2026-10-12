@@ -162,16 +162,26 @@ class FrameTaskServer(Node):
             self.get_logger().info('Received goal')
             goal = goal_handle.request
 
+            # resolve targets to absolute pelvis-frame poses before the
+            # current tasks are cleared
+            target_matrices = [
+                self._resolve_target(name, pose_to_matrix(target), goal.relative)
+                for name, target in zip(goal.frame_names, goal.frame_targets)
+            ]
+
             # clear existing frame tasks
             self.controller.clear_frame_tasks()
             self.frame_names = goal.frame_names
-            self.frame_targets = goal.frame_targets
+            self.frame_targets = [matrix_to_pose(m) for m in target_matrices]
 
             # set frame tasks
-            self.get_logger().info('Going to target frame poses')
-            for frame_name, frame_target in zip(goal.frame_names, goal.frame_targets):
+            self.get_logger().info(
+                'Going to target frame poses'
+                + (' (relative)' if goal.relative else '')
+            )
+            for frame_name, target_matrix in zip(goal.frame_names, target_matrices):
                 task_name = f'{frame_name}_task'
-                self.controller.add_frame_task(task_name, frame_name, pose_to_matrix(frame_target))
+                self.controller.add_frame_task(task_name, frame_name, target_matrix)
 
             # update ik solver with current state
             self.controller.update_ik_solver()
@@ -194,6 +204,22 @@ class FrameTaskServer(Node):
                     return self._direct_frame_task_callback(goal_handle, timeout)
             finally:
                 self.controller.speed_scale = 1.0
+
+    def _resolve_target(self, frame_name, target, relative):
+        '''
+        Return the absolute pelvis-frame target for one frame.
+
+        A relative target's translation is added to the frame's current
+        position and its rotation is applied in pelvis-frame axes about the
+        frame's current origin.
+        '''
+        if not relative:
+            return target
+        current = self.controller.get_frame_transformation(frame_name)
+        absolute = np.eye(4)
+        absolute[:3, :3] = target[:3, :3] @ current[:3, :3]
+        absolute[:3, 3] = current[:3, 3] + target[:3, 3]
+        return absolute
 
     def _direct_frame_task_callback(self, goal_handle, timeout):
         # main loop
