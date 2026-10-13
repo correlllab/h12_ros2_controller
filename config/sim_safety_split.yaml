@@ -1,8 +1,4 @@
-# Sim-only override: loosen estop bounds so neither the controller's
-# startup IK nor slider-driven goal updates trip the position/velocity/
-# torque guards. The defaults in controller_config.py and debug.yaml are
-# tuned for hardware safety; sim has no hardware to protect, so we let
-# MuJoCo's physical limits be the only boundary.
+# Sim-only frame_task_server config (DDS domain 1).
 # All omitted settings inherit defaults from controller_config.py.
 mode: debug
 
@@ -117,9 +113,3 @@ gains:
     - 100.0 # right_wrist_roll_joint
     - 100.0 # right_wrist_pitch_joint
     - 100.0 # right_wrist_yaw_joint
-
-limits:
-  estop:
-    position_offset: 0.0  # no inset off URDF joint limits
-    velocity_ratio: 2.0
-    torque_ratio: 2.0

@@ -742,9 +742,6 @@ class UpperController:
         dq = np.zeros(self.robot_model.model_body.nv)
         self.low_cmd_handler.set_joint_commands(q, dq, tau)
 
-    def estop(self):
-        self.low_cmd_handler.estop()
-
     def shutdown(self):
         self.stop_recording()
         self.planner.shutdown()

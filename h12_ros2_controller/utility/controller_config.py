@@ -108,32 +108,16 @@ def _process_clip_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
         'tau_limits': np.asarray(JOINT_TORQUE_LIMITS, dtype=np.float64) * torque_ratio,
     }
 
-def _process_estop_limits(policy: dict[str, Any]) -> dict[str, np.ndarray]:
-    position_offset = _load_joint_config(policy.get('position_offset', 0.01), 'limits.estop.position_offset')
-    velocity_ratio = _load_joint_config(policy.get('velocity_ratio', 0.5), 'limits.estop.velocity_ratio')
-    torque_ratio = _load_joint_config(policy.get('torque_ratio', 0.5), 'limits.estop.torque_ratio')
-
-    return {
-        'q_limits': _derive_q_limits(position_offset),
-        'dq_limits': np.asarray(JOINT_VELOCITY_LIMITS, dtype=np.float64) * velocity_ratio,
-        'tau_limits': np.asarray(JOINT_TORQUE_LIMITS, dtype=np.float64) * torque_ratio,
-    }
-
 def build_processed_limits(limits_cfg: dict[str, Any] | None = None) -> dict[str, np.ndarray]:
     limits_cfg = {} if limits_cfg is None else limits_cfg
     clip_policy = limits_cfg.get('clip', limits_cfg.get('enforce', {}))
-    estop_policy = limits_cfg.get('estop', {})
 
     clip_limits = _process_clip_limits(clip_policy)
-    estop_limits = _process_estop_limits(estop_policy)
 
     return {
         'q_clip_limits': clip_limits['q_limits'],
         'dq_clip_limits': clip_limits['dq_limits'],
         'tau_clip_limits': clip_limits['tau_limits'],
-        'q_estop_limits': estop_limits['q_limits'],
-        'dq_estop_limits': estop_limits['dq_limits'],
-        'tau_estop_limits': estop_limits['tau_limits'],
     }
 
 def get_publisher_clip_limits(config: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -199,13 +183,10 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
-    check_hz = float(frequency.get('check_hz', 1000.0))
     if ctrl_hz <= 0.0:
         raise ValueError('frequency.ctrl_hz must be positive')
     if pub_hz <= 0.0:
         raise ValueError('frequency.pub_hz must be positive')
-    if check_hz <= 0.0:
-        raise ValueError('frequency.check_hz must be positive')
 
     processed_limits = build_processed_limits(limits)
     processed_gains = _process_gains(gains)
@@ -251,7 +232,6 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
         'frequency': {
             'ctrl_hz': ctrl_hz,
             'pub_hz': pub_hz,
-            'check_hz': check_hz,
         },
         'gains': {
             'kp': None if processed_gains['kp'] is None else processed_gains['kp'].astype(np.float32),
@@ -262,9 +242,6 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'q_clip_limits': processed_limits['q_clip_limits'],
             'dq_clip_limits': processed_limits['dq_clip_limits'],
             'tau_clip_limits': processed_limits['tau_clip_limits'],
-            'q_estop_limits': processed_limits['q_estop_limits'],
-            'dq_estop_limits': processed_limits['dq_estop_limits'],
-            'tau_estop_limits': processed_limits['tau_estop_limits'],
         },
         'logging': {
             'enabled': bool(logging.get('enabled', False)),

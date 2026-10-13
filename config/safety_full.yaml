@@ -65,7 +65,6 @@ planner:
 frequency:
   ctrl_hz: 30
   pub_hz: 500
-  check_hz: 1000
 
 gains:
   # upper-body gains only; lower-body gains default to 0
@@ -123,40 +122,6 @@ limits:
     position_offset: 0.001
     velocity_ratio: 0.10
     torque_ratio: 0.60
-  estop:
-    position_offset: 0.0
-    velocity_ratio:
-      - 0.30 # torso_joint
-      - 0.60 # left_shoulder_pitch_joint
-      - 0.60 # left_shoulder_roll_joint
-      - 0.60 # left_shoulder_yaw_joint
-      - 0.60 # left_elbow_joint
-      - 0.60 # left_wrist_roll_joint
-      - 0.60 # left_wrist_pitch_joint
-      - 0.60 # left_wrist_yaw_joint
-      - 0.60 # right_shoulder_pitch_joint
-      - 0.60 # right_shoulder_roll_joint
-      - 0.60 # right_shoulder_yaw_joint
-      - 0.60 # right_elbow_joint
-      - 0.60 # right_wrist_roll_joint
-      - 0.60 # right_wrist_pitch_joint
-      - 0.60 # right_wrist_yaw_joint
-    torque_ratio:
-      - 0.50 # torso_joint
-      - 1.00 # left_shoulder_pitch_joint
-      - 1.00 # left_shoulder_roll_joint
-      - 1.00 # left_shoulder_yaw_joint
-      - 1.00 # left_elbow_joint
-      - 1.00 # left_wrist_roll_joint
-      - 1.00 # left_wrist_pitch_joint
-      - 1.00 # left_wrist_yaw_joint
-      - 1.00 # right_shoulder_pitch_joint
-      - 1.00 # right_shoulder_roll_joint
-      - 1.00 # right_shoulder_yaw_joint
-      - 1.00 # right_elbow_joint
-      - 1.00 # right_wrist_roll_joint
-      - 1.00 # right_wrist_pitch_joint
-      - 1.00 # right_wrist_yaw_joint
 
 logging:
   enabled: false

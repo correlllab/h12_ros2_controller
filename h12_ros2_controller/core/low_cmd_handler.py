@@ -17,18 +17,13 @@ class LowCmdHandler:
         self._robot_model = robot_model
         self._config = config if config is not None else load_controller_config()
         frequency_cfg = self._config.get('frequency', {})
-        checker_dt = 1.0 / float(frequency_cfg.get('check_hz', 1000.0))
         publisher_dt = 1.0 / float(frequency_cfg.get('pub_hz', 500.0))
 
-        self._checker_dt = checker_dt
         limits_cfg = self._config.get('limits', {})
 
         self._q_clip_limits = limits_cfg.get('q_clip_limits')
         self._dq_clip_limits = limits_cfg.get('dq_clip_limits')
         self._tau_clip_limits = limits_cfg.get('tau_clip_limits')
-        self._q_estop_limits = limits_cfg.get('q_estop_limits')
-        self._dq_estop_limits = limits_cfg.get('dq_estop_limits')
-        self._tau_estop_limits = limits_cfg.get('tau_estop_limits')
 
         topics_cfg = self._config.get('topics', {})
         low_cmd_topic = topics_cfg.get('low_cmd', TOPIC_LOWCMD_DEFAULT)
@@ -49,15 +44,6 @@ class LowCmdHandler:
             clip_limits=clip_limits,
         )
         setup_gains(self._command_publisher, self._config.get('gains'))
-
-        # background safety monitoring thread
-        self._estopped = False
-        self._checking_safety = True
-        self._safety_thread = threading.Thread(
-            target=self._safety_checker,
-            name='safety_thread',
-            daemon=True
-        )
 
         # variables recording states
         self._recording = False
@@ -109,10 +95,6 @@ class LowCmdHandler:
                            tau: Optional[np.ndarray]=None,
                            joint_ids: Optional[List[int]]=None):
         '''Set multiple joint commands atomically'''
-        # check estop status
-        if self._estopped:
-            raise Exception('Emergency stop triggered!')
-
         # write to command publisher
         with self._command_publisher.data_lock:
             if joint_ids is None:
@@ -158,15 +140,10 @@ class LowCmdHandler:
 
     def start(self):
         self._command_publisher.start()
-        self._safety_thread.start()
 
     def shutdown(self):
+        # zeroes gains on the way out (CommandPublisher.shutdown), so the arms go limp
         self._command_publisher.shutdown()
-        self._checking_safety = False
-
-    def estop(self):
-        self._command_publisher.estop()
-        self._estopped = True
 
     def start_recording(self, ids, save_path, filename, record_interval=1.0):
         '''Start recording with background saving'''
@@ -199,29 +176,6 @@ class LowCmdHandler:
             self._dq_cmd_arr = []
             self._tau_cmd_arr = []
             self._torque_cmd_arr = []
-
-    def _safety_checker(self):
-        '''Background thread for safety monitoring'''
-        while self._checking_safety and not self._estopped:
-            start_time = time.time()
-            state = self._robot_model.state
-            for i in UPPER_BODY_INDEX:
-                joint_name = BODY_JOINTS[i]
-                # check position limits
-                if (state['q'][i] < self._q_estop_limits[i][0] or
-                    state['q'][i] > self._q_estop_limits[i][1]):
-                    print(f'Position limit exceeded on joint {i} {joint_name}: {state["q"][i]:.3f} rad')
-                    print(f'q cmd at {i} {self.q_cmd[i]}')
-                    self.estop()
-                # check velocity limits
-                if abs(state['dq'][i]) > self._dq_estop_limits[i]:
-                    print(f'Velocity limit exceeded on joint {i} {joint_name}: {state["dq"][i]:.3f} rad/s')
-                    self.estop()
-                # check torque limits
-                if abs(state['tau'][i]) > self._tau_estop_limits[i]:
-                    print(f'Torque limit exceeded on joint {i} {joint_name}: {state["tau"][i]:.3f} Nm')
-                    self.estop()
-            time.sleep(max(0, self._checker_dt - (time.time() - start_time)))
 
     def _record_state(self):
         if self._recording:
