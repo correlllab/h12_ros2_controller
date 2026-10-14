@@ -39,9 +39,9 @@ NAMED_CONFIGS = {
     'arms_front_yaw':  # forward + shoulder-yaw twist (upper-arm axial)
         np.array([-1.45, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
                   -1.45, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0]),
-    'elbow_only':  # arms down, elbows bent (loads elbow); elbow 1.0 = collision-free
-        np.array([0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
-                  0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    # 'elbow_only':  # arms down, elbows bent (loads elbow); elbow 1.0 = collision-free
+    #     np.array([0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+    #               0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
     'init_1':  # move arm sideways
         np.array([0.0, 0.35, 0.0, 1.3, 0.0, 0.0, 0.0,
                   0.0, -0.35, 0.0, 1.3, 0.0, 0.0, 0.0]),
