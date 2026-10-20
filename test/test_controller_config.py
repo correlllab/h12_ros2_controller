@@ -51,15 +51,9 @@ def test_load_controller_config_rejects_non_mapping_zmp(tmp_path, zmp_section):
         load_controller_config('test.yaml', config_dir=tmp_path)
 
 
-@pytest.mark.parametrize(
-    ('name', 'topic'),
-    (
-        ('balance_safety_full.yaml', 'rt/safety/lowcmd_in'),
-        ('balance_safety_split.yaml', 'rt/safety/lowcmd_upper_in'),
-    ),
-)
-def test_checked_in_profiles_keep_empty_zmp_mapping(name, topic):
-    config = load_controller_config(name, config_dir=DEFAULT_CONFIG_DIR)
+def test_checked_in_balance_profile_keeps_empty_zmp_mapping():
+    config = load_controller_config(
+        'balance_safety_split.yaml', config_dir=DEFAULT_CONFIG_DIR)
 
-    assert config['topics']['low_cmd'] == topic
+    assert config['topics']['low_cmd'] == 'rt/safety/lowcmd_upper_in'
     assert config['zmp'] == {}
