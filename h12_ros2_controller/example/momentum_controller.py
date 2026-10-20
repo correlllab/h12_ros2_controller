@@ -43,7 +43,7 @@ def parse_momentum(text):
     )
 
 
-def main(config_name='balance_debug.yaml'):
+def main(config_name='balance_safety_split.yaml'):
     config = load_controller_config(config_name)
     config.setdefault('momentum_ddp', {})['enabled'] = True
 
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--config',
                         type=str,
-                        default='balance_debug.yaml',
+                        default='balance_safety_split.yaml',
                         help='YAML file name under config/')
     args = parser.parse_args()
 

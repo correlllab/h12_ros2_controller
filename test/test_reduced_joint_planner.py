@@ -30,6 +30,19 @@ class FakeRobotModel:
         upper = self.model_body_reduced.upperPositionLimit
         return bool(np.all(q_reduced >= lower) and np.all(q_reduced <= upper))
 
+    def reduced_limit_violations(self, q_reduced):
+        lower = self.model_body_reduced.lowerPositionLimit
+        upper = self.model_body_reduced.upperPositionLimit
+        violations = []
+        for i, value in enumerate(q_reduced):
+            if value < lower[i] or value > upper[i]:
+                bound = lower[i] if value < lower[i] else upper[i]
+                violations.append({
+                    'name': f'q[{i}]', 'value': value, 'bound': bound,
+                    'overshoot': abs(value - bound),
+                })
+        return violations
+
     def check_collision_free_reduced(self, q_reduced):
         return self.collision_free
 
@@ -69,7 +82,7 @@ def test_invalid_start_fails_with_clear_reason():
 
     assert not result.success
     assert result.path.shape == (0, 2)
-    assert result.reason == 'start is outside reduced joint limits'
+    assert result.reason.startswith('start is outside reduced joint limits:')
 
 
 def test_invalid_goal_fails_with_clear_reason():
@@ -80,7 +93,7 @@ def test_invalid_goal_fails_with_clear_reason():
 
     assert not result.success
     assert result.path.shape == (0, 2)
-    assert result.reason == 'goal is outside reduced joint limits'
+    assert result.reason.startswith('goal is outside reduced joint limits:')
 
 
 def test_collision_state_fails_with_clear_reason():
@@ -198,7 +211,7 @@ def test_state_validation_rejects_y_limit_violation():
     result = planner.plan([0.0, 0.52], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame above y=0.5000'
+    assert result.reason.startswith('start moves left_grasp_frame above y=0.5000')
 
 
 def test_state_validation_allows_y_limit_margin():
@@ -232,7 +245,7 @@ def test_state_validation_rejects_x_limit_violation():
     result = planner.plan([0.0, 0.72], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame beyond x=0.7000'
+    assert result.reason.startswith('start moves left_grasp_frame beyond x=0.7000')
 
 
 def test_state_validation_rejects_z_limit_violation():
@@ -248,7 +261,7 @@ def test_state_validation_rejects_z_limit_violation():
     result = planner.plan([0.52, 0.0], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame above z=0.5000'
+    assert result.reason.startswith('start moves left_grasp_frame above z=0.5000')
     assert planner._validity_failure(np.array([0.51, 0.0]), 'state') == ''
 
 

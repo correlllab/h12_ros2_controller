@@ -360,6 +360,8 @@ def test_balanced_and_plain_integrate_identical_moving_commands(moving_arm):
         controller.robot_model = fake.robot_model
         controller.robot_model.model_body = SimpleNamespace(nv=27)
         controller.low_cmd_handler = fake.low_cmd_handler
+        controller._tau_bias = np.zeros(27)
+        controller._tau_bias_decay = 1.0
         controller.arm_ids = list(range(13, 27))
         local = list(range(7)) if moving_arm == 'left' else list(range(7, 14))
         controller.moving_local = np.asarray(local)
