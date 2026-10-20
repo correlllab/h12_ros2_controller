@@ -1,4 +1,5 @@
 import time
+import copy
 import threading
 import numpy as np
 from abc import ABC, abstractmethod
@@ -32,6 +33,13 @@ class StateSubscriber:
     def __init__(self, low_state_topic=TOPIC_LOWSTATE_DEFAULT):
         # variable tracking states
         self._time_stamp = 0.0
+        self._arrival_monotonic = 0.0
+        self._tick = 0
+        self._unwrapped_tick = 0
+        self._last_tick = None
+        self._tick_valid = False
+        self._sequence = 0
+        self._received = False
         self._imu_state = IMUState_default()
         self._mode = np.zeros(NUM_MOTOR, dtype=np.uint8)
         self._q = np.zeros(NUM_MOTOR, dtype=np.float32)
@@ -54,10 +62,26 @@ class StateSubscriber:
         msg = self._low_state_reader.take_latest()
         if msg is None:
             return
-        now = time.time()
-        self._time_stamp = now
-        self._lag_ms = self._lag_tracker.update(msg.tick, now)
-        self._imu_state = msg.imu_state
+        arrival_monotonic = time.monotonic()
+        arrival_wall = time.time()
+        tick = int(msg.tick) & 0xffffffff
+        if self._last_tick is None:
+            self._unwrapped_tick = tick
+            self._tick_valid = True
+            self._last_tick = tick
+        else:
+            delta = (tick - self._last_tick) & 0xffffffff
+            self._tick_valid = delta < 0x80000000
+            if self._tick_valid and delta > 0:
+                self._unwrapped_tick += delta
+                self._last_tick = tick
+        self._tick = tick
+        self._time_stamp = arrival_wall
+        self._arrival_monotonic = arrival_monotonic
+        self._sequence += 1
+        self._received = True
+        self._lag_ms = self._lag_tracker.update(tick, arrival_wall)
+        self._imu_state = copy.deepcopy(msg.imu_state)
         for i in range(NUM_MOTOR):
             self._mode[i] = msg.motor_state[i].mode
             self._q[i] = msg.motor_state[i].q
@@ -75,7 +99,13 @@ class StateSubscriber:
             self._poll_locked()
             return {
                 'time_stamp': self._time_stamp,
-                'imu_state': self._imu_state,
+                'arrival_monotonic': self._arrival_monotonic,
+                'tick': self._tick,
+                'unwrapped_tick': self._unwrapped_tick,
+                'tick_valid': self._tick_valid,
+                'sequence': self._sequence,
+                'received': self._received,
+                'imu_state': copy.deepcopy(self._imu_state),
                 'mode': self._mode.copy(),
                 'q': self._q.copy(),
                 'dq': self._dq.copy(),

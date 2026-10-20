@@ -16,7 +16,6 @@ from h12_ros2_controller.utility.joint_limits import (
 DEFAULT_CONFIG_NAME = 'debug.yaml'
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
-
 def _ensure_yaml_extension(config_path: Path) -> Path:
     '''Append .yaml when config path has no suffix'''
     if config_path.suffix:
@@ -58,6 +57,87 @@ def _validate_low_cmd_topic(topic):
             f'topics.low_cmd must be a safety layer input ({SAFETY_TOPIC_PREFIX}*), '
             f'got: {topic}'
         )
+
+
+def _validate_zmp(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'zmp' not in raw:
+        return {}
+
+    zmp = raw['zmp']
+    if not isinstance(zmp, dict):
+        raise ValueError('zmp must be a mapping when provided')
+
+    return zmp
+
+
+def _validate_reactive_counter_balance(
+        raw: dict[str, Any]) -> dict[str, Any]:
+    if 'reactive_counter_balance' not in raw:
+        return {}
+
+    reactive = raw['reactive_counter_balance']
+    if not isinstance(reactive, dict):
+        raise ValueError(
+            'reactive_counter_balance must be a mapping when provided'
+        )
+    return reactive
+
+
+def _validate_counter_ddp(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'counter_ddp' not in raw:
+        return {}
+    counter_ddp = raw['counter_ddp']
+    if not isinstance(counter_ddp, dict):
+        raise ValueError('counter_ddp must be a mapping when provided')
+    return counter_ddp
+
+
+def _validate_adaptive_authority(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'adaptive_authority' not in raw:
+        return {}
+    adaptive = raw['adaptive_authority']
+    if not isinstance(adaptive, dict):
+        raise ValueError('adaptive_authority must be a mapping when provided')
+    return adaptive
+
+
+def _validate_decoupled_feedback(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'decoupled_feedback' not in raw:
+        return {}
+    feedback = raw['decoupled_feedback']
+    if not isinstance(feedback, dict):
+        raise ValueError('decoupled_feedback must be a mapping when provided')
+    return feedback
+
+
+def _validate_iteration5_residual_probe(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5_residual_probe' not in raw:
+        return {}
+    probe = raw['iteration5_residual_probe']
+    if not isinstance(probe, dict):
+        raise ValueError(
+            'iteration5_residual_probe must be a mapping when provided'
+        )
+    return probe
+
+
+def _validate_iteration5_h2(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5_h2' not in raw:
+        return {}
+    h2 = raw['iteration5_h2']
+    if not isinstance(h2, dict):
+        raise ValueError('iteration5_h2 must be a mapping when provided')
+    return h2
+
+
+def _validate_iteration5b_h3(raw: dict[str, Any]) -> dict[str, Any]:
+    if 'iteration5b_h3' not in raw:
+        return {}
+    h3 = raw['iteration5b_h3']
+    if not isinstance(h3, dict):
+        raise ValueError('iteration5b_h3 must be a mapping when provided')
+    return h3
+
 
 def _load_joint_config(value: Any, field_name: str) -> np.ndarray:
     if isinstance(value, (int, float)):
@@ -177,6 +257,15 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     logging = raw.get('logging', {})
     if not isinstance(planner, dict):
         raise ValueError('planner must be a mapping')
+    momentum_ddp = raw.get('momentum_ddp', {})
+    zmp = _validate_zmp(raw)
+    reactive_counter_balance = _validate_reactive_counter_balance(raw)
+    counter_ddp = _validate_counter_ddp(raw)
+    adaptive_authority = _validate_adaptive_authority(raw)
+    decoupled_feedback = _validate_decoupled_feedback(raw)
+    iteration5_residual_probe = _validate_iteration5_residual_probe(raw)
+    iteration5_h2 = _validate_iteration5_h2(raw)
+    iteration5b_h3 = _validate_iteration5b_h3(raw)
 
     low_cmd_topic = str(topics.get('low_cmd', 'rt/safety/lowcmd_upper_in'))
     _validate_low_cmd_topic(low_cmd_topic)
@@ -249,6 +338,15 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'filename': str(logging.get('filename', logging.get('save_filename', 'record'))),
             'record_interval': float(logging.get('record_interval', 1.0)),
         },
+        'momentum_ddp': momentum_ddp,
+        'zmp': zmp,
+        'reactive_counter_balance': reactive_counter_balance,
+        'counter_ddp': counter_ddp,
+        'adaptive_authority': adaptive_authority,
+        'decoupled_feedback': decoupled_feedback,
+        'iteration5_residual_probe': iteration5_residual_probe,
+        'iteration5_h2': iteration5_h2,
+        'iteration5b_h3': iteration5b_h3,
     }
 
 def _channel_factory_settings(config: dict[str, Any]) -> tuple[int, str | None]:

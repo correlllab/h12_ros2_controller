@@ -1,0 +1,130 @@
+mode: debug
+
+topics:
+  low_cmd: rt/safety/lowcmd_upper_in
+  low_state: rt/lowstate
+
+network:
+  domain_id: 1
+  interface: ''
+
+controller:
+  v_lim: 1.0
+  w_lim: 2.0
+  dq_lim: 1.0
+  d_min: 0.02
+  timeout: 5.0
+  torso_target: 0.0
+  threshold_ik: 0.0001
+  threshold_joint: 0.001
+  threshold_linear: 0.001
+  threshold_angular: 0.002
+
+momentum_ddp:
+  enabled: false
+
+zmp:
+  enabled: true
+  observer:
+    calibration_samples: 30
+    arming_samples: 30
+    zmp_reference_alpha: 0.0
+    zmp_velocity_alpha: 0.35
+    center_reference_alpha: 0.0
+    angular_acceleration_alpha: 0.35
+    com_acceleration_alpha: 0.20
+    support_offset: [0.0, 0.0]
+    support_half_extents: [0.12, 0.06]
+  feedback:
+    zmp_gain: [1.0, 1.0]
+    control_zmp_gain: [1.0, 1.0]
+    stop_on_rate_decay: true
+    rate_peak_threshold: 0.10
+    stop_rate_threshold: 0.05
+    angular_velocity_gain: [0.10, 0.0]
+    tilt_gain: [0.0, 0.0]
+    enter_threshold: 0.012
+    exit_threshold: 0.005
+    max_error: 0.04
+    abort_threshold: 1.0
+  ddp:
+    maxiter: 2
+    effect_sign: 1.0
+    w_balance: 1.0
+    w_velocity: 0.0001
+    w_posture: 0.001
+    w_terminal_posture: 0.001
+    w_limit: 100.0
+    max_velocity: 4.0
+    damping: 0.0001
+
+frequency:
+  ctrl_hz: 30
+  pub_hz: 500
+  check_hz: 1000
+
+gains:
+  # upper-body gains only; lower-body gains default to 0
+  kp:
+    - 160.0 # torso_joint
+    - 240.0 # left_shoulder_pitch_joint
+    - 200.0 # left_shoulder_roll_joint
+    - 150.0 # left_shoulder_yaw_joint
+    - 150.0 # left_elbow_joint
+    - 80.0 # left_wrist_roll_joint
+    - 80.0 # left_wrist_pitch_joint
+    - 80.0 # left_wrist_yaw_joint
+    - 240.0 # right_shoulder_pitch_joint
+    - 200.0 # right_shoulder_roll_joint
+    - 150.0 # right_shoulder_yaw_joint
+    - 150.0 # right_elbow_joint
+    - 80.0 # right_wrist_roll_joint
+    - 80.0 # right_wrist_pitch_joint
+    - 80.0 # right_wrist_yaw_joint
+  kd:
+    - 10.0 # torso_joint
+    - 12.0 # left_shoulder_pitch_joint
+    - 10.0 # left_shoulder_roll_joint
+    - 10.0 # left_shoulder_yaw_joint
+    - 8.0 # left_elbow_joint
+    - 8.0 # left_wrist_roll_joint
+    - 8.0 # left_wrist_pitch_joint
+    - 8.0 # left_wrist_yaw_joint
+    - 12.0 # right_shoulder_pitch_joint
+    - 10.0 # right_shoulder_roll_joint
+    - 10.0 # right_shoulder_yaw_joint
+    - 8.0 # right_elbow_joint
+    - 8.0 # right_wrist_roll_joint
+    - 8.0 # right_wrist_pitch_joint
+    - 8.0 # right_wrist_yaw_joint
+  ki:
+    - 60.0 # torso_joint
+    - 600.0 # left_shoulder_pitch_joint
+    - 600.0 # left_shoulder_roll_joint
+    - 400.0 # left_shoulder_yaw_joint
+    - 400.0 # left_elbow_joint
+    - 100.0 # left_wrist_roll_joint
+    - 100.0 # left_wrist_pitch_joint
+    - 100.0 # left_wrist_yaw_joint
+    - 600.0 # right_shoulder_pitch_joint
+    - 600.0 # right_shoulder_roll_joint
+    - 400.0 # right_shoulder_yaw_joint
+    - 400.0 # right_elbow_joint
+    - 100.0 # right_wrist_roll_joint
+    - 100.0 # right_wrist_pitch_joint
+    - 100.0 # right_wrist_yaw_joint
+
+limits:
+  clip:
+    position_offset: 0.001
+    velocity_ratio: 0.10
+    torque_ratio: 0.60
+  estop:
+    position_offset: 0.0001
+    velocity_ratio: 1.00
+    torque_ratio: 1.00
+
+logging:
+  enabled: false
+  base_dir: data/control_record
+  filename: record

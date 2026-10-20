@@ -1,0 +1,121 @@
+import time
+import argparse
+
+import numpy as np
+
+from h12_ros2_controller.core.controller.zmp_legacy import format_vector
+from h12_ros2_controller.core.controller.zmp_controller_legacy import (
+    ZmpController,
+)
+from h12_ros2_controller.utility.controller_config import (
+    init_channel_factory_guard,
+    load_controller_config,
+    maybe_start_controller_logging,
+)
+from h12_ros2_controller.utility.path_definition import (
+    SRDF_HANDLESS_SPHERE_PATH,
+    URDF_HANDLESS_PATH,
+    URDF_HANDLESS_SPHERE_PATH,
+)
+
+
+def format_array(value):
+    if value is None:
+        return 'None'
+    return format_vector(value)
+
+
+def print_status(controller, last_summary):
+    balance = controller.latest_balance_state
+    perturbation = controller.latest_perturbation_state
+
+    active = False if perturbation is None else perturbation.active
+    reasons = [] if perturbation is None else perturbation.reasons
+    reason_text = ','.join(reasons) if reasons else '-'
+    target = format_array(controller.latest_target_momentum)
+    zmp_error_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.zmp_error
+    )
+    center_shift_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.center_shift
+    )
+    com_velocity_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.com_velocity
+    )
+    angular_velocity_norm = 0.0 if balance is None else np.linalg.norm(
+        balance.angular_velocity
+    )
+    force_proxy = 0.0 if balance is None else balance.force_proxy
+    print(
+        f'active={active} reasons={reason_text} '
+        f'zmp={zmp_error_norm:.3f} center={center_shift_norm:.3f} '
+        f'vcom={com_velocity_norm:.3f} gyro={angular_velocity_norm:.3f} '
+        f'force={force_proxy:.1f} target={target} '
+        f'actuator={controller.latest_actuator_state} '
+        f'response={controller.latest_response_status} '
+        f'raw_norm={controller.latest_raw_command_norm:.3f} '
+        f'applied_norm={controller.latest_applied_command_norm:.3f} '
+        f'plan_dt={controller.latest_plan_duration:.3f}s'
+    )
+
+    summary = controller.latest_response_summary
+    if summary and summary != last_summary:
+        print(f'  {summary}')
+        return summary
+    return last_summary
+
+
+def main(config_name='balance_safety_split.yaml', status_interval=1.0):
+    config = load_controller_config(config_name)
+    config.setdefault('zmp', {})['enabled'] = True
+
+    init_channel_factory_guard(config)
+
+    controller = ZmpController(
+        URDF_HANDLESS_PATH,
+        URDF_HANDLESS_SPHERE_PATH,
+        SRDF_HANDLESS_SPHERE_PATH,
+        handless=True,
+        visualize=False,
+        config=config,
+    )
+    maybe_start_controller_logging(controller)
+
+    print('ZMP balance controller ready')
+    print(f'config: {config_name}')
+    print('press Ctrl-C to stop')
+
+    next_status_time = 0.0
+    last_summary = ''
+    try:
+        while True:
+            start_time = time.time()
+            controller.control_step_reduced()
+
+            if start_time >= next_status_time:
+                last_summary = print_status(controller, last_summary)
+                next_status_time = start_time + status_interval
+
+            time.sleep(max(0.0, controller.dt - (time.time() - start_time)))
+    except KeyboardInterrupt:
+        print()
+        print('interrupted')
+    except Exception as exc:
+        print(f'error: {exc}')
+    finally:
+        print('shutting down')
+        controller.shutdown()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='ZMP balance controller runner'
+    )
+    parser.add_argument('--config', type=str, default='balance_safety_split.yaml')
+    parser.add_argument('--status-interval', type=float, default=1.0)
+    args = parser.parse_args()
+
+    main(
+        config_name=args.config,
+        status_interval=args.status_interval,
+    )

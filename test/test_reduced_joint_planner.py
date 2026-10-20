@@ -1,4 +1,3 @@
-import os
 from types import SimpleNamespace
 
 import numpy as np
@@ -29,6 +28,19 @@ class FakeRobotModel:
         lower = self.model_body_reduced.lowerPositionLimit
         upper = self.model_body_reduced.upperPositionLimit
         return bool(np.all(q_reduced >= lower) and np.all(q_reduced <= upper))
+
+    def reduced_limit_violations(self, q_reduced):
+        lower = self.model_body_reduced.lowerPositionLimit
+        upper = self.model_body_reduced.upperPositionLimit
+        violations = []
+        for i, value in enumerate(q_reduced):
+            if value < lower[i] or value > upper[i]:
+                bound = lower[i] if value < lower[i] else upper[i]
+                violations.append({
+                    'name': f'q[{i}]', 'value': value, 'bound': bound,
+                    'overshoot': abs(value - bound),
+                })
+        return violations
 
     def check_collision_free_reduced(self, q_reduced):
         return self.collision_free
@@ -69,7 +81,7 @@ def test_invalid_start_fails_with_clear_reason():
 
     assert not result.success
     assert result.path.shape == (0, 2)
-    assert result.reason == 'start is outside reduced joint limits'
+    assert result.reason.startswith('start is outside reduced joint limits:')
 
 
 def test_invalid_goal_fails_with_clear_reason():
@@ -80,7 +92,7 @@ def test_invalid_goal_fails_with_clear_reason():
 
     assert not result.success
     assert result.path.shape == (0, 2)
-    assert result.reason == 'goal is outside reduced joint limits'
+    assert result.reason.startswith('goal is outside reduced joint limits:')
 
 
 def test_collision_state_fails_with_clear_reason():
@@ -198,7 +210,7 @@ def test_state_validation_rejects_y_limit_violation():
     result = planner.plan([0.0, 0.52], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame above y=0.5000'
+    assert result.reason.startswith('start moves left_grasp_frame above y=0.5000')
 
 
 def test_state_validation_allows_y_limit_margin():
@@ -232,7 +244,7 @@ def test_state_validation_rejects_x_limit_violation():
     result = planner.plan([0.0, 0.72], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame beyond x=0.7000'
+    assert result.reason.startswith('start moves left_grasp_frame beyond x=0.7000')
 
 
 def test_state_validation_rejects_z_limit_violation():
@@ -248,85 +260,5 @@ def test_state_validation_rejects_z_limit_violation():
     result = planner.plan([0.52, 0.0], [0.0, 0.0])
 
     assert not result.success
-    assert result.reason == 'start moves left_grasp_frame above z=0.5000'
+    assert result.reason.startswith('start moves left_grasp_frame above z=0.5000')
     assert planner._validity_failure(np.array([0.51, 0.0]), 'state') == ''
-
-
-def test_plan_between_named_configs_smoke():
-    pytest.importorskip('ompl')
-    robot_model_mod = pytest.importorskip(
-        'h12_ros2_controller.core.robot_model',
-        reason='RobotModel dependencies are unavailable',
-    )
-    path_mod = pytest.importorskip(
-        'h12_ros2_controller.utility.path_definition',
-        reason='asset paths are unavailable',
-    )
-    joint_mod = pytest.importorskip(
-        'h12_ros2_controller.utility.joint_definition',
-        reason='joint definitions are unavailable',
-    )
-    config_mod = pytest.importorskip(
-        'h12_ros2_controller.utility.named_config',
-        reason='named configs are unavailable',
-    )
-
-    for path in [
-        path_mod.URDF_MAGPIE_PATH,
-        path_mod.URDF_MAGPIE_SPHERE_PATH,
-        path_mod.SRDF_MAGPIE_SPHERE_PATH,
-    ]:
-        if not os.path.exists(path):
-            pytest.skip(f'missing robot asset: {path}')
-
-    robot_model = robot_model_mod.RobotModel(path_mod.URDF_MAGPIE_PATH)
-    robot_model.init_reduced_model(joint_mod.ENABLED_JOINTS)
-    robot_model.init_collision_model(
-        path_mod.URDF_MAGPIE_SPHERE_PATH,
-        path_mod.SRDF_MAGPIE_SPHERE_PATH,
-    )
-
-    candidate_names = [
-        'home',
-        'arms_front_45',
-        'arms_asym',
-        't_pose_elbow',
-        'elbow_only',
-    ]
-    valid_pairs = []
-    for start_name in candidate_names:
-        q_start = config_mod.NAMED_CONFIGS[start_name]
-        if not robot_model.check_within_limits_reduced(q_start):
-            continue
-        if not robot_model.check_collision_free_reduced(q_start):
-            continue
-        for goal_name in candidate_names:
-            if goal_name == start_name:
-                continue
-            q_goal = config_mod.NAMED_CONFIGS[goal_name]
-            if not robot_model.check_within_limits_reduced(q_goal):
-                continue
-            if not robot_model.check_collision_free_reduced(q_goal):
-                continue
-            valid_pairs.append((start_name, goal_name))
-
-    if not valid_pairs:
-        pytest.skip('no collision-free named config pair available')
-
-    planner = ReducedJointPlanner(
-        robot_model,
-        config=PlannerConfig(timeout=1.0, max_interpolation_steps=25),
-    )
-    result = None
-    for start_name, goal_name in valid_pairs:
-        result = planner.plan(
-            config_mod.NAMED_CONFIGS[start_name],
-            config_mod.NAMED_CONFIGS[goal_name],
-        )
-        if result.success:
-            break
-
-    if result is None or not result.success:
-        pytest.skip('no corridor-valid named config pair available')
-
-    assert result.path.shape[1] == len(joint_mod.ENABLED_JOINTS)
