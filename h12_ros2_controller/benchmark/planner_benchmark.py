@@ -131,11 +131,18 @@ def _planner_config(config, frame_name):
         ),
         frame_names=(frame_name,),
         frame_z_min=planner.get('frame_z_min', defaults.frame_z_min),
-        frame_z_min_margin=planner.get(
-            'frame_z_min_margin', defaults.frame_z_min_margin
+        frame_x_max=planner.get('frame_x_max', defaults.frame_x_max),
+        frame_y_min=planner.get('frame_y_min', defaults.frame_y_min),
+        frame_y_max=planner.get('frame_y_max', defaults.frame_y_max),
+        frame_z_max=planner.get('frame_z_max', defaults.frame_z_max),
+        frame_limit_margin=planner.get(
+            'frame_limit_margin', defaults.frame_limit_margin
         ),
         frame_z_corridor_margin=planner.get(
             'frame_z_corridor_margin', defaults.frame_z_corridor_margin
+        ),
+        start_limit_tolerance=planner.get(
+            'start_limit_tolerance', defaults.start_limit_tolerance
         ),
         # keep every benchmark free of point-cloud obstacles
         point_cloud_path='',
