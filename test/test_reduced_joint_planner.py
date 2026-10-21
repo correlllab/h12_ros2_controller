@@ -136,6 +136,60 @@ def test_plan_between_fake_valid_states():
     assert result.metadata['path_kind'] == 'direct path'
 
 
+def test_direct_only_reports_invalid_segment_without_using_ompl():
+    robot_model = FakeRobotModel()
+    robot_model.check_collision_free_reduced = lambda q: not 0.25 < q[0] < 0.35
+    planner = ReducedJointPlanner(robot_model)
+
+    result = planner.plan([0.0, 0.0], [0.5, 0.5], direct_only=True)
+
+    assert not result.success
+    assert result.reason.startswith('direct path failed: path waypoint')
+
+
+def test_local_corridor_rejects_rearward_grasp_sweep():
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.5, 0.0])
+    planner._set_workspace_corridor(
+        start, goal, local_frames=('left_grasp_frame',)
+    )
+
+    reason = planner._path_validity_failure(
+        np.array([start, [0.25, -0.3], goal])
+    )
+
+    assert 'behind local x=' in reason
+
+
+def test_local_path_quality_rejects_long_joint_detour():
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.5, 0.0])
+    planner._set_workspace_corridor(
+        start, goal, local_frames=('left_grasp_frame',)
+    )
+
+    metrics, reason = planner._path_quality_failure(
+        np.array([start, [0.25, 1.0], goal]), start, goal,
+        ('left_grasp_frame',),
+    )
+
+    assert metrics['joint_path_ratio'] > 2.0
+    assert 'path detour ratio' in reason
+
+
+def test_named_joint_plans_do_not_inherit_locality_constraint():
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.5, 0.0])
+    _, reason = planner._path_quality_failure(
+        np.array([start, [0.25, 1.0], goal]), start, goal, (),
+    )
+
+    assert not reason
+
+
 def test_plan_pins_idle_right_arm_with_home_tolerance():
     pytest.importorskip('ompl')
     lower = -np.ones(14)

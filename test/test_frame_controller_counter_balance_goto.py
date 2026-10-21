@@ -46,6 +46,7 @@ def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
         moving_speed=0.3,
         min_interpolation_steps=30,
         max_interpolation_steps=300,
+        timeout=1.0,
     )
     worker.planner = SimpleNamespace(config=config)
 
@@ -59,6 +60,10 @@ def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
             pass
     assert config.moving_speed == 0.3
 
+    with worker._config_override(None, None, timeout=0.25):
+        assert config.timeout == 0.25
+    assert config.timeout == 1.0
+
 
 def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller = object.__new__(UpperController)
@@ -71,6 +76,9 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller.enabled_ids = list(range(13, 27))
     controller.low_cmd_handler = SimpleNamespace(q_cmd=q.copy())
     controller._tau_bias = np.zeros(27)
+    controller.planner = SimpleNamespace(
+        planner_config=SimpleNamespace(frame_names=('left_grasp_frame',))
+    )
     controller.update_ik_solver = lambda **kwargs: None
     controller._active_task_mask = lambda: np.ones(14, dtype=bool)
     goals = [np.ones(27), np.full(27, 2.0)]
@@ -81,13 +89,15 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
         calls.append(kwargs)
         return SimpleNamespace(
             success=True,
-            candidates=[SimpleNamespace(q=goal, seed_name=f'candidate_{idx}',
+            candidates=[SimpleNamespace(q=goal, score=float(idx),
+                                        seed_name=f'candidate_{idx}',
                                         linear_error=0.0, angular_error=0.0)
                         for idx, goal in enumerate(goals)],
         )
 
     controller.ik_solver = SimpleNamespace(
         solve_ik_reduced=solve_ik_reduced,
+        frame_tasks={},
         configuration_reduced=SimpleNamespace(update=updates.append),
     )
 
@@ -974,5 +984,11 @@ def test_noop_warmup_starts_real_planner_worker_without_motion():
         result = planner.plan_configuration(q, home, home)
         assert result.success, result.reason
         assert np.array_equal(result.path[-1], home)
+        result = planner.plan_configuration(
+            q, home, home, direct_only=True,
+            local_frames=('left_grasp_frame',),
+        )
+        assert result.success, result.reason
+        assert result.metadata['joint_path_ratio'] == pytest.approx(1.0)
     finally:
         planner.shutdown()

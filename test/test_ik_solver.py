@@ -8,8 +8,9 @@ import pytest
 from h12_ros2_controller.core.ik_solver import IKAttemptResult, IKSolver
 from h12_ros2_controller.core.controller.upper_controller import UpperController
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
-    KinematicPipeline, planner_config_from_controller,
+    KinematicPipeline, plan_ik_candidates, planner_config_from_controller,
 )
+from h12_ros2_controller.core.planner.reduced_joint_planner import PlanResult
 from h12_ros2_controller.benchmark.ik_benchmark import main as run_benchmark
 from h12_ros2_controller.example import kinematic_plan_goto
 from h12_ros2_controller.utility import named_config
@@ -271,6 +272,91 @@ def test_offline_frame_goal_reaches_named_seeds_with_one_second_budget():
     assert [attempt.seed_name for attempt in result.ik.attempts][:2] == [
         'current', 't_pose',
     ]
+
+
+def test_candidate_selector_probes_all_direct_paths_before_ompl():
+    candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
+                                  seed_name=f'seed_{i}') for i in (1, 2)]
+    calls = []
+
+    def plan_goal(goal, direct_only, timeout):
+        calls.append((float(goal[0]), direct_only))
+        return PlanResult(
+            success=bool(goal[0] == 2),
+            path=np.array([[0.0], goal]),
+            reason='direct blocked' if goal[0] == 1 else 'direct path',
+        )
+
+    plan, candidate = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+    )
+
+    assert plan.success
+    assert candidate.seed_name == 'seed_2'
+    assert calls == [(1.0, True), (2.0, True)]
+
+
+def test_candidate_selector_picks_shorter_direct_path():
+    candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
+                                  seed_name=f'seed_{i}') for i in (1, 2)]
+
+    def plan_goal(goal, direct_only, timeout):
+        assert direct_only
+        length = 2.0 if goal[0] == 1 else 1.0
+        return PlanResult(
+            success=True, path=np.array([[0.0], goal]),
+            metadata={'joint_path_length': length},
+        )
+
+    plan, candidate = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+    )
+
+    assert plan.metadata['joint_path_length'] == 1.0
+    assert candidate.seed_name == 'seed_2'
+
+
+def test_candidate_selector_retries_after_rejected_ompl_detour():
+    candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
+                                  seed_name=f'seed_{i}') for i in (1, 2)]
+    calls = []
+
+    def plan_goal(goal, direct_only, timeout):
+        calls.append((float(goal[0]), direct_only, timeout))
+        if direct_only or goal[0] == 1:
+            return PlanResult(
+                success=False, path=np.empty((0, 1)),
+                reason='path detour ratio exceeds local limit',
+            )
+        return PlanResult(
+            success=True, path=np.array([[0.0], goal]), reason='success',
+            metadata={'joint_path_ratio': 1.1},
+        )
+
+    plan, candidate = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+        planning_budget=1.0,
+    )
+
+    assert plan.success
+    assert candidate.seed_name == 'seed_2'
+    assert [call[:2] for call in calls] == [
+        (1.0, True), (2.0, True), (1.0, False), (2.0, False),
+    ]
+    assert all(0 < timeout <= 0.75 for _, direct, timeout in calls if not direct)
+
+
+def test_problematic_pitch_goal_has_local_path_from_home():
+    pipeline = KinematicPipeline()
+    pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
+                     np.deg2rad(80), np.deg2rad(-15)])
+
+    result = pipeline.plan_frame('left_grasp_frame', pose, ik_timeout=1.0)
+
+    assert result.plan.success, result.plan.reason
+    assert result.plan.metadata['joint_path_ratio'] <= 2.0
+    assert (result.plan.metadata['min_frame_x']['left_grasp_frame'] >=
+            result.plan.metadata['local_x_bounds']['left_grasp_frame'] - 0.01)
 
 
 def test_interactive_goto_reads_command_before_dispatch(monkeypatch, capsys):

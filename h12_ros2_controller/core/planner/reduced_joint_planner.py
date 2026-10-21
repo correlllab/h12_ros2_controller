@@ -37,6 +37,8 @@ class PlannerConfig:
     frame_z_max: float = 0.50
     frame_limit_margin: float = 1e-3
     frame_z_corridor_margin: float = 0.05
+    local_x_backtrack: float = 0.15
+    max_local_path_ratio: float = 2.0
     # the start config is the robot's measured pose, which can sit marginally
     # past a joint limit; clamp overshoots up to this (rad) into limits instead
     # of aborting the plan. Larger overshoots still fail (genuinely bad pose).
@@ -68,6 +70,7 @@ class ReducedJointPlanner:
         self.frame_min_z = self._make_frame_floor_map(self.config.frame_z_min)
         self.frame_max_z = self._make_frame_floor_map(self.config.frame_z_max)
         self.corridor_min_z = {}
+        self.local_min_x = {}
         # Each planner owns its FK data; never borrow the live model's data
         self._frame_model = getattr(self.robot_model, 'model', None)
         self._frame_data = (
@@ -137,6 +140,12 @@ class ReducedJointPlanner:
             raise ValueError(
                 'Planner frame_z_corridor_margin must be non-negative'
             )
+        if (not np.isfinite(self.config.local_x_backtrack) or
+                self.config.local_x_backtrack < 0):
+            raise ValueError('Planner local_x_backtrack must be finite and non-negative')
+        if (not np.isfinite(self.config.max_local_path_ratio) or
+                self.config.max_local_path_ratio < 1):
+            raise ValueError('Planner max_local_path_ratio must be finite and at least 1')
         if (
             self.config.frame_y_min is not None and
             self.config.frame_y_max is not None and
@@ -441,6 +450,7 @@ class ReducedJointPlanner:
             not self.frame_min_z and
             not self.frame_max_z and
             not self.corridor_min_z and
+            not self.local_min_x and
             self.config.frame_x_max is None and
             self.config.frame_y_min is None and
             self.config.frame_y_max is None
@@ -453,6 +463,12 @@ class ReducedJointPlanner:
             x = position[0]
             y = position[1]
             z = position[2]
+            local_x = self.local_min_x.get(frame_name)
+            if local_x is not None and x + margin < local_x:
+                return (
+                    f'{name} moves {frame_name} behind local x={local_x:.4f} '
+                    f'(x={x:.4f})'
+                )
             min_z = self.frame_min_z.get(frame_name)
             corridor_z = self.corridor_min_z.get(frame_name)
             if corridor_z is not None:
@@ -504,8 +520,9 @@ class ReducedJointPlanner:
             return {name: float(z) for name, z in min_z.items()}
         return {name: float(min_z) for name in self.frame_names}
 
-    def _set_workspace_corridor(self, start, goal):
+    def _set_workspace_corridor(self, start, goal, local_frames=()):
         self.corridor_min_z = {}
+        self.local_min_x = {}
         if not hasattr(self.robot_model, 'get_frame_position'):
             return
 
@@ -518,6 +535,38 @@ class ReducedJointPlanner:
             self.corridor_min_z[frame_name] = (
                 min(start_pos[2], goal_pos[2]) - margin
             )
+            if frame_name in local_frames:
+                self.local_min_x[frame_name] = (
+                    min(start_pos[0], goal_pos[0]) - self.config.local_x_backtrack
+                )
+
+    def _path_quality_failure(self, path, start, goal, local_frames):
+        length = float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
+        direct = float(np.linalg.norm(goal - start))
+        ratio = length / direct if direct > 1e-8 else (
+            1.0 if length < 1e-8 else float('inf')
+        )
+        metrics = {
+            'joint_path_length': length,
+            'joint_direct_distance': direct,
+            'joint_path_ratio': ratio,
+        }
+        if local_frames:
+            min_x = {name: float('inf') for name in local_frames}
+            for q in path:
+                poses = self._frame_poses(q)
+                for name in local_frames:
+                    min_x[name] = min(min_x[name], float(poses[name][0][0]))
+            metrics['min_frame_x'] = min_x
+            metrics['local_x_bounds'] = {
+                name: self.local_min_x[name] for name in local_frames
+            }
+        if local_frames and ratio > self.config.max_local_path_ratio + 1e-6:
+            return metrics, (
+                f'path detour ratio {ratio:.2f} exceeds local limit '
+                f'{self.config.max_local_path_ratio:.2f}'
+            )
+        return metrics, ''
 
     def _path_validity_failure(self, path):
         for idx, q in enumerate(path):
@@ -557,7 +606,8 @@ class ReducedJointPlanner:
             mask[7:] = True
         return mask
 
-    def plan(self, start, goal, active_mask=None):
+    def plan(self, start, goal, active_mask=None, direct_only=False,
+             local_frames=(), timeout=None):
         '''Plan a collision-free path between reduced joint configurations'''
         started = perf_counter()
         stage_start = started
@@ -574,6 +624,10 @@ class ReducedJointPlanner:
 
         start = self._as_reduced_array(start, 'start')
         goal = self._as_reduced_array(goal, 'goal')
+        local_frames = tuple(local_frames)
+        unsupported = set(local_frames) - set(self.frame_names)
+        if unsupported:
+            raise ValueError(f'Locality frames not configured: {sorted(unsupported)}')
         # the start reflects the measured pose; legalize tiny limit overshoots
         start = self._clamp_start_into_limits(start)
         if active_mask is None:
@@ -582,7 +636,7 @@ class ReducedJointPlanner:
         # restrict planning to active joints; pin the rest to the start value
         self._set_active_mask(active_mask, start)
         goal = self._project_inactive(goal)
-        self._set_workspace_corridor(start, goal)
+        self._set_workspace_corridor(start, goal, local_frames)
 
         # reject invalid endpoints before OMPL does any sampling
         self.validity_checks = 0
@@ -602,11 +656,16 @@ class ReducedJointPlanner:
         stage_start = perf_counter()
         self.validity_checks = 0
         direct_failure = ''
-        if self.config.try_direct:
+        if self.config.try_direct or direct_only:
             path, metadata = self._direct_path(start, goal)
             timings['direct'] = perf_counter() - stage_start
             stage_start = perf_counter()
             direct_failure = self._path_validity_failure(path)
+            if not direct_failure:
+                quality, direct_failure = self._path_quality_failure(
+                    path, start, goal, local_frames,
+                )
+                metadata.update(quality)
             timings['direct_validation'] = perf_counter() - stage_start
             if not direct_failure:
                 metadata['validity_checks'] = self.validity_checks
@@ -617,6 +676,15 @@ class ReducedJointPlanner:
                     planner_name=self.config.planner,
                     metadata=metadata,
                 ))
+
+        if direct_only:
+            return finish(PlanResult(
+                success=False,
+                path=self._empty_path(),
+                reason=f'direct path failed: {direct_failure}',
+                planner_name=self.config.planner,
+                metadata={'direct_failure': direct_failure},
+            ))
 
         stage_start = perf_counter()
         # reset OMPL state; collapse inactive joint bounds to pin them
@@ -630,7 +698,10 @@ class ReducedJointPlanner:
             self._make_state(goal),
         )
 
-        solved = self.ss.solve(float(self.config.timeout))
+        solve_timeout = self.config.timeout if timeout is None else float(timeout)
+        if not np.isfinite(solve_timeout) or solve_timeout <= 0.0:
+            raise ValueError('Planner timeout must be finite and positive')
+        solved = self.ss.solve(solve_timeout)
         timings['ompl'] = perf_counter() - stage_start
         if not bool(solved):
             return finish(PlanResult(
@@ -670,6 +741,11 @@ class ReducedJointPlanner:
         stage_start = perf_counter()
         metadata['actual_waypoints'] = path_array.shape[0]
         reason = self._path_validity_failure(path_array)
+        if not reason:
+            quality, reason = self._path_quality_failure(
+                path_array, start, goal, local_frames,
+            )
+            metadata.update(quality)
         timings['validation'] = perf_counter() - stage_start
         metadata['validity_checks'] = self.validity_checks
         if reason:

@@ -28,19 +28,66 @@ class KinematicPlan:
     selected_candidate: object = None
 
 
-def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=3):
-    '''Try ranked motor-vector IK candidates until a plan succeeds
+def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=3,
+                       planning_budget=2.0):
+    '''Prefer short direct paths, then bounded local OMPL candidates
 
-    plan_goal accepts a reduced configuration and returns a PlanResult.
+    plan_goal accepts goal, direct_only, and timeout keyword arguments.
     Returns (PlanResult or None, selected IK attempt or None).
     '''
-    plan = None
-    for candidate in ik_result.candidates[:max_candidates]:
+    if max_candidates < 1:
+        raise ValueError('max_candidates must be positive')
+    if not np.isfinite(planning_budget) or planning_budget <= 0:
+        raise ValueError('planning_budget must be finite and positive')
+    candidates = ik_result.candidates[:max_candidates]
+    deadline = time.perf_counter() + planning_budget
+    direct_plans = []
+    failures = []
+    last_plan = None
+
+    def score(plan, candidate):
+        length = plan.metadata.get('joint_path_length')
+        if length is None:
+            length = float(np.sum(np.linalg.norm(np.diff(plan.path, axis=0), axis=1)))
+        # retain IK's wrist and joint-margin preference when paths are similar
+        return length + 0.1 * (candidate.score or 0.0)
+
+    for candidate in candidates:
         goal = candidate.q[reduced_mask]
-        plan = plan_goal(goal)
+        plan = plan_goal(goal, direct_only=True, timeout=None)
+        last_plan = plan
         if plan.success:
-            return plan, candidate
-    return plan, None
+            direct_plans.append((score(plan, candidate), plan, candidate))
+        else:
+            failures.append(f'{candidate.seed_name}: {plan.reason}')
+    if direct_plans:
+        _, plan, candidate = min(direct_plans, key=lambda item: item[0])
+        return plan, candidate
+
+    best = None
+    for index, candidate in enumerate(candidates):
+        remaining = deadline - time.perf_counter()
+        if remaining < 0.1:
+            break
+        goal = candidate.q[reduced_mask]
+        timeout = min(0.75, remaining / (len(candidates) - index))
+        plan = plan_goal(goal, direct_only=False, timeout=timeout)
+        last_plan = plan
+        if not plan.success:
+            failures.append(f'{candidate.seed_name}: {plan.reason}')
+            continue
+        quality = score(plan, candidate)
+        if best is None or quality < best[0]:
+            best = (quality, plan, candidate)
+        if plan.metadata.get('joint_path_ratio', float('inf')) <= 1.3:
+            break
+    if best is not None:
+        return best[1], best[2]
+    if last_plan is not None:
+        if deadline - time.perf_counter() < 0.1:
+            failures.append('planning budget exhausted')
+        last_plan.reason = 'No acceptable local path: ' + '; '.join(failures)
+    return last_plan, None
 
 
 def planner_config_from_controller(config, dt=None):
@@ -169,7 +216,11 @@ class KinematicPipeline:
         start = self.robot_model.state_reduced['q']
         plan, selected = plan_ik_candidates(
             ik,
-            lambda goal: self.planner.plan(start, goal, active_mask=active_mask),
+            lambda goal, direct_only, timeout: self.planner.plan(
+                start, goal, active_mask=active_mask,
+                direct_only=direct_only, timeout=timeout,
+                local_frames=(frame_name,) if frame_name in self.planner.frame_names else (),
+            ),
             self.robot_model.reduced_mask,
         )
         return KinematicPlan(

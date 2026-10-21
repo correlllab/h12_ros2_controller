@@ -345,7 +345,8 @@ class UpperController:
         return self._path_or_raise(result)
 
     def _plan_configuration_result(self, q_reduced, start=None, active_mask=None,
-                                   current_q=None):
+                                   current_q=None, direct_only=False,
+                                   timeout=None, local_frames=()):
         '''Return the planner result without discarding failure diagnostics'''
         self.check_state_fresh()
         if current_q is None:
@@ -370,6 +371,9 @@ class UpperController:
             active_mask=active_mask,
             moving_speed=moving_speed,
             max_interpolation_steps=max_interpolation_steps,
+            direct_only=direct_only,
+            timeout=timeout,
+            local_frames=local_frames,
         )
         return result
 
@@ -403,11 +407,16 @@ class UpperController:
             )
             raise RuntimeError(f'IK failed to resolve current targets ({reasons})')
 
+        local_frames = tuple(
+            task.frame for task in self.ik_solver.frame_tasks.values()
+            if task.frame in self.planner.planner_config.frame_names
+        )
         result, selected = plan_ik_candidates(
             ik_result,
-            lambda goal: self._plan_configuration_result(
+            lambda goal, direct_only, timeout: self._plan_configuration_result(
                 goal, start=start_reduced, active_mask=active_mask,
-                current_q=measured_q,
+                current_q=measured_q, direct_only=direct_only,
+                timeout=timeout, local_frames=local_frames,
             ),
             self.robot_model.reduced_mask,
         )

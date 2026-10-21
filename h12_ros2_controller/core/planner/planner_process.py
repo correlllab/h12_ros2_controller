@@ -33,7 +33,8 @@ class PlannerClient:
 
     def plan_configuration(self, current_q, start, goal,
                            active_mask=None, moving_speed=None,
-                           max_interpolation_steps=None):
+                           max_interpolation_steps=None, direct_only=False,
+                           local_frames=(), timeout=None):
         '''Plan to a reduced joint target in the planner process
 
         The worker's PlannerConfig is serialized once at spawn, so per-goal
@@ -48,6 +49,9 @@ class PlannerClient:
             'active_mask': _optional_array(active_mask, dtype=bool),
             'moving_speed': moving_speed,
             'max_interpolation_steps': max_interpolation_steps,
+            'direct_only': bool(direct_only),
+            'local_frames': tuple(local_frames),
+            'timeout': timeout,
         })
 
     def warmup(self):
@@ -160,18 +164,23 @@ class _PlannerWorker:
         with self._config_override(
             request.get('moving_speed'),
             request.get('max_interpolation_steps'),
+            request.get('timeout'),
         ):
-            return self.planner.plan(start, goal, active_mask=active_mask)
+            return self.planner.plan(
+                start, goal, active_mask=active_mask,
+                direct_only=request.get('direct_only', False),
+                local_frames=request.get('local_frames', ()),
+            )
 
     @contextmanager
-    def _config_override(self, moving_speed, max_interpolation_steps):
+    def _config_override(self, moving_speed, max_interpolation_steps, timeout=None):
         '''Apply per-request planner speed settings, restoring them after'''
-        if moving_speed is None and max_interpolation_steps is None:
+        if moving_speed is None and max_interpolation_steps is None and timeout is None:
             yield
             return
 
         config = self.planner.config
-        previous = (config.moving_speed, config.max_interpolation_steps)
+        previous = (config.moving_speed, config.max_interpolation_steps, config.timeout)
         # PlannerConfig is validated at construction only, so an override has
         # to be checked here or a bad value divides by zero when interpolating
         if moving_speed is not None:
@@ -185,14 +194,20 @@ class _PlannerWorker:
                     'Planner max_interpolation_steps must be at least '
                     'min_interpolation_steps'
                 )
+        if timeout is not None:
+            timeout = float(timeout)
+            if not np.isfinite(timeout) or timeout <= 0.0:
+                raise ValueError('Planner timeout must be finite and positive')
         if moving_speed is not None:
             config.moving_speed = moving_speed
         if max_interpolation_steps is not None:
             config.max_interpolation_steps = max_interpolation_steps
+        if timeout is not None:
+            config.timeout = timeout
         try:
             yield
         finally:
-            config.moving_speed, config.max_interpolation_steps = previous
+            config.moving_speed, config.max_interpolation_steps, config.timeout = previous
 
     def _set_current_q(self, q):
         # sync the child process model with the caller's current joint state

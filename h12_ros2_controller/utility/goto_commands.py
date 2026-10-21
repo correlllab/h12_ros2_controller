@@ -173,6 +173,14 @@ class GotoConsole:
         for message in plan.metadata.get('diagnostics', ()):
             self.say(message)
         metadata = plan.metadata
+        if 'joint_path_ratio' in metadata:
+            self.say(
+                f'Joint path: {metadata["joint_path_length"]:.3f} rad, '
+                f'detour ratio={metadata["joint_path_ratio"]:.2f}'
+            )
+            for name, x in metadata.get('min_frame_x', {}).items():
+                self.say(f'{name}: minimum x={x:.3f}m '
+                         f'(local bound={metadata["local_x_bounds"][name]:.3f}m)')
         if 'path_kind' in metadata:
             frame_lengths = ', '.join(
                 f'{name}={length:.4f}m '
