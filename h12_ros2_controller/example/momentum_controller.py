@@ -14,7 +14,7 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.path_definition import (
-    SRDF_HANDLESS_SPHERE_PATH,
+    SRDF_HANDLESS_SPHERE_COLLISION_PATH,
     URDF_HANDLESS_PATH,
     URDF_HANDLESS_SPHERE_PATH,
 )
@@ -52,7 +52,7 @@ def main(config_name='balance_safety_split.yaml'):
     controller = MomentumController(
         URDF_HANDLESS_PATH,
         URDF_HANDLESS_SPHERE_PATH,
-        SRDF_HANDLESS_SPHERE_PATH,
+        SRDF_HANDLESS_SPHERE_COLLISION_PATH,
         handless=True,
         visualize=False,
         config=config,

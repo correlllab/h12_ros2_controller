@@ -1,7 +1,7 @@
 mode: debug
 
 topics:
-  low_cmd: rt/lowcmd
+  low_cmd: rt/safety/lowcmd_in
   low_state: rt/lowstate
 
 network:

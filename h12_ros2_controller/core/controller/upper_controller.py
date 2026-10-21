@@ -443,7 +443,13 @@ class UpperController:
 
     def update_point_cloud(self, points):
         '''Update the obstacle point cloud used by the planner'''
-        return self.planner.set_point_cloud(points)
+        result = self.planner.set_point_cloud(points)
+        if self.robot_model.visualizer is not None:
+            if points is None or np.asarray(points).size == 0:
+                self.robot_model.visualizer.clear_point_cloud_visualization()
+            else:
+                self.robot_model.visualizer.visualize_point_cloud(points)
+        return result
 
     def _visualize_configured_point_cloud(self):
         '''Draw the point cloud preloaded from the planner config, if any'''

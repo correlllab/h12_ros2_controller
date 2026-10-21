@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from h12_ros2_controller.example import frame_controller_counter_balance_goto as demo
+from h12_ros2_controller.core.controller.upper_controller import UpperController
 from h12_ros2_controller.core.planner import PlannerConfig
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 
@@ -57,6 +58,48 @@ def controller_fixture():
     controller.steady_state_step = lambda threshold: False
     controller.reduced_configuration_error = np.zeros(14)
     return controller
+
+
+def test_cloud_update_keeps_visualizer_in_sync():
+    displayed = []
+    cleared = []
+    updates = []
+    controller = object.__new__(UpperController)
+    controller.planner = SimpleNamespace(
+        set_point_cloud=lambda points: updates.append(points)
+    )
+    controller.robot_model = SimpleNamespace(visualizer=SimpleNamespace(
+        visualize_point_cloud=lambda points: displayed.append(points),
+        clear_point_cloud_visualization=lambda: cleared.append(True),
+    ))
+    points = np.array([[1.0, 2.0, 3.0]])
+
+    controller.update_point_cloud(points)
+    controller.update_point_cloud(None)
+
+    assert updates[0] is points
+    assert updates[1] is None
+    assert len(displayed) == 1
+    assert np.array_equal(displayed[0], points)
+    assert cleared == [True]
+
+
+def test_cloud_update_failure_does_not_change_visualizer():
+    displayed = []
+    controller = object.__new__(UpperController)
+    controller.robot_model = SimpleNamespace(visualizer=SimpleNamespace(
+        visualize_point_cloud=lambda points: displayed.append(points),
+    ))
+
+    def fail_update(points):
+        raise RuntimeError('planner update failed')
+
+    controller.planner = SimpleNamespace(set_point_cloud=fail_update)
+
+    with pytest.raises(RuntimeError, match='planner update failed'):
+        controller.update_point_cloud(np.array([[1.0, 2.0, 3.0]]))
+
+    assert displayed == []
 
 
 def test_demo_does_not_gate_motion_on_lowstate_age_flags():

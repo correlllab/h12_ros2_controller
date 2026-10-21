@@ -159,6 +159,30 @@ def test_raw_ompl_plan_skips_postprocessing():
     assert result.metadata['postprocess_time'] == 0.0
 
 
+def test_raw_ompl_approximate_solution_is_not_success():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(FakeRobotModel())
+    setup = planner.ss
+    planner.ss = SimpleNamespace(
+        clear=lambda: None,
+        setStartAndGoalStates=lambda start, goal: None,
+        solve=lambda timeout: True,
+        haveExactSolutionPath=lambda: False,
+    )
+
+    try:
+        result = planner.plan([0.0, 0.0], [0.5, 0.5], raw_ompl_only=True)
+    finally:
+        planner.ss = setup
+
+    assert not result.success
+    assert result.path.shape == (0, 2)
+    assert 'approximate solution' in result.reason
+    assert result.metadata['raw_ompl_only']
+    assert result.metadata['postprocess_time'] == 0.0
+    assert result.metadata['ompl_solve_time'] == result.planning_time
+
+
 def test_plan_pins_idle_right_arm_with_home_tolerance():
     pytest.importorskip('ompl')
     lower = -np.ones(14)

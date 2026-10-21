@@ -57,3 +57,13 @@ def test_checked_in_balance_profile_keeps_empty_zmp_mapping():
 
     assert config['topics']['low_cmd'] == 'rt/safety/lowcmd_upper_in'
     assert config['zmp'] == {}
+
+
+def test_point_cloud_profile_loads_with_safety_topic():
+    config = load_controller_config(
+        'pcd_debug.yaml', config_dir=DEFAULT_CONFIG_DIR)
+
+    assert config['topics']['low_cmd'] == 'rt/safety/lowcmd_in'
+    assert config['planner']['point_cloud_path'].endswith(
+        'data/planner/pointcloud.npy'
+    )

@@ -622,6 +622,26 @@ class ReducedJointPlanner:
                 },
             )
 
+        # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
+        # EXACT_SOLUTION. An approximate path ends at the closest state OMPL
+        # reached, NOT at the goal, so executing it drives the arm to a
+        # near-miss and leaves the steady-state controller to chase a gap it
+        # cannot close. Treat it as a planning failure instead.
+        if not self.ss.haveExactSolutionPath():
+            return PlanResult(
+                success=False,
+                path=self._empty_path(),
+                reason=self._approximate_reason(direct_failure),
+                planning_time=ompl_solve_time,
+                planner_name=self.config.planner,
+                metadata={
+                    'validity_checks': self.validity_checks,
+                    'ompl_solve_time': ompl_solve_time,
+                    'postprocess_time': 0.0,
+                    'raw_ompl_only': raw_ompl_only,
+                },
+            )
+
         if raw_ompl_only:
             path = self._path_to_array(self.ss.getSolutionPath(), cap=False)
             return PlanResult(
@@ -636,20 +656,6 @@ class ReducedJointPlanner:
                     'postprocess_time': 0.0,
                     'raw_ompl_only': True,
                 },
-            )
-
-        # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
-        # EXACT_SOLUTION. An approximate path ends at the closest state OMPL
-        # reached, NOT at the goal, so executing it drives the arm to a
-        # near-miss and leaves the steady-state controller to chase a gap it
-        # cannot close. Treat it as a planning failure instead.
-        if not self.ss.haveExactSolutionPath():
-            return PlanResult(
-                success=False,
-                path=self._empty_path(),
-                reason=self._approximate_reason(direct_failure),
-                planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
             )
 
         # simplify once, then validate the final candidate path
