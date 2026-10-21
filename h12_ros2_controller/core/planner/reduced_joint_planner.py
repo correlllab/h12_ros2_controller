@@ -1,7 +1,9 @@
 import numpy as np
+import pinocchio as pin
 from ompl import base as ob
 from ompl import geometric as og
 from dataclasses import dataclass, field
+from time import perf_counter
 
 _ARM_REDUCED_NQ = 14
 _ARM_MOVE_TOL = 2e-2
@@ -66,11 +68,37 @@ class ReducedJointPlanner:
         self.frame_min_z = self._make_frame_floor_map(self.config.frame_z_min)
         self.frame_max_z = self._make_frame_floor_map(self.config.frame_z_max)
         self.corridor_min_z = {}
+        # Each planner owns its FK data; never borrow the live model's data
+        self._frame_model = getattr(self.robot_model, 'model', None)
+        self._frame_data = (
+            self._frame_model.createData()
+            if self._frame_model is not None and
+            hasattr(self.robot_model, 'full_q') else None
+        )
+        self._frame_ids = (
+            {name: self._frame_model.getFrameId(name) for name in self.frame_names}
+            if self._frame_data is not None else {}
+        )
         # active joint mask and pinned values for inactive joints
         self.active_mask = np.ones(self.nq, dtype=bool)
         self.pinned_q = np.zeros(self.nq)
 
         # build OMPL problem objects once; plan() only resets start/goal
+        self.space = self._make_space()
+        self.ss = og.SimpleSetup(self.space)
+        self.si = self.ss.getSpaceInformation()
+        self.ss.setStateValidityChecker(self._make_validity_checker())
+        self.si.setStateValidityCheckingResolution(
+            float(self.config.validity_resolution)
+        )
+        self.ss.setPlanner(self._make_planner())
+
+    def rebind_reduced_model(self):
+        '''Refresh OMPL space after the robot's reduced model is rebuilt'''
+        self._check_robot_model_ready()
+        self.nq = int(self.robot_model.model_body_reduced.nq)
+        self.active_mask = np.ones(self.nq, dtype=bool)
+        self.pinned_q = np.zeros(self.nq)
         self.space = self._make_space()
         self.ss = og.SimpleSetup(self.space)
         self.si = self.ss.getSpaceInformation()
@@ -91,6 +119,8 @@ class ReducedJointPlanner:
             raise ValueError('Planner moving_speed must be positive')
         if self.config.dt <= 0.0:
             raise ValueError('Planner dt must be positive')
+        if self.config.validity_resolution <= 0.0:
+            raise ValueError('Planner validity_resolution must be positive')
         if self.config.min_interpolation_steps < 2:
             raise ValueError('Planner min_interpolation_steps must be at least 2')
         if (
@@ -273,10 +303,8 @@ class ReducedJointPlanner:
                 f'{start[i]:.4f}->{result[i]:.4f}'
                 for i in np.where(moved)[0]
             )
-            print(
-                f'[planner] clamped start into joint limits (tol={tol:.4f}): '
-                f'{detail}',
-                flush=True,
+            self._diagnostics.append(
+                f'clamped start into joint limits (tol={tol:.4f}): {detail}'
             )
         return result
 
@@ -306,23 +334,51 @@ class ReducedJointPlanner:
         cos_angle = 0.5 * (np.trace(rotation_delta) - 1.0)
         return float(np.arccos(np.clip(cos_angle, -1.0, 1.0)))
 
-    def _frame_path_length(self, path, frame_name):
+    def _frame_poses(self, q_reduced, rotation=False):
+        if self._frame_data is not None:
+            pin.forwardKinematics(
+                self._frame_model, self._frame_data,
+                self.robot_model.full_q(self._motor_q(q_reduced)),
+            )
+            pin.updateFramePlacements(self._frame_model, self._frame_data)
+            return {
+                name: (
+                    np.array(self._frame_data.oMf[frame_id].translation),
+                    np.array(self._frame_data.oMf[frame_id].rotation)
+                    if rotation else None,
+                )
+                for name, frame_id in self._frame_ids.items()
+            }
+        q = self._motor_q(q_reduced)
+        return {
+            name: (
+                self.robot_model.get_frame_position(name, q),
+                self.robot_model.get_frame_rotation(name, q)
+                if rotation and hasattr(self.robot_model, 'get_frame_rotation')
+                else None,
+            )
+            for name in self.frame_names
+        }
+
+    def _frame_path_length(self, path, frame_name, poses=None):
         if len(path) < 2:
             return 0.0, 0.0, 0.0
 
-        motor_path = [self._motor_q(q) for q in path]
+        if poses is None:
+            poses = [
+                self._frame_poses(
+                    q, rotation=hasattr(self.robot_model, 'get_frame_rotation')
+                ) for q in path
+            ]
         positions = np.asarray(
-            [self.robot_model.get_frame_position(frame_name, q) for q in motor_path]
+            [pose[frame_name][0] for pose in poses]
         )
         deltas = np.diff(positions, axis=0)
         translation_length = float(np.sum(np.linalg.norm(deltas, axis=1)))
 
         rotation_length = 0.0
-        if hasattr(self.robot_model, 'get_frame_rotation'):
-            rotations = [
-                self.robot_model.get_frame_rotation(frame_name, q)
-                for q in motor_path
-            ]
+        if poses and poses[0][frame_name][1] is not None:
+            rotations = [pose[frame_name][1] for pose in poses]
             rotation_angle = sum(
                 self._rotation_angle(rotations[idx], rotations[idx + 1])
                 for idx in range(len(rotations) - 1)
@@ -338,8 +394,12 @@ class ReducedJointPlanner:
 
     def _interpolation_metadata(self, path):
         sample_path = self._sample_path_for_length(path)
+        poses = [
+            self._frame_poses(q, rotation=hasattr(self.robot_model, 'get_frame_rotation'))
+            for q in sample_path
+        ] if len(sample_path) >= 2 else []
         frame_lengths = {
-            frame_name: self._frame_path_length(sample_path, frame_name)
+            frame_name: self._frame_path_length(sample_path, frame_name, poses)
             for frame_name in self.frame_names
         }
         lengths = {
@@ -376,24 +436,6 @@ class ReducedJointPlanner:
         }
         return metadata
 
-    def _print_interpolation_metadata(self, metadata, label):
-        frame_lengths = ', '.join(
-            f'{name}={length:.4f}m '
-            f'(pos={metadata["frame_translation_lengths"][name]:.4f}, '
-            f'rot={metadata["frame_rotation_lengths"][name]:.4f})'
-            for name, length in metadata['frame_path_lengths'].items()
-        )
-        print(
-            f'[planner] {label}: '
-            f'waypoints={metadata["waypoint_count"]}, '
-            f'duration={metadata["duration"]:.3f}s, '
-            f'effective_speed={metadata["effective_speed"]:.4f}m/s, '
-            f'path_length={metadata["path_length"]:.4f}m, '
-            f'samples={metadata["length_estimate_samples"]}, '
-            f'{frame_lengths}',
-            flush=True,
-        )
-
     def _workspace_constraint_failure(self, q_reduced, name):
         if (
             not self.frame_min_z and
@@ -407,9 +449,7 @@ class ReducedJointPlanner:
 
         # keep selected frames within configured workspace limits
         margin = self.config.frame_limit_margin
-        q = self._motor_q(q_reduced)
-        for frame_name in self.frame_names:
-            position = self.robot_model.get_frame_position(frame_name, q)
+        for frame_name, (position, _) in self._frame_poses(q_reduced).items():
             x = position[0]
             y = position[1]
             z = position[2]
@@ -470,15 +510,11 @@ class ReducedJointPlanner:
             return
 
         margin = float(self.config.frame_z_corridor_margin)
+        start_poses = self._frame_poses(start)
+        goal_poses = self._frame_poses(goal)
         for frame_name in self.frame_names:
-            start_pos = self.robot_model.get_frame_position(
-                frame_name,
-                self._motor_q(start),
-            )
-            goal_pos = self.robot_model.get_frame_position(
-                frame_name,
-                self._motor_q(goal),
-            )
+            start_pos = start_poses[frame_name][0]
+            goal_pos = goal_poses[frame_name][0]
             self.corridor_min_z[frame_name] = (
                 min(start_pos[2], goal_pos[2]) - margin
             )
@@ -489,14 +525,20 @@ class ReducedJointPlanner:
             if reason:
                 return reason
 
-        # only extra-sample the state-valid z floor between returned waypoints
-        steps = max(1, int(self.config.constraint_check_steps))
+        # Match OMPL's joint-space resolution even when output was capped
+        resolution = (
+            self.space.getMaximumExtent() * self.config.validity_resolution
+        )
         for idx in range(len(path) - 1):
+            steps = max(
+                1, int(self.config.constraint_check_steps),
+                int(np.ceil(np.linalg.norm(path[idx + 1] - path[idx]) / resolution)),
+            )
             for sub_idx in range(1, steps):
                 segment_alpha = sub_idx / steps
                 q = (1.0 - segment_alpha) * path[idx]
                 q += segment_alpha * path[idx + 1]
-                reason = self._workspace_constraint_failure(
+                reason = self._validity_failure(
                     q,
                     f'path segment {idx}',
                 )
@@ -517,6 +559,19 @@ class ReducedJointPlanner:
 
     def plan(self, start, goal, active_mask=None):
         '''Plan a collision-free path between reduced joint configurations'''
+        started = perf_counter()
+        stage_start = started
+        timings = {}
+        self._diagnostics = []
+
+        def finish(result):
+            result.planning_time = perf_counter() - started
+            result.metadata['stage_timings'] = timings.copy()
+            result.metadata['stage_timings']['total'] = result.planning_time
+            if self._diagnostics:
+                result.metadata['diagnostics'] = self._diagnostics.copy()
+            return result
+
         start = self._as_reduced_array(start, 'start')
         goal = self._as_reduced_array(goal, 'goal')
         # the start reflects the measured pose; legalize tiny limit overshoots
@@ -534,29 +589,36 @@ class ReducedJointPlanner:
         for name, q in [('start', start), ('goal', goal)]:
             reason = self._validity_failure(q, name)
             if reason:
-                return PlanResult(
+                timings['setup'] = perf_counter() - stage_start
+                return finish(PlanResult(
                     success=False,
                     path=self._empty_path(),
                     reason=reason,
                     planner_name=self.config.planner,
                     metadata={'validity_checks': self.validity_checks},
-                )
+                ))
 
+        timings['setup'] = perf_counter() - stage_start
+        stage_start = perf_counter()
         self.validity_checks = 0
         direct_failure = ''
         if self.config.try_direct:
             path, metadata = self._direct_path(start, goal)
+            timings['direct'] = perf_counter() - stage_start
+            stage_start = perf_counter()
             direct_failure = self._path_validity_failure(path)
+            timings['direct_validation'] = perf_counter() - stage_start
             if not direct_failure:
                 metadata['validity_checks'] = self.validity_checks
-                return PlanResult(
+                return finish(PlanResult(
                     success=True,
                     path=path,
                     reason='direct path',
                     planner_name=self.config.planner,
                     metadata=metadata,
-                )
+                ))
 
+        stage_start = perf_counter()
         # reset OMPL state; collapse inactive joint bounds to pin them
         self.si.setStateValidityCheckingResolution(
             float(self.config.validity_resolution)
@@ -569,14 +631,15 @@ class ReducedJointPlanner:
         )
 
         solved = self.ss.solve(float(self.config.timeout))
+        timings['ompl'] = perf_counter() - stage_start
         if not bool(solved):
-            return PlanResult(
+            return finish(PlanResult(
                 success=False,
                 path=self._empty_path(),
                 reason=self._timeout_reason(direct_failure),
                 planner_name=self.config.planner,
                 metadata={'validity_checks': self.validity_checks},
-            )
+            ))
 
         # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
         # EXACT_SOLUTION. An approximate path ends at the closest state OMPL
@@ -584,43 +647,47 @@ class ReducedJointPlanner:
         # near-miss and leaves the steady-state controller to chase a gap it
         # cannot close. Treat it as a planning failure instead.
         if not self.ss.haveExactSolutionPath():
-            return PlanResult(
+            return finish(PlanResult(
                 success=False,
                 path=self._empty_path(),
                 reason=self._approximate_reason(direct_failure),
                 planner_name=self.config.planner,
                 metadata={'validity_checks': self.validity_checks},
-            )
+            ))
 
         # simplify once, then validate the final candidate path
+        stage_start = perf_counter()
         path = self.ss.getSolutionPath()
         self._shorten_path(path)
         sparse_path = self._path_to_array(path, cap=False)
         metadata = self._interpolation_metadata(sparse_path)
-        self._print_interpolation_metadata(metadata, 'ompl path')
+        metadata['path_kind'] = 'ompl path'
         steps = max(metadata['waypoint_count'], sparse_path.shape[0])
         path.interpolate(steps)
         path_array = self._path_to_array(path)
         path_array = self._smooth_path_timing(path_array)
+        timings['postprocess'] = perf_counter() - stage_start
+        stage_start = perf_counter()
         metadata['actual_waypoints'] = path_array.shape[0]
         reason = self._path_validity_failure(path_array)
+        timings['validation'] = perf_counter() - stage_start
         metadata['validity_checks'] = self.validity_checks
         if reason:
-            return PlanResult(
+            return finish(PlanResult(
                 success=False,
                 path=path_array,
                 reason=reason,
                 planner_name=self.config.planner,
                 metadata=metadata,
-            )
+            ))
 
-        return PlanResult(
+        return finish(PlanResult(
             success=True,
             path=path_array,
             reason='success',
             planner_name=self.config.planner,
             metadata=metadata,
-        )
+        ))
 
     def _timeout_reason(self, direct_failure):
         reason = 'OMPL failed to find a solution before timeout'
@@ -687,7 +754,7 @@ class ReducedJointPlanner:
         # pin inactive joints exactly to the start along the whole path
         path[:, ~self.active_mask] = self.pinned_q[~self.active_mask]
         metadata['actual_waypoints'] = path.shape[0]
-        self._print_interpolation_metadata(metadata, 'direct path')
+        metadata['path_kind'] = 'direct path'
         return path, metadata
 
     def _shorten_path(self, path, smooth=True):
@@ -695,14 +762,5 @@ class ReducedJointPlanner:
         if not self.config.simplify:
             return
 
-        # run OMPL simplification budget first
+        # OMPL's time-limited simplification already includes shortcutting
         self.ss.simplifySolution(float(self.config.simplify_time))
-
-        # then explicitly shortcut/straighten toward more direct motion
-        if self.config.shortcut:
-            simplifier = og.PathSimplifier(self.si)
-            simplifier.ropeShortcutPath(path)
-            simplifier.reduceVertices(path)
-            # b-spline smoothing can overshoot into collision; keep optional
-            if smooth:
-                simplifier.smoothBSpline(path)

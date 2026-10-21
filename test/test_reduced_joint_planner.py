@@ -133,6 +133,7 @@ def test_plan_between_fake_valid_states():
     assert result.path.shape[0] <= 10
     assert np.allclose(result.path[0], [0.0, 0.0])
     assert np.allclose(result.path[-1], [0.5, 0.5])
+    assert result.metadata['path_kind'] == 'direct path'
 
 
 def test_plan_pins_idle_right_arm_with_home_tolerance():
@@ -262,3 +263,78 @@ def test_state_validation_rejects_z_limit_violation():
     assert not result.success
     assert result.reason.startswith('start moves left_grasp_frame above z=0.5000')
     assert planner._validity_failure(np.array([0.51, 0.0]), 'state') == ''
+
+
+def test_returned_segment_validation_checks_collision_between_waypoints():
+    pytest.importorskip('ompl')
+    robot = FakeRobotModel()
+    robot.check_collision_free_reduced = lambda q: not (0.4 < q[0] < 0.6)
+    planner = ReducedJointPlanner(
+        robot,
+        config=PlannerConfig(constraint_check_steps=1, frame_z_max=None),
+    )
+    start = np.array([0.0, 0.0])
+    goal = np.array([1.0, 0.0])
+    planner._set_workspace_corridor(start, goal)
+
+    assert 'path segment 0 is in self-collision' == planner._path_validity_failure(
+        np.array([start, goal])
+    )
+
+
+def test_direct_result_reports_real_stage_timings():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(FakeRobotModel())
+
+    result = planner.plan([0.0, 0.0], [0.2, 0.0])
+
+    assert result.success
+    assert result.planning_time > 0.0
+    assert result.metadata['stage_timings']['total'] == result.planning_time
+    assert result.metadata['stage_timings']['direct_validation'] >= 0.0
+
+
+def test_endpoint_failure_reports_real_stage_timings():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(FakeRobotModel())
+
+    result = planner.plan([2.0, 0.0], [0.0, 0.0])
+
+    assert not result.success
+    assert result.planning_time > 0.0
+    assert result.metadata['stage_timings']['setup'] > 0.0
+    assert result.metadata['stage_timings']['total'] == result.planning_time
+
+
+def test_ompl_timeout_reports_real_stage_timings():
+    pytest.importorskip('ompl')
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(try_direct=False)
+    )
+    setup = planner.ss
+    try:
+        planner.ss = SimpleNamespace(
+            clear=lambda: None,
+            setStartAndGoalStates=lambda start, goal: None,
+            solve=lambda timeout: False,
+        )
+        result = planner.plan([0.0, 0.0], [0.2, 0.0])
+    finally:
+        planner.ss = setup
+
+    assert not result.success
+    assert result.planning_time > 0.0
+    assert result.metadata['stage_timings']['ompl'] >= 0.0
+    assert result.metadata['stage_timings']['total'] == result.planning_time
+
+
+def test_rebind_reduced_model_refreshes_bounds():
+    pytest.importorskip('ompl')
+    robot = FakeRobotModel()
+    planner = ReducedJointPlanner(robot)
+    robot.model_body_reduced.upperPositionLimit = np.array([0.5, 1.0])
+
+    planner.rebind_reduced_model()
+
+    assert planner.space.getBounds().high[0] == pytest.approx(0.5)
+    assert planner.space.getBounds().high[1] == pytest.approx(1.0)

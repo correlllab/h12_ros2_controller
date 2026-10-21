@@ -40,7 +40,7 @@ planner:
     - left_grasp_frame
     - right_grasp_frame
   frame_z_min: 0.0
-  frame_z_min_margin: 0.01
+  frame_limit_margin: 0.001
   frame_z_corridor_margin: 0.05
 
 frequency:

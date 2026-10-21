@@ -1,7 +1,11 @@
 import time
 import argparse
+import sys
+from pathlib import Path
 
 import numpy as np
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.core.controller.zmp_legacy import format_vector
 from h12_ros2_controller.core.controller.zmp_controller_legacy import (

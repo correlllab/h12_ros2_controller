@@ -1,8 +1,13 @@
 import time
+import sys
+from pathlib import Path
+
 import numpy as np
 
 from unitree_sdk2py.core.channel import ChannelSubscriber
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.utility.controller_config import (
     init_channel_factory_guard,

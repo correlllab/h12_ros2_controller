@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -5,6 +8,9 @@ from rclpy.action import ActionClient
 from pynput import keyboard
 
 from custom_ros_messages.action import FrameTask, NamedConfig
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.ros2.utility import input_pose
 

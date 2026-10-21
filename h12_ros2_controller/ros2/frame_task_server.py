@@ -6,10 +6,16 @@ from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 
 import time
 import threading
+import sys
+from pathlib import Path
+
 import numpy as np
 
 from custom_ros_messages.msg import StringArray
 from custom_ros_messages.action import FrameTask, NamedConfig
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.core.controller.upper_controller import StaleStateError
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS

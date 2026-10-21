@@ -6,8 +6,109 @@ import numpy as np
 import pytest
 
 from h12_ros2_controller.example import frame_controller_counter_balance_goto as demo
-from h12_ros2_controller.core.planner import PlannerConfig
+from h12_ros2_controller.core.controller.upper_controller import UpperController
+from h12_ros2_controller.core.planner import PlanResult, PlannerConfig
+from h12_ros2_controller.core.planner.planner_process import _PlannerWorker
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
+
+
+def test_worker_rebinds_reduced_collision_on_frozen_joint_change():
+    calls = []
+    worker = object.__new__(_PlannerWorker)
+    worker.robot_model = SimpleNamespace(
+        _q=np.zeros(4),
+        _dq=np.zeros(4),
+        reduced_mask=np.array([True, True, False, False]),
+        rebuild_reduced_model=lambda reference_q: calls.append(reference_q.copy()),
+        update_kinematics=lambda: None,
+    )
+    worker.planner = SimpleNamespace(rebind_reduced_model=lambda: calls.append('rebind'))
+    worker._frozen_reference = np.zeros(2)
+
+    worker._set_current_q(np.array([0.1, 0.2, 0.0, 0.0]))
+    assert calls == []
+
+    worker._set_current_q(np.array([0.1, 0.2, 0.03, 0.0]))
+    assert len(calls) == 2
+    assert np.array_equal(calls[0], worker.robot_model._q)
+    assert calls[1] == 'rebind'
+
+    worker._set_current_q(np.array([0.2, 0.1, 0.03, 0.0]))
+    assert len(calls) == 2
+
+    with pytest.raises(ValueError, match='finite motor configuration'):
+        worker._set_current_q(np.array([0.1, 0.2, np.nan, 0.0]))
+
+
+def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
+    worker = object.__new__(_PlannerWorker)
+    config = SimpleNamespace(
+        moving_speed=0.3,
+        min_interpolation_steps=30,
+        max_interpolation_steps=300,
+    )
+    worker.planner = SimpleNamespace(config=config)
+
+    with pytest.raises(ValueError, match='max_interpolation_steps'):
+        with worker._config_override(0.1, 1):
+            pass
+    assert (config.moving_speed, config.max_interpolation_steps) == (0.3, 300)
+
+    with pytest.raises(ValueError, match='finite and positive'):
+        with worker._config_override(np.nan, None):
+            pass
+    assert config.moving_speed == 0.3
+
+
+def test_frame_planning_retries_ranked_ik_goals_from_one_start():
+    controller = object.__new__(UpperController)
+    q = np.zeros(27)
+    mask = np.zeros(27, dtype=bool)
+    mask[13:] = True
+    controller.robot_model = SimpleNamespace(
+        state={'q': q}, reduced_mask=mask,
+    )
+    controller.enabled_ids = list(range(13, 27))
+    controller.low_cmd_handler = SimpleNamespace(q_cmd=q.copy())
+    controller._tau_bias = np.zeros(27)
+    controller.update_ik_solver = lambda **kwargs: None
+    controller._active_task_mask = lambda: np.ones(14, dtype=bool)
+    goals = [np.ones(27), np.full(27, 2.0)]
+    updates = []
+    calls = []
+
+    def solve_ik_reduced(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            success=True,
+            candidates=[SimpleNamespace(q=goal, seed_name=f'candidate_{idx}',
+                                        linear_error=0.0, angular_error=0.0)
+                        for idx, goal in enumerate(goals)],
+        )
+
+    controller.ik_solver = SimpleNamespace(
+        solve_ik_reduced=solve_ik_reduced,
+        configuration_reduced=SimpleNamespace(update=updates.append),
+    )
+
+    def plan_goal(goal, **kwargs):
+        calls.append(kwargs)
+        return PlanResult(
+            success=bool(np.all(goal == 2.0)),
+            path=np.vstack([np.zeros(14), goal]),
+            reason='blocked' if np.all(goal == 1.0) else 'success',
+        )
+
+    controller._plan_configuration_result = plan_goal
+    path = controller.plan_to_ik_target(ik_timeout=0.8)
+
+    assert len(calls) == 3
+    assert np.array_equal(calls[0]['start_q'], q)
+    assert calls[0]['total_timeout'] == 0.8
+    assert np.array_equal(calls[1]['start'], calls[2]['start'])
+    assert np.array_equal(calls[1]['current_q'], calls[2]['current_q'])
+    assert np.array_equal(path[-1], np.full(14, 2.0))
+    assert np.array_equal(updates[0], path[-1])
 
 
 class CommandHandler:
@@ -861,10 +962,17 @@ def test_noop_warmup_starts_real_planner_worker_without_motion():
         pytest.skip('robot assets unavailable')
     planner = PlannerClient(*assets, planner_config=PlannerConfig())
     try:
+        planner.warmup()
+        assert planner._process.is_alive()
         home = np.zeros(14)
         result = planner.plan_configuration(np.zeros(27), home, home)
         assert result.success, result.reason
         assert np.array_equal(result.path[0], home)
+        assert np.array_equal(result.path[-1], home)
+        q = np.zeros(27)
+        q[BODY_JOINTS.index('torso_joint')] = 0.03
+        result = planner.plan_configuration(q, home, home)
+        assert result.success, result.reason
         assert np.array_equal(result.path[-1], home)
     finally:
         planner.shutdown()

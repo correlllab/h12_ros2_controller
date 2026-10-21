@@ -50,6 +50,10 @@ class PlannerClient:
             'max_interpolation_steps': max_interpolation_steps,
         })
 
+    def warmup(self):
+        '''Initialize the planner worker before its first motion request'''
+        self._start()
+
     def shutdown(self):
         '''Stop the planner process'''
         if self._process is None:
@@ -138,6 +142,9 @@ class _PlannerWorker:
             self.robot_model,
             config=planner_config,
         )
+        self._frozen_reference = self.robot_model.zero_q_body[
+            ~self.robot_model.reduced_mask
+        ].copy()
 
     def handle(self, request):
         command = request['command']
@@ -169,9 +176,8 @@ class _PlannerWorker:
         # to be checked here or a bad value divides by zero when interpolating
         if moving_speed is not None:
             moving_speed = float(moving_speed)
-            if moving_speed <= 0.0:
-                raise ValueError('Planner moving_speed must be positive')
-            config.moving_speed = moving_speed
+            if not np.isfinite(moving_speed) or moving_speed <= 0.0:
+                raise ValueError('Planner moving_speed must be finite and positive')
         if max_interpolation_steps is not None:
             max_interpolation_steps = int(max_interpolation_steps)
             if max_interpolation_steps < config.min_interpolation_steps:
@@ -179,6 +185,9 @@ class _PlannerWorker:
                     'Planner max_interpolation_steps must be at least '
                     'min_interpolation_steps'
                 )
+        if moving_speed is not None:
+            config.moving_speed = moving_speed
+        if max_interpolation_steps is not None:
             config.max_interpolation_steps = max_interpolation_steps
         try:
             yield
@@ -187,8 +196,16 @@ class _PlannerWorker:
 
     def _set_current_q(self, q):
         # sync the child process model with the caller's current joint state
-        self.robot_model._q = np.asarray(q, dtype=float).copy()
+        q = np.asarray(q, dtype=float)
+        if q.shape != self.robot_model._q.shape or not np.all(np.isfinite(q)):
+            raise ValueError('Planner current_q must be a finite motor configuration')
+        self.robot_model._q = q.copy()
         self.robot_model._dq = np.zeros_like(self.robot_model._q)
+        frozen_reference = q[~self.robot_model.reduced_mask]
+        if not np.array_equal(frozen_reference, self._frozen_reference):
+            self.robot_model.rebuild_reduced_model(reference_q=q)
+            self.planner.rebind_reduced_model()
+            self._frozen_reference = frozen_reference.copy()
         self.robot_model.update_kinematics()
 
 

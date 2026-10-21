@@ -72,6 +72,7 @@ class RobotModel:
             self.model_body, self.frozen_ids_body, reference_q
         )
         self.data_body_reduced = self.model_body_reduced.createData()
+        self.reduced_reference_q = np.asarray(reference_q, dtype=float).copy()
 
     def rebuild_reduced_model(self, reference_q=None):
         '''

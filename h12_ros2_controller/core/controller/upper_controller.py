@@ -6,7 +6,10 @@ from tqdm import tqdm
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
-from h12_ros2_controller.core.planner import PlannerConfig, PlannerClient
+from h12_ros2_controller.core.planner import PlannerClient
+from h12_ros2_controller.core.planner.kinematic_pipeline import (
+    plan_ik_candidates, planner_config_from_controller,
+)
 from h12_ros2_controller.utility.controller_config import dds_domain_id, load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -148,59 +151,7 @@ class UpperController:
 
     def _load_planner_config(self):
         '''Load OMPL planner config from controller config'''
-        # merge optional yaml planner settings with dataclass defaults
-        cfg = self.config.get('planner', {})
-        defaults = PlannerConfig()
-        return PlannerConfig(
-            planner=cfg.get('planner', defaults.planner),
-            timeout=float(cfg.get('timeout', defaults.timeout)),
-            range=float(cfg.get('range', defaults.range)),
-            try_direct=bool(cfg.get('try_direct', defaults.try_direct)),
-            simplify=bool(cfg.get('simplify', defaults.simplify)),
-            simplify_time=float(cfg.get('simplify_time', defaults.simplify_time)),
-            shortcut=bool(cfg.get('shortcut', defaults.shortcut)),
-            moving_speed=float(cfg.get('moving_speed', defaults.moving_speed)),
-            dt=float(cfg.get('dt', self.dt)),
-            min_interpolation_steps=int(
-                cfg.get(
-                    'min_interpolation_steps',
-                    defaults.min_interpolation_steps,
-                )
-            ),
-            max_interpolation_steps=int(
-                cfg.get(
-                    'max_interpolation_steps',
-                    defaults.max_interpolation_steps,
-                )
-            ),
-            validity_resolution=float(
-                cfg.get('validity_resolution', defaults.validity_resolution)
-            ),
-            constraint_check_steps=int(
-                cfg.get('constraint_check_steps', defaults.constraint_check_steps)
-            ),
-            frame_names=tuple(cfg.get('frame_names', defaults.frame_names)),
-            frame_z_min=cfg.get('frame_z_min', defaults.frame_z_min),
-            frame_x_max=cfg.get('frame_x_max', defaults.frame_x_max),
-            frame_y_min=cfg.get('frame_y_min', defaults.frame_y_min),
-            frame_y_max=cfg.get('frame_y_max', defaults.frame_y_max),
-            frame_z_max=cfg.get('frame_z_max', defaults.frame_z_max),
-            frame_limit_margin=float(
-                cfg.get('frame_limit_margin', defaults.frame_limit_margin)
-            ),
-            frame_z_corridor_margin=float(
-                cfg.get(
-                    'frame_z_corridor_margin',
-                    defaults.frame_z_corridor_margin,
-                )
-            ),
-            start_limit_tolerance=float(
-                cfg.get(
-                    'start_limit_tolerance',
-                    defaults.start_limit_tolerance,
-                )
-            ),
-        )
+        return planner_config_from_controller(self.config, dt=self.dt)
 
     def _move_torso_to_target(self, torso_init, torso_target, threshold=1e-3):
         torso_id = BODY_JOINTS.index('torso_joint')
@@ -299,30 +250,40 @@ class UpperController:
                 f'(> {self.max_state_lag_ms:.0f} ms); holding the last command'
             )
 
-    def update_ik_solver(self):
+    def update_ik_solver(self, measured_q=None, command_seed=None):
         self.check_state_fresh()
+        if measured_q is None:
+            measured_q = np.copy(self.robot_model.state['q'])
         # re-lock the frozen joints (torso, legs) at their measured angles so
         # reduced-model FK agrees with the robot's actual kinematics (and the
         # TF tree); frozen-at-zero, a torso holding e.g. -0.04 rad offsets
         # every arm frame by a constant ~15 mm that IK can never converge away
-        self.robot_model.rebuild_reduced_model()
-        self.ik_solver.rebuild_reduced()
+        frozen = ~self.robot_model.reduced_mask
+        if not np.array_equal(
+            measured_q[frozen], self.robot_model.reduced_reference_q[frozen]
+        ):
+            self.robot_model.rebuild_reduced_model(reference_q=measured_q)
+            self.ik_solver.rebuild_reduced()
         # start IK from the last command, not the measured state: the arm sits
         # below its command (gravity, PD lag), and restarting from the measured
         # position would step the command down and drop the arm
-        q_seed, from_command = self._command_seed()
+        q_seed, from_command = self._command_seed(measured_q)
+        if command_seed is not None and from_command:
+            q_seed = np.asarray(command_seed, dtype=float).copy()
         if not from_command:
             self._tau_bias[:] = 0.0
         self.ik_solver.update_configurations(q_seed)
 
-    def _command_seed(self):
+    def _command_seed(self, measured_q=None):
         '''
         Return (q, from_command): the motor-order configuration a new move
         starts from. Enabled joints take the last commanded position when it
         is within COMMAND_SEED_MAX_GAP of the measured position on every
         enabled joint; otherwise the whole seed is the measured state.
         '''
-        q_seed = np.copy(self.robot_model.state['q'])
+        q_seed = np.copy(
+            self.robot_model.state['q'] if measured_q is None else measured_q
+        )
         q_cmd = self.low_cmd_handler.q_cmd
         ids = self.enabled_ids
         gap = np.max(np.abs(q_cmd[ids] - q_seed[ids]))
@@ -374,41 +335,95 @@ class UpperController:
             int(np.ceil(config.max_interpolation_steps / scale)),
         )
 
-    def plan_to_configuration(self, q_reduced, start=None, active_mask=None):
+    def plan_to_configuration(self, q_reduced, start=None, active_mask=None,
+                              current_q=None):
         '''Plan from the move's start configuration to a reduced joint target'''
+        result = self._plan_configuration_result(
+            q_reduced, start=start, active_mask=active_mask, current_q=current_q,
+        )
+        self.last_plan_result = result
+        return self._path_or_raise(result)
+
+    def _plan_configuration_result(self, q_reduced, start=None, active_mask=None,
+                                   current_q=None):
+        '''Return the planner result without discarding failure diagnostics'''
+        self.check_state_fresh()
+        if current_q is None:
+            current_q = np.copy(self.robot_model.state['q'])
+        frozen = ~self.robot_model.reduced_mask
+        if not np.array_equal(
+            current_q[frozen], self.robot_model.reduced_reference_q[frozen]
+        ):
+            self.robot_model.rebuild_reduced_model(reference_q=current_q)
+            self.ik_solver.rebuild_reduced()
         if start is None:
-            start = self._command_seed()[0][self.robot_model.reduced_mask]
+            start, from_command = self._command_seed(current_q)
+            if not from_command:
+                self._tau_bias[:] = 0.0
+            start = start[self.robot_model.reduced_mask]
         q_reduced = np.asarray(q_reduced, dtype=float)
         moving_speed, max_interpolation_steps = self._planner_speed_overrides()
         result = self.planner.plan_configuration(
-            current_q=self.robot_model.state['q'],
+            current_q=current_q,
             start=start,
             goal=q_reduced,
             active_mask=active_mask,
             moving_speed=moving_speed,
             max_interpolation_steps=max_interpolation_steps,
         )
-        return self._path_or_raise(result)
+        return result
 
     def plan_to_ik_target(self, start=None, ik_timeout=1.0, ik_alpha=0.1):
         '''Solve current IK tasks, then plan to the IK joint solution'''
-        # restrict planning to joints supporting the active tasks so that
-        # untasked limbs (e.g. the other arm) never move during the plan
+        measured_q = np.copy(self.robot_model.state['q'])
+        command_q, from_command = self._command_seed(measured_q)
+        if start is None:
+            start_q = command_q
+        else:
+            start_q = measured_q.copy()
+            start_q[self.robot_model.reduced_mask] = np.asarray(start, dtype=float)
+        start_reduced = start_q[self.robot_model.reduced_mask].copy()
+        self.update_ik_solver(measured_q=measured_q, command_seed=command_q)
+        if not from_command:
+            self._tau_bias[:] = 0.0
+        # Use the same active joints and start pose for IK and planning.
         active_mask = self._active_task_mask()
-        self.update_ik_solver()
         ik_result = self.ik_solver.solve_ik_reduced(
             alpha=ik_alpha,
-            timeout=ik_timeout,
-        )
-        if not ik_result.success:
-            raise RuntimeError('IK failed to resolve current targets')
-
-        q_goal = ik_result.q[self.robot_model.reduced_mask]
-        return self.plan_to_configuration(
-            q_goal,
-            start=start,
+            timeout=min(0.3, ik_timeout),
+            total_timeout=ik_timeout,
+            start_q=start_q,
             active_mask=active_mask,
         )
+        self.last_ik_result = ik_result
+        if not ik_result.success:
+            reasons = ', '.join(
+                f'{attempt.seed_name}: {attempt.reason or "no convergence"}'
+                for attempt in ik_result.attempts
+            )
+            raise RuntimeError(f'IK failed to resolve current targets ({reasons})')
+
+        result, selected = plan_ik_candidates(
+            ik_result,
+            lambda goal: self._plan_configuration_result(
+                goal, start=start_reduced, active_mask=active_mask,
+                current_q=measured_q,
+            ),
+            self.robot_model.reduced_mask,
+        )
+        self.last_plan_result = result
+        if selected is None:
+            raise RuntimeError(
+                f'No IK candidate has a valid path: {result.reason if result else "no candidates"}'
+            )
+        ik_result.q = selected.q.copy()
+        ik_result.seed_name = selected.seed_name
+        ik_result.linear_error = selected.linear_error
+        ik_result.angular_error = selected.angular_error
+        self.ik_solver.configuration_reduced.update(
+            selected.q[self.robot_model.reduced_mask]
+        )
+        return self._path_or_raise(result)
 
     def _active_task_mask(self):
         '''Reduced joint mask supporting all active frame tasks'''

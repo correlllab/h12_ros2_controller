@@ -21,6 +21,8 @@ class IKAttemptResult:
     seed_name: str
     iterations: int
     elapsed_time: float
+    reason: str = ''
+    score: float = float('inf')
 
 
 @dataclass
@@ -33,6 +35,7 @@ class IKResult:
     angular_error: float
     seed_name: str
     attempts: list = field(default_factory=list)
+    candidates: list = field(default_factory=list)
 
 
 class IKSolver:
@@ -276,16 +279,14 @@ class IKSolver:
         return attempt.linear_error / linear_scale + attempt.angular_error / angular_scale
 
     def _reduced_q_to_full(self, q_reduced):
-        q = np.copy(self.robot_model.zero_q_body)
+        q = np.copy(getattr(self, '_batch_full_reference', self.robot_model.state['q']))
         q[self.robot_model.reduced_mask] = q_reduced
         return q
 
-    def _default_seed_items(self):
-        # solve_ik* returns the first seed that converges, so the measured
-        # pose goes first: it yields the solution nearest the arm, and the
-        # named configs are fallbacks for when it does not converge.
+    def _default_seed_items(self, start_q=None):
+        # measured pose first for the full-IK first-success fallback
         return [
-            ('current', self.robot_model.state['q']),
+            ('current', self.robot_model.state['q'] if start_q is None else start_q),
             ('home', NAMED_CONFIGS['home']),
             ('t_pose', NAMED_CONFIGS['t_pose']),
             ('arms_front_45', NAMED_CONFIGS['arms_front_45']),
@@ -348,31 +349,82 @@ class IKSolver:
             raise ValueError(f'{seed_name} seed must contain only finite values')
         return normalized
 
-    def _seed_list(self, reduced, initial_positions):
+    def _seed_list(self, reduced, initial_positions, start_q=None, active_mask=None):
         seeds = []
-        seed_items = self._default_seed_items() + self._extra_seed_items(
+        seed_items = self._default_seed_items(start_q) + self._extra_seed_items(
             initial_positions,
         )
         for seed_name, seed in seed_items:
-            if reduced:
-                q = self._normalize_reduced_seed(seed, seed_name)
-            else:
-                q = self._normalize_full_seed(seed, seed_name)
-            seeds.append((seed_name, q))
+            try:
+                if reduced:
+                    q = self._normalize_reduced_seed(seed, seed_name)
+                    if active_mask is not None:
+                        q = np.where(active_mask, q, self._batch_reduced_reference)
+                else:
+                    q = self._normalize_full_seed(seed, seed_name)
+            except (TypeError, ValueError, OverflowError) as exc:
+                seeds.append((seed_name, None, str(exc)))
+                continue
+            if not any(previous is not None and np.allclose(q, previous, atol=1e-6, rtol=0)
+                       for _, previous, _ in seeds):
+                seeds.append((seed_name, q.copy(), ''))
         return seeds
 
-    def _result_from_attempts(self, attempts, linear_threshold, angular_threshold):
-        candidates = [attempt for attempt in attempts if attempt.success]
-        if not candidates:
-            candidates = attempts
-        best = min(
-            candidates,
-            key=lambda attempt: self._task_error_score(
-                attempt,
-                linear_threshold,
-                angular_threshold,
-            ),
-        )
+    def _naturalness_score(self, q, reference, reduced):
+        model = self.robot_model.model_body_reduced if reduced else self.robot_model.model_body
+        names = [''] * model.nq
+        for name, idx in zip(model.names[1:], model.idx_qs[1:]):
+            if 0 <= idx < model.nq:
+                names[idx] = name
+        weights = np.array([3.0 if 'wrist' in name.lower() else 1.0 for name in names])
+        movement = np.sum(weights * (q - reference) ** 2)
+        lower = np.asarray(model.lowerPositionLimit)
+        upper = np.asarray(model.upperPositionLimit)
+        span = upper - lower
+        valid = np.isfinite(span) & (span > 0)
+        margin = np.minimum(q - lower, upper - q)
+        penalty = np.sum(weights[valid] *
+                         np.maximum(0, 0.1 - margin[valid] / span[valid]) ** 2)
+        return float(movement + 10.0 * penalty)
+
+    def _batch_posture_preference(self, q_seed):
+        '''Retain comfortable wrists while other joints vary across seeds'''
+        model = self.robot_model.model_body_reduced
+        preferred = q_seed.copy()
+        costs = np.full(model.nv, 1e-3)
+        for name, idx in zip(model.names[1:], model.idx_qs[1:]):
+            if 'wrist' not in name.lower():
+                continue
+            lower = model.lowerPositionLimit[idx]
+            upper = model.upperPositionLimit[idx]
+            if np.isfinite(lower + upper) and upper > lower:
+                width = upper - lower
+                preferred[idx] = np.clip(
+                    self._batch_reduced_reference[idx],
+                    lower + 0.1 * width, upper - 0.1 * width,
+                )
+            costs[idx] = 5e-3
+        return preferred, costs
+
+    def _result_from_attempts(self, attempts, linear_threshold, angular_threshold,
+                              reduced=False, reference=None, first_success=False):
+        candidates = []
+        for attempt in attempts:
+            if attempt.success and not any(
+                    np.allclose(attempt.q, candidate.q, atol=1e-3, rtol=0)
+                    for candidate in candidates):
+                candidates.append(attempt)
+        for attempt in candidates:
+            q = attempt.q[self.robot_model.reduced_mask] if reduced else attempt.q
+            attempt.score = self._naturalness_score(q, reference, reduced)
+        candidates.sort(key=lambda attempt: attempt.score)
+        if first_success and candidates:
+            best = next(attempt for attempt in attempts if attempt.success)
+        elif candidates:
+            best = candidates[0]
+        else:
+            best = min(attempts, key=lambda attempt: self._task_error_score(
+                attempt, linear_threshold, angular_threshold))
         return IKResult(
             q=np.copy(best.q),
             success=best.success,
@@ -380,29 +432,45 @@ class IKSolver:
             angular_error=best.angular_error,
             seed_name=best.seed_name,
             attempts=attempts,
+            candidates=candidates,
         )
 
-    def _solve_ik_attempt(self, seed_name, q_seed, alpha, timeout,
-                          linear_threshold, angular_threshold):
+    def _solve_ik_attempt(self, seed_name, q_seed, alpha, deadline,
+                           linear_threshold, angular_threshold):
         self.configuration.update(q_seed)
-        linear_err, angular_err = self._frame_task_errors(self.configuration)
-        start_time = time.time()
+        self.posture_task.set_target_from_configuration(self.configuration)
+        start_time = time.monotonic()
         iterations = 0
-
-        while (
-            linear_err >= linear_threshold or
-            angular_err >= angular_threshold
-        ) and time.time() - start_time < timeout:
-            self.posture_task.set_target_from_configuration(self.configuration)
-            tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = self._ik(tasks, alpha)
-            self.configuration.integrate_inplace(vel, alpha)
-            iterations += 1
+        linear_err = angular_err = float('inf')
+        reason = ''
+        last_q = np.copy(q_seed)
+        try:
             linear_err, angular_err = self._frame_task_errors(self.configuration)
+            while (linear_err >= linear_threshold or angular_err >= angular_threshold):
+                if not np.all(np.isfinite([linear_err, angular_err])):
+                    reason = 'non-finite task error'
+                    break
+                if time.monotonic() >= deadline:
+                    reason = 'timeout'
+                    break
+                vel = self._ik(list(self.frame_tasks.values()) + [self.posture_task], alpha)
+                if not np.all(np.isfinite(vel)):
+                    reason = 'non-finite velocity'
+                    break
+                self.configuration.integrate_inplace(vel, alpha)
+                if not np.all(np.isfinite(self.configuration.q)):
+                    reason = 'non-finite configuration'
+                    break
+                last_q = np.copy(self.configuration.q)
+                iterations += 1
+                linear_err, angular_err = self._frame_task_errors(self.configuration)
+        except Exception as exc:
+            reason = f'{type(exc).__name__}: {exc}'
 
         return IKAttemptResult(
-            q=np.copy(self.configuration.q),
+            q=last_q,
             success=(
+                not reason and
                 linear_err < linear_threshold and
                 angular_err < angular_threshold
             ),
@@ -410,36 +478,58 @@ class IKSolver:
             angular_error=angular_err,
             seed_name=seed_name,
             iterations=iterations,
-            elapsed_time=time.time() - start_time,
+            elapsed_time=time.monotonic() - start_time,
+            reason=reason,
         )
 
-    def _solve_ik_reduced_attempt(self, seed_name, q_seed, alpha, timeout,
-                                  linear_threshold, angular_threshold):
+    def _solve_ik_reduced_attempt(self, seed_name, q_seed, alpha, deadline,
+                                    linear_threshold, angular_threshold, active_mask=None):
         self.configuration_reduced.update(q_seed)
-        linear_err, angular_err = self._frame_task_errors(
-            self.configuration_reduced,
-        )
-        start_time = time.time()
+        preferred, costs = self._batch_posture_preference(q_seed)
+        original_cost = getattr(self.posture_task, 'cost', None)
+        if original_cost is not None:
+            self.posture_task.cost = costs
+        if hasattr(self.posture_task, 'set_target'):
+            self.posture_task.set_target(preferred)
+        else:
+            self.posture_task.set_target_from_configuration(self.configuration_reduced)
+        start_time = time.monotonic()
         iterations = 0
-
-        while (
-            linear_err >= linear_threshold or
-            angular_err >= angular_threshold
-        ) and time.time() - start_time < timeout:
-            self.posture_task.set_target_from_configuration(
-                self.configuration_reduced,
-            )
-            tasks = list(self.frame_tasks.values()) + [self.posture_task]
-            vel = self._ik_reduced(tasks, alpha)
-            self.configuration_reduced.integrate_inplace(vel, alpha)
-            iterations += 1
-            linear_err, angular_err = self._frame_task_errors(
-                self.configuration_reduced,
-            )
+        linear_err = angular_err = float('inf')
+        reason = ''
+        last_q = np.copy(q_seed)
+        try:
+            linear_err, angular_err = self._frame_task_errors(self.configuration_reduced)
+            while (linear_err >= linear_threshold or angular_err >= angular_threshold):
+                if not np.all(np.isfinite([linear_err, angular_err])):
+                    reason = 'non-finite task error'
+                    break
+                if time.monotonic() >= deadline:
+                    reason = 'timeout'
+                    break
+                vel = self._ik_reduced(list(self.frame_tasks.values()) + [self.posture_task], alpha)
+                if not np.all(np.isfinite(vel)):
+                    reason = 'non-finite velocity'
+                    break
+                if active_mask is not None:
+                    vel = np.where(active_mask, vel, 0.)
+                self.configuration_reduced.integrate_inplace(vel, alpha)
+                if not np.all(np.isfinite(self.configuration_reduced.q)):
+                    reason = 'non-finite configuration'
+                    break
+                last_q = np.copy(self.configuration_reduced.q)
+                iterations += 1
+                linear_err, angular_err = self._frame_task_errors(self.configuration_reduced)
+        except Exception as exc:
+            reason = f'{type(exc).__name__}: {exc}'
+        finally:
+            if original_cost is not None:
+                self.posture_task.cost = original_cost
 
         return IKAttemptResult(
-            q=self._reduced_q_to_full(self.configuration_reduced.q),
+            q=self._reduced_q_to_full(last_q),
             success=(
+                not reason and
                 linear_err < linear_threshold and
                 angular_err < angular_threshold
             ),
@@ -447,7 +537,8 @@ class IKSolver:
             angular_error=angular_err,
             seed_name=seed_name,
             iterations=iterations,
-            elapsed_time=time.time() - start_time,
+            elapsed_time=time.monotonic() - start_time,
+            reason=reason,
         )
 
     def ik_step(self, com=False):
@@ -477,63 +568,113 @@ class IKSolver:
         return vel_full
 
     def solve_ik(self, alpha=0.1, timeout=1.0,
-                 linear_threshold=1e-3, angular_threshold=1e-2,
-                 initial_positions=None):
-        '''Solve IK to convergence and return motor-only q (27)'''
-        attempts = []
-        for seed_name, q_seed in self._seed_list(False, initial_positions):
-            attempt = self._solve_ik_attempt(
-                seed_name,
-                q_seed,
-                alpha,
-                timeout,
-                linear_threshold,
-                angular_threshold,
-            )
-            attempts.append(attempt)
-            if attempt.success:
-                return self._result_from_attempts(
-                    attempts,
-                    linear_threshold,
-                    angular_threshold,
-                )
-
-        result = self._result_from_attempts(
-            attempts,
-            linear_threshold,
-            angular_threshold,
-        )
-        self.configuration.update(result.q)
-        return result
+                  linear_threshold=1e-3, angular_threshold=1e-2,
+                  initial_positions=None, total_timeout=None, max_seeds=8,
+                  reference_positions=None, start_q=None):
+        '''Solve full IK, retaining first-success selection; timeout is per seed'''
+        return self._solve_batch(False, alpha, timeout, linear_threshold,
+                                 angular_threshold, initial_positions, total_timeout,
+                                 max_seeds, reference_positions, start_q, None)
 
     def solve_ik_reduced(self, alpha=0.1, timeout=1.0,
-                         linear_threshold=1e-3, angular_threshold=1e-2,
-                         initial_positions=None):
-        '''Solve IK on reduced model to convergence and return motor-only q (27)'''
-        attempts = []
-        for seed_name, q_seed in self._seed_list(True, initial_positions):
-            attempt = self._solve_ik_reduced_attempt(
-                seed_name,
-                q_seed,
-                alpha,
-                timeout,
-                linear_threshold,
-                angular_threshold,
-            )
-            attempts.append(attempt)
-            if attempt.success:
-                return self._result_from_attempts(
-                    attempts,
-                    linear_threshold,
-                    angular_threshold,
-                )
+                          linear_threshold=1e-3, angular_threshold=1e-2,
+                          initial_positions=None, total_timeout=None, max_seeds=8,
+                          reference_positions=None, start_q=None, active_mask=None):
+        '''Solve reduced IK and rank successes; timeout is per seed'''
+        return self._solve_batch(True, alpha, timeout, linear_threshold,
+                                 angular_threshold, initial_positions, total_timeout,
+                                 max_seeds, reference_positions, start_q, active_mask)
 
+    def _solve_batch(self, reduced, alpha, timeout, linear_threshold,
+                     angular_threshold, initial_positions, total_timeout,
+                     max_seeds, reference_positions, start_q, active_mask):
+        if not np.isfinite(alpha) or alpha <= 0:
+            raise ValueError('alpha must be positive and finite')
+        if not np.isfinite(timeout) or timeout < 0:
+            raise ValueError('timeout must be nonnegative and finite')
+        if total_timeout is None:
+            total_timeout = 4 * timeout
+        if not np.isfinite(total_timeout) or total_timeout < 0:
+            raise ValueError('total_timeout must be nonnegative and finite')
+        if not isinstance(max_seeds, int) or max_seeds < 1:
+            raise ValueError('max_seeds must be a positive integer')
+        if not all(np.isfinite(v) and v > 0 for v in
+                   (linear_threshold, angular_threshold)):
+            raise ValueError('thresholds must be positive and finite')
+        normalize = self._normalize_reduced_seed if reduced else self._normalize_full_seed
+        start = self.robot_model.state['q'] if start_q is None else start_q
+        reference = normalize(start if reference_positions is None else reference_positions,
+                              'reference').copy()
+        if reduced:
+            self._batch_reduced_reference = self._normalize_reduced_seed(start, 'start').copy()
+            if active_mask is not None:
+                active_mask = np.asarray(active_mask, dtype=bool)
+                if active_mask.shape != (self.robot_model.model_body_reduced.nq,):
+                    raise ValueError('active_mask must have reduced joint shape')
+            full_start = np.asarray(start, dtype=float).reshape(-1)
+            self._batch_full_reference = (full_start.copy() if full_start.shape ==
+                                          (self.robot_model.model_body.nq,) else
+                                          np.copy(self.robot_model.state['q']))
+        attempts = []
+        fallback = (np.copy(self._batch_full_reference) if reduced else
+                    self._normalize_full_seed(start, 'start').copy())
+        if not self.frame_tasks:
+            return IKResult(fallback, False, float('inf'), float('inf'), 'current',
+                            [IKAttemptResult(fallback.copy(), False, float('inf'),
+                                             float('inf'), 'current', 0, 0., 'no frame tasks')])
+        deadline = time.monotonic() + total_timeout
+        for seed_name, q_seed, error in self._seed_list(
+                reduced, initial_positions, start, active_mask)[:max_seeds]:
+            if error:
+                attempt = IKAttemptResult(fallback.copy(), False, float('inf'),
+                                          float('inf'), seed_name, 0, 0.0, error)
+            elif time.monotonic() >= deadline:
+                break
+            else:
+                attempt_deadline = min(deadline, time.monotonic() + timeout)
+                solver = self._solve_ik_reduced_attempt if reduced else self._solve_ik_attempt
+                try:
+                    args = (seed_name, q_seed, alpha, attempt_deadline,
+                            linear_threshold, angular_threshold)
+                    attempt = (solver(*args, active_mask=active_mask) if active_mask is not None
+                               else solver(*args))
+                except Exception as exc:
+                    attempt = IKAttemptResult(fallback.copy(), False, float('inf'),
+                                              float('inf'), seed_name, 0, 0.0,
+                                              f'{type(exc).__name__}: {exc}')
+                if attempt.success and reduced:
+                    try:
+                        q_reduced = attempt.q[self.robot_model.reduced_mask]
+                        model = self.robot_model.model_body_reduced
+                        if (np.any(q_reduced < model.lowerPositionLimit) or
+                                np.any(q_reduced > model.upperPositionLimit)):
+                            attempt.success = False
+                            attempt.reason = 'joint limits'
+                        elif (hasattr(self.robot_model, 'check_collision_free_reduced') and
+                              not self.robot_model.check_collision_free_reduced(q_reduced)):
+                            attempt.success = False
+                            attempt.reason = 'self-collision'
+                    except Exception as exc:
+                        attempt.success = False
+                        attempt.reason = f'feasibility check: {type(exc).__name__}: {exc}'
+            attempts.append(attempt)
+            if attempt.success and not reduced:
+                break
+        if not attempts:
+            attempts.append(IKAttemptResult(fallback.copy(), False, float('inf'),
+                                            float('inf'), 'current', 0, 0.0, 'total timeout'))
         result = self._result_from_attempts(
             attempts,
             linear_threshold,
             angular_threshold,
+            reduced=reduced,
+            reference=reference,
+            first_success=not reduced,
         )
-        self.configuration_reduced.update(result.q[self.robot_model.reduced_mask])
+        if reduced:
+            self.configuration_reduced.update(result.q[self.robot_model.reduced_mask])
+        else:
+            self.configuration.update(result.q)
         return result
 
     def goto_configuration(self, q: np.ndarray):
