@@ -121,6 +121,33 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     assert np.array_equal(updates[0], path[-1])
 
 
+def test_named_controller_goal_enables_moving_arm_locality():
+    controller = object.__new__(UpperController)
+    q = np.zeros(27)
+    reduced_mask = np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)]
+    controller.robot_model = SimpleNamespace(
+        state={'q': q}, reduced_mask=reduced_mask,
+        reduced_reference_q=q.copy(),
+    )
+    controller.check_state_fresh = lambda: None
+    controller._command_seed = lambda measured: (measured.copy(), True)
+    controller._planner_speed_overrides = lambda: (None, None)
+    controller.planner = SimpleNamespace(
+        planner_config=SimpleNamespace(
+            frame_names=('left_grasp_frame', 'right_grasp_frame'),
+        ),
+    )
+    calls = []
+    controller.planner.plan_configuration = lambda **kwargs: calls.append(kwargs)
+    goal = np.zeros(14)
+    goal[0] = 0.3
+
+    controller._plan_configuration_result(goal)
+
+    assert calls[0]['local_frames'] == ('left_grasp_frame',)
+    assert np.array_equal(calls[0]['start'], np.zeros(14))
+
+
 class CommandHandler:
     def __init__(self):
         self._estopped = False

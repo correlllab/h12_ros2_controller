@@ -12,6 +12,28 @@ _LENGTH_ESTIMATE_STEPS = 50
 _FRAME_ROTATION_RADIUS = 0.20
 
 
+def moving_grasp_frames(start, goal, frame_names, active_mask=None):
+    '''Select configured grasp frames for arms changing joint position'''
+    start = np.asarray(start, dtype=float)
+    goal = np.asarray(goal, dtype=float)
+    if start.shape != (_ARM_REDUCED_NQ,) or goal.shape != start.shape:
+        raise ValueError('Named goto requires 14 reduced joint positions')
+    delta = np.abs(goal - start)
+    if active_mask is not None:
+        mask = np.asarray(active_mask, dtype=bool)
+        if mask.shape != start.shape:
+            raise ValueError('active_mask must match the reduced configuration')
+        delta[~mask] = 0.0
+    frames = []
+    for name, joints in (('left_grasp_frame', slice(0, 7)),
+                         ('right_grasp_frame', slice(7, 14))):
+        if np.any(delta[joints] > 1e-6):
+            if name not in frame_names:
+                raise ValueError(f'Planner locality requires {name} in frame_names')
+            frames.append(name)
+    return tuple(frames)
+
+
 @dataclass
 class PlannerConfig:
     '''Configuration for reduced joint-space planning'''

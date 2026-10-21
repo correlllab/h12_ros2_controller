@@ -358,6 +358,16 @@ def test_problematic_pitch_goal_has_local_path_from_home():
     assert (result.plan.metadata['min_frame_x']['left_grasp_frame'] >=
             result.plan.metadata['local_x_bounds']['left_grasp_frame'] - 0.01)
 
+    pipeline.replay(result.plan.path)
+    home = pipeline.plan_named('home')
+
+    if home.plan.success:
+        assert home.plan.metadata['joint_path_ratio'] <= 2.0
+        assert (home.plan.metadata['min_frame_x']['left_grasp_frame'] >=
+                home.plan.metadata['local_x_bounds']['left_grasp_frame'] - 0.01)
+    else:
+        assert 'local' in home.plan.reason or 'detour ratio' in home.plan.reason
+
 
 def test_interactive_goto_reads_command_before_dispatch(monkeypatch, capsys):
     monkeypatch.setattr(

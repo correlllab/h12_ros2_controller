@@ -8,7 +8,9 @@ import numpy as np
 import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
-from h12_ros2_controller.core.planner.reduced_joint_planner import PlannerConfig, ReducedJointPlanner
+from h12_ros2_controller.core.planner.reduced_joint_planner import (
+    PlannerConfig, ReducedJointPlanner, moving_grasp_frames,
+)
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import ENABLED_JOINTS
@@ -149,7 +151,8 @@ class KinematicPipeline:
         start_time = time.perf_counter()
         start = self.robot_model.state_reduced['q']
         goal = np.asarray(NAMED_CONFIGS[name], dtype=float)
-        plan = self.planner.plan(start, goal)
+        local_frames = moving_grasp_frames(start, goal, self.planner.frame_names)
+        plan = self.planner.plan(start, goal, local_frames=local_frames)
         return KinematicPlan(plan=plan, elapsed_time=time.perf_counter() - start_time)
 
     def set_start(self, q):

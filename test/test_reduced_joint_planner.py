@@ -6,6 +6,7 @@ import pytest
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
     PlannerConfig,
     ReducedJointPlanner,
+    moving_grasp_frames,
 )
 
 
@@ -47,6 +48,25 @@ class FakeRobotModel:
 
     def get_frame_position(self, frame_name, q):
         return np.array([q[1], q[1], q[0]])
+
+
+def test_named_motion_selects_only_moving_arm_grasp_frames():
+    start = np.zeros(14)
+    goal = start.copy()
+    assert moving_grasp_frames(start, goal, ('left_grasp_frame',)) == ()
+
+    goal[0] = 0.2
+    frames = ('left_grasp_frame', 'right_grasp_frame')
+    assert moving_grasp_frames(start, goal, frames) == ('left_grasp_frame',)
+
+    goal[7] = 0.2
+    assert moving_grasp_frames(start, goal, frames) == frames
+    mask = np.r_[np.ones(7, dtype=bool), np.zeros(7, dtype=bool)]
+    assert moving_grasp_frames(start, goal, frames, mask) == ('left_grasp_frame',)
+    with pytest.raises(ValueError, match='requires left_grasp_frame'):
+        moving_grasp_frames(start, goal, ('right_grasp_frame',))
+    with pytest.raises(ValueError, match='14 reduced joint positions'):
+        moving_grasp_frames(start[:7], goal[:7], frames)
 
 
 def test_requires_initialized_reduced_model():

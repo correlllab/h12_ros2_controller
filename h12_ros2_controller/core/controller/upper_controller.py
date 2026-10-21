@@ -10,6 +10,7 @@ from h12_ros2_controller.core.planner import PlannerClient
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
     plan_ik_candidates, planner_config_from_controller,
 )
+from h12_ros2_controller.core.planner.reduced_joint_planner import moving_grasp_frames
 from h12_ros2_controller.utility.controller_config import dds_domain_id, load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -345,8 +346,8 @@ class UpperController:
         return self._path_or_raise(result)
 
     def _plan_configuration_result(self, q_reduced, start=None, active_mask=None,
-                                   current_q=None, direct_only=False,
-                                   timeout=None, local_frames=()):
+                                    current_q=None, direct_only=False,
+                                    timeout=None, local_frames=None):
         '''Return the planner result without discarding failure diagnostics'''
         self.check_state_fresh()
         if current_q is None:
@@ -363,6 +364,11 @@ class UpperController:
                 self._tau_bias[:] = 0.0
             start = start[self.robot_model.reduced_mask]
         q_reduced = np.asarray(q_reduced, dtype=float)
+        if local_frames is None:
+            local_frames = moving_grasp_frames(
+                start, q_reduced, self.planner.planner_config.frame_names,
+                active_mask=active_mask,
+            )
         moving_speed, max_interpolation_steps = self._planner_speed_overrides()
         result = self.planner.plan_configuration(
             current_q=current_q,
