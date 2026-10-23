@@ -82,13 +82,12 @@ class FrameController(UpperController):
         '''Clear all frame tasks'''
         self.ik_solver.clear_frame_tasks()
 
-    def get_frame_pose(self, frame_name: str):
-        '''Get current pose of a frame'''
-        position = self.robot_model.get_frame_position(frame_name)
-        rotation = self.robot_model.get_frame_rotation(frame_name)
-        rpy = pin.rpy.matrixToRpy(rotation)
-        return np.concatenate([position, rpy])
+    def get_frame_pose(self, frame_name: str, q: np.ndarray=None):
+        '''Get current pelvis-relative pose of a frame'''
+        transformation = self.get_frame_transformation(frame_name, q)
+        rpy = pin.rpy.matrixToRpy(transformation[:3, :3])
+        return np.concatenate([transformation[:3, 3], rpy])
 
-    def get_frame_transformation(self, frame_name: str):
-        '''Get current transformation matrix of a frame'''
-        return self.robot_model.get_frame_transformation(frame_name)
+    def get_frame_transformation(self, frame_name: str, q: np.ndarray=None):
+        '''Get current pelvis-relative transformation of a frame'''
+        return self.robot_model.get_frame_transformation_body(frame_name, q)

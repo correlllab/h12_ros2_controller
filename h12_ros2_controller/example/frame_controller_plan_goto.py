@@ -12,6 +12,9 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -74,6 +77,7 @@ def plan_goal(
     pose,
     ik_timeout,
     ik_alpha,
+    tasks=None,
 ):
     '''Plan one named config or frame-task goal'''
     start_time = time.perf_counter()
@@ -89,9 +93,13 @@ def plan_goal(
         raise ValueError(f'Unknown named configuration: {keyword}')
     else:
         # frame goals are configured by FrameController, then solved by IK
-        print(f'Planning to frame task: {frame_name}')
+        tasks = tasks if tasks is not None else (FrameGoal(frame_name, pose),)
+        print('Planning to frame tasks: ' + ', '.join(task.frame_name for task in tasks))
         frame_controller.clear_frame_tasks()
-        frame_controller.add_frame_task(f'{frame_name}_task', frame_name, pose)
+        for task in tasks:
+            frame_controller.add_frame_task(
+                f'{task.frame_name}_task', task.frame_name, task.pose,
+            )
         path = frame_controller.plan_to_ik_target(
             ik_timeout=ik_timeout,
             ik_alpha=ik_alpha,
@@ -121,19 +129,36 @@ def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1):
     controller_cfg = frame_controller.config['controller']
     steady_timeout = controller_cfg['timeout']
     threshold_joint = controller_cfg['threshold_joint']
+    console = GotoConsole(
+        'Frame Plan Goto', NAMED_CONFIGS,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+    )
+    console.help()
 
     try:
         while True:
-            keyword, frame_name, pose = input_keyword_or_frame_task()
+            try:
+                command = console.read_command()
+            except ValueError as err:
+                print(f'Invalid goal: {err}')
+                continue
+            if isinstance(command, Quit):
+                break
+            if command is None:
+                continue
+            keyword = command.name if isinstance(command, NamedGoal) else ''
+            tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
+                     (command,) if isinstance(command, FrameGoal) else None)
             try:
                 # plan and visualize first; execution waits for operator input
                 path, planning_time = plan_goal(
                     frame_controller,
                     keyword,
-                    frame_name,
-                    pose,
+                    tasks[0].frame_name if tasks else None,
+                    tasks[0].pose if tasks else None,
                     ik_timeout=ik_timeout,
                     ik_alpha=ik_alpha,
+                    tasks=tasks,
                 )
             except Exception as err:
                 print(f'Planning failed: {err}')

@@ -3,6 +3,8 @@ import traceback
 import multiprocessing as mp
 from contextlib import contextmanager
 from dataclasses import asdict
+from threading import Lock
+from time import perf_counter
 
 import numpy as np
 
@@ -19,14 +21,27 @@ class PlannerClient:
     '''Client for a planner subprocess'''
 
     def __init__(self, urdf_path, urdf_sphere_path, srdf_sphere_path,
-                 planner_config, handless=False):
+                 planner_config, handless=False, ompl_seed=None,
+                 request_timeout=10.0, startup_timeout=30.0):
         self.urdf_path = urdf_path
         self.urdf_sphere_path = urdf_sphere_path
         self.srdf_sphere_path = srdf_sphere_path
         self.planner_config = planner_config
         self.handless = bool(handless)
+        if ompl_seed is not None and (not isinstance(ompl_seed, int) or ompl_seed < 0):
+            raise ValueError('ompl_seed must be a non-negative integer')
+        self.ompl_seed = ompl_seed
+        self.request_timeout = float(request_timeout)
+        if not np.isfinite(self.request_timeout) or self.request_timeout <= 0.0:
+            raise ValueError('request_timeout must be finite and positive')
+        self.startup_timeout = float(startup_timeout)
+        if not np.isfinite(self.startup_timeout) or self.startup_timeout <= 0.0:
+            raise ValueError('startup_timeout must be finite and positive')
 
         self._ctx = mp.get_context('spawn')
+        self._lock = Lock()
+        self._generation = 0
+        self._request_id = 0
         self._request_queue = None
         self._response_queue = None
         self._process = None
@@ -34,7 +49,7 @@ class PlannerClient:
     def plan_configuration(self, current_q, start, goal,
                            active_mask=None, moving_speed=None,
                            max_interpolation_steps=None, direct_only=False,
-                           local_frames=(), timeout=None):
+                           local_frames=(), timeout=None, allow_reuse=True):
         '''Plan to a reduced joint target in the planner process
 
         The worker's PlannerConfig is serialized once at spawn, so per-goal
@@ -52,79 +67,130 @@ class PlannerClient:
             'direct_only': bool(direct_only),
             'local_frames': tuple(local_frames),
             'timeout': timeout,
+            'allow_reuse': bool(allow_reuse),
         })
 
     def warmup(self):
         '''Initialize the planner worker before its first motion request'''
-        self._start()
+        with self._lock:
+            started = perf_counter()
+            self._start()
+            return perf_counter() - started
 
     def shutdown(self):
         '''Stop the planner process'''
-        if self._process is None:
-            return
+        with self._lock:
+            self._stop(graceful=True)
+
+    def _stop(self, graceful=False):
+        process = self._process
         try:
-            self._request_queue.put({'command': 'shutdown'})
-            self._process.join(timeout=2.0)
-            if self._process.is_alive():
-                self._process.terminate()
-                self._process.join(timeout=1.0)
+            if process is not None:
+                if graceful and process.is_alive():
+                    self._request_queue.put({'command': 'shutdown'})
+                    process.join(timeout=2.0)
+                if process.is_alive():
+                    process.terminate()
+                    process.join(timeout=1.0)
+                if process.is_alive():
+                    process.kill()
+                    process.join(timeout=1.0)
         finally:
             self._process = None
-            self._request_queue = None
-            self._response_queue = None
+            for name in ('_request_queue', '_response_queue'):
+                connection = getattr(self, name)
+                setattr(self, name, None)
+                if connection is not None:
+                    connection.cancel_join_thread()
+                    connection.close()
 
     def _start(self):
         if self._process is not None and self._process.is_alive():
             return
 
+        self._stop()
         # lazily start the worker so spawn cost is paid only when needed
-        self._request_queue = self._ctx.Queue()
-        self._response_queue = self._ctx.Queue()
-        init_args = {
-            'urdf_path': self.urdf_path,
-            'urdf_sphere_path': self.urdf_sphere_path,
-            'srdf_sphere_path': self.srdf_sphere_path,
-            'planner_config': asdict(self.planner_config),
-            'handless': self.handless,
-        }
-        self._process = self._ctx.Process(
-            target=_planner_worker_main,
-            args=(init_args, self._request_queue, self._response_queue),
-            name='planner_process',
-            daemon=True,
-        )
-        self._process.start()
-
+        self._generation += 1
         try:
-            message = self._response_queue.get(timeout=30.0)
-        except queue.Empty as exc:
-            raise RuntimeError(
-                'Planner process did not start in time'
-            ) from exc
-        if message.get('type') == 'startup_error':
-            raise RuntimeError(message['error'])
-        if message.get('type') != 'ready':
-            raise RuntimeError(
-                f'Unexpected planner startup message: {message}'
+            self._request_queue = self._ctx.Queue()
+            self._response_queue = self._ctx.Queue()
+            init_args = {
+                'urdf_path': self.urdf_path,
+                'urdf_sphere_path': self.urdf_sphere_path,
+                'srdf_sphere_path': self.srdf_sphere_path,
+                'planner_config': asdict(self.planner_config),
+                'handless': self.handless,
+                'ompl_seed': self.ompl_seed,
+                'generation': self._generation,
+            }
+            self._process = self._ctx.Process(
+                target=_planner_worker_main,
+                args=(init_args, self._request_queue, self._response_queue),
+                name='planner_process',
+                daemon=True,
             )
+            self._process.start()
+            deadline = perf_counter() + self.startup_timeout
+            while True:
+                try:
+                    message = self._response_queue.get(
+                        timeout=min(0.1, max(0.0, deadline - perf_counter()))
+                    )
+                    break
+                except queue.Empty as exc:
+                    if not self._process.is_alive():
+                        raise RuntimeError('Planner process exited during startup') from exc
+                    if perf_counter() >= deadline:
+                        raise RuntimeError('Planner process did not start in time') from exc
+            if message.get('type') == 'startup_error':
+                raise RuntimeError(message['error'])
+            if message.get('type') != 'ready' or message.get('generation') != self._generation:
+                raise RuntimeError(f'Unexpected planner startup message: {message}')
+        except Exception:
+            self._stop()
+            raise
 
     def _request(self, request):
-        self._start()
-        self._request_queue.put(request)
-        while True:
+        with self._lock:
+            started = perf_counter()
+            self._start()
+            ready = perf_counter()
+            self._request_id += 1
+            request = {**request, 'request_id': self._request_id}
+            generation = self._generation
             try:
-                response = self._response_queue.get(timeout=1.0)
-            except queue.Empty as exc:
-                if self._process is not None and self._process.is_alive():
-                    continue
-                raise RuntimeError(
-                    'Planner process exited unexpectedly'
-                ) from exc
-            if isinstance(response, PlanResult):
-                return response
-            if response.get('type') == 'error':
-                raise RuntimeError(response['error'])
-            raise RuntimeError(f'Unexpected planner response: {response}')
+                self._request_queue.put(request)
+                deadline = perf_counter() + self.request_timeout
+                while True:
+                    remaining = deadline - perf_counter()
+                    if remaining <= 0.0:
+                        raise TimeoutError('Planner process response timed out')
+                    try:
+                        message = self._response_queue.get(timeout=min(0.1, remaining))
+                    except queue.Empty as exc:
+                        if not self._process.is_alive():
+                            raise RuntimeError('Planner process exited unexpectedly') from exc
+                        continue
+                    if perf_counter() >= deadline:
+                        raise TimeoutError('Planner process response timed out')
+                    if (message.get('generation') != generation or
+                            message.get('request_id') != self._request_id):
+                        continue
+                    if message.get('type') == 'error':
+                        raise RuntimeError(message['error'])
+                    if message.get('type') != 'result' or not isinstance(message.get('result'), PlanResult):
+                        raise RuntimeError(f'Unexpected planner response: {message}')
+                    response = message['result']
+                    completed = perf_counter()
+                    response.metadata['client_timings'] = {
+                        'startup': ready - started,
+                        'request_transport_and_worker': completed - ready,
+                        'total': completed - started,
+                    }
+                    return response
+            except Exception:
+                self._stop()
+                raise
 
 
 class _PlannerWorker:
@@ -170,6 +236,7 @@ class _PlannerWorker:
                 start, goal, active_mask=active_mask,
                 direct_only=request.get('direct_only', False),
                 local_frames=request.get('local_frames', ()),
+                allow_reuse=request.get('allow_reuse', True),
             )
 
     @contextmanager
@@ -225,14 +292,19 @@ class _PlannerWorker:
 
 
 def _planner_worker_main(init_args, request_queue, response_queue):
+    generation = init_args['generation']
     try:
+        if init_args.get('ompl_seed') is not None:
+            from ompl import util as ou
+            ou.RNG.setSeed(int(init_args['ompl_seed']))
         worker = _PlannerWorker(init_args)
         # notify the parent only after the child model is fully initialized
-        response_queue.put({'type': 'ready'})
+        response_queue.put({'type': 'ready', 'generation': generation})
     except Exception as exc:
         response_queue.put({
             'type': 'startup_error',
             'error': _format_error(exc),
+            'generation': generation,
         })
         return
 
@@ -242,11 +314,15 @@ def _planner_worker_main(init_args, request_queue, response_queue):
             return
         try:
             result = worker.handle(request)
-            response_queue.put(result)
+            response_queue.put({
+                'type': 'result', 'result': result,
+                'generation': generation, 'request_id': request['request_id'],
+            })
         except Exception as exc:
             response_queue.put({
                 'type': 'error',
                 'error': _format_error(exc),
+                'generation': generation, 'request_id': request['request_id'],
             })
 
 

@@ -19,6 +19,11 @@ class FrameGoal:
 
 
 @dataclass(frozen=True)
+class MultiFrameGoal:
+    tasks: tuple[FrameGoal, ...]
+
+
+@dataclass(frozen=True)
 class ShowCandidate:
     index: int
 
@@ -48,13 +53,23 @@ class Quit:
     pass
 
 
+def _parse_frame_task(parts):
+    if len(parts) != 7:
+        raise ValueError('Expected <frame_name> x y z roll pitch yaw (degrees)')
+    pose = np.asarray([float(value) for value in parts[1:]], dtype=float)
+    if not np.all(np.isfinite(pose)):
+        raise ValueError('Frame pose must contain only finite values')
+    pose[3:] = np.deg2rad(pose[3:])
+    return FrameGoal(parts[0], pose)
+
+
 def parse_goto_command(line, named_goals=None, supported=None):
     '''Parse a named or Cartesian target and optional console actions'''
     parts = shlex.split(line)
     if not parts:
         return None
     name = parts[0].lower()
-    if name in ('quit', 'exit'):
+    if name in ('quit', 'exit', 'q'):
         if len(parts) != 1:
             raise ValueError(f'Expected {name} without arguments')
         command = Quit()
@@ -74,13 +89,17 @@ def parse_goto_command(line, named_goals=None, supported=None):
             raise ValueError(f'Expected {name} <file>')
         command = SaveCase(parts[1]) if name == 'save' else LoadCase(parts[1])
     elif name == 'frame':
-        if len(parts) != 8:
-            raise ValueError('Expected frame <name> x y z roll pitch yaw (degrees)')
-        pose = np.asarray([float(value) for value in parts[2:]], dtype=float)
-        if not np.all(np.isfinite(pose)):
-            raise ValueError('Frame pose must contain only finite values')
-        pose[3:] = np.deg2rad(pose[3:])
-        command = FrameGoal(parts[1], pose)
+        if ',' not in line:
+            command = _parse_frame_task(parts[1:])
+        else:
+            groups = line.split(',')
+            first = shlex.split(groups[0])
+            tasks = (_parse_frame_task(first[1:]), *(
+                _parse_frame_task(shlex.split(group)) for group in groups[1:]
+            ))
+            if len({task.frame_name for task in tasks}) != len(tasks):
+                raise ValueError('Frame goals must have distinct frame names')
+            command = MultiFrameGoal(tasks)
     elif len(parts) == 1:
         if named_goals is not None and parts[0] not in named_goals:
             raise ValueError(f'Unknown named configuration: {parts[0]}')
@@ -122,7 +141,10 @@ class GotoConsole:
             self.say('Named goals: ' + ', '.join(sorted(self.named_goals)))
             commands.append('<name>')
         if FrameGoal in available:
-            commands.append('frame <frame_name> x y z roll pitch yaw (degrees)')
+            command = 'frame <frame_name> x y z roll pitch yaw'
+            if MultiFrameGoal in available:
+                command += ', <frame_name> x y z roll pitch yaw ...'
+            commands.append(command + ' (degrees)')
         self.say('Commands: ' + ' | '.join(commands))
         actions = []
         for kind, label in ((ShowCandidate, 'show <index>'), (Reset, 'reset'),
@@ -164,8 +186,20 @@ class GotoConsole:
                                f'wrist margin={metrics["wrist_margin"]:.3f} rad')
                 selected = ' selected' if candidate is result.selected_candidate else ''
                 self._output(f'  [{index}] {candidate.seed_name}: {detail}{selected}')
+            selected = result.selected_candidate
+            if selected is not None:
+                for frame, (linear, angular) in getattr(
+                    selected, 'frame_errors', {},
+                ).items():
+                    self.say(f'{frame}: IK position={linear:.4g}m, '
+                             f'orientation={angular:.4g}rad')
         plan = result.plan
+        fallback_time = getattr(result, 'phase_timings', {}).get('bimanual_fallback', 0.0)
+        if fallback_time > 0.0:
+            self.say(f'Bimanual fallback search: {fallback_time:.3f}s')
         if plan is None:
+            if getattr(result, 'fallback_reason', ''):
+                self.say(f'Bimanual fallback: {result.fallback_reason}')
             self.say(f'IK failed after {result.elapsed_time:.3f}s; pose unchanged')
             return
         self.say(f'Plan: success={plan.success}, reason={plan.reason}, '
@@ -181,6 +215,11 @@ class GotoConsole:
             for name, x in metadata.get('min_frame_x', {}).items():
                 self.say(f'{name}: minimum x={x:.3f}m '
                          f'(local bound={metadata["local_x_bounds"][name]:.3f}m)')
+            for name, deviation in metadata.get('hand_segment_deviation', {}).items():
+                self.say(f'{name}: maximum hand deviation={deviation:.3f}m')
+            for name, x in metadata.get('min_elbow_x', {}).items():
+                self.say(f'{name}: minimum elbow x={x:.3f}m '
+                         f'(local bound={metadata["elbow_local_x_bounds"][name]:.3f}m)')
         if 'path_kind' in metadata:
             frame_lengths = ', '.join(
                 f'{name}={length:.4f}m '

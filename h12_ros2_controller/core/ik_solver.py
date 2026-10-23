@@ -23,6 +23,7 @@ class IKAttemptResult:
     elapsed_time: float
     reason: str = ''
     score: float = float('inf')
+    frame_errors: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -39,10 +40,17 @@ class IKResult:
 
 
 class IKSolver:
+    wrist_movement_weight = 3.0
+    wrist_posture_cost = 5e-3
+    shoulder_seed_offset = 0.45
+    elbow_seed_offset = 0.60
+
     def __init__(self,
                  robot_model: RobotModel,
                  dt: float = 0.02,
-                 d_min: float = 0.05):
+                 d_min: float = 0.05,
+                 *, wrist_movement_weight=None, wrist_posture_cost=None,
+                 shoulder_seed_offset=None, elbow_seed_offset=None):
         '''
         Initialize the IK solver with robot model and collision parameters
         Uses model_body (no free-flyer) for IK solving
@@ -54,6 +62,17 @@ class IKSolver:
         self.robot_model = robot_model
         self.dt = dt
         self.d_min = d_min
+        for name, value in (
+            ('wrist_movement_weight', wrist_movement_weight),
+            ('wrist_posture_cost', wrist_posture_cost),
+            ('shoulder_seed_offset', shoulder_seed_offset),
+            ('elbow_seed_offset', elbow_seed_offset),
+        ):
+            if value is not None:
+                value = float(value)
+                if not np.isfinite(value) or value <= 0.0:
+                    raise ValueError(f'{name} must be finite and positive')
+                setattr(self, name, value)
 
         # task management
         self.frame_tasks = {}  # maps task_name -> FrameTask
@@ -264,14 +283,28 @@ class IKSolver:
         )
 
     def _frame_task_errors(self, configuration):
-        '''Compute summed linear and angular frame-task residuals'''
+        '''Compute the worst frame residual for per-target convergence'''
         linear_err = 0.0
         angular_err = 0.0
         for task in self.frame_tasks.values():
             err = task.compute_error(configuration)
-            linear_err += np.linalg.norm(err[:3])
-            angular_err += np.linalg.norm(err[3:])
+            if not np.all(np.isfinite(err)):
+                return float('inf'), float('inf')
+            linear_err = max(linear_err, np.linalg.norm(err[:3]))
+            angular_err = max(angular_err, np.linalg.norm(err[3:]))
         return linear_err, angular_err
+
+    def _frame_error_details(self, configuration):
+        '''Return individual frame residuals for candidate diagnostics'''
+        return {
+            getattr(task, 'frame', name): (
+                float(np.linalg.norm(error[:3])),
+                float(np.linalg.norm(error[3:])),
+            )
+            for name, task in self.frame_tasks.items()
+            if hasattr(task, 'compute_error')
+            for error in (task.compute_error(configuration),)
+        }
 
     def _task_error_score(self, attempt, linear_threshold, angular_threshold):
         linear_scale = max(float(linear_threshold), 1e-12)
@@ -349,11 +382,13 @@ class IKSolver:
             raise ValueError(f'{seed_name} seed must contain only finite values')
         return normalized
 
-    def _seed_list(self, reduced, initial_positions, start_q=None, active_mask=None):
+    def _seed_list(self, reduced, initial_positions, start_q=None, active_mask=None,
+                   preferred_positions=None):
         seeds = []
-        seed_items = self._default_seed_items(start_q) + self._extra_seed_items(
-            initial_positions,
-        )
+        seed_items = self._default_seed_items(start_q)
+        if preferred_positions is not None:
+            seed_items.insert(1, ('preferred', preferred_positions))
+        seed_items += self._extra_seed_items(initial_positions)
         for seed_name, seed in seed_items:
             try:
                 if reduced:
@@ -370,13 +405,70 @@ class IKSolver:
                 seeds.append((seed_name, q.copy(), ''))
         return seeds
 
+    def _arm_fallback_seeds(self, seeds, active_mask):
+        '''Generate bounded shoulder and elbow alternatives from the current pose'''
+        model = self.robot_model.model_body_reduced
+        names = [''] * model.nq
+        for name, idx in zip(model.names[1:], model.idx_qs[1:]):
+            if 0 <= idx < model.nq:
+                names[idx] = name.lower()
+        sides = set()
+        for task in self.frame_tasks.values():
+            frame = getattr(task, 'frame', '').lower()
+            if frame.startswith('left_'):
+                sides.add('left')
+            elif frame.startswith('right_'):
+                sides.add('right')
+        if len(sides) > 1:
+            return []
+        side = next(iter(sides), None)
+        mask = np.ones(model.nq, dtype=bool) if active_mask is None else active_mask
+        def matches(name, part):
+            if part not in name or 'wrist' in name:
+                return False
+            if side == 'left':
+                return name.startswith(('left_', 'l_'))
+            if side == 'right':
+                return name.startswith(('right_', 'r_'))
+            return not name.startswith(('left_', 'right_', 'l_', 'r_'))
+
+        joints = [next((idx for idx, name in enumerate(names)
+                        if mask[idx] and matches(name, part)), None)
+                  for part in ('shoulder', 'elbow')]
+        if all(idx is None for idx in joints):
+            return []
+        base = self._batch_reduced_reference
+        lower = np.asarray(model.lowerPositionLimit)
+        upper = np.asarray(model.upperPositionLimit)
+        shoulder = self.shoulder_seed_offset
+        elbow = self.elbow_seed_offset
+        variants = ((shoulder, elbow), (-shoulder, elbow),
+                    (shoulder, -elbow), (-shoulder, -elbow))
+        generated = []
+        for variant, offsets in enumerate(variants):
+            q = base.copy()
+            for idx, offset in zip(joints, offsets):
+                if idx is not None and np.isfinite(lower[idx]) and np.isfinite(upper[idx]) \
+                        and lower[idx] <= upper[idx]:
+                    q[idx] = np.clip(q[idx] + offset, lower[idx], upper[idx])
+            if not np.all(np.isfinite(q)):
+                continue
+            if any(previous is not None and np.allclose(q, previous, atol=1e-6, rtol=0)
+                   for _, previous, _ in seeds + generated):
+                continue
+            generated.append((f'arm_fallback_{variant}', q, ''))
+        return generated
+
     def _naturalness_score(self, q, reference, reduced):
         model = self.robot_model.model_body_reduced if reduced else self.robot_model.model_body
         names = [''] * model.nq
         for name, idx in zip(model.names[1:], model.idx_qs[1:]):
             if 0 <= idx < model.nq:
                 names[idx] = name
-        weights = np.array([3.0 if 'wrist' in name.lower() else 1.0 for name in names])
+        weights = np.array([
+            self.wrist_movement_weight if 'wrist' in name.lower() else 1.0
+            for name in names
+        ])
         movement = np.sum(weights * (q - reference) ** 2)
         lower = np.asarray(model.lowerPositionLimit)
         upper = np.asarray(model.upperPositionLimit)
@@ -403,7 +495,7 @@ class IKSolver:
                     self._batch_reduced_reference[idx],
                     lower + 0.1 * width, upper - 0.1 * width,
                 )
-            costs[idx] = 5e-3
+            costs[idx] = self.wrist_posture_cost
         return preferred, costs
 
     def _result_from_attempts(self, attempts, linear_threshold, angular_threshold,
@@ -579,15 +671,18 @@ class IKSolver:
     def solve_ik_reduced(self, alpha=0.1, timeout=1.0,
                           linear_threshold=1e-3, angular_threshold=1e-2,
                           initial_positions=None, total_timeout=None, max_seeds=8,
-                          reference_positions=None, start_q=None, active_mask=None):
-        '''Solve reduced IK and rank successes; timeout is per seed'''
+                          reference_positions=None, start_q=None, active_mask=None,
+                          preferred_positions=None):
+        '''Solve reduced IK, trying one preferred full or reduced q after current'''
         return self._solve_batch(True, alpha, timeout, linear_threshold,
-                                 angular_threshold, initial_positions, total_timeout,
-                                 max_seeds, reference_positions, start_q, active_mask)
+                                  angular_threshold, initial_positions, total_timeout,
+                                  max_seeds, reference_positions, start_q, active_mask,
+                                  preferred_positions)
 
     def _solve_batch(self, reduced, alpha, timeout, linear_threshold,
                      angular_threshold, initial_positions, total_timeout,
-                     max_seeds, reference_positions, start_q, active_mask):
+                     max_seeds, reference_positions, start_q, active_mask,
+                     preferred_positions=None):
         if not np.isfinite(alpha) or alpha <= 0:
             raise ValueError('alpha must be positive and finite')
         if not np.isfinite(timeout) or timeout < 0:
@@ -613,8 +708,24 @@ class IKSolver:
                     raise ValueError('active_mask must have reduced joint shape')
             full_start = np.asarray(start, dtype=float).reshape(-1)
             self._batch_full_reference = (full_start.copy() if full_start.shape ==
-                                          (self.robot_model.model_body.nq,) else
-                                          np.copy(self.robot_model.state['q']))
+                                           (self.robot_model.model_body.nq,) else
+                                           np.copy(self.robot_model.state['q']))
+            if preferred_positions is not None:
+                try:
+                    preferred = np.asarray(preferred_positions, dtype=float)
+                except (TypeError, ValueError, OverflowError) as exc:
+                    raise ValueError('preferred seed must be a numeric joint vector') from exc
+                if preferred.ndim != 1:
+                    raise ValueError('preferred seed must be a single joint vector')
+                if not np.all(np.isfinite(preferred)):
+                    raise ValueError('preferred seed must contain only finite values')
+                if preferred.shape == (self.robot_model.model_body.nq,):
+                    frozen = ~self.robot_model.reduced_mask
+                    if not np.allclose(preferred[frozen],
+                                       self._batch_full_reference[frozen], atol=1e-6, rtol=0):
+                        raise ValueError('preferred seed frozen joints must match start')
+                preferred_positions = self._normalize_reduced_seed(
+                    preferred, 'preferred').copy()
         attempts = []
         fallback = (np.copy(self._batch_full_reference) if reduced else
                     self._normalize_full_seed(start, 'start').copy())
@@ -623,8 +734,23 @@ class IKSolver:
                             [IKAttemptResult(fallback.copy(), False, float('inf'),
                                              float('inf'), 'current', 0, 0., 'no frame tasks')])
         deadline = time.monotonic() + total_timeout
-        for seed_name, q_seed, error in self._seed_list(
-                reduced, initial_positions, start, active_mask)[:max_seeds]:
+        seeds = self._seed_list(reduced, initial_positions, start, active_mask,
+                                preferred_positions)
+        distinct_successes = []
+        primary_count = min(len(seeds), max_seeds)
+        pending = seeds[:max_seeds]
+        index = 0
+        while index < len(pending) or (index == primary_count and reduced and
+                                       len(distinct_successes) < 2 and
+                                       len(pending) < max_seeds):
+            if index == primary_count:
+                pending.extend(self._arm_fallback_seeds(seeds, active_mask)[
+                    :max_seeds - len(pending)])
+                primary_count = -1
+                if index == len(pending):
+                    break
+            seed_name, q_seed, error = pending[index]
+            index += 1
             if error:
                 attempt = IKAttemptResult(fallback.copy(), False, float('inf'),
                                           float('inf'), seed_name, 0, 0.0, error)
@@ -658,6 +784,27 @@ class IKSolver:
                         attempt.success = False
                         attempt.reason = f'feasibility check: {type(exc).__name__}: {exc}'
             attempts.append(attempt)
+            if attempt.success and all(
+                hasattr(task, 'compute_error') for task in self.frame_tasks.values()
+            ):
+                configuration = (self.configuration_reduced if reduced else
+                                 self.configuration)
+                configuration.update(
+                    attempt.q[self.robot_model.reduced_mask] if reduced else attempt.q
+                )
+                attempt.frame_errors = self._frame_error_details(configuration)
+            if attempt.success and reduced and not any(
+                    np.allclose(attempt.q, q, atol=1e-3, rtol=0)
+                    for q in distinct_successes):
+                distinct_successes.append(attempt.q.copy())
+                if len(distinct_successes) >= (3 if index <= primary_count else 2):
+                    if index <= primary_count:
+                        attempts.extend(IKAttemptResult(
+                            fallback.copy(), False, float('inf'), float('inf'),
+                            name, 0, 0.0, seed_error,
+                        ) for name, _, seed_error in pending[index:primary_count]
+                            if seed_error)
+                    break
             if attempt.success and not reduced:
                 break
         if not attempts:

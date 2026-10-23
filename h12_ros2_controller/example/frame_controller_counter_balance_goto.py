@@ -26,6 +26,9 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
 from h12_ros2_controller.utility.path_definition import (
     SRDF_MAGPIE_SPHERE_PATH,
     URDF_MAGPIE_PATH,
@@ -333,10 +336,11 @@ def settle_target(controller, target, balanced, frame_task):
         controller.steady_state_step(threshold)
         fresh_state(controller)
         if frame_task:
-            error = controller.get_frame_task_error(frame_task)
+            task_names = (frame_task,) if isinstance(frame_task, str) else frame_task
+            errors = [controller.get_frame_task_error(name) for name in task_names]
             settings = controller.config['controller']
-            linear_error = np.linalg.norm(error[:3])
-            angular_error = np.linalg.norm(error[3:])
+            linear_error = max(np.linalg.norm(error[:3]) for error in errors)
+            angular_error = max(np.linalg.norm(error[3:]) for error in errors)
             reached = (linear_error < settings['threshold_linear']
                        and angular_error < settings['threshold_angular'])
             error_description = (f'linear={linear_error:.4f} m, '
@@ -387,10 +391,12 @@ def live_goto(controller, target, balanced, frame_task=None):
             else:
                 steady = controller.steady_state_step(settings['threshold_joint'])
                 if frame_task:
-                    error = controller.get_frame_task_error(frame_task)
-                    steady = steady or (
-                        np.linalg.norm(error[:3]) < settings['threshold_linear']
-                        and np.linalg.norm(error[3:]) < settings['threshold_angular']
+                    task_names = (frame_task,) if isinstance(frame_task, str) else frame_task
+                    errors = [controller.get_frame_task_error(name) for name in task_names]
+                    steady = all(
+                        np.linalg.norm(error[:3]) < settings['threshold_linear'] and
+                        np.linalg.norm(error[3:]) < settings['threshold_angular']
+                        for error in errors
                     )
                 else:
                     error = controller.reduced_configuration_error
@@ -454,6 +460,23 @@ def prepare_goal(controller, name, side, pose, balanced):
     return target, None
 
 
+def prepare_frame_goals(controller, tasks, balanced):
+    if balanced and len(tasks) != 1:
+        raise ValueError('Counter-balance supports exactly one moving-arm frame task')
+    if balanced and tasks[0].frame_name not in FRAMES.values():
+        raise ValueError('Counter-balance requires a left/right grasp frame')
+    controller.clear_frame_tasks()
+    names = []
+    for task in tasks:
+        name = f'{task.frame_name}_task'
+        if balanced:
+            controller.set_frame_target(task.frame_name, task.pose, task_name=name)
+        else:
+            controller.add_frame_task(name, task.frame_name, task.pose)
+        names.append(name)
+    return None, tuple(names)
+
+
 def plan_goal(controller, target, frame_task, ik_timeout, ik_alpha):
     if frame_task:
         return controller.plan_to_ik_target(
@@ -512,30 +535,45 @@ def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
                     return
         if ask_choice('Standing and lower-body policy verified? (y/N): ', ('y', 'n', '')) != 'y':
             return
+        console = GotoConsole(
+            'Counter Balance Goto', DEMO_CONFIGS,
+            supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+        )
+        console.help()
         while True:
             print(f'Available named configs: {list(DEMO_CONFIGS.keys())}')
-            name = input(
-                'Enter named config (or press Enter for frame task, q to quit): '
-            ).strip().lower()
-            if name == 'q':
-                break
-            if name and name not in DEMO_CONFIGS:
-                print(f'Unknown named configuration: {name}')
+            try:
+                command = console.read_command()
+            except ValueError as error:
+                print(f'Invalid goal: {error}')
                 continue
+            if isinstance(command, Quit):
+                break
+            name = command.name if isinstance(command, NamedGoal) else ''
             side, pose = (None, None)
-            if not name:
+            if command is None:
                 side = ask_choice('Enter moving arm (left/right): ', FRAMES)
                 pose = ask_pose()
-            goal_description = (
-                f'named configuration: {name}' if name else f'frame task: {FRAMES[side]}'
-            )
+            tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
+                     (command,) if isinstance(command, FrameGoal) else ())
+            if name:
+                goal_description = f'named configuration: {name}'
+            elif tasks:
+                goal_description = 'frame tasks: ' + ', '.join(
+                    task.frame_name for task in tasks
+                )
+            else:
+                goal_description = f'frame task: {FRAMES[side]}'
             planned = ask_choice('Plan this goto? (y/N): ', ('y', 'n', '')) == 'y'
             balanced = ask_choice('Enable counter-balance? (y/N): ', ('y', 'n', '')) == 'y'
             try:
                 if name in OVERHANG_CONFIGS:
                     print('Offline overhang joint target: inspect the path; '
                           'HOME-to-first and counter reaction are not hardware-qualified')
-                target, task = prepare_goal(controller, name or None, side, pose, balanced)
+                if tasks:
+                    target, task = prepare_frame_goals(controller, tasks, balanced)
+                else:
+                    target, task = prepare_goal(controller, name or None, side, pose, balanced)
                 if planned:
                     print(f'Planning to {goal_description}')
                     select_planner(controller, planners, ask_z_floor('this goal'))

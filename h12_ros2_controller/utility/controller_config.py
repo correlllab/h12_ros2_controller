@@ -272,10 +272,10 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
-    if ctrl_hz <= 0.0:
-        raise ValueError('frequency.ctrl_hz must be positive')
-    if pub_hz <= 0.0:
-        raise ValueError('frequency.pub_hz must be positive')
+    if not np.isfinite(ctrl_hz) or ctrl_hz <= 0.0:
+        raise ValueError('frequency.ctrl_hz must be finite and positive')
+    if not np.isfinite(pub_hz) or pub_hz <= 0.0:
+        raise ValueError('frequency.pub_hz must be finite and positive')
 
     processed_limits = build_processed_limits(limits)
     processed_gains = _process_gains(gains)
@@ -290,6 +290,20 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     threshold_joint = float(controller.get('threshold_joint', 0.01))
     threshold_linear = float(controller.get('threshold_linear', 0.002))
     threshold_angular = float(controller.get('threshold_angular', 0.01))
+    execution_start_tolerance = float(controller.get('execution_start_tolerance', 0.01))
+    command_seed_max_gap = float(controller.get('command_seed_max_gap', 0.1))
+    frozen_joint_tolerance = float(controller.get('frozen_joint_tolerance', 0.01))
+    plan_max_age = float(controller.get('plan_max_age', 30.0))
+    for name, value in (
+        ('execution_start_tolerance', execution_start_tolerance),
+        ('command_seed_max_gap', command_seed_max_gap),
+        ('frozen_joint_tolerance', frozen_joint_tolerance),
+        ('plan_max_age', plan_max_age),
+        ('threshold_linear', threshold_linear),
+        ('threshold_angular', threshold_angular),
+    ):
+        if not np.isfinite(value) or value <= 0.0:
+            raise ValueError(f'controller.{name} must be finite and positive')
     # refuse/abort motion when rt/lowstate is staler than this; enforced only
     # on DDS domain 0 (the sims stamp tick in sim steps); <= 0 disables
     max_state_lag_ms = float(controller.get('max_state_lag_ms', 50.0))
@@ -315,6 +329,10 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_joint': threshold_joint,
             'threshold_linear': threshold_linear,
             'threshold_angular': threshold_angular,
+            'execution_start_tolerance': execution_start_tolerance,
+            'command_seed_max_gap': command_seed_max_gap,
+            'frozen_joint_tolerance': frozen_joint_tolerance,
+            'plan_max_age': plan_max_age,
             'max_state_lag_ms': max_state_lag_ms,
         },
         'planner': dict(planner),

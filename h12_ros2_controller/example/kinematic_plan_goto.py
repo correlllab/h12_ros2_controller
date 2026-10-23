@@ -13,7 +13,7 @@ from h12_ros2_controller.core.planner.kinematic_pipeline import (
     KinematicPipeline, candidate_metrics,
 )
 from h12_ros2_controller.utility.goto_commands import (
-    FrameGoal, GotoConsole, LoadCase, NamedGoal, Quit, Replay, Reset,
+    FrameGoal, GotoConsole, LoadCase, MultiFrameGoal, NamedGoal, Quit, Replay, Reset,
     SaveCase, ShowCandidate,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -24,7 +24,7 @@ def main(visualize=False, replay_delay=0.03, ik_timeout=1.0, ik_alpha=0.1,
     pipeline = KinematicPipeline(visualize=visualize, config_name=config_name)
     console = GotoConsole(
         title='Offline IK', named_goals=NAMED_CONFIGS,
-        supported=(NamedGoal, FrameGoal, ShowCandidate, Reset, Replay,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, ShowCandidate, Reset, Replay,
                    SaveCase, LoadCase, Quit),
     )
     console.say('Offline simulation only: no DDS subscriber or hardware controller')
@@ -74,15 +74,22 @@ def main(visualize=False, replay_delay=0.03, ik_timeout=1.0, ik_alpha=0.1,
                 result = pipeline.plan_case(last_case)
                 last_start = np.asarray(last_case['start_q'], dtype=float)
                 last_ik = result.ik
-            elif isinstance(command, FrameGoal):
+            elif isinstance(command, (FrameGoal, MultiFrameGoal)):
                 last_start = pipeline.robot_model.state['q'].copy()
+                tasks = command.tasks if isinstance(command, MultiFrameGoal) else (command,)
                 last_case = {
                     'config': config_name, 'start_q': last_start.tolist(),
-                    'frame': command.frame_name, 'pose': command.pose.tolist(),
                     'ik_timeout': ik_timeout, 'ik_alpha': ik_alpha,
                 }
-                result = pipeline.plan_frame(
-                    command.frame_name, command.pose,
+                if isinstance(command, MultiFrameGoal):
+                    last_case['tasks'] = [
+                        {'frame': task.frame_name, 'pose': task.pose.tolist()}
+                        for task in tasks
+                    ]
+                else:
+                    last_case.update(frame=command.frame_name, pose=command.pose.tolist())
+                result = pipeline.plan_frames(
+                    [(task.frame_name, task.pose) for task in tasks],
                     ik_timeout=ik_timeout, ik_alpha=ik_alpha,
                 )
                 last_ik = result.ik

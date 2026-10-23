@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 from h12_ros2_controller.example import frame_controller_counter_balance_goto as demo
-from h12_ros2_controller.core.controller.upper_controller import UpperController
+from h12_ros2_controller.core.controller.upper_controller import (
+    PathExecutionCancelled, UpperController,
+)
 from h12_ros2_controller.core.planner import PlanResult, PlannerConfig
 from h12_ros2_controller.core.planner.planner_process import _PlannerWorker
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
@@ -67,6 +69,9 @@ def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
 
 def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller = object.__new__(UpperController)
+    controller.config = {'controller': {
+        'threshold_linear': 0.001, 'threshold_angular': 0.002,
+    }}
     q = np.zeros(27)
     mask = np.zeros(27, dtype=bool)
     mask[13:] = True
@@ -77,11 +82,13 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller.low_cmd_handler = SimpleNamespace(q_cmd=q.copy())
     controller._tau_bias = np.zeros(27)
     controller.planner = SimpleNamespace(
-        planner_config=SimpleNamespace(frame_names=('left_grasp_frame',))
+        planner_config=PlannerConfig(frame_names=('left_grasp_frame',))
     )
     controller.update_ik_solver = lambda **kwargs: None
     controller._active_task_mask = lambda: np.ones(14, dtype=bool)
-    goals = [np.ones(27), np.full(27, 2.0)]
+    goals = [q.copy(), q.copy()]
+    goals[0][mask] = 1.0
+    goals[1][mask] = 2.0
     updates = []
     calls = []
 
@@ -115,14 +122,20 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     assert len(calls) == 3
     assert np.array_equal(calls[0]['start_q'], q)
     assert calls[0]['total_timeout'] == 0.8
+    assert calls[0]['angular_threshold'] == 0.002
     assert np.array_equal(calls[1]['start'], calls[2]['start'])
     assert np.array_equal(calls[1]['current_q'], calls[2]['current_q'])
     assert np.array_equal(path[-1], np.full(14, 2.0))
     assert np.array_equal(updates[0], path[-1])
 
+    controller.plan_to_ik_target(ik_timeout=0.8)
+    assert np.array_equal(calls[3]['preferred_positions'], goals[1])
+
 
 def test_named_controller_goal_enables_moving_arm_locality():
     controller = object.__new__(UpperController)
+    controller.dt = 1.0 / 30.0
+    controller.config = {'planner': {'planner': 'RRTConnect'}}
     q = np.zeros(27)
     reduced_mask = np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)]
     controller.robot_model = SimpleNamespace(
@@ -138,7 +151,14 @@ def test_named_controller_goal_enables_moving_arm_locality():
         ),
     )
     calls = []
-    controller.planner.plan_configuration = lambda **kwargs: calls.append(kwargs)
+    def plan_configuration(**kwargs):
+        calls.append(kwargs)
+        return PlanResult(
+            success=True,
+            path=np.vstack([kwargs['start'], kwargs['goal']]),
+        )
+
+    controller.planner.plan_configuration = plan_configuration
     goal = np.zeros(14)
     goal[0] = 0.3
 
@@ -146,6 +166,126 @@ def test_named_controller_goal_enables_moving_arm_locality():
 
     assert calls[0]['local_frames'] == ('left_grasp_frame',)
     assert np.array_equal(calls[0]['start'], np.zeros(14))
+
+
+def test_execution_preflight_rejects_invalid_timing_without_commands():
+    controller = object.__new__(UpperController)
+    controller.dt = 1.0 / 30.0
+    controller.robot_model = SimpleNamespace(model_body_reduced=SimpleNamespace(
+        nq=14, velocityLimit=np.full(14, 9.0),
+    ))
+    config = PlannerConfig(dt=controller.dt, joint_velocity_limit=0.9,
+                           joint_acceleration_limit=25.0)
+    controller.planner = SimpleNamespace(planner_config=config)
+    path = np.zeros((3, 14))
+    path[1, 0], path[2, 0] = 0.01, 0.02
+    controller._validate_path_timing(path)
+
+    with pytest.raises(ValueError, match='velocity limits'):
+        controller._validate_path_timing(np.array([path[0], np.full(14, 0.1)]))
+    path[1, 0], path[2, 0] = 0.03, 0.03
+    with pytest.raises(ValueError, match='acceleration limits'):
+        controller._validate_path_timing(path)
+    config.dt = 0.1
+    with pytest.raises(ValueError, match='playback period'):
+        controller._validate_path_timing(path)
+    with pytest.raises(ValueError, match='empty path'):
+        controller.execute_path(np.empty((0, 14)))
+
+
+def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
+    controller = object.__new__(UpperController)
+    controller.dt = 1.0 / 30.0
+    controller.max_state_lag_ms = 0.0
+    mask = np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)]
+    q = np.zeros(27)
+    controller.robot_model = SimpleNamespace(
+        state={'q': q}, reduced_mask=mask,
+        model_body_reduced=SimpleNamespace(nq=14, velocityLimit=np.full(14, 9.0)),
+        check_within_limits_reduced=lambda values: True,
+        check_collision_free_reduced=lambda values: True,
+    )
+    controller.enabled_ids = list(range(13, 27))
+    controller.low_cmd_handler = SimpleNamespace(
+        q_cmd=q.copy(), _q_clip_limits=np.tile([-1.0, 1.0], (27, 1)),
+    )
+    controller.planner = SimpleNamespace(planner_config=PlannerConfig(dt=controller.dt))
+    path = np.zeros((2, 14))
+    commands = []
+    controller._apply_joint_position = lambda values: commands.append(values.copy())
+    controller.update_robot_model = lambda: None
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.time.sleep',
+                        lambda seconds: None)
+    context = {
+        'planned_at': time.monotonic(), 'start': path[0].copy(),
+        'frozen': q[~mask].copy(), 'active_mask': None, 'dt': controller.dt,
+    }
+    controller.last_plan_result = PlanResult(
+        success=True, path=path, metadata={'execution_context': context},
+    )
+
+    with pytest.raises(ValueError, match='most recent validated plan'):
+        controller.execute_path(np.full((2, 14), 0.001))
+    assert not commands
+
+    controller.low_cmd_handler.q_cmd[13:] = 0.08
+    with pytest.raises(ValueError, match='drifted from planned start'):
+        controller.execute_path(path)
+    controller.low_cmd_handler.q_cmd[13:] = 0.02
+    with pytest.raises(ValueError, match='drifted from planned start'):
+        controller.execute_path(path)
+    controller.low_cmd_handler.q_cmd[:] = 0.0
+    q[0] = 0.02
+    with pytest.raises(ValueError, match='Frozen joints drifted'):
+        controller.execute_path(path)
+    q[0] = 0.0
+    context['planned_at'] -= 31.0
+    with pytest.raises(ValueError, match='too old'):
+        controller.execute_path(path)
+    context['planned_at'] = time.monotonic()
+    controller.low_cmd_handler._q_clip_limits[13:, 0] = 0.01
+    with pytest.raises(ValueError, match='clipped'):
+        controller.execute_path(path)
+    controller.low_cmd_handler._q_clip_limits[13:, 0] = -1.0
+
+    controller.execute_path(path)
+    assert len(commands) == 2
+
+    commands.clear()
+    def command_then_drift(values):
+        commands.append(values.copy())
+        q[0] = 0.02
+
+    controller._apply_joint_position = command_then_drift
+    with pytest.raises(RuntimeError, match='Frozen joints drifted during'):
+        controller.execute_path(path)
+    assert len(commands) == 1
+
+
+def test_execution_cancellation_stops_before_next_command(monkeypatch):
+    controller = object.__new__(UpperController)
+    controller.dt = 1.0 / 30.0
+    controller.max_state_lag_ms = 0.0
+    controller.robot_model = SimpleNamespace(
+        model_body_reduced=SimpleNamespace(nq=14), state={'q': np.zeros(27)},
+        reduced_mask=np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)],
+    )
+    commands = []
+    controller._apply_joint_position = lambda values: commands.append(values.copy())
+    controller.update_robot_model = lambda: None
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.time.sleep',
+                        lambda seconds: None)
+    path = np.zeros((3, 14))
+
+    with pytest.raises(PathExecutionCancelled):
+        controller.execute_path(path, validate=False, cancel_check=lambda: True)
+    assert not commands
+
+    with pytest.raises(PathExecutionCancelled):
+        controller.execute_path(
+            path, validate=False, cancel_check=lambda: len(commands) == 1,
+        )
+    assert len(commands) == 1
 
 
 class CommandHandler:
@@ -792,9 +932,11 @@ def test_goal_and_repeat_prompts_match_goto_examples(monkeypatch, capsys):
 
     demo.main()
 
-    assert 'Enter named config (or press Enter for frame task, q to quit): ' in prompts
+    assert 'goto> ' in prompts
     assert 'Do you want to send another goal? (y/n): ' == prompts[-1]
-    assert 'Available named configs:' in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert 'Available named configs:' in output
+    assert 'frame <frame_name> x y z roll pitch yaw' in output
 
 
 @pytest.mark.parametrize('phase', ('plan', 'execute', 'live'))
@@ -1004,6 +1146,9 @@ def test_noop_warmup_starts_real_planner_worker_without_motion():
         home = np.zeros(14)
         result = planner.plan_configuration(np.zeros(27), home, home)
         assert result.success, result.reason
+        timings = result.metadata['client_timings']
+        assert timings['total'] >= timings['startup'] >= 0.0
+        assert timings['request_transport_and_worker'] >= result.planning_time
         assert np.array_equal(result.path[0], home)
         assert np.array_equal(result.path[-1], home)
         q = np.zeros(27)

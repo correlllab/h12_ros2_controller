@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from h12_ros2_controller.utility.goto_commands import (
-    FrameGoal, GotoConsole, LoadCase, NamedGoal, Quit, Replay, SaveCase,
+    FrameGoal, GotoConsole, LoadCase, MultiFrameGoal, NamedGoal, Quit, Replay, SaveCase,
     ShowCandidate, parse_goto_command,
 )
 
@@ -23,9 +23,38 @@ def test_frame_command_converts_degrees_and_rejects_nonfinite_pose():
         parse_goto_command('frame left_grasp_frame nan 0 0 0 0 0')
 
 
+def test_comma_separated_frame_goals_are_one_typed_request():
+    text = ('frame left_grasp_frame 0.47 0.14 0.34 15 60 -15, '
+            'right_grasp_frame 0.47 -0.14 0.34 -15 60 15')
+
+    command = parse_goto_command(text)
+
+    assert isinstance(command, MultiFrameGoal)
+    assert tuple(task.frame_name for task in command.tasks) == (
+        'left_grasp_frame', 'right_grasp_frame',
+    )
+    assert command.tasks[0].pose[4] == pytest.approx(np.deg2rad(60))
+    assert command.tasks[1].pose[1] == pytest.approx(-0.14)
+    assert isinstance(parse_goto_command(text.replace(', ', ',')), MultiFrameGoal)
+
+
+@pytest.mark.parametrize(('text', 'reason'), [
+    ('frame left_grasp_frame 0 0 0 0 0 0,', 'Expected'),
+    ('frame left_grasp_frame 0 0 0 0 0 0, right_grasp_frame 1 2', 'Expected'),
+    ('frame left_grasp_frame 0 0 0 0 0 0, left_grasp_frame 0 0 0 0 0 0',
+     'distinct'),
+    ('frame left_grasp_frame 0 0 0 0 0 0, right_grasp_frame nan 0 0 0 0 0',
+     'finite'),
+])
+def test_invalid_multi_frame_goals_fail_before_planning(text, reason):
+    with pytest.raises(ValueError, match=reason):
+        parse_goto_command(text)
+
+
 def test_named_and_optional_commands_are_typed_and_capability_checked():
     assert parse_goto_command('home', named_goals={'home'}) == NamedGoal('home')
     assert isinstance(parse_goto_command('quit'), Quit)
+    assert isinstance(parse_goto_command('q'), Quit)
     assert isinstance(parse_goto_command('replay'), Replay)
     assert parse_goto_command('show 2') == ShowCandidate(2)
     assert parse_goto_command('save "my case.json"') == SaveCase('my case.json')
@@ -48,7 +77,10 @@ def test_console_formats_attempts_candidates_and_planner_metadata():
         seed_name='current', success=False, reason='timeout',
         linear_error=0.015, angular_error=0.01, elapsed_time=0.3,
     )
-    selected = SimpleNamespace(seed_name='t_pose', success=True, score=1.25)
+    selected = SimpleNamespace(
+        seed_name='t_pose', success=True, score=1.25,
+        frame_errors={'left_grasp_frame': (0.0002, 0.0003)},
+    )
     ik = SimpleNamespace(
         success=True, seed_name='t_pose', linear_error=0.0,
         angular_error=0.0, attempts=[failed, selected], candidates=[selected],
@@ -77,6 +109,7 @@ def test_console_formats_attempts_candidates_and_planner_metadata():
     assert '[Offline IK] IK: success=True, seed=t_pose' in text
     assert 'current: timeout' in text
     assert '[0] t_pose: score=1.250, wrist travel=0.100 rad' in text
+    assert 'left_grasp_frame: IK position=0.0002m' in text
     assert '[Offline IK] direct path: waypoints=30' in text
     assert '[Offline IK] clamped start into joint limits' in text
     assert '[planner]' not in text
@@ -95,6 +128,18 @@ def test_console_help_only_advertises_supported_commands():
     assert console.read_command() == NamedGoal('home')
     assert not any('replay' in line for line in lines)
     assert any('[ROS Goto] Commands:' in line for line in lines)
+
+
+def test_console_help_advertises_comma_tasks_only_when_supported():
+    messages = []
+    console = GotoConsole(
+        title='Offline IK', supported=(FrameGoal, MultiFrameGoal, Quit),
+        output_fn=messages.append,
+    )
+
+    console.help()
+
+    assert any(', <frame_name>' in message for message in messages)
 
 
 def test_arrow_key_edits_input_in_tty():

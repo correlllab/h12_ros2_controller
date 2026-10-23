@@ -387,6 +387,18 @@ class RobotModel:
     def get_frame_transformation(self, frame_name: str, q: np.ndarray=None):
         return self._get_frame_transformation(frame_name, q).np
 
+    def get_frame_transformation_body(self, frame_name: str, q: np.ndarray=None):
+        '''Get measured pelvis-relative FK from the unreduced fixed-base model'''
+        if q is None:
+            q = self.state['q']
+        frame_id = self.model_body.getFrameId(frame_name)
+        if frame_id >= len(self.model_body.frames):
+            raise ValueError(f'Unknown robot frame: {frame_name}')
+        data = self.model_body.createData()
+        pin.forwardKinematics(self.model_body, data, np.asarray(q).copy())
+        pin.updateFramePlacements(self.model_body, data)
+        return data.oMf[frame_id].np
+
     def get_frame_position(self, frame_name: str, q: np.ndarray=None):
         return self._get_frame_transformation(frame_name, q).translation
 

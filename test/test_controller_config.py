@@ -57,3 +57,17 @@ def test_checked_in_balance_profile_keeps_empty_zmp_mapping():
 
     assert config['topics']['low_cmd'] == 'rt/safety/lowcmd_upper_in'
     assert config['zmp'] == {}
+
+
+@pytest.mark.parametrize('controller', (
+    'execution_start_tolerance: .nan',
+    'command_seed_max_gap: 0',
+    'frozen_joint_tolerance: -0.1',
+    'plan_max_age: 0',
+    'threshold_angular: .inf',
+))
+def test_load_controller_config_rejects_invalid_motion_policy(tmp_path, controller):
+    _write_config(tmp_path, f'controller: {{{controller}}}')
+
+    with pytest.raises(ValueError, match='must be finite and positive'):
+        load_controller_config('test.yaml', config_dir=tmp_path)

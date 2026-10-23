@@ -2,6 +2,7 @@ import rclpy
 import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseStamped
 
 import time
@@ -10,6 +11,7 @@ import numpy as np
 
 from custom_ros_messages.action import DualArm, NamedConfig
 from h12_ros2_controller.core.controller.arm_controller import ArmController
+from h12_ros2_controller.core.controller.upper_controller import PathExecutionCancelled
 from h12_ros2_controller.utility.controller_config import (
     init_channel_factory,
     load_controller_config,
@@ -97,19 +99,22 @@ class DualArmServer(Node):
 
         # action server to control dual arms
         self._controller_lock = threading.Lock()
+        self._action_callback_group = ReentrantCallbackGroup()
         self.dual_arm_server = ActionServer(
             self,
             DualArm,
             'dual_arm',
             execute_callback=self.dual_arm_callback,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
         )
         self.named_config_server = ActionServer(
             self,
             NamedConfig,
             'named_config',
             execute_callback=self.named_config_callback,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
         )
         self.get_logger().info('Dual Arm Server initialized')
 
@@ -121,16 +126,20 @@ class DualArmServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
-        self.controller.update_robot_model()
-        # transform and publish the pose
-        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
-        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
-        left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
-        right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
-        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
-        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
-        self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-        self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
+        if not self._controller_lock.acquire(blocking=False):
+            return
+        try:
+            self.controller.update_robot_model()
+            left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
+            right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
+            left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
+            right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
+            self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+            self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+            self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
+            self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
+        finally:
+            self._controller_lock.release()
 
     def dual_arm_callback(self, goal_handle):
         with self._controller_lock:
@@ -209,7 +218,10 @@ class DualArmServer(Node):
         else:
             self.get_logger().info('Goal reached')
 
-        goal_handle.succeed()
+        if ik_converged and steady_state_converged:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         result = DualArm.Result()
         result.success = bool(ik_converged and steady_state_converged)
         return result
@@ -222,7 +234,17 @@ class DualArmServer(Node):
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
-            self.controller.execute_path(path)
+            if goal_handle.is_cancel_requested:
+                raise PathExecutionCancelled('Goal canceled before path execution')
+            self.controller.execute_path(
+                path, cancel_check=lambda: goal_handle.is_cancel_requested,
+            )
+        except PathExecutionCancelled:
+            self.get_logger().info('Goal cancelled')
+            goal_handle.canceled()
+            result = DualArm.Result()
+            result.success = False
+            return result
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
@@ -268,9 +290,12 @@ class DualArmServer(Node):
         else:
             self.get_logger().warn('Timed out during steady-state hold')
 
-        goal_handle.succeed()
         result = DualArm.Result()
         result.success = bool(steady_state_converged)
+        if result.success:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         return result
 
     def _dual_arm_errors(self):
@@ -406,7 +431,10 @@ class DualArmServer(Node):
         else:
             self.get_logger().info('Goal reached')
 
-        goal_handle.succeed()
+        if ik_converged and steady_state_converged:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         result = NamedConfig.Result()
         result.success = bool(ik_converged and steady_state_converged)
         return result
@@ -419,7 +447,17 @@ class DualArmServer(Node):
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
-            self.controller.execute_path(path)
+            if goal_handle.is_cancel_requested:
+                raise PathExecutionCancelled('Goal canceled before path execution')
+            self.controller.execute_path(
+                path, cancel_check=lambda: goal_handle.is_cancel_requested,
+            )
+        except PathExecutionCancelled:
+            self.get_logger().info('Goal cancelled')
+            goal_handle.canceled()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
@@ -467,9 +505,12 @@ class DualArmServer(Node):
         else:
             self.get_logger().warn('Timed out during steady-state hold')
 
-        goal_handle.succeed()
         result = NamedConfig.Result()
         result.success = bool(steady_state_converged)
+        if result.success:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         return result
 
     def cancel_callback(self, goal_handle):

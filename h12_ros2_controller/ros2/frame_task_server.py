@@ -2,6 +2,7 @@ import rclpy
 import argparse
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 
 import time
@@ -17,7 +18,10 @@ from custom_ros_messages.action import FrameTask, NamedConfig
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.core.controller.frame_controller import FrameController
-from h12_ros2_controller.core.controller.upper_controller import StaleStateError
+from h12_ros2_controller.core.controller.upper_controller import (
+    PathExecutionCancelled,
+    StaleStateError,
+)
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import (
     init_channel_factory,
@@ -94,19 +98,22 @@ class FrameTaskServer(Node):
 
         # create the action server
         self._controller_lock = threading.Lock()
+        self._action_callback_group = ReentrantCallbackGroup()
         self.action_server = ActionServer(
             self,
             FrameTask,
             'frame_task',
             execute_callback=self.frame_task_callback,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
         )
         self.named_config_server = ActionServer(
             self,
             NamedConfig,
             'named_config',
             execute_callback=self.named_config_callback,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
         )
         self.get_logger().info('Frame Task Server initialized')
 
@@ -119,50 +126,53 @@ class FrameTaskServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
-        # publish frame names
-        frame_names = StringArray()
-        frame_names.data = self.frame_names
-        self.frame_names_publisher.publish(frame_names)
-
-        stamp = self.get_clock().now().to_msg()
-
-        # publish frame targets
-        frame_targets = PoseArray()
-        frame_targets.header.stamp = stamp
-        frame_targets.header.frame_id = 'pelvis'
-        frame_targets.poses = self.frame_targets
-        self.frame_targets_publisher.publish(frame_targets)
-
-        # publish frame poses
-        frame_poses = PoseArray()
-        frame_poses.header.stamp = stamp
-        frame_poses.header.frame_id = 'pelvis'
-        frame_poses.poses = [
-            matrix_to_pose(self.controller.get_frame_transformation(name))
-            for name in self.frame_names
-        ]
-        self.frame_poses_publisher.publish(frame_poses)
-
-        # publish convenience left and right end-effector poses
-        left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
-        right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
-        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
-        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
-
-        # publish left and right end-effector target poses if available
+        if not self._controller_lock.acquire(blocking=False):
+            return
         try:
-            # These properties exist in ArmController but frame_controller doesn't directly expose them
-            # We need to access them through the ik_solver frame tasks
-            left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
-            right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
-            if left_ee_task is not None:
-                left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
-                self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-            if right_ee_task is not None:
-                right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
-                self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
-        except (AttributeError, KeyError):
-            pass
+            measured_q = self.controller.robot_model.state['q']
+            frame_names = StringArray()
+            frame_names.data = self.frame_names
+            self.frame_names_publisher.publish(frame_names)
+
+            stamp = self.get_clock().now().to_msg()
+            frame_targets = PoseArray()
+            frame_targets.header.stamp = stamp
+            frame_targets.header.frame_id = 'pelvis'
+            frame_targets.poses = self.frame_targets
+            self.frame_targets_publisher.publish(frame_targets)
+
+            frame_poses = PoseArray()
+            frame_poses.header.stamp = stamp
+            frame_poses.header.frame_id = 'pelvis'
+            frame_poses.poses = [
+                matrix_to_pose(self.controller.get_frame_transformation(name, measured_q))
+                for name in self.frame_names
+            ]
+            self.frame_poses_publisher.publish(frame_poses)
+
+            left_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
+                self.controller.left_ee_name, measured_q,
+            ))
+            right_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
+                self.controller.right_ee_name, measured_q,
+            ))
+            self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+            self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+
+            # publish target snapshots while frame tasks are protected
+            try:
+                left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
+                right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
+                if left_ee_task is not None:
+                    left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
+                    self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
+                if right_ee_task is not None:
+                    right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
+                    self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
+            except (AttributeError, KeyError):
+                pass
+        finally:
+            self._controller_lock.release()
 
     def _abort_stale(self, goal_handle, result, err):
         '''Abort a goal because rt/lowstate went stale; the last command holds'''
@@ -176,18 +186,42 @@ class FrameTaskServer(Node):
             return self._frame_task_callback(goal_handle)
         except StaleStateError as err:
             return self._abort_stale(goal_handle, FrameTask.Result(), err)
+        except ValueError as err:
+            self.get_logger().error(f'Aborting invalid frame goal: {err}')
+            goal_handle.abort()
+            result = FrameTask.Result()
+            result.success = False
+            return result
 
     def _frame_task_callback(self, goal_handle):
         with self._controller_lock:
             self.get_logger().info('Received goal')
             goal = goal_handle.request
+            if not goal.frame_names or len(goal.frame_names) != len(goal.frame_targets):
+                raise ValueError('frame_names and frame_targets must have matching nonempty lengths')
+            if len(set(goal.frame_names)) != len(goal.frame_names):
+                raise ValueError('Frame goal names must be distinct')
+            frames = {frame.name for frame in self.controller.robot_model.model_body.frames}
+            if any(name not in frames for name in goal.frame_names):
+                raise ValueError('Frame goal contains an unknown robot frame')
+            for target in goal.frame_targets:
+                position = target.position
+                orientation = target.orientation
+                values = np.array([
+                    position.x, position.y, position.z,
+                    orientation.x, orientation.y, orientation.z, orientation.w,
+                ], dtype=float)
+                if (not np.all(np.isfinite(values)) or
+                        np.linalg.norm(values[3:]) < 1e-8):
+                    raise ValueError('Frame goal contains a nonfinite pose or invalid quaternion')
             # relative targets are resolved against the measured pose
             self.controller.check_state_fresh()
+            measured_q = self.controller.robot_model.state['q']
 
             # resolve targets to absolute pelvis-frame poses before the
             # current tasks are cleared
             target_matrices = [
-                self._resolve_target(name, pose_to_matrix(target), goal.relative)
+                self._resolve_target(name, pose_to_matrix(target), goal.relative, measured_q)
                 for name, target in zip(goal.frame_names, goal.frame_targets)
             ]
 
@@ -227,7 +261,7 @@ class FrameTaskServer(Node):
             finally:
                 self.controller.speed_scale = 1.0
 
-    def _resolve_target(self, frame_name, target, relative):
+    def _resolve_target(self, frame_name, target, relative, measured_q=None):
         '''
         Return the absolute pelvis-frame target for one frame.
 
@@ -237,7 +271,10 @@ class FrameTaskServer(Node):
         '''
         if not relative:
             return target
-        current = self.controller.get_frame_transformation(frame_name)
+        if measured_q is None:
+            current = self.controller.get_frame_transformation(frame_name)
+        else:
+            current = self.controller.get_frame_transformation(frame_name, measured_q)
         absolute = np.eye(4)
         absolute[:3, :3] = target[:3, :3] @ current[:3, :3]
         absolute[:3, 3] = current[:3, 3] + target[:3, 3]
@@ -308,7 +345,10 @@ class FrameTaskServer(Node):
         success = ik_converged and steady_state_converged
         result = FrameTask.Result()
         result.success = bool(success)
-        goal_handle.succeed()
+        if success:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         return result
 
     def _visualize_planned_path(self, path):
@@ -334,13 +374,23 @@ class FrameTaskServer(Node):
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
+            if goal_handle.is_cancel_requested:
+                raise PathExecutionCancelled('Goal canceled before path execution')
             execute_start_time = time.time()
-            self.controller.execute_path(path)
+            self.controller.execute_path(
+                path, cancel_check=lambda: goal_handle.is_cancel_requested,
+            )
             self.get_logger().info(
                 f'Path execution finished in '
                 f'{time.time() - execute_start_time:.2f}s; '
                 f'holding steady state (timeout {timeout:.1f}s)'
             )
+        except PathExecutionCancelled:
+            self.get_logger().info('Goal cancelled')
+            goal_handle.canceled()
+            result = FrameTask.Result()
+            result.success = False
+            return result
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
@@ -391,7 +441,10 @@ class FrameTaskServer(Node):
 
         self._log_hold_outcome(steady_state_converged, blocked)
 
-        goal_handle.succeed()
+        if steady_state_converged:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         result = FrameTask.Result()
         result.success = bool(steady_state_converged)
         return result
@@ -548,9 +601,12 @@ class FrameTaskServer(Node):
         else:
             self._log_hold_outcome(steady_state_converged, blocked)
 
-        goal_handle.succeed()
         result = NamedConfig.Result()
         result.success = bool(ik_converged and steady_state_converged)
+        if result.success:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         return result
 
     def _plan_named_config_callback(self, goal_handle, q_reduced, timeout):
@@ -562,13 +618,23 @@ class FrameTaskServer(Node):
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
+            if goal_handle.is_cancel_requested:
+                raise PathExecutionCancelled('Goal canceled before path execution')
             execute_start_time = time.time()
-            self.controller.execute_path(path)
+            self.controller.execute_path(
+                path, cancel_check=lambda: goal_handle.is_cancel_requested,
+            )
             self.get_logger().info(
                 f'Path execution finished in '
                 f'{time.time() - execute_start_time:.2f}s; '
                 f'holding steady state (timeout {timeout:.1f}s)'
             )
+        except PathExecutionCancelled:
+            self.get_logger().info('Goal cancelled')
+            goal_handle.canceled()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
             goal_handle.abort()
@@ -617,7 +683,10 @@ class FrameTaskServer(Node):
 
         self._log_hold_outcome(steady_state_converged, blocked)
 
-        goal_handle.succeed()
+        if steady_state_converged:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
         result = NamedConfig.Result()
         result.success = bool(steady_state_converged)
         return result

@@ -12,7 +12,10 @@ from custom_ros_messages.action import FrameTask, NamedConfig
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.ros2.utility import input_pose
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
+from h12_ros2_controller.ros2.utility import list_to_pose
 
 class FrameTaskClient(Node):
     def __init__(self):
@@ -133,69 +136,36 @@ def input_plan():
         print('Please enter y or n')
 
 
-def input_config_name_or_frame_task():
-    '''
-    Ask user for config name or manual frame task input
-    Returns (config_name, frame_names, frame_poses, plan) tuple
-    If config_name is provided, frame_name and pose will be None
-    If no config_name, frame_name and pose will be provided
-    '''
-    print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
-
-    while True:
-        choice = input(
-            'Enter config name (or press Enter for manual frame task): '
-        ).strip()
-        if choice == '' or choice in NAMED_CONFIGS:
-            break
-        print(f'Unknown config name: {choice}')
-
-    if choice:
-        # user entered a config name
-        plan = input_plan()
-        return choice, [], [], plan
-    else:
-        # user wants manual frame task input
-        frame_names = []
-        frame_poses = []
-        while True:
-            frame_name, pose = input_frame_task()
-            frame_names.append(frame_name)
-            frame_poses.append(pose)
-            cont = input('Do you want to add another frame task? (y/n): ').lower()
-            if cont != 'y':
-                break
-        plan = input_plan()
-        return '', frame_names, frame_poses, plan
-
-
-def input_frame_task():
-    '''Get frame name and pose from user'''
-    frame_name = input('Enter frame name: ')
-    target_pose = input_pose()
-
-    return frame_name, target_pose
-
-
 def main(args=None):
     rclpy.init(args=args)
     node = FrameTaskClient()
+    console = GotoConsole(
+        title='Frame Task', named_goals=NAMED_CONFIGS,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+    )
+    console.help()
 
     try:
         while rclpy.ok():
-            config_name, frame_names, frame_poses, plan = (
-                input_config_name_or_frame_task()
-            )
-            if config_name != '':
-                node.send_named_config_goal(config_name, plan=plan)
-            else:
-                node.send_frame_task_goal(frame_names, frame_poses, plan=plan)
-
-            input('Press any key to continue...') # flush the input buffer
-            cont = input('Do you want to send another goal? (y/n): ').lower()
-            if cont != 'y':
+            try:
+                command = console.read_command()
+            except ValueError as exc:
+                console.say(str(exc))
+                continue
+            if isinstance(command, Quit):
                 break
-    except KeyboardInterrupt:
+            if command is None:
+                continue
+            plan = input_plan()
+            if isinstance(command, NamedGoal):
+                node.send_named_config_goal(command.name, plan=plan)
+            else:
+                tasks = command.tasks if isinstance(command, MultiFrameGoal) else (command,)
+                node.send_frame_task_goal(
+                    [task.frame_name for task in tasks],
+                    [list_to_pose(task.pose) for task in tasks], plan=plan,
+                )
+    except (KeyboardInterrupt, EOFError):
         pass
     finally:
         node.destroy_node()

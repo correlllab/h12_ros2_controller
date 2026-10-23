@@ -4,10 +4,12 @@ import numpy as np
 import pytest
 
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
+    PlanResult,
     PlannerConfig,
     ReducedJointPlanner,
     moving_grasp_frames,
 )
+from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 
 
 class FakeRobotModel:
@@ -21,6 +23,7 @@ class FakeRobotModel:
             nq=lower.shape[0],
             lowerPositionLimit=lower,
             upperPositionLimit=upper,
+            velocityLimit=np.ones(lower.shape[0]),
         )
         self.reduced_mask = np.ones(lower.shape[0], dtype=bool)
         self.state = {'q': np.zeros(lower.shape[0])}
@@ -67,6 +70,44 @@ def test_named_motion_selects_only_moving_arm_grasp_frames():
         moving_grasp_frames(start, goal, ('right_grasp_frame',))
     with pytest.raises(ValueError, match='14 reduced joint positions'):
         moving_grasp_frames(start[:7], goal[:7], frames)
+
+
+@pytest.mark.parametrize('partial_mask', (False, True))
+def test_two_arm_fallback_stitches_valid_timed_single_arm_paths(partial_mask):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+    original = planner._plan_once
+
+    def block_combined(first, second, **kwargs):
+        if np.any(np.asarray(first)[:7] != np.asarray(second)[:7]) and np.any(
+            np.asarray(first)[7:] != np.asarray(second)[7:]
+        ):
+            return PlanResult(
+                success=False, path=np.empty((0, 14)),
+                reason='OMPL returned only an approximate solution',
+            )
+        return original(first, second, **kwargs)
+
+    planner._plan_once = block_combined
+    active = np.zeros(14, dtype=bool)
+    active[[0, 7]] = True
+    result = planner.plan(
+        start, goal, active_mask=active if partial_mask else None,
+        local_frames=('left_grasp_frame', 'right_grasp_frame'),
+    )
+
+    assert result.success, result.reason
+    assert result.metadata['path_kind'] == 'staged two-arm path'
+    assert result.metadata['stage_leg_reasons'] == ['direct path', 'direct path']
+    assert np.array_equal(result.path[0], start)
+    assert np.array_equal(result.path[-1], goal)
+    assert result.metadata['joint_path_ratio'] <= 2.0
+    if partial_mask:
+        assert np.array_equal(result.path[:, ~active], np.zeros((len(result.path), 12)))
 
 
 def test_requires_initialized_reduced_model():
@@ -143,14 +184,14 @@ def test_plan_between_fake_valid_states():
     pytest.importorskip('ompl')
     planner = ReducedJointPlanner(
         FakeRobotModel(),
-        config=PlannerConfig(timeout=0.2, max_interpolation_steps=10),
+        config=PlannerConfig(timeout=0.2),
     )
 
     result = planner.plan([0.0, 0.0], [0.5, 0.5])
 
     assert result.success
     assert result.path.shape[1] == 2
-    assert result.path.shape[0] <= 10
+    assert result.path.shape[0] <= planner.config.max_interpolation_steps
     assert np.allclose(result.path[0], [0.0, 0.0])
     assert np.allclose(result.path[-1], [0.5, 0.5])
     assert result.metadata['path_kind'] == 'direct path'
@@ -199,6 +240,41 @@ def test_local_path_quality_rejects_long_joint_detour():
     assert 'path detour ratio' in reason
 
 
+def test_local_path_quality_rejects_hand_sweep_even_with_relaxed_joint_ratio():
+    config = PlannerConfig(max_local_path_ratio=10.0, max_hand_deviation=0.3)
+    planner = ReducedJointPlanner(FakeRobotModel(), config=config)
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.5, 0.0])
+    planner._set_workspace_corridor(
+        start, goal, local_frames=('left_grasp_frame',)
+    )
+
+    metrics, reason = planner._path_quality_failure(
+        np.array([start, [0.25, 0.5], goal]), start, goal,
+        ('left_grasp_frame',),
+    )
+
+    assert metrics['hand_segment_deviation']['left_grasp_frame'] > 0.3
+    assert 'hand deviates' in reason
+
+
+def test_local_grasp_goal_reports_elbow_clearance_and_hand_sweep():
+    pipeline = KinematicPipeline(
+        planner_config=PlannerConfig(max_interpolation_steps=600)
+    )
+    pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
+                     np.deg2rad(80), np.deg2rad(-15)])
+
+    result = pipeline.plan_frame('left_grasp_frame', pose)
+
+    assert result.plan.success, result.plan.reason
+    metadata = result.plan.metadata
+    assert (metadata['min_elbow_x']['left_grasp_frame'] >=
+            metadata['elbow_local_x_bounds']['left_grasp_frame'] - 0.01)
+    assert (metadata['hand_segment_deviation']['left_grasp_frame'] <=
+            pipeline.planner.config.max_hand_deviation)
+
+
 def test_named_joint_plans_do_not_inherit_locality_constraint():
     planner = ReducedJointPlanner(FakeRobotModel())
     start = np.array([0.0, 0.0])
@@ -210,23 +286,291 @@ def test_named_joint_plans_do_not_inherit_locality_constraint():
     assert not reason
 
 
-def test_plan_pins_idle_right_arm_with_home_tolerance():
+def test_reverse_path_reuse_revalidates_and_invalidates_on_context_change():
+    isolated = ReducedJointPlanner(FakeRobotModel())
+    isolated.plan([0.0, 0.0], [0.5, 0.5], allow_reuse=False)
+    no_reuse = isolated.plan([0.5, 0.5], [0.0, 0.0], allow_reuse=False)
+    assert no_reuse.success
+    assert not no_reuse.metadata.get('cache_hit', False)
+
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.5, 0.5])
+    forward = planner.plan(start, goal)
+
+    reverse = planner.plan(goal, start)
+
+    assert forward.success and reverse.success
+    assert reverse.metadata['cache_hit']
+    assert np.array_equal(reverse.path, forward.path[::-1])
+
+    planner.robot_model.model_body_reduced.velocityLimit[:] = 0.8
+    changed_velocity = planner.plan(start, goal)
+    assert changed_velocity.success
+    assert not changed_velocity.metadata.get('cache_hit', False)
+
+    planner.config.moving_speed *= 0.5
+    changed_speed = planner.plan(start, goal)
+    assert changed_speed.success
+    assert not changed_speed.metadata.get('cache_hit', False)
+
+    planner.rebind_reduced_model()
+    changed_model = planner.plan(goal, start)
+    assert changed_model.success
+    assert not changed_model.metadata.get('cache_hit', False)
+
+
+def test_recent_path_cache_preserves_earlier_arm_route_across_candidate_search():
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start = np.array([0.0, 0.0])
+    goal = np.array([0.25, 0.1])
+    assert planner.plan(start, goal).success
+    for index in range(3):
+        candidate = np.array([0.05 * (index + 1), 0.0])
+        assert planner.plan(start, candidate).success
+
+    reverse = planner.plan(goal, start)
+
+    assert reverse.success and reverse.metadata['cache_hit']
+    for index in range(8):
+        assert planner.plan(start, [0.02 * (index + 1), 0.0]).success
+    assert len(planner._recent_paths) == planner.config.recent_path_cache_size
+
+
+def test_plan_pins_idle_right_arm_when_goal_preserves_it():
     pytest.importorskip('ompl')
     lower = -np.ones(14)
     upper = np.ones(14)
     planner = ReducedJointPlanner(
         FakeRobotModel(lower=lower, upper=upper),
-        config=PlannerConfig(timeout=0.2, max_interpolation_steps=10),
+        config=PlannerConfig(timeout=0.2),
     )
     start = np.zeros(14)
     goal = np.zeros(14)
     start[7:] = 0.01
     goal[:7] = 0.5
+    goal[7:] = start[7:]
 
     result = planner.plan(start, goal)
 
     assert result.success, result.reason
     assert np.allclose(result.path[:, 7:], start[7:])
+
+
+def test_small_named_goal_is_not_silently_projected_away():
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[7] = 0.01
+
+    result = planner.plan(start, goal)
+
+    assert result.success, result.reason
+    assert result.path[-1, 7] == pytest.approx(goal[7])
+
+
+def test_conflicting_explicit_active_mask_rejects_goal():
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    goal = np.zeros(14)
+    goal[7] = 0.01
+    active = np.r_[np.ones(7, dtype=bool), np.zeros(7, dtype=bool)]
+
+    result = planner.plan(np.zeros(14), goal, active_mask=active)
+
+    assert not result.success
+    assert 'inactive joints' in result.reason
+    assert result.path.shape == (0, 14)
+
+
+@pytest.mark.parametrize('setting', [
+    {'frame_x_max': float('nan')},
+    {'frame_z_min': {'left_grasp_frame': float('nan')}},
+    {'frame_limit_margin': float('inf')},
+    {'inactive_goal_tolerance': float('nan')},
+])
+def test_rejects_nonfinite_workspace_and_goal_policy(setting):
+    with pytest.raises(ValueError, match='finite'):
+        ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(**setting))
+
+
+@pytest.mark.parametrize(('setting', 'reason'), [
+    ({'frame_z_min': 0.6, 'frame_z_max': 0.5}, 'must not exceed'),
+    ({'frame_z_min': {'misspelled_frame': 0.0}}, 'unknown frame names'),
+])
+def test_rejects_invalid_workspace_floor_configuration(setting, reason):
+    with pytest.raises(ValueError, match=reason):
+        ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(**setting))
+
+
+def test_timing_cap_fails_instead_of_returning_fast_waypoints():
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(max_interpolation_steps=10)
+    )
+    result = planner.plan([0.0, 0.0], [0.5, 0.5], direct_only=True)
+
+    assert not result.success
+    assert result.path.shape == (0, 2)
+    assert result.metadata['required_points'] > 10
+    assert 'max_interpolation_steps=10' in result.reason
+
+
+def test_slow_speed_limits_actual_frame_motion():
+    speed = 0.025
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(
+            moving_speed=speed, max_interpolation_steps=500,
+        )
+    )
+    result = planner.plan([0.0, 0.0], [0.1, 0.0], direct_only=True)
+
+    assert result.success, result.reason
+    assert result.metadata['actual_max_frame_speed'] <= speed + 1e-9
+    assert result.metadata['actual_max_joint_speed'] <= 1.0 + 1e-9
+    assert result.metadata['actual_max_joint_acceleration'] <= 25.0 + 1e-9
+    assert result.metadata['duration'] == pytest.approx(
+        (len(result.path) - 1) * planner.config.dt
+    )
+
+
+def test_rotation_sweep_contributes_to_frame_speed():
+    robot = FakeRobotModel()
+    robot.get_frame_position = lambda name, q: np.zeros(3)
+    robot.get_frame_rotation = lambda name, q: np.array([
+        [np.cos(q[0]), -np.sin(q[0]), 0.0],
+        [np.sin(q[0]), np.cos(q[0]), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    planner = ReducedJointPlanner(
+        robot, config=PlannerConfig(moving_speed=0.02)
+    )
+    result = planner.plan([0.0, 0.0], [0.2, 0.0], direct_only=True)
+
+    assert result.success, result.reason
+    assert 0.0 < result.metadata['actual_max_frame_speed'] <= 0.02 + 1e-9
+    assert result.metadata['frame_rotation_lengths']['left_grasp_frame'] > 0.0
+
+
+def test_zero_motion_fits_two_point_cap():
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(max_interpolation_steps=2)
+    )
+    result = planner.plan([0.0, 0.0], [0.0, 0.0], direct_only=True)
+
+    assert result.success, result.reason
+    assert result.path.shape == (2, 2)
+
+
+def test_sharp_corner_timing_preserves_sparse_vertices_and_acceleration():
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(
+            moving_speed=2.0, joint_acceleration_limit=2.0,
+            max_interpolation_steps=500,
+        )
+    )
+    sparse = np.array([[0.0, 0.0], [0.5, 0.0], [0.5, 0.5]])
+    path, metadata, failure = planner._timed_path(sparse)
+
+    assert not failure
+    assert np.array_equal(path[0], sparse[0])
+    assert np.array_equal(path[-1], sparse[-1])
+    assert any(np.array_equal(q, sparse[1]) for q in path)
+    assert metadata['actual_max_joint_acceleration'] <= 2.0 + 1e-9
+    assert metadata['actual_max_frame_speed'] <= 2.0 + 1e-9
+
+
+def test_pchip_proposal_is_continuous_and_fully_validated():
+    planner = ReducedJointPlanner(
+        FakeRobotModel(), config=PlannerConfig(moving_speed=1.0)
+    )
+    sparse = np.array([[0.0, 0.0], [0.25, 0.15], [0.5, 0.35]])
+    path, metadata, failure = planner._select_timed_path(
+        sparse, sparse[0], sparse[-1], (),
+    )
+
+    assert not failure
+    assert metadata['time_profile'] == 'pchip'
+    assert np.array_equal(path[0], sparse[0])
+    assert np.array_equal(path[-1], sparse[-1])
+    vertex = next(idx for idx, q in enumerate(path) if np.array_equal(q, sparse[1]))
+    assert np.linalg.norm(path[vertex] - path[vertex - 1]) > 1e-5
+    assert np.linalg.norm(path[vertex + 1] - path[vertex]) > 1e-5
+    assert planner._path_validity_failure(path) == ''
+    assert metadata['actual_max_joint_acceleration'] <= 25.0 + 1e-9
+    assert metadata['actual_max_frame_speed'] <= 1.0 + 1e-9
+
+
+def test_pchip_collision_rejection_falls_back_to_validated_segments():
+    robot = FakeRobotModel()
+    robot.check_collision_free_reduced = lambda q: not (
+        0.1 < q[0] < 0.4 and q[1] > q[0] + 0.02
+    )
+    planner = ReducedJointPlanner(robot, config=PlannerConfig(
+        moving_speed=1.0, frame_z_max=None, frame_x_max=None,
+    ))
+    sparse = np.array([[0.0, 0.0], [0.5, 0.5], [0.8, 0.5]])
+    path, metadata, failure = planner._select_timed_path(
+        sparse, sparse[0], sparse[-1], (),
+    )
+
+    assert not failure
+    assert metadata['time_profile'] == 'segment'
+    assert 'collision' in metadata['pchip_rejection']
+    assert planner._path_validity_failure(path) == ''
+
+
+def test_pchip_cap_rejection_uses_safe_segment_fallback():
+    planner = ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(
+        joint_acceleration_limit=2.0, max_interpolation_steps=2000,
+    ))
+    sparse = np.array([[0.0, 0.0], [0.25, 0.15], [0.5, 0.35]])
+    fallback, _, failure = planner._timed_path(sparse)
+    assert not failure
+    slower, slower_metadata, failure = planner._timed_path(sparse, profile='pchip')
+    assert not failure
+    assert len(slower) > len(fallback)
+    selected, selected_metadata, failure = planner._select_timed_path(
+        sparse, sparse[0], sparse[-1], (),
+    )
+    assert not failure
+    assert selected_metadata['pchip_rejection'] == 'segment timing is shorter'
+    assert np.array_equal(selected, fallback)
+    planner.config.max_interpolation_steps = len(fallback)
+    proposal, _, rejection = planner._timed_path(sparse, profile='pchip')
+    assert proposal is None
+    assert 'max_interpolation_steps' in rejection
+
+    path, metadata, failure = planner._select_timed_path(
+        sparse, sparse[0], sparse[-1], (),
+    )
+
+    assert not failure
+    assert metadata['time_profile'] == 'segment'
+    assert np.array_equal(path, fallback)
+
+
+def test_real_robot_timing_respects_reduced_velocity_limits():
+    pipeline = KinematicPipeline()
+    planner = pipeline.planner
+    pipeline.robot_model.model_body_reduced.velocityLimit[0] = 0.2
+    start = np.asarray(pipeline.robot_model.state['q'])[
+        pipeline.robot_model.reduced_mask
+    ].copy()
+    goal = start.copy()
+    goal[0] += 0.1
+    path, metadata, failure = planner._timed_path(np.vstack([start, goal]))
+
+    assert not failure
+    assert np.array_equal(path[0], start)
+    assert np.array_equal(path[-1], goal)
+    assert metadata['actual_max_joint_speed'] <= min(
+        np.broadcast_to(planner.config.joint_velocity_limit, (planner.nq,))[0],
+        pipeline.robot_model.model_body_reduced.velocityLimit[0],
+    ) + 1e-9
+    assert metadata['actual_max_frame_speed'] <= planner.config.moving_speed + 1e-9
 
 
 def test_path_validation_rejects_z_corridor_dip():
