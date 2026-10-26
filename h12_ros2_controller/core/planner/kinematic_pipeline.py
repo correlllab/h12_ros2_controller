@@ -11,6 +11,7 @@ from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
     PlannerConfig, ReducedJointPlanner, moving_grasp_frames,
 )
+from h12_ros2_controller.core.planner.path_quality import candidate_path_score
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.controller_config import (
     _resolve_config_path, load_controller_config,
@@ -36,7 +37,8 @@ class KinematicPlan:
 
 
 def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
-                       planning_budget=None, attempts=None, config=None):
+                       planning_budget=None, attempts=None, config=None,
+                       deadline=None):
     '''Prefer short direct paths, then bounded local OMPL candidates
 
     plan_goal accepts goal, direct_only, and timeout keyword arguments.
@@ -51,8 +53,12 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
         raise ValueError('max_candidates must be positive')
     if not np.isfinite(planning_budget) or planning_budget <= 0:
         raise ValueError('planning_budget must be finite and positive')
+    if deadline is not None and not np.isfinite(deadline):
+        raise ValueError('deadline must be finite')
+    bounded = deadline is not None
     candidates = ik_result.candidates[:max_candidates]
-    deadline = time.perf_counter() + planning_budget
+    phase_deadline = time.perf_counter() + planning_budget
+    deadline = min(phase_deadline, deadline) if bounded else phase_deadline
     direct_plans = []
     failures = []
     last_plan = None
@@ -75,20 +81,28 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
         length = plan.metadata.get('joint_path_length')
         if length is None:
             length = float(np.sum(np.linalg.norm(np.diff(plan.path, axis=0), axis=1)))
-        # retain IK's wrist and joint-margin preference when paths are similar
-        hand_deviation = max(
-            plan.metadata.get('hand_segment_deviation', {}).values(), default=0.0,
+        return candidate_path_score(
+            {**plan.metadata, 'joint_path_length': length}, candidate.score,
+            config,
         )
-        return (length + config.candidate_ik_weight * (candidate.score or 0.0) +
-                config.candidate_hand_weight * hand_deviation)
 
     for candidate in candidates:
-        if time.perf_counter() >= deadline:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
             failures.append('planning budget exhausted before direct probe')
             break
         goal = candidate.q[reduced_mask]
         attempt_start = time.perf_counter()
-        plan = plan_goal(goal, direct_only=True, timeout=None)
+        if bounded:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                break
+        try:
+            plan = plan_goal(goal, direct_only=True, timeout=remaining if bounded else None)
+        except TimeoutError:
+            if not bounded or not direct_plans:
+                raise
+            break
         record(candidate, 'direct', plan, attempt_start)
         last_plan = plan
         if plan.success:
@@ -102,13 +116,18 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
     best = None
     for index, candidate in enumerate(candidates):
         remaining = deadline - time.perf_counter()
-        if remaining < 0.1:
+        if remaining <= 0 or (not bounded and remaining < 0.1):
             break
         goal = candidate.q[reduced_mask]
         timeout = min(config.candidate_ompl_timeout,
                       remaining / (len(candidates) - index))
         attempt_start = time.perf_counter()
-        plan = plan_goal(goal, direct_only=False, timeout=timeout)
+        try:
+            plan = plan_goal(goal, direct_only=False, timeout=timeout)
+        except TimeoutError:
+            if not bounded or best is None:
+                raise
+            break
         record(candidate, 'ompl', plan, attempt_start)
         last_plan = plan
         if not plan.success:
@@ -117,8 +136,17 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
         quality = score(plan, candidate)
         if best is None or quality < best[0]:
             best = (quality, plan, candidate)
-        if (plan.metadata.get('joint_path_ratio', float('inf')) <=
-                config.candidate_early_accept_ratio):
+        remaining_candidates = candidates[index + 1:]
+        if remaining_candidates and best is not None:
+            # endpoint travel and IK cost lower-bound each remaining path score
+            lower_bound = min(
+                np.linalg.norm(other.q[reduced_mask] - plan.path[0]) +
+                config.candidate_ik_weight * (other.score or 0.0)
+                for other in remaining_candidates
+            )
+            if best[0] <= lower_bound:
+                break
+        elif not remaining_candidates:
             break
     if best is not None:
         return best[1], best[2]
@@ -130,8 +158,11 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
 
 
 def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
-                          alpha, linear_threshold, angular_threshold):
+                          alpha, linear_threshold, angular_threshold,
+                          deadline=None):
     '''Find path-feasible per-arm endpoints without changing final frame tasks'''
+    if deadline is not None and not np.isfinite(deadline):
+        raise ValueError('deadline must be finite')
     original_tasks = ik_solver.frame_tasks
     grouped = {'left': {}, 'right': {}}
     for name, task in original_tasks.items():
@@ -145,7 +176,9 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
     robot = ik_solver.robot_model
     reduced_mask = robot.reduced_mask
     combined = np.asarray(start_q, dtype=float).copy()
-    deadline = time.perf_counter() + config.bimanual_fallback_budget
+    bounded = deadline is not None
+    phase_deadline = time.perf_counter() + config.bimanual_fallback_budget
+    deadline = min(phase_deadline, deadline) if bounded else phase_deadline
     try:
         for index, side in enumerate(('left', 'right')):
             arm_mask = np.zeros(robot.model_body_reduced.nq, dtype=bool)
@@ -154,7 +187,7 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
                 return None, f'{side} arm has no active joints'
             ik_solver.frame_tasks = grouped[side]
             remaining = deadline - time.perf_counter()
-            if remaining <= 0.2:
+            if remaining <= (0 if bounded else 0.2):
                 return None, 'bimanual fallback budget exhausted before arm IK'
             arm_ik_budget = min(0.8, remaining / (3 - index))
             arm_ik = ik_solver.solve_ik_reduced(
@@ -167,7 +200,7 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
             if not arm_ik.success:
                 return None, f'{side} arm IK failed'
             remaining = deadline - time.perf_counter()
-            if remaining <= 0.2:
+            if remaining <= (0 if bounded else 0.2):
                 return None, 'bimanual fallback budget exhausted before arm planning'
             arm_plan, chosen = plan_ik_candidates(
                 arm_ik,
@@ -179,6 +212,7 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
                 planning_budget=min(
                     config.candidate_planning_budget, remaining / (3 - index),
                 ),
+                deadline=deadline if bounded else None,
             )
             if chosen is None:
                 return None, f'{side} arm path failed: {arm_plan.reason if arm_plan else "no path"}'
@@ -190,7 +224,9 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
         model = robot.model_body_reduced
         if (np.any(q < model.lowerPositionLimit) or
                 np.any(q > model.upperPositionLimit) or
-                not robot.check_collision_free_reduced(q)):
+                not robot.check_collision_free_reduced(
+                    q, min_distance=config.self_collision_clearance,
+                )):
             return None, 'composed arm endpoints are infeasible together'
         return combined, ''
     finally:
@@ -201,41 +237,50 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
 def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames,
                      plan_goal, config, alpha=0.1, ik_timeout=1.0,
                      linear_threshold=1e-3, angular_threshold=1e-2,
-                     preferred_positions=None):
+                     preferred_positions=None, deadline=None):
     '''Use one shared candidate and bimanual fallback route for frame tasks'''
     started = time.perf_counter()
-    ik = ik_solver.solve_ik_reduced(
-        alpha=alpha, timeout=min(config.ik_seed_timeout, ik_timeout),
-        total_timeout=ik_timeout, max_seeds=config.ik_max_seeds,
-        linear_threshold=linear_threshold,
-        angular_threshold=angular_threshold,
-        start_q=start_q, active_mask=active_mask,
-        preferred_positions=preferred_positions,
-    )
+    if deadline is not None and not np.isfinite(deadline):
+        raise ValueError('deadline must be finite')
+    remaining = deadline - started if deadline is not None else ik_timeout
+    ik = None
+    if deadline is None or remaining > 0:
+        budget = min(ik_timeout, remaining)
+        ik = ik_solver.solve_ik_reduced(
+            alpha=alpha, timeout=min(config.ik_seed_timeout, budget),
+            total_timeout=budget, max_seeds=config.ik_max_seeds,
+            linear_threshold=linear_threshold,
+            angular_threshold=angular_threshold,
+            start_q=start_q, active_mask=active_mask,
+            preferred_positions=preferred_positions,
+        )
     ik_elapsed = time.perf_counter() - started
     attempts = []
     plan = selected = None
-    if ik.success:
+    if ik is not None and ik.success and (deadline is None or time.perf_counter() < deadline):
         plan, selected = plan_ik_candidates(
             ik,
             lambda goal, direct_only, timeout: plan_goal(
                 goal, active_mask, local_frames, direct_only, timeout,
             ),
-            reduced_mask, config=config, attempts=attempts,
+            reduced_mask, config=config, attempts=attempts, deadline=deadline,
         )
     fallback_time = 0.0
-    fallback_reason = ''
-    if selected is None and len(local_frames) == 2:
+    fallback_reason = 'planning deadline exceeded before IK' if ik is None else ''
+    if (selected is None and len(local_frames) == 2 and
+            (deadline is None or time.perf_counter() < deadline)):
         fallback_started = time.perf_counter()
+        fallback_deadline = fallback_started + config.bimanual_fallback_budget
+        if deadline is not None:
+            fallback_deadline = min(fallback_deadline, deadline)
         composed, fallback_reason = compose_bimanual_seed(
             ik_solver, start_q, active_mask, plan_goal, config,
             alpha, linear_threshold, angular_threshold,
+            deadline=fallback_deadline if deadline is not None else None,
         )
         if composed is not None:
-            remaining = config.bimanual_fallback_budget - (
-                time.perf_counter() - fallback_started
-            )
-            if remaining > 0.2:
+            remaining = fallback_deadline - time.perf_counter()
+            if remaining > (0 if deadline is not None else 0.2):
                 ik = ik_solver.solve_ik_reduced(
                     alpha=alpha, timeout=min(config.ik_seed_timeout, remaining / 2),
                     total_timeout=min(ik_timeout, remaining / 2),
@@ -246,10 +291,8 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
                     preferred_positions=composed,
                 )
                 if ik.success:
-                    remaining = config.bimanual_fallback_budget - (
-                        time.perf_counter() - fallback_started
-                    )
-                    if remaining > 0.1:
+                    remaining = fallback_deadline - time.perf_counter()
+                    if remaining > (0 if deadline is not None else 0.1):
                         plan, selected = plan_ik_candidates(
                             ik,
                             lambda goal, direct_only, timeout: plan_goal(
@@ -259,6 +302,7 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
                             reduced_mask, config=config, attempts=attempts,
                             planning_budget=min(config.candidate_planning_budget,
                                                 remaining),
+                            deadline=fallback_deadline if deadline is not None else None,
                         )
             if selected is None:
                 fallback_reason = 'composed bimanual seed has no valid joint path'
@@ -276,6 +320,12 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
 def planner_config_from_controller(config, dt=None):
     '''Resolve the same planner options for hardware and offline planning'''
     options = dict(config.get('planner', {}))
+    clearance = float(config.get('controller', {}).get('d_min', 0.02))
+    if ('self_collision_clearance' in options and
+            not np.isclose(options['self_collision_clearance'], clearance,
+                           rtol=0.0, atol=1e-9)):
+        raise ValueError('Planner self_collision_clearance must match controller d_min')
+    options['self_collision_clearance'] = clearance
     limit = float(config.get('controller', {}).get('dq_lim', 1.0))
     motor_limits = config.get('limits', {}).get('dq_clip_limits')
     if motor_limits is not None:
@@ -317,7 +367,8 @@ def candidate_metrics(candidate, start, model, reduced_mask):
 class KinematicPipeline:
     '''Keep simulated joint state, IK, planner, and optional Meshcat together'''
 
-    def __init__(self, visualize=False, planner_config=None, config_name='debug.yaml'):
+    def __init__(self, visualize=False, planner_config=None,
+                 config_name='sim_safety_split.yaml'):
         config = load_controller_config(config_name)
         if not config.get('planner'):
             raise ValueError('Kinematic planning requires an explicit planner YAML block')
@@ -338,6 +389,12 @@ class KinematicPipeline:
             rtol=0.0, atol=1e-9,
         ):
             raise ValueError('Planner dt must match controller execution period')
+        if not np.isclose(
+            planner_config.self_collision_clearance,
+            float(controller_cfg.get('d_min', 0.02)),
+            rtol=0.0, atol=1e-9,
+        ):
+            raise ValueError('Planner self_collision_clearance must match controller d_min')
         for asset in (URDF_MAGPIE_PATH, URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH):
             if not Path(asset).is_file():
                 raise FileNotFoundError(f'missing robot asset: {asset}')
@@ -368,7 +425,9 @@ class KinematicPipeline:
         start = self.robot_model.state_reduced['q']
         goal = np.asarray(NAMED_CONFIGS[name], dtype=float)
         local_frames = moving_grasp_frames(start, goal, self.planner.frame_names)
-        plan = self.planner.plan(start, goal, local_frames=local_frames)
+        plan = self.planner.plan(
+            start, goal, local_frames=local_frames, local_joint_padding=0.0,
+        )
         elapsed = time.perf_counter() - start_time
         return KinematicPlan(
             plan=plan, elapsed_time=elapsed,
@@ -433,6 +492,7 @@ class KinematicPipeline:
         if not normalized or len({name for name, _, _ in normalized}) != len(normalized):
             raise ValueError('Frame goals must be nonempty with distinct frame names')
         start_time = time.perf_counter()
+        deadline = start_time + self.planner_config.request_planning_budget
         self.ik_solver.clear_frame_tasks()
         for index, (frame_name, _, _) in enumerate(normalized):
             self.ik_solver.add_frame_task(f'offline_target_{index}', frame_name)
@@ -474,11 +534,13 @@ class KinematicPipeline:
             lambda goal, mask, frames, direct_only, timeout: self.planner.plan(
                 start, goal, active_mask=mask, local_frames=frames,
                 direct_only=direct_only, timeout=timeout,
+                deadline=deadline,
             ),
             self.planner_config, alpha=ik_alpha, ik_timeout=ik_timeout,
             linear_threshold=self.ik_linear_threshold,
             angular_threshold=self.ik_angular_threshold,
             preferred_positions=preferred,
+            deadline=deadline,
         )
         if selected is not None:
             self._prior_ik = {

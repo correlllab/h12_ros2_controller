@@ -124,7 +124,7 @@ def hold_steady_state(frame_controller, timeout, threshold):
         print('Timed out during steady-state hold')
 
 
-def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1):
+def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
     frame_controller = init_frame_controller(config_name)
     controller_cfg = frame_controller.config['controller']
     steady_timeout = controller_cfg['timeout']
@@ -165,6 +165,17 @@ def main(config_name='debug.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 continue
 
             print(f'Planning time: {planning_time:.4f} s')
+            if tasks and getattr(frame_controller, 'last_ik_result', None) is not None:
+                ik_elapsed = sum(
+                    attempt.elapsed_time
+                    for attempt in frame_controller.last_ik_result.attempts
+                )
+                candidate_elapsed = sum(
+                    attempt['wall_time']
+                    for attempt in getattr(frame_controller, 'last_plan_attempts', ())
+                )
+                print(f'IK attempts: {ik_elapsed:.3f}s, '
+                      f'planner requests: {candidate_elapsed:.3f}s')
             print(f'Path shape: {path.shape}')
             frame_controller.visualize_path(path)
 
@@ -194,7 +205,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         type=str,
-        default='debug.yaml',
+        default='safety_split.yaml',
         help='YAML file name under config/',
     )
     parser.add_argument('--ik-timeout', type=float, default=1.0)

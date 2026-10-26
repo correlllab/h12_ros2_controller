@@ -220,6 +220,12 @@ class GotoConsole:
             for name, x in metadata.get('min_elbow_x', {}).items():
                 self.say(f'{name}: minimum elbow x={x:.3f}m '
                          f'(local bound={metadata["elbow_local_x_bounds"][name]:.3f}m)')
+            compact = max(metadata.get('compact_radial_excess', {}).values(), default=0.0)
+            clearance = metadata.get('minimum_self_clearance')
+            if clearance is not None:
+                self.say(f'Body-relative excess={compact:.3f}m, '
+                         f'self-clearance={clearance:.3f}m, '
+                         f'extra wrist travel={metadata.get("excess_wrist_travel", 0.0):.3f}rad')
         if 'path_kind' in metadata:
             frame_lengths = ', '.join(
                 f'{name}={length:.4f}m '

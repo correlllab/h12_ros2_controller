@@ -15,7 +15,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'config',
-            default_value='debug.yaml',
+            default_value='safety_split.yaml',
             description='Controller config file name under config/'
         ),
         Node(

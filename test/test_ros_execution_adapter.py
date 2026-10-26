@@ -2,10 +2,13 @@
 
 import ast
 import time
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
+
+import numpy as np
 
 
 class PathExecutionCancelled(RuntimeError):
@@ -35,6 +38,38 @@ def load_planned_callbacks(server_file):
         module = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
         exec(compile(module, str(source), 'exec'), namespace)
     return namespace
+
+
+def load_direct_callbacks(server_file):
+    '''Compile direct action loops without importing ROS or controller drivers'''
+    source = Path(__file__).resolve().parents[1] / 'h12_ros2_controller' / 'ros2' / server_file
+    tree = ast.parse(source.read_text())
+    server = next(node for node in tree.body if isinstance(node, ast.ClassDef))
+    methods = [node for node in server.body if isinstance(node, ast.FunctionDef)
+               and node.name.startswith('_direct_') and node.name.endswith('_callback')]
+    namespace = {
+        'FrameTask': SimpleNamespace(Result=Result),
+        'DualArm': SimpleNamespace(Result=Result),
+        'NamedConfig': SimpleNamespace(Result=Result),
+        'time': time,
+    }
+    for method in methods:
+        module = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
+        exec(compile(module, str(source), 'exec'), namespace)
+    return namespace
+
+
+def load_publisher_callback(server_file):
+    '''Compile pose publishing without importing live ROS dependencies'''
+    source = Path(__file__).resolve().parents[1] / 'h12_ros2_controller' / 'ros2' / server_file
+    tree = ast.parse(source.read_text())
+    server = next(node for node in tree.body if isinstance(node, ast.ClassDef))
+    method = next(node for node in server.body if isinstance(node, ast.FunctionDef)
+                  and node.name == 'publisher_callback')
+    namespace = {'matrix_to_pose': lambda transform: transform}
+    module = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
+    exec(compile(module, str(source), 'exec'), namespace)
+    return namespace['publisher_callback']
 
 
 class PlannedExecutionAdapterTest(unittest.TestCase):
@@ -86,6 +121,53 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                 goal.abort.assert_not_called()
                 goal.succeed.assert_not_called()
                 self.assertIs(result.success, False)
+
+    def test_direct_cancel_requested_before_step_sends_no_commands(self):
+        for filename, planned_method, named in self.cases:
+            direct_method = planned_method.replace('_plan_', '_direct_', 1)
+            with self.subTest(filename=filename, method=direct_method):
+                namespace = load_direct_callbacks(filename)
+                goal = SimpleNamespace(is_cancel_requested=True, canceled=Mock(),
+                                       abort=Mock(), succeed=Mock())
+                controller = Mock()
+                server = SimpleNamespace(controller=controller, get_logger=lambda: Mock())
+                args = (goal, [0], 1.0) if named else (goal, 1.0)
+
+                result = namespace[direct_method](server, *args)
+
+                goal.canceled.assert_called_once()
+                goal.abort.assert_not_called()
+                controller.control_step_reduced.assert_not_called()
+                controller.goto_reduced_configuration.assert_not_called()
+                self.assertIs(result.success, False)
+
+    def test_dual_pose_publishing_continues_during_action_lock(self):
+        publisher = load_publisher_callback('dual_arm_server.py')
+        model = SimpleNamespace(
+            state={'q': np.zeros(27)},
+            get_frame_transformation_body=Mock(return_value=np.eye(4)),
+        )
+        controller = SimpleNamespace(
+            robot_model=model, left_ee_name='left_wrist_yaw_link',
+            right_ee_name='right_wrist_yaw_link',
+        )
+        lock = threading.Lock()
+        server = SimpleNamespace(
+            controller=controller, _controller_lock=lock,
+            _target_snapshot=(np.eye(4), np.eye(4)),
+            _stamp_pose=lambda pose: pose,
+            left_ee_pose_publisher=Mock(), right_ee_pose_publisher=Mock(),
+            left_ee_target_publisher=Mock(), right_ee_target_publisher=Mock(),
+        )
+
+        with lock:
+            publisher(server)
+
+        self.assertEqual(model.get_frame_transformation_body.call_count, 2)
+        server.left_ee_pose_publisher.publish.assert_called_once()
+        server.right_ee_pose_publisher.publish.assert_called_once()
+        server.left_ee_target_publisher.publish.assert_called_once()
+        server.right_ee_target_publisher.publish.assert_called_once()
 
     def test_cancel_during_playback_uses_live_goal_flag(self):
         def cancel(goal, cancel_check):

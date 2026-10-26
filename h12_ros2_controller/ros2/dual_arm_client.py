@@ -16,7 +16,7 @@ from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.goto_commands import (
     FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
 )
-from h12_ros2_controller.ros2.utility import list_to_pose
+from h12_ros2_controller.ros2.utility import action_result_summary, list_to_pose
 
 class DualArmClient(Node):
     def __init__(self):
@@ -115,8 +115,7 @@ class DualArmClient(Node):
         # wait till finish
         future_result = self.goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, future_result)
-        result = future_result.result().result
-        self.get_logger().info(f'Final result: success = {result.success}')
+        self.get_logger().info(f'Final result: {action_result_summary(future_result.result())}')
         # stop the cancel listener thread
         listener.stop()
 
@@ -159,8 +158,7 @@ class DualArmClient(Node):
         # wait till finish
         future_result = self.goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, future_result)
-        result = future_result.result().result
-        self.get_logger().info(f'Final result: success = {result.success}')
+        self.get_logger().info(f'Final result: {action_result_summary(future_result.result())}')
         # stop the cancel listener thread
         listener.stop()
 

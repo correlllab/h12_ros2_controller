@@ -31,7 +31,7 @@ def run_client(filename, commands, monkeypatch, plans=()):
             self.name = name
 
         def get_logger(self):
-            return SimpleNamespace(info=lambda message: None, warn=lambda message: None)
+            return SimpleNamespace(info=output.append, warn=output.append)
 
         def create_subscription(self, *args):
             return None
@@ -59,7 +59,7 @@ def run_client(filename, commands, monkeypatch, plans=()):
             handle = SimpleNamespace(
                 accepted=True,
                 get_result_async=lambda: SimpleNamespace(result=lambda: SimpleNamespace(
-                    result=SimpleNamespace(success=True))),
+                    result=SimpleNamespace(success=True), status=4)),
             )
             return SimpleNamespace(result=lambda: handle)
 
@@ -74,10 +74,15 @@ def run_client(filename, commands, monkeypatch, plans=()):
             pass
 
     utility = CLIENT_DIR / 'utility.py'
-    pose_function = next(node for node in ast.parse(utility.read_text()).body
-                         if isinstance(node, ast.FunctionDef) and node.name == 'list_to_pose')
-    pose_namespace = {'Pose': Pose, 'R': R}
-    exec(compile(ast.Module(body=[pose_function], type_ignores=[]), str(utility), 'exec'),
+    pose_functions = [node for node in ast.parse(utility.read_text()).body
+                      if isinstance(node, ast.FunctionDef) and node.name in (
+                          'list_to_pose', 'action_result_summary',
+                      )]
+    goal_status = SimpleNamespace(
+        STATUS_SUCCEEDED=4, STATUS_CANCELED=5, STATUS_ABORTED=6,
+    )
+    pose_namespace = {'Pose': Pose, 'R': R, 'GoalStatus': goal_status}
+    exec(compile(ast.Module(body=pose_functions, type_ignores=[]), str(utility), 'exec'),
          pose_namespace)
 
     def console_factory(**kwargs):
@@ -97,6 +102,7 @@ def run_client(filename, commands, monkeypatch, plans=()):
         'GotoConsole': console_factory, 'NamedGoal': NamedGoal, 'FrameGoal': FrameGoal,
         'MultiFrameGoal': MultiFrameGoal, 'Quit': Quit,
         'list_to_pose': pose_namespace['list_to_pose'],
+        'action_result_summary': pose_namespace['action_result_summary'],
     }
     exec(code, namespace)
     monkeypatch.setattr('builtins.input', lambda prompt: next(plan_inputs))
@@ -123,6 +129,7 @@ def test_frame_task_single_and_multiple_frames_reach_action(monkeypatch):
     assert multiple.plan is True
     assert len(spins) == 4
     assert not any('not supported' in line for line in output)
+    assert any('status=succeeded, success=True' in line for line in output)
 
 
 def test_dual_arm_routes_reversed_pair_and_named_goal(monkeypatch):
@@ -157,3 +164,22 @@ def test_dual_arm_rejects_missing_extra_and_duplicate_frames(monkeypatch, invali
     assert spins == []
     assert any('requires exactly one' in line or 'distinct frame names' in line
                for line in output)
+
+
+def test_action_summary_distinguishes_canceled_and_aborted():
+    source = CLIENT_DIR / 'utility.py'
+    function = next(node for node in ast.parse(source.read_text()).body
+                    if isinstance(node, ast.FunctionDef) and
+                    node.name == 'action_result_summary')
+    namespace = {'GoalStatus': SimpleNamespace(
+        STATUS_SUCCEEDED=4, STATUS_CANCELED=5, STATUS_ABORTED=6,
+    )}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'),
+         namespace)
+
+    for status, label in ((5, 'canceled'), (6, 'aborted')):
+        response = SimpleNamespace(status=status,
+                                   result=SimpleNamespace(success=False))
+        assert namespace['action_result_summary'](response) == (
+            f'status={label}, success=False'
+        )

@@ -39,7 +39,7 @@ class DualArmServer(Node):
                  threshold_joint=None,
                  threshold_linear=None,
                  threshold_angular=None,
-                 config_name='debug.yaml'):
+                 config_name='safety_split.yaml'):
         super().__init__('dual_arm_server')
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         controller_cfg = config['controller']
@@ -72,6 +72,10 @@ class DualArmServer(Node):
             config=config,
         )
         maybe_start_controller_logging(self.controller)
+        self._target_snapshot = (
+            matrix_to_pose(self.controller.left_ee_target_transformation),
+            matrix_to_pose(self.controller.right_ee_target_transformation),
+        )
 
         # publisher of left and right end-effector poses
         self.left_ee_pose_publisher = self.create_publisher(
@@ -126,20 +130,22 @@ class DualArmServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
-        if not self._controller_lock.acquire(blocking=False):
-            return
-        try:
-            self.controller.update_robot_model()
-            left_ee_pose = matrix_to_pose(self.controller.left_ee_transformation)
-            right_ee_pose = matrix_to_pose(self.controller.right_ee_transformation)
-            left_ee_target = matrix_to_pose(self.controller.left_ee_target_transformation)
-            right_ee_target = matrix_to_pose(self.controller.right_ee_target_transformation)
-            self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
-            self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
-            self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-            self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
-        finally:
-            self._controller_lock.release()
+        measured_q = self.controller.robot_model.state['q']
+        left_ee_pose = matrix_to_pose(
+            self.controller.robot_model.get_frame_transformation_body(
+                self.controller.left_ee_name, measured_q,
+            )
+        )
+        right_ee_pose = matrix_to_pose(
+            self.controller.robot_model.get_frame_transformation_body(
+                self.controller.right_ee_name, measured_q,
+            )
+        )
+        left_ee_target, right_ee_target = self._target_snapshot
+        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+        self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
+        self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
 
     def dual_arm_callback(self, goal_handle):
         with self._controller_lock:
@@ -154,6 +160,7 @@ class DualArmServer(Node):
 
             # update ik solver with current state
             self.controller.update_ik_solver()
+            self._target_snapshot = (goal.left_target, goal.right_target)
 
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
@@ -169,6 +176,11 @@ class DualArmServer(Node):
         ik_converged = False
         steady_state_converged = False
         while time.time() - start_time < timeout:
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result = DualArm.Result()
+                result.success = False
+                return result
             frame_start_time = time.time()
             if not ik_converged:
                 vel = self.controller.control_step_reduced()
@@ -350,6 +362,14 @@ class DualArmServer(Node):
 
             # update ik solver with current state
             self.controller.update_ik_solver()
+            target_q = np.asarray(self.controller.robot_model.state['q']).copy()
+            target_q[self.controller.robot_model.reduced_mask] = q_reduced
+            self._target_snapshot = tuple(
+                matrix_to_pose(self.controller.robot_model.get_frame_transformation_body(
+                    frame, target_q,
+                ))
+                for frame in (self.controller.left_ee_name, self.controller.right_ee_name)
+            )
 
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
@@ -384,6 +404,11 @@ class DualArmServer(Node):
         ik_converged = False
         steady_state_converged = False
         while time.time() - start_time < timeout:
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
             frame_start_time = time.time()
             if not ik_converged:
                 vel = self.controller.goto_reduced_configuration(q_reduced)
@@ -520,7 +545,7 @@ class DualArmServer(Node):
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Dual arm ROS2 action server')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     parsed_args, ros_args = parser.parse_known_args(args=args)
 
     config = load_controller_config(parsed_args.config, config_dir=CONFIG_DIR)

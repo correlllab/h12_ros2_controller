@@ -1,5 +1,6 @@
 import warnings
 
+from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Pose
 
 import numpy as np
@@ -72,18 +73,12 @@ def list_to_pose(values):
 
     return pose
 
-def input_pose():
-    while True:
-        input_pose = input('Enter x y z roll pitch yaw (separated by space): ')
-        parts = input_pose.strip().split()
-
-        if len(parts) != 6:
-            print('Invalid input. Please enter exactly 6 values.')
-            continue
-        try:
-            values = [float(val) for val in parts]
-            # degrees to radians for roll, pitch, yaw
-            values[3:] = np.deg2rad(values[3:])
-            return list_to_pose(values)
-        except ValueError:
-            print('Invalid input. Make sure all 6 values are numeric.')
+def action_result_summary(response):
+    '''Format the ROS action terminal status and result together'''
+    labels = {
+        GoalStatus.STATUS_SUCCEEDED: 'succeeded',
+        GoalStatus.STATUS_CANCELED: 'canceled',
+        GoalStatus.STATUS_ABORTED: 'aborted',
+    }
+    status = labels.get(response.status, f'unknown({response.status})')
+    return f'status={status}, success={response.result.success}'

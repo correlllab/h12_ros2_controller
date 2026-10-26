@@ -24,7 +24,7 @@ from h12_ros2_controller.utility.path_definition import (
 )
 
 
-def main(config_name='debug.yaml'):
+def main(config_name='safety_split.yaml'):
     # parse threshold and timeout from config
     config= load_controller_config(config_name)
     controller_cfg = config['controller']
@@ -163,11 +163,11 @@ def main(config_name='debug.yaml'):
                               f'Right Error Linear: {right_error_linear:.4f}, '
                               f'Right Error Angular: {right_error_angular:.4f}')
                         reached = {
-                            arm_controller.left_ee_name: (
+                            'left': (
                                 left_error_linear < threshold_linear and
                                 left_error_angular < threshold_angular
                             ),
-                            arm_controller.right_ee_name: (
+                            'right': (
                                 right_error_linear < threshold_linear and
                                 right_error_angular < threshold_angular
                             ),
@@ -214,6 +214,6 @@ def main(config_name='debug.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     args = parser.parse_args()
     main(config_name=args.config)

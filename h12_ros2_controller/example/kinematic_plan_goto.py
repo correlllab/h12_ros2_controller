@@ -20,7 +20,7 @@ from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 
 def main(visualize=False, replay_delay=0.03, ik_timeout=1.0, ik_alpha=0.1,
-         config_name='debug.yaml'):
+          config_name='sim_safety_split.yaml'):
     pipeline = KinematicPipeline(visualize=visualize, config_name=config_name)
     console = GotoConsole(
         title='Offline IK', named_goals=NAMED_CONFIGS,
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--replay-delay', type=float, default=0.03)
     parser.add_argument('--ik-timeout', type=float, default=1.0)
     parser.add_argument('--ik-alpha', type=float, default=0.1)
-    parser.add_argument('--config', default='debug.yaml', help='Controller YAML profile')
+    parser.add_argument('--config', default='sim_safety_split.yaml', help='Controller YAML profile')
     args = parser.parse_args()
     main(args.visualize, args.replay_delay, args.ik_timeout, args.ik_alpha,
          args.config)

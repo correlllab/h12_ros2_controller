@@ -1,7 +1,7 @@
 mode: debug
 
 topics:
-  low_cmd: rt/safety/lowcmd_in
+  low_cmd: rt/lowcmd
   low_state: rt/lowstate
 
 network:
@@ -53,12 +53,22 @@ planner:
   ik_reuse_translation: 0.12
   ik_reuse_rotation: 0.50
   candidate_planning_budget: 2.0
+  request_planning_budget: 8.0
   bimanual_fallback_budget: 5.0
+  bimanual_coordination_knots: 24
+  bimanual_coordination_delay: 0.25
+  bimanual_refinement_budget: 0.6
+  bimanual_refinement_duration: 12.0
   recent_path_cache_size: 6
+  nearby_reuse_joint_tolerance: 0.12
+  nearby_reuse_knots: 24
   candidate_ompl_timeout: 0.75
-  candidate_early_accept_ratio: 1.3
   candidate_ik_weight: 0.1
   candidate_hand_weight: 2.0
+  candidate_compact_weight: 3.0
+  candidate_clearance_weight: 5.0
+  candidate_wrist_path_weight: 0.20
+  candidate_duration_weight: 0.05
   worker_request_timeout: 10.0
   worker_startup_timeout: 30.0
   # sampled validity spacing in joint space
@@ -85,7 +95,11 @@ planner:
   local_x_backtrack: 0.15
   elbow_x_backtrack: 0.22
   max_local_path_ratio: 2.0
+  local_joint_padding: 0.6
+  local_search_fraction: 0.35
   max_hand_deviation: 0.45
+  compact_radial_slack: 0.08
+  preferred_clearance: 0.05
   inactive_goal_tolerance: 0.000001
   # clamp a measured start pose up to this (rad) past a joint limit back into
   # bounds instead of aborting the plan; larger overshoots still fail

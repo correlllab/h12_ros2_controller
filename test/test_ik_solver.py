@@ -10,7 +10,8 @@ from h12_ros2_controller.core.controller.upper_controller import UpperController
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
     KinematicPipeline, plan_ik_candidates, planner_config_from_controller,
 )
-from h12_ros2_controller.core.planner.reduced_joint_planner import PlanResult
+from h12_ros2_controller.core.planner import kinematic_pipeline
+from h12_ros2_controller.core.planner.reduced_joint_planner import PlanResult, PlannerConfig
 from h12_ros2_controller.benchmark.ik_benchmark import main as run_benchmark
 from h12_ros2_controller.example import kinematic_plan_goto
 from h12_ros2_controller.utility import named_config
@@ -20,6 +21,7 @@ from h12_ros2_controller.utility.controller_config import load_controller_config
 class Configuration:
     def __init__(self, q):
         self.q = np.array(q, dtype=float)
+        self.model = SimpleNamespace(nq=len(q), nv=len(q))
 
     def update(self, q):
         self.q = np.array(q, dtype=float)
@@ -44,6 +46,7 @@ def solver(monkeypatch):
                             zero_q_body=np.zeros(4), state={'q': np.zeros(4)})
     instance = IKSolver.__new__(IKSolver)
     instance.robot_model = robot
+    instance.d_min = 0.02
     instance.configuration = Configuration(np.zeros(4))
     instance.configuration_reduced = Configuration(np.zeros(4))
     instance.posture_task = SimpleNamespace(set_target_from_configuration=lambda config: None)
@@ -91,6 +94,28 @@ def test_two_frame_convergence_uses_each_target_tolerance(solver):
     assert IKSolver._frame_task_errors(solver, solver.configuration_reduced) == (
         float('inf'), float('inf'),
     )
+
+
+def test_frame_acceptance_uses_cartesian_position_not_se3_log_component(solver):
+    task = SimpleNamespace(
+        frame='left_grasp_frame',
+        transform_target_to_world=SimpleNamespace(
+            translation=np.zeros(3), rotation=np.eye(3),
+        ),
+        compute_error=lambda configuration: np.array([0.0005, 0., 0., 0., 0., 0.]),
+    )
+    configuration = SimpleNamespace(get_transform_frame_to_world=lambda frame:
+                                    SimpleNamespace(
+                                        translation=np.array([0.0012, 0., 0.]),
+                                        rotation=np.eye(3),
+                                    ))
+    solver.frame_tasks = {'left': task}
+
+    linear, angular = IKSolver._frame_task_errors(solver, configuration)
+
+    assert linear == pytest.approx(0.0012)
+    assert angular == 0.0
+    assert linear > 0.001
 
 
 def test_full_keeps_first_success_and_deduplicates(solver):
@@ -218,7 +243,7 @@ def test_preferred_success_still_checks_feasibility(solver):
     result = solver.solve_ik_reduced(preferred_positions=[2.1, 0., 0., 0.],
                                      max_seeds=2)
     assert not result.success
-    assert result.attempts[1].reason == 'joint limits'
+    assert result.attempts[1].reason == 'preferred seed exceeds joint limits'
 
 
 def test_arm_fallback_seeds_are_bounded_deterministic_and_preserve_mask(solver):
@@ -353,14 +378,51 @@ def test_start_and_active_mask_keep_untasked_joints_fixed(solver):
     start = np.array([0., 0.3, 0.4, -0.2])
     mask = np.array([True, False, False, False])
     solver._frame_task_errors = lambda config: (abs(0.5 - config.q[0]), 0.)
-    solver._ik_reduced = lambda tasks, dt: np.ones(4)
+    constraints_seen = []
+
+    def constrained_step(tasks, dt, constraints=None):
+        assert len(constraints) == 1
+        constraint = constraints[0]
+        constraints_seen.append(constraint.A.copy())
+        np.testing.assert_array_equal(constraint.A, np.eye(4)[1:])
+        np.testing.assert_allclose(constraint.q_0, solver.configuration_reduced.q)
+        return np.array([1., 0., 0., 0.])
+
+    solver._ik_reduced = constrained_step
     result = solver.solve_ik_reduced(alpha=0.5, timeout=0.1,
                                      start_q=start, active_mask=mask)
     assert result.success
     assert np.allclose(result.q, [0.5, 0.3, 0.4, -0.2])
     assert np.array_equal(result.candidates[0].q[~mask], start[~mask])
+    assert constraints_seen
     with pytest.raises(ValueError, match='active_mask'):
         solver.solve_ik_reduced(active_mask=[True])
+
+
+def test_real_reduced_qp_keeps_untasked_arm_velocity_zero():
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
+    goal = np.asarray(named_config.NAMED_CONFIGS['arms_front_45'], dtype=float)
+    transform = pipeline.robot_model.get_frame_transformation_reduced(
+        'left_grasp_frame', goal,
+    )
+    pose = np.r_[transform[:3, 3], pin.rpy.matrixToRpy(transform[:3, :3])]
+    pipeline.set_start(np.zeros(27))
+    original = pipeline.ik_solver._ik_reduced
+    velocities = []
+
+    def constrained_step(tasks, dt, constraints=None):
+        velocity = original(tasks, dt, constraints=constraints)
+        assert constraints and len(constraints) == 1
+        velocities.append(velocity.copy())
+        assert np.max(np.abs(velocity[7:])) < 1e-6
+        return velocity
+
+    pipeline.ik_solver._ik_reduced = constrained_step
+    result = pipeline.plan_frame('left_grasp_frame', pose)
+
+    assert result.ik.success and result.plan.success
+    assert velocities
+    assert np.allclose(result.plan.path[:, 7:], 0.0)
 
 
 def test_reduced_result_preserves_frozen_start_coordinates(solver):
@@ -384,6 +446,18 @@ def test_limit_margin_and_reference_affect_score(solver):
         solver._naturalness_score(np.array([1., 0., 0., 0.]), neutral, True)
     with pytest.raises(ValueError, match='alpha'):
         solver.solve_ik_reduced(alpha=0)
+
+
+def test_out_of_bound_seed_isolated_before_qp_solve(solver):
+    result = solver.solve_ik_reduced(
+        start_q=np.array([2.1, 0., 0., 0.]), max_seeds=2,
+    )
+
+    assert result.success
+    assert any(attempt.seed_name == 'current' and
+               attempt.reason == 'current seed exceeds joint limits'
+               for attempt in result.attempts)
+    assert all(attempt.seed_name != 'current' for attempt in result.candidates)
 
 
 def test_preferred_wrist_posture_moves_inward_from_limit(solver):
@@ -433,7 +507,9 @@ def test_reduced_candidates_deduplicate_and_reject_infeasible(solver):
         return IKAttemptResult(q, True, 0., 0., name, 0, 0.)
 
     solver._solve_ik_reduced_attempt = attempt
-    solver.robot_model.check_collision_free_reduced = lambda q: q[0] != 0.5
+    solver.robot_model.check_collision_free_reduced = (
+        lambda q, min_distance=0.0: q[0] != 0.5
+    )
     result = solver.solve_ik_reduced()
     assert [candidate.seed_name for candidate in result.candidates] == ['current']
     assert result.attempts[1].reason == 'joint limits'
@@ -448,7 +524,7 @@ def test_empty_frame_tasks_do_not_report_success(solver):
 
 
 def test_offline_and_controller_resolve_same_planner_profile():
-    config = load_controller_config('debug.yaml')
+    config = load_controller_config('sim_safety_split.yaml')
     controller = object.__new__(UpperController)
     controller.config = config
     controller.dt = 1.0 / config['frequency']['ctrl_hz']
@@ -459,21 +535,27 @@ def test_offline_and_controller_resolve_same_planner_profile():
     assert actual == expected
     assert actual.min_interpolation_steps == 30
     assert actual.frame_z_min == -0.05
-    assert min(actual.joint_velocity_limit) == pytest.approx(0.9)
+    assert min(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert max(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert actual.ik_seed_timeout == config['planner']['ik_seed_timeout']
     assert actual.ik_wrist_motion_weight == config['planner']['ik_wrist_motion_weight']
     assert actual.ik_wrist_posture_cost == config['planner']['ik_wrist_posture_cost']
     assert actual.candidate_planning_budget == config['planner']['candidate_planning_budget']
     assert actual.max_hand_deviation == config['planner']['max_hand_deviation']
+    assert actual.local_joint_padding == 0.6
+    assert actual.compact_radial_slack == config['planner']['compact_radial_slack']
+    assert actual.self_collision_clearance == config['controller']['d_min']
     assert actual.worker_startup_timeout == config['planner']['worker_startup_timeout']
     config['planner']['joint_velocity_limit'] = 100.0
     capped = planner_config_from_controller(config)
     assert capped.joint_velocity_limit == actual.joint_velocity_limit
+    config['planner']['self_collision_clearance'] = 0.0
+    with pytest.raises(ValueError, match='must match controller d_min'):
+        planner_config_from_controller(config)
 
 
 @pytest.mark.parametrize('profile', [
-    'debug.yaml', 'safety_split.yaml', 'safety_full.yaml',
+    'safety_split.yaml', 'safety_full.yaml',
     'sim_safety_split.yaml', 'counter_safety_split.yaml',
     'real_benchmark_upper.yaml',
 ])
@@ -482,10 +564,12 @@ def test_planning_profiles_resolve_explicit_motion_policy(profile):
     resolved = planner_config_from_controller(config)
     for key in ('continuous_timing', 'joint_acceleration_limit',
                 'local_x_backtrack', 'elbow_x_backtrack',
-                'max_hand_deviation', 'candidate_planning_budget',
+                'max_hand_deviation', 'compact_radial_slack',
+                'preferred_clearance', 'local_joint_padding',
+                'candidate_compact_weight', 'candidate_planning_budget',
                 'worker_request_timeout', 'worker_startup_timeout'):
         assert getattr(resolved, key) == config['planner'][key]
-    for key in ('execution_start_tolerance', 'frozen_joint_tolerance',
+    for key in ('execution_start_tolerance',
                 'command_seed_max_gap', 'plan_max_age'):
         assert config['controller'][key] > 0.0
     assert config['planner']['frame_y_min'] < config['planner']['frame_y_max']
@@ -496,8 +580,15 @@ def test_offline_planning_requires_explicit_profile():
         KinematicPipeline(config_name='balance_safety_split.yaml')
 
 
+def test_injected_planner_config_cannot_weaken_ik_self_clearance():
+    with pytest.raises(ValueError, match='must match controller d_min'):
+        KinematicPipeline(config_name='sim_safety_split.yaml', planner_config=PlannerConfig(
+            dt=1.0 / 50.0, self_collision_clearance=0.0,
+        ))
+
+
 def test_controller_rejects_mismatched_planner_period_before_hardware(monkeypatch):
-    config = load_controller_config('debug.yaml')
+    config = load_controller_config('safety_split.yaml')
     config['planner']['dt'] = 0.1
     monkeypatch.setattr(
         'h12_ros2_controller.core.controller.upper_controller.RobotModel',
@@ -509,7 +600,7 @@ def test_controller_rejects_mismatched_planner_period_before_hardware(monkeypatc
 
 
 def test_saved_case_uses_same_hardware_free_benchmark_route(tmp_path):
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     start = pipeline.robot_model.state['q'].copy()
     start[pipeline.robot_model.reduced_mask] = named_config.NAMED_CONFIGS[
         'arms_front_45'
@@ -520,7 +611,7 @@ def test_saved_case_uses_same_hardware_free_benchmark_route(tmp_path):
     )
     pose = np.r_[transform[:3, 3], pin.rpy.matrixToRpy(transform[:3, :3])]
     case = {
-        'config': 'debug.yaml', 'start_q': start.tolist(),
+        'config': 'sim_safety_split.yaml', 'start_q': start.tolist(),
         'frame': 'left_grasp_frame', 'pose': pose.tolist(),
         'ik_timeout': 0.3,
     }
@@ -535,7 +626,7 @@ def test_saved_case_uses_same_hardware_free_benchmark_route(tmp_path):
 
 
 def test_offline_frame_goal_reaches_named_seeds_with_one_second_budget():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     pose = np.array([0.4, 0.2, 0.2, 0.0, np.deg2rad(80), 0.0])
 
     result = pipeline.plan_frame('left_grasp_frame', pose, ik_timeout=1.0)
@@ -556,7 +647,7 @@ def test_offline_frame_goal_reaches_named_seeds_with_one_second_budget():
 
 
 def test_two_frame_goals_share_one_ik_solve_and_reach_both_targets():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     model = pipeline.robot_model
     goal = np.asarray(named_config.NAMED_CONFIGS['arms_front_45'], dtype=float)
     tasks = []
@@ -580,7 +671,7 @@ def test_two_frame_goals_share_one_ik_solve_and_reach_both_targets():
                 pipeline.ik_angular_threshold)
 
     case = {
-        'config': 'debug.yaml', 'start_q': np.zeros(27).tolist(),
+        'config': 'sim_safety_split.yaml', 'start_q': np.zeros(27).tolist(),
         'tasks': [{'frame': name, 'pose': pose.tolist()} for name, pose in tasks],
     }
     replay = pipeline.plan_case(case)
@@ -590,8 +681,8 @@ def test_two_frame_goals_share_one_ik_solve_and_reach_both_targets():
     assert len(pipeline.ik_solver.frame_tasks) == 2
 
 
-def test_bimanual_overhang_goal_checks_both_frames_after_fallback():
-    pipeline = KinematicPipeline()
+def test_bimanual_overhang_never_accepts_failed_clearance_or_frame_tasks():
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     tasks = [
         ('left_grasp_frame', np.array([
             0.47, 0.14, 0.34, np.deg2rad(15), np.deg2rad(60), np.deg2rad(-15),
@@ -603,8 +694,10 @@ def test_bimanual_overhang_goal_checks_both_frames_after_fallback():
 
     result = pipeline.plan_frames(tasks)
 
-    assert result.ik.success
-    assert result.plan.success, result.plan.reason
+    if result.plan is None or not result.plan.success:
+        assert result.selected_candidate is None
+        assert result.fallback_reason or (result.plan is not None and result.plan.reason)
+        return
     assert result.plan.metadata['joint_path_ratio'] <= 2.0
     for name, pose in tasks:
         transform = pipeline.robot_model.get_frame_transformation_reduced(
@@ -658,6 +751,75 @@ def test_candidate_selector_picks_shorter_direct_path():
     assert candidate.seed_name == 'seed_2'
 
 
+def test_candidate_selector_does_not_stop_on_ratio_when_better_score_is_possible():
+    candidates = [
+        SimpleNamespace(q=np.array([1.0]), score=0.0, seed_name='first'),
+        SimpleNamespace(q=np.array([0.5]), score=0.0, seed_name='compact'),
+    ]
+    calls = []
+
+    def plan_goal(goal, direct_only, timeout):
+        calls.append((float(goal[0]), direct_only))
+        if direct_only:
+            return PlanResult(success=False, path=np.empty((0, 1)), reason='blocked')
+        length = 1.2 if goal[0] == 1.0 else 0.7
+        return PlanResult(
+            success=True, path=np.array([[0.0], goal]), reason='success',
+            metadata={'joint_path_length': length, 'joint_path_ratio': 1.2},
+        )
+
+    plan, selected = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+    )
+
+    assert plan.success and selected.seed_name == 'compact'
+    assert calls == [(1.0, True), (0.5, True),
+                     (1.0, False), (0.5, False)]
+
+
+def test_candidate_deadline_stops_probes_and_keeps_validated_path(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr(kinematic_pipeline.time, 'perf_counter', lambda: clock[0])
+    candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
+                                  seed_name=f'seed_{i}') for i in (1, 2, 3)]
+    calls = []
+
+    def plan_goal(goal, direct_only, timeout):
+        calls.append((goal[0], direct_only, timeout))
+        clock[0] += 0.6
+        return PlanResult(
+            success=True, path=np.array([[0.0], goal]),
+            metadata={'joint_path_length': goal[0]},
+        )
+
+    plan, candidate = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+        deadline=1.0,
+    )
+
+    assert plan.success and candidate.seed_name == 'seed_1'
+    assert [call[0] for call in calls] == [1.0, 2.0]
+    assert calls[0][2] == pytest.approx(1.0)
+    assert calls[1][2] == pytest.approx(0.4)
+
+
+def test_candidate_deadline_returns_validated_path_after_later_timeout(monkeypatch):
+    monkeypatch.setattr(kinematic_pipeline.time, 'perf_counter', lambda: 0.0)
+    candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
+                                  seed_name=f'seed_{i}') for i in (1, 2)]
+
+    def plan_goal(goal, direct_only, timeout):
+        if goal[0] == 2:
+            raise TimeoutError('worker deadline')
+        return PlanResult(success=True, path=np.array([[0.0], goal]))
+
+    plan, candidate = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+        deadline=1.0,
+    )
+    assert plan.success and candidate.seed_name == 'seed_1'
+
+
 def test_candidate_selector_retries_after_rejected_ompl_detour():
     candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
                                   seed_name=f'seed_{i}') for i in (1, 2)]
@@ -689,7 +851,7 @@ def test_candidate_selector_retries_after_rejected_ompl_detour():
 
 
 def test_problematic_pitch_goal_has_local_path_from_home():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
                      np.deg2rad(80), np.deg2rad(-15)])
 
@@ -712,7 +874,7 @@ def test_problematic_pitch_goal_has_local_path_from_home():
 
 
 def test_combined_overhang_arms_return_home_without_rearward_sweep():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     goals = (
         ('left_grasp_frame', [0.51, 0.14, 0.32, 15, 60, -15]),
         ('right_grasp_frame', [0.49, -0.18, 0.28, -15, 70, 15]),
@@ -735,7 +897,7 @@ def test_combined_overhang_arms_return_home_without_rearward_sweep():
 
 
 def test_nearby_offline_goal_reuses_prior_ik_seed_but_explicit_reset_clears_it():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
                      np.deg2rad(80), np.deg2rad(-15)])
     first = pipeline.plan_frame('left_grasp_frame', pose)

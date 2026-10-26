@@ -48,7 +48,7 @@ class FrameTaskServer(Node):
                  threshold_joint=None,
                  threshold_linear=None,
                  threshold_angular=None,
-                 config_name='debug.yaml'):
+                 config_name='safety_split.yaml'):
         super().__init__('frame_task_server')
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         controller_cfg = config['controller']
@@ -72,6 +72,7 @@ class FrameTaskServer(Node):
         # lists holding frame names and frame targets
         self.frame_names = []
         self.frame_targets = []
+        self._frame_publish_snapshot = ((), ())
 
         self.controller = FrameController(
             URDF_MAGPIE_PIN_PATH,
@@ -126,53 +127,45 @@ class FrameTaskServer(Node):
         return pose_stamped
 
     def publisher_callback(self):
-        if not self._controller_lock.acquire(blocking=False):
-            return
-        try:
-            measured_q = self.controller.robot_model.state['q']
-            frame_names = StringArray()
-            frame_names.data = self.frame_names
-            self.frame_names_publisher.publish(frame_names)
+        names, targets = self._frame_publish_snapshot
+        measured_q = self.controller.robot_model.state['q']
+        frame_names = StringArray()
+        frame_names.data = list(names)
+        self.frame_names_publisher.publish(frame_names)
 
-            stamp = self.get_clock().now().to_msg()
-            frame_targets = PoseArray()
-            frame_targets.header.stamp = stamp
-            frame_targets.header.frame_id = 'pelvis'
-            frame_targets.poses = self.frame_targets
-            self.frame_targets_publisher.publish(frame_targets)
+        stamp = self.get_clock().now().to_msg()
+        frame_targets = PoseArray()
+        frame_targets.header.stamp = stamp
+        frame_targets.header.frame_id = 'pelvis'
+        frame_targets.poses = list(targets)
+        self.frame_targets_publisher.publish(frame_targets)
 
-            frame_poses = PoseArray()
-            frame_poses.header.stamp = stamp
-            frame_poses.header.frame_id = 'pelvis'
-            frame_poses.poses = [
-                matrix_to_pose(self.controller.get_frame_transformation(name, measured_q))
-                for name in self.frame_names
-            ]
-            self.frame_poses_publisher.publish(frame_poses)
+        frame_poses = PoseArray()
+        frame_poses.header.stamp = stamp
+        frame_poses.header.frame_id = 'pelvis'
+        frame_poses.poses = [
+            matrix_to_pose(self.controller.get_frame_transformation(name, measured_q))
+            for name in names
+        ]
+        self.frame_poses_publisher.publish(frame_poses)
 
-            left_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
-                self.controller.left_ee_name, measured_q,
-            ))
-            right_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
-                self.controller.right_ee_name, measured_q,
-            ))
-            self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
-            self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
+        left_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
+            self.controller.left_ee_name, measured_q,
+        ))
+        right_ee_pose = matrix_to_pose(self.controller.get_frame_transformation(
+            self.controller.right_ee_name, measured_q,
+        ))
+        self.left_ee_pose_publisher.publish(self._stamp_pose(left_ee_pose))
+        self.right_ee_pose_publisher.publish(self._stamp_pose(right_ee_pose))
 
-            # publish target snapshots while frame tasks are protected
-            try:
-                left_ee_task = self.controller.ik_solver.frame_tasks.get('left_ee_task')
-                right_ee_task = self.controller.ik_solver.frame_tasks.get('right_ee_task')
-                if left_ee_task is not None:
-                    left_ee_target = matrix_to_pose(left_ee_task.transform_target_to_world.np)
-                    self.left_ee_target_publisher.publish(self._stamp_pose(left_ee_target))
-                if right_ee_task is not None:
-                    right_ee_target = matrix_to_pose(right_ee_task.transform_target_to_world.np)
-                    self.right_ee_target_publisher.publish(self._stamp_pose(right_ee_target))
-            except (AttributeError, KeyError):
-                pass
-        finally:
-            self._controller_lock.release()
+        # target pairs are copied once while the action owns the controller lock
+        targets_by_name = dict(zip(names, targets))
+        left_target = targets_by_name.get(self.controller.left_ee_name)
+        right_target = targets_by_name.get(self.controller.right_ee_name)
+        if left_target is not None:
+            self.left_ee_target_publisher.publish(self._stamp_pose(left_target))
+        if right_target is not None:
+            self.right_ee_target_publisher.publish(self._stamp_pose(right_target))
 
     def _abort_stale(self, goal_handle, result, err):
         '''Abort a goal because rt/lowstate went stale; the last command holds'''
@@ -241,6 +234,9 @@ class FrameTaskServer(Node):
 
             # update ik solver with current state
             self.controller.update_ik_solver()
+            self._frame_publish_snapshot = (
+                tuple(self.frame_names), tuple(self.frame_targets),
+            )
 
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
@@ -287,6 +283,11 @@ class FrameTaskServer(Node):
         steady_state_converged = False
         blocked = None
         while time.time() - start_time < timeout:
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result = FrameTask.Result()
+                result.success = False
+                return result
             frame_start_time = time.time()
             if not ik_converged:
                 vel = self.controller.control_step_reduced()
@@ -552,6 +553,11 @@ class FrameTaskServer(Node):
         steady_state_converged = False
         blocked = None
         while time.time() - start_time < timeout:
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
             frame_start_time = time.time()
             if not ik_converged:
                 vel = self.controller.goto_reduced_configuration(q_reduced)
@@ -698,7 +704,7 @@ class FrameTaskServer(Node):
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Frame task ROS2 action server')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     parsed_args, ros_args = parser.parse_known_args(args=args)
 
     config = load_controller_config(parsed_args.config, config_dir=CONFIG_DIR)

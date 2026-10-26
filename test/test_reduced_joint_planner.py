@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from time import perf_counter
 
 import numpy as np
 import pytest
@@ -46,7 +47,7 @@ class FakeRobotModel:
                 })
         return violations
 
-    def check_collision_free_reduced(self, q_reduced):
+    def check_collision_free_reduced(self, q_reduced, min_distance=0.0):
         return self.collision_free
 
     def get_frame_position(self, frame_name, q):
@@ -110,6 +111,116 @@ def test_two_arm_fallback_stitches_valid_timed_single_arm_paths(partial_mask):
         assert np.array_equal(result.path[:, ~active], np.zeros((len(result.path), 12)))
 
 
+def test_two_arm_fallback_retains_final_waypoint_cap():
+    config = PlannerConfig(max_interpolation_steps=35,
+                           max_staged_interpolation_steps=40)
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ), config=config)
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+    retiming_calls = []
+    original_timing = planner._select_timed_path
+
+    def timed_candidate(*args, **kwargs):
+        retiming_calls.append(True)
+        return original_timing(*args, **kwargs)
+
+    def staged_legs(first, second, **kwargs):
+        first = np.asarray(first)
+        second = np.asarray(second)
+        if np.any(first[:7] != second[:7]) and np.any(first[7:] != second[7:]):
+            return PlanResult(
+                success=False, path=np.empty((0, 14)), reason='no direct bimanual path',
+            )
+        path = np.linspace(first, second, 25)
+        lengths = {'left_grasp_frame': float(abs(second[0] - first[0])),
+                   'right_grasp_frame': 0.0}
+        return PlanResult(success=True, path=path, reason='direct path', metadata={
+            'frame_path_lengths': lengths,
+            'frame_translation_lengths': lengths.copy(),
+            'frame_rotation_lengths': {name: 0.0 for name in lengths},
+            'actual_frame_speeds': {name: 0.2 for name in lengths},
+            'length_estimate_samples': len(path),
+        })
+
+    planner._select_timed_path = timed_candidate
+    planner._plan_once = staged_legs
+    result = planner.plan(
+        start, goal, local_frames=('left_grasp_frame', 'right_grasp_frame'),
+    )
+
+    assert retiming_calls
+    assert result.success, result.reason
+    assert len(result.path) <= config.max_interpolation_steps
+    assert result.metadata['staged_retimed']
+
+
+def test_rejects_staged_cap_below_single_plan_cap():
+    with pytest.raises(ValueError, match='max_staged_interpolation_steps'):
+        ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(
+            max_interpolation_steps=30,
+            max_staged_interpolation_steps=29,
+        ))
+
+
+def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    clock = [0.0]
+    calls = []
+    monkeypatch.setattr(
+        'h12_ros2_controller.core.planner.reduced_joint_planner.perf_counter',
+        lambda: clock[0],
+    )
+
+    def unavailable(*args, **kwargs):
+        calls.append(kwargs.get('timeout'))
+        clock[0] += 0.2
+        return PlanResult(success=False, path=np.empty((0, 14)),
+                          reason='OMPL returned an approximate solution')
+
+    planner._plan_once = unavailable
+    goal = np.zeros(14)
+    goal[[0, 7]] = 0.1
+
+    result = planner.plan(
+        np.zeros(14), goal, local_frames=('left_grasp_frame', 'right_grasp_frame'),
+        deadline=0.3,
+    )
+
+    assert not result.success
+    assert len(calls) == 2
+    assert calls[1] == pytest.approx(0.1)
+    assert clock[0] == pytest.approx(0.4)
+    assert 'budget exhausted' in result.reason
+
+
+def test_bimanual_coordination_staggers_arms_around_cross_collision():
+    robot = FakeRobotModel(lower=-np.ones(14), upper=np.ones(14))
+    robot.check_collision_free_reduced = lambda q, min_distance=0.0: not (
+        0.03 < q[0] < 0.07 and 0.03 < q[7] < 0.07
+    )
+    planner = ReducedJointPlanner(robot)
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+
+    result, reason = planner._coordinate_same_start_arms(
+        start, goal, None, ('left_grasp_frame', 'right_grasp_frame'),
+        allow_reuse=False, started=perf_counter(), local_joint_padding=None,
+    )
+
+    assert result is not None, reason
+    assert result.success
+    assert result.metadata['coordination'] == 'staggered'
+    assert np.array_equal(result.path[0], start)
+    assert np.array_equal(result.path[-1], goal)
+    assert planner._path_validity_failure(result.path) == ''
+
+
 def test_requires_initialized_reduced_model():
     robot_model = FakeRobotModel()
     robot_model.init_reduced = False
@@ -164,7 +275,7 @@ def test_collision_state_fails_with_clear_reason():
 
     assert not result.success
     assert result.path.shape == (0, 2)
-    assert result.reason == 'start is in self-collision'
+    assert result.reason == 'start violates self-collision clearance'
 
 
 def test_bounds_are_copied_to_ompl_space():
@@ -178,6 +289,40 @@ def test_bounds_are_copied_to_ompl_space():
     for idx in range(planner.nq):
         assert bounds.low[idx] == pytest.approx(lower[idx])
         assert bounds.high[idx] == pytest.approx(upper[idx])
+
+
+def test_local_joint_bounds_restore_global_space_after_search():
+    planner = ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(
+        try_direct=False, timeout=0.2, local_joint_padding=0.2,
+    ))
+    start = np.zeros(2)
+    goal = np.array([0.2, -0.2])
+    planner._set_active_mask(None, start)
+    planner._apply_active_bounds(start, goal, padding=0.2)
+    local = planner.space.getBounds()
+    assert local.low[0] == pytest.approx(-0.2)
+    assert local.high[0] == pytest.approx(0.4)
+
+    result = planner.plan(start, goal, local_frames=('left_grasp_frame',))
+
+    assert result.success, result.reason
+    assert result.metadata['search_region'] in ('local', 'global')
+    global_bounds = planner.space.getBounds()
+    assert global_bounds.low[0] == pytest.approx(planner.model_lower[0])
+    assert global_bounds.high[0] == pytest.approx(planner.model_upper[0])
+
+    named = planner.plan(start, goal, local_frames=('left_grasp_frame',),
+                         local_joint_padding=0.0, allow_reuse=False)
+    assert named.success
+    assert named.metadata['search_region'] == 'global'
+
+
+@pytest.mark.parametrize('fraction', (0.0, 1.0, float('nan')))
+def test_local_search_rejects_invalid_budget_fraction(fraction):
+    with pytest.raises(ValueError, match='local_search_fraction'):
+        ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(
+            local_search_fraction=fraction,
+        ))
 
 
 def test_plan_between_fake_valid_states():
@@ -199,7 +344,9 @@ def test_plan_between_fake_valid_states():
 
 def test_direct_only_reports_invalid_segment_without_using_ompl():
     robot_model = FakeRobotModel()
-    robot_model.check_collision_free_reduced = lambda q: not 0.25 < q[0] < 0.35
+    robot_model.check_collision_free_reduced = (
+        lambda q, min_distance=0.0: not 0.25 < q[0] < 0.35
+    )
     planner = ReducedJointPlanner(robot_model)
 
     result = planner.plan([0.0, 0.0], [0.5, 0.5], direct_only=True)
@@ -260,7 +407,8 @@ def test_local_path_quality_rejects_hand_sweep_even_with_relaxed_joint_ratio():
 
 def test_local_grasp_goal_reports_elbow_clearance_and_hand_sweep():
     pipeline = KinematicPipeline(
-        planner_config=PlannerConfig(max_interpolation_steps=600)
+        config_name='sim_safety_split.yaml',
+        planner_config=PlannerConfig(dt=1.0 / 50.0, max_interpolation_steps=600)
     )
     pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
                      np.deg2rad(80), np.deg2rad(-15)])
@@ -273,6 +421,31 @@ def test_local_grasp_goal_reports_elbow_clearance_and_hand_sweep():
             metadata['elbow_local_x_bounds']['left_grasp_frame'] - 0.01)
     assert (metadata['hand_segment_deviation']['left_grasp_frame'] <=
             pipeline.planner.config.max_hand_deviation)
+    assert 'left_elbow_link' in metadata['compact_radial_excess']
+    assert 'left_wrist_yaw_link' in metadata['compact_radial_excess']
+    assert metadata['minimum_self_clearance'] > pipeline.planner.config.self_collision_clearance
+    assert metadata['excess_wrist_travel'] >= 0.0
+
+
+def test_sphere_clearance_rejects_binary_free_near_contact():
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
+    robot = pipeline.robot_model
+    near_contact = np.array([
+        -0.6097, -0.18, 0.1106, -0.2877, 0.2635, -0.015, -0.0555,
+        -0.9543, 0.18, -0.0464, -0.1285, -0.1056, 0.1597, 0.1096,
+    ])
+    clearance = pipeline.planner.config.self_collision_clearance
+
+    assert robot.check_collision_free_reduced(near_contact)
+    assert not robot.check_collision_free_reduced(
+        near_contact, min_distance=clearance,
+    )
+    assert robot.check_collision_free_reduced(
+        np.zeros(14), min_distance=clearance,
+    )
+    result = pipeline.planner.plan(np.zeros(14), near_contact, direct_only=True)
+    assert not result.success
+    assert 'self-collision clearance' in result.reason
 
 
 def test_named_joint_plans_do_not_inherit_locality_constraint():
@@ -301,8 +474,9 @@ def test_reverse_path_reuse_revalidates_and_invalidates_on_context_change():
     reverse = planner.plan(goal, start)
 
     assert forward.success and reverse.success
-    assert reverse.metadata['cache_hit']
-    assert np.array_equal(reverse.path, forward.path[::-1])
+    assert reverse.reason == 'direct path'
+    assert not reverse.metadata.get('cache_hit', False)
+    assert np.allclose(reverse.path, forward.path[::-1])
 
     planner.robot_model.model_body_reduced.velocityLimit[:] = 0.8
     changed_velocity = planner.plan(start, goal)
@@ -320,6 +494,25 @@ def test_reverse_path_reuse_revalidates_and_invalidates_on_context_change():
     assert not changed_model.metadata.get('cache_hit', False)
 
 
+def test_reverse_cache_handles_a_blocked_direct_return():
+    robot = FakeRobotModel()
+    robot.check_collision_free_reduced = lambda q, min_distance=0.0: not (
+        0.2 < q[0] < 0.3 and abs(q[1] - q[0]) < 0.04
+    )
+    planner = ReducedJointPlanner(robot, config=PlannerConfig(timeout=0.8))
+    start = np.zeros(2)
+    goal = np.array([0.5, 0.5])
+
+    forward = planner.plan(start, goal)
+    reverse = planner.plan(goal, start)
+
+    assert forward.success, forward.reason
+    assert forward.metadata['path_kind'] == 'ompl path'
+    assert reverse.success, reverse.reason
+    assert reverse.metadata['cache_hit']
+    assert reverse.metadata['path_kind'] == 'validated reverse reuse'
+
+
 def test_recent_path_cache_preserves_earlier_arm_route_across_candidate_search():
     planner = ReducedJointPlanner(FakeRobotModel())
     start = np.array([0.0, 0.0])
@@ -328,13 +521,44 @@ def test_recent_path_cache_preserves_earlier_arm_route_across_candidate_search()
     for index in range(3):
         candidate = np.array([0.05 * (index + 1), 0.0])
         assert planner.plan(start, candidate).success
+    assert any(
+        np.array_equal(cached['start'], start) and
+        np.array_equal(cached['goal'], goal)
+        for cached in planner._recent_paths
+    )
 
     reverse = planner.plan(goal, start)
 
-    assert reverse.success and reverse.metadata['cache_hit']
+    assert reverse.success and reverse.reason == 'direct path'
     for index in range(8):
         assert planner.plan(start, [0.02 * (index + 1), 0.0]).success
     assert len(planner._recent_paths) == planner.config.recent_path_cache_size
+
+
+def test_nearby_reuse_retimes_and_revalidates_joint_connectors():
+    robot = FakeRobotModel()
+    planner = ReducedJointPlanner(robot, config=PlannerConfig(
+        try_direct=False, timeout=0.2,
+    ))
+    start = np.zeros(2)
+    prior_goal = np.array([0.4, 0.3])
+    nearby_goal = np.array([0.42, 0.31])
+    assert planner.plan(start, prior_goal).success
+
+    reused = planner.plan(start, nearby_goal)
+
+    assert reused.success, reused.reason
+    assert reused.metadata['cache_type'] == 'nearby'
+    assert reused.metadata['cache_hit']
+    assert np.array_equal(reused.path[0], start)
+    assert np.array_equal(reused.path[-1], nearby_goal)
+    assert planner._path_validity_failure(reused.path) == ''
+
+    robot.check_collision_free_reduced = lambda q, min_distance=0.0: not (
+        0.405 < q[0] < 0.415
+    )
+    blocked = planner.plan(start, np.array([0.43, 0.31]))
+    assert not blocked.metadata.get('cache_hit', False)
 
 
 def test_plan_pins_idle_right_arm_when_goal_preserves_it():
@@ -505,7 +729,7 @@ def test_pchip_proposal_is_continuous_and_fully_validated():
 
 def test_pchip_collision_rejection_falls_back_to_validated_segments():
     robot = FakeRobotModel()
-    robot.check_collision_free_reduced = lambda q: not (
+    robot.check_collision_free_reduced = lambda q, min_distance=0.0: not (
         0.1 < q[0] < 0.4 and q[1] > q[0] + 0.02
     )
     planner = ReducedJointPlanner(robot, config=PlannerConfig(
@@ -525,6 +749,7 @@ def test_pchip_collision_rejection_falls_back_to_validated_segments():
 def test_pchip_cap_rejection_uses_safe_segment_fallback():
     planner = ReducedJointPlanner(FakeRobotModel(), config=PlannerConfig(
         joint_acceleration_limit=2.0, max_interpolation_steps=2000,
+        max_staged_interpolation_steps=4000,
     ))
     sparse = np.array([[0.0, 0.0], [0.25, 0.15], [0.5, 0.35]])
     fallback, _, failure = planner._timed_path(sparse)
@@ -553,7 +778,7 @@ def test_pchip_cap_rejection_uses_safe_segment_fallback():
 
 
 def test_real_robot_timing_respects_reduced_velocity_limits():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     planner = pipeline.planner
     pipeline.robot_model.model_body_reduced.velocityLimit[0] = 0.2
     start = np.asarray(pipeline.robot_model.state['q'])[
@@ -686,7 +911,9 @@ def test_state_validation_rejects_z_limit_violation():
 def test_returned_segment_validation_checks_collision_between_waypoints():
     pytest.importorskip('ompl')
     robot = FakeRobotModel()
-    robot.check_collision_free_reduced = lambda q: not (0.4 < q[0] < 0.6)
+    robot.check_collision_free_reduced = (
+        lambda q, min_distance=0.0: not (0.4 < q[0] < 0.6)
+    )
     planner = ReducedJointPlanner(
         robot,
         config=PlannerConfig(constraint_check_steps=1, frame_z_max=None),
@@ -695,7 +922,7 @@ def test_returned_segment_validation_checks_collision_between_waypoints():
     goal = np.array([1.0, 0.0])
     planner._set_workspace_corridor(start, goal)
 
-    assert 'path segment 0 is in self-collision' == planner._path_validity_failure(
+    assert 'path segment 0 violates self-collision clearance' == planner._path_validity_failure(
         np.array([start, goal])
     )
 

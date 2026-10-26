@@ -13,7 +13,7 @@ from h12_ros2_controller.utility.joint_limits import (
     JOINT_TORQUE_LIMITS,
 )
 
-DEFAULT_CONFIG_NAME = 'debug.yaml'
+DEFAULT_CONFIG_NAME = 'safety_split.yaml'
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
 def _ensure_yaml_extension(config_path: Path) -> Path:
@@ -292,12 +292,10 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     threshold_angular = float(controller.get('threshold_angular', 0.01))
     execution_start_tolerance = float(controller.get('execution_start_tolerance', 0.01))
     command_seed_max_gap = float(controller.get('command_seed_max_gap', 0.1))
-    frozen_joint_tolerance = float(controller.get('frozen_joint_tolerance', 0.01))
     plan_max_age = float(controller.get('plan_max_age', 30.0))
     for name, value in (
         ('execution_start_tolerance', execution_start_tolerance),
         ('command_seed_max_gap', command_seed_max_gap),
-        ('frozen_joint_tolerance', frozen_joint_tolerance),
         ('plan_max_age', plan_max_age),
         ('threshold_linear', threshold_linear),
         ('threshold_angular', threshold_angular),
@@ -331,7 +329,6 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_angular': threshold_angular,
             'execution_start_tolerance': execution_start_tolerance,
             'command_seed_max_gap': command_seed_max_gap,
-            'frozen_joint_tolerance': frozen_joint_tolerance,
             'plan_max_age': plan_max_age,
             'max_state_lag_ms': max_state_lag_ms,
         },

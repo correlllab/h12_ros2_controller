@@ -41,14 +41,16 @@ def build_robot_model(visualize=False):
     return robot_model
 
 
-def inspect_path(robot_model, path):
+def inspect_path(robot_model, path, min_distance=0.0):
     '''Print validity for every waypoint'''
     all_valid = True
     for idx, q_reduced in enumerate(path):
         # print joint-limit and collision results separately for debugging
         start_time = time.perf_counter()
         within_limits = robot_model.check_within_limits_reduced(q_reduced)
-        collision_free = robot_model.check_collision_free_reduced(q_reduced)
+        collision_free = robot_model.check_collision_free_reduced(
+            q_reduced, min_distance=min_distance,
+        )
         valid = within_limits and collision_free
         check_time = time.perf_counter() - start_time
         all_valid = all_valid and valid
@@ -135,6 +137,7 @@ def main():
         path_valid = inspect_path(
             robot_model,
             result.path,
+            min_distance=config.self_collision_clearance,
         )
         print(f'All waypoints valid: {path_valid}')
         if args.visualize:

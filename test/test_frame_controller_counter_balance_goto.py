@@ -9,8 +9,10 @@ from h12_ros2_controller.example import frame_controller_counter_balance_goto as
 from h12_ros2_controller.core.controller.upper_controller import (
     PathExecutionCancelled, UpperController,
 )
+from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.core.planner import PlanResult, PlannerConfig
 from h12_ros2_controller.core.planner.planner_process import _PlannerWorker
+from h12_ros2_controller.utility.controller_config import load_controller_config
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 
 
@@ -48,6 +50,7 @@ def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
         moving_speed=0.3,
         min_interpolation_steps=30,
         max_interpolation_steps=300,
+        max_staged_interpolation_steps=600,
         timeout=1.0,
     )
     worker.planner = SimpleNamespace(config=config)
@@ -65,6 +68,10 @@ def test_worker_invalid_speed_overrides_leave_configuration_unchanged():
     with worker._config_override(None, None, timeout=0.25):
         assert config.timeout == 0.25
     assert config.timeout == 1.0
+
+    with worker._config_override(None, 600):
+        assert config.max_staged_interpolation_steps == 1200
+    assert config.max_staged_interpolation_steps == 600
 
 
 def test_frame_planning_retries_ranked_ik_goals_from_one_start():
@@ -131,6 +138,11 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller.plan_to_ik_target(ik_timeout=0.8)
     assert np.array_equal(calls[3]['preferred_positions'], goals[1])
 
+    controller.planner.planner_config.request_planning_budget = 1e-9
+    with pytest.raises(TimeoutError, match='planning deadline exceeded'):
+        controller.plan_to_ik_target(ik_timeout=0.8)
+    assert len(calls) == 6
+
 
 def test_named_controller_goal_enables_moving_arm_locality():
     controller = object.__new__(UpperController)
@@ -165,6 +177,7 @@ def test_named_controller_goal_enables_moving_arm_locality():
     controller._plan_configuration_result(goal)
 
     assert calls[0]['local_frames'] == ('left_grasp_frame',)
+    assert calls[0]['local_joint_padding'] == 0.0
     assert np.array_equal(calls[0]['start'], np.zeros(14))
 
 
@@ -203,7 +216,7 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         state={'q': q}, reduced_mask=mask,
         model_body_reduced=SimpleNamespace(nq=14, velocityLimit=np.full(14, 9.0)),
         check_within_limits_reduced=lambda values: True,
-        check_collision_free_reduced=lambda values: True,
+        check_collision_free=lambda values, min_distance=0.0: True,
     )
     controller.enabled_ids = list(range(13, 27))
     controller.low_cmd_handler = SimpleNamespace(
@@ -236,8 +249,10 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         controller.execute_path(path)
     controller.low_cmd_handler.q_cmd[:] = 0.0
     q[0] = 0.02
-    with pytest.raises(ValueError, match='Frozen joints drifted'):
-        controller.execute_path(path)
+    controller.execute_path(path)
+    assert len(commands) == 2
+    assert commands[-1][0] == 0.02
+    commands.clear()
     q[0] = 0.0
     context['planned_at'] -= 31.0
     with pytest.raises(ValueError, match='too old'):
@@ -248,8 +263,16 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         controller.execute_path(path)
     controller.low_cmd_handler._q_clip_limits[13:, 0] = -1.0
 
+    clearances = []
+    controller.robot_model.check_collision_free = (
+        lambda values, min_distance=0.0:
+        clearances.append((values.copy(), min_distance)) or True
+    )
     controller.execute_path(path)
     assert len(commands) == 2
+    assert [minimum for _, minimum in clearances] == (
+        [controller.planner.planner_config.self_collision_clearance] * 2
+    )
 
     commands.clear()
     def command_then_drift(values):
@@ -257,7 +280,16 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         q[0] = 0.02
 
     controller._apply_joint_position = command_then_drift
-    with pytest.raises(RuntimeError, match='Frozen joints drifted during'):
+    controller.execute_path(path)
+    assert len(commands) == 2
+    assert clearances[-1][0][0] == 0.02
+
+    commands.clear()
+    q[0] = 0.0
+    controller.robot_model.check_collision_free = (
+        lambda values, min_distance=0.0: values[0] < 0.01
+    )
+    with pytest.raises(ValueError, match='current self-collision clearance'):
         controller.execute_path(path)
     assert len(commands) == 1
 
@@ -288,6 +320,101 @@ def test_execution_cancellation_stops_before_next_command(monkeypatch):
     assert len(commands) == 1
 
 
+def test_full_body_clearance_accepts_small_measured_torso_changes():
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
+    robot = pipeline.robot_model
+    q = robot.state['q'].copy()
+
+    for torso in (0.0, 0.02, 0.05):
+        q[BODY_JOINTS.index('torso_joint')] = torso
+        assert robot.check_collision_free(q, min_distance=pipeline.planner.config.self_collision_clearance)
+
+
+@pytest.mark.parametrize('startup_fails', (False, True))
+def test_controller_warmup_overlaps_startup_and_cleans_up_failed_init(monkeypatch, startup_fails):
+    events = []
+
+    class FakeModel:
+        def __init__(self, *args, **kwargs):
+            q = np.zeros(27)
+            self.model_body = SimpleNamespace(nv=27)
+            self.state = {'q': q}
+            self.state_reduced = {'q': q[13:]}
+            self.visualizer = None
+
+        def init_subscriber(self, **kwargs):
+            pass
+
+        def update_kinematics(self):
+            pass
+
+        def init_reduced_model(self, joints):
+            pass
+
+        def init_collision_model(self, *args):
+            pass
+
+        def shutdown(self):
+            events.append('model.shutdown')
+
+    class FakeCommands:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def enable_motors(self, *args):
+            pass
+
+        def start(self):
+            events.append('publisher.start')
+
+        def stop_recording(self):
+            pass
+
+        def shutdown(self):
+            events.append('publisher.shutdown')
+
+    class FakePlanner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def warmup_background(self):
+            events.append('planner.background')
+
+        def shutdown(self):
+            events.append('planner.shutdown')
+
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.RobotModel',
+                        FakeModel)
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.LowCmdHandler',
+                        FakeCommands)
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.IKSolver',
+                        lambda *args, **kwargs: SimpleNamespace())
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.PlannerClient',
+                        FakePlanner)
+    monkeypatch.setattr('h12_ros2_controller.core.controller.upper_controller.time.sleep',
+                        lambda seconds: None)
+    config = load_controller_config('sim_safety_split.yaml')
+
+    def startup(self, *args):
+        events.append('controller.startup')
+        if startup_fails:
+            raise RuntimeError('startup failed')
+
+    monkeypatch.setattr(UpperController, '_startup_routine', startup)
+
+    if startup_fails:
+        with pytest.raises(RuntimeError, match='startup failed'):
+            UpperController('', '', '', init=True, config=config)
+        assert events == [
+            'publisher.start', 'planner.background', 'controller.startup', 'planner.shutdown',
+            'model.shutdown', 'publisher.shutdown',
+        ]
+    else:
+        controller = UpperController('', '', '', init=True, config=config)
+        assert events == ['publisher.start', 'planner.background', 'controller.startup']
+        controller.shutdown()
+
+
 class CommandHandler:
     def __init__(self):
         self._estopped = False
@@ -314,14 +441,14 @@ def controller_fixture():
     model = SimpleNamespace(
         state=state, state_reduced={'q': q[mask].copy()}, reduced_mask=mask,
         check_within_limits_reduced=lambda value: True,
-        check_collision_free_reduced=lambda value: True,
+        check_collision_free_reduced=lambda value, min_distance=0.0: True,
         check_collision_free=lambda value: True,
         dynamics=SimpleNamespace(get_gravity_compensation=lambda value: np.ones(27)),
     )
     controller = SimpleNamespace(
         robot_model=model, low_cmd_handler=CommandHandler(),
         arm_ids=list(range(13, 27)), moving_arm='left', dt=0.1, dq_lim=1.,
-        torso_target=0.0,
+        torso_target=0.0, d_min=0.02,
         config={'controller': {'timeout': 0.02, 'threshold_ik': 0.0001,
                                'threshold_joint': 0.01,
                                'threshold_linear': 0.01, 'threshold_angular': 0.01}},
@@ -384,7 +511,9 @@ def test_on_mode_passes_moving_velocity_to_counter_controller():
 
 def test_live_command_skips_planner_joint_and_collision_checks():
     controller = controller_fixture()
-    controller.robot_model.check_collision_free_reduced = lambda value: False
+    controller.robot_model.check_collision_free_reduced = (
+        lambda value, min_distance=0.0: False
+    )
     controller.robot_model.check_within_limits_reduced = lambda value: False
 
     demo.send(controller, np.zeros(27), np.zeros(27), balanced=False)
@@ -576,7 +705,9 @@ def test_balanced_live_goto_timeout_holds_without_raising(monkeypatch, capsys):
     controller.update_robot_model = lambda: None
     controller.goto_reduced_configuration = lambda target: np.ones(27)
     controller._limit_joint_vel = lambda velocity: velocity
-    controller.robot_model.check_collision_free_reduced = lambda value: False
+    controller.robot_model.check_collision_free_reduced = (
+        lambda value, min_distance=0.0: False
+    )
     controller.ik_solver = SimpleNamespace(
         goto_reduced_configuration=lambda target: np.ones(27),
         integrate=lambda velocity: None,
@@ -774,6 +905,24 @@ def test_path_rejects_stale_start_and_retimes_excessive_velocity():
     assert np.array_equal(retimed[-1], path[-1])
     assert len(retimed) > len(path)
     assert np.max(np.abs(velocities)) <= controller.dq_lim + 1e-6
+
+
+def test_command_seeded_plan_is_not_rejected_for_safe_measured_lag():
+    controller = controller_fixture()
+    controller.low_cmd_handler.q_cmd[13] = 0.08
+    path = np.zeros((2, 14))
+    path[:, 0] = (0.08, 0.09)
+    controller.last_plan_result = PlanResult(
+        success=True, path=path.copy(),
+        metadata={'execution_context': {'start': path[0].copy()}},
+    )
+
+    checked, _ = demo.check_path(controller, path)
+
+    assert np.array_equal(checked[0], path[0])
+    controller.low_cmd_handler.q_cmd[13] = 0.12
+    with pytest.raises(RuntimeError, match='Robot moved'):
+        demo.check_path(controller, path)
     assert len(controller.low_cmd_handler.calls) == 0
 
 
@@ -782,7 +931,7 @@ def test_retimed_path_checks_intermediate_waypoints_before_motion():
     path = np.zeros((2, 14))
     path[1, 0] = 0.3
     controller.robot_model.check_collision_free_reduced = (
-        lambda waypoint: not 0.05 < waypoint[0] < 0.25
+        lambda waypoint, min_distance=0.0: not 0.05 < waypoint[0] < 0.25
     )
 
     with pytest.raises(ValueError, match='invalid waypoint'):
@@ -1029,13 +1178,17 @@ def test_floor_choice_selects_separate_planner_without_changing_collision_checks
     original = SimpleNamespace(
         urdf_path='robot.urdf', urdf_sphere_path='spheres.urdf',
         srdf_sphere_path='spheres.srdf', handless=False,
-        planner_config=PlannerConfig(frame_z_min=0.0),
+        planner_config=PlannerConfig(frame_z_min=0.0, prewarm_worker=True),
     )
     controller.planner = original
     created = []
+    warmed = []
 
     def planner_client(*args, planner_config, **kwargs):
-        planner = SimpleNamespace(planner_config=planner_config)
+        planner = SimpleNamespace(
+            planner_config=planner_config,
+            warmup_background=lambda: warmed.append(True),
+        )
         created.append(planner)
         return planner
 
@@ -1052,6 +1205,7 @@ def test_floor_choice_selects_separate_planner_without_changing_collision_checks
     demo.select_planner(controller, planners, False)
     assert controller.planner is created[0]
     assert len(created) == 1
+    assert warmed == [True]
 
 
 def test_disabled_home_floor_is_chosen_before_warmup(monkeypatch):
@@ -1141,6 +1295,7 @@ def test_noop_warmup_starts_real_planner_worker_without_motion():
         pytest.skip('robot assets unavailable')
     planner = PlannerClient(*assets, planner_config=PlannerConfig())
     try:
+        planner.warmup_background()
         planner.warmup()
         assert planner._process.is_alive()
         home = np.zeros(14)

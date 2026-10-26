@@ -1,5 +1,6 @@
 import queue
 import threading
+import time
 
 import numpy as np
 import pytest
@@ -46,8 +47,11 @@ class FakeProcess:
         if self.behavior == 'startup_error':
             self.responses.put({'type': 'startup_error', 'error': 'bad model',
                                 'generation': generation})
-        else:
-            self.responses.put({'type': 'ready', 'generation': generation})
+        elif self.behavior == 'startup_dead':
+            self.alive = False
+        elif self.behavior != 'startup_hung':
+            self.responses.put({'type': 'ready', 'generation': generation,
+                                'ompl_seed': self.init_args.get('ompl_seed')})
 
         def respond(request):
             if request['command'] == 'shutdown':
@@ -70,6 +74,7 @@ class FakeProcess:
                 self.responses.put(message)
 
         self.requests.on_put = respond
+        self.started.set()
 
     def is_alive(self):
         return self.alive
@@ -90,6 +95,7 @@ class FakeContext:
         self.behaviors = iter(behaviors)
         self.queues = []
         self.processes = []
+        self.started = threading.Event()
 
     def Queue(self):
         value = FakeQueue()
@@ -98,6 +104,7 @@ class FakeContext:
 
     def Process(self, target, args, name, daemon):
         process = FakeProcess(*args, next(self.behaviors))
+        process.started = self.started
         self.processes.append(process)
         return process
 
@@ -120,7 +127,29 @@ def test_hung_worker_times_out_and_next_request_restarts():
     assert result.reason == 'recovered'
     assert result.metadata['client_timings']['total'] >= 0.0
     assert planner._ctx.processes[1].init_args['ompl_seed'] == 42
+    assert planner.ompl_seed_effective == 42
     planner.shutdown()
+    assert planner.ompl_seed_effective is None
+
+
+def test_response_timeout_override_is_shorter_than_configured_timeout():
+    planner = client(['hung'])
+    planner.request_timeout = 1.0
+    started = time.perf_counter()
+    with pytest.raises(TimeoutError, match='response timed out'):
+        planner.plan_configuration(np.zeros(1), np.zeros(1), np.zeros(1),
+                                   response_timeout=0.025)
+    assert time.perf_counter() - started < 0.5
+    assert planner._ctx.processes[0].terminated
+
+
+@pytest.mark.parametrize('timeout', [0, -1, float('inf'), float('nan')])
+def test_invalid_response_timeout_does_not_start_worker(timeout):
+    planner = client(['ready'])
+    with pytest.raises(ValueError, match='response_timeout'):
+        planner.plan_configuration(np.zeros(1), np.zeros(1), np.zeros(1),
+                                   response_timeout=timeout)
+    assert not planner._ctx.processes
 
 
 def test_late_response_from_timed_out_worker_cannot_poison_next_request():
@@ -183,6 +212,178 @@ def test_concurrent_requests_are_serialized():
     planner.shutdown()
 
 
+def test_background_warmup_is_nonblocking_and_idempotent():
+    planner = client(['startup_hung'])
+    assert planner.startup_duration is None
+    assert planner.startup_error is None
+    assert not planner.ready
+    started = time.perf_counter()
+    assert planner.warmup_background()
+    assert time.perf_counter() - started < 0.5
+    assert planner._ctx.started.wait(timeout=1)
+    assert planner._warmup_thread.is_alive()
+    assert not planner.ready
+    assert not planner.warmup_background()
+    process = planner._ctx.processes[0]
+    process.responses.put({'type': 'ready', 'generation': planner._generation})
+    planner._warmup_thread.join(timeout=1)
+    assert not planner._warmup_thread.is_alive()
+    assert planner.ready
+    assert planner.startup_duration >= 0.0
+    assert not planner.warmup_background()
+    duration = planner.startup_duration
+    assert planner.warmup() >= 0.0
+    assert planner.startup_duration == duration
+    assert len(planner._ctx.processes) == 1
+    planner.shutdown()
+    assert not planner.ready
+
+
+def test_plan_waits_for_background_startup_without_spawning_again():
+    planner = client(['startup_hung'])
+    planner.warmup_background()
+    assert planner._ctx.started.wait(timeout=1)
+    results = queue.Queue()
+    entered = threading.Event()
+
+    def request():
+        entered.set()
+        try:
+            results.put(planner._request({'command': 'plan_configuration'}))
+        except Exception as exc:
+            results.put(exc)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert entered.wait(timeout=1)
+    with pytest.raises(queue.Empty):
+        results.get(timeout=0.025)
+    process = planner._ctx.processes[0]
+    assert process.requests.items.empty()
+    process.responses.put({'type': 'ready', 'generation': planner._generation})
+    result = results.get(timeout=1)
+    thread.join(timeout=1)
+    planner._warmup_thread.join(timeout=1)
+    assert isinstance(result, PlanResult)
+    assert len(planner._ctx.processes) == 1
+    planner.shutdown()
+
+
+def test_concurrent_background_warmup_calls_schedule_one_attempt():
+    planner = client(['startup_hung'])
+    barrier = threading.Barrier(6)
+    scheduled = queue.Queue()
+
+    def warmup():
+        barrier.wait(timeout=1)
+        scheduled.put(planner.warmup_background())
+
+    threads = [threading.Thread(target=warmup) for _ in range(6)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=1)
+        assert not thread.is_alive()
+    assert sum(scheduled.get(timeout=1) for _ in threads) == 1
+    assert planner._ctx.started.wait(timeout=1)
+    assert len(planner._ctx.processes) == 1
+    planner.shutdown()
+    planner._warmup_thread.join(timeout=1)
+
+
+@pytest.mark.parametrize('behavior, error', [
+    ('startup_error', 'bad model'),
+    ('startup_hung', 'did not start in time'),
+    ('startup_dead', 'exited during startup'),
+])
+def test_background_startup_errors_are_observable_and_retryable(
+        monkeypatch, behavior, error):
+    unhandled = []
+    monkeypatch.setattr(threading, 'excepthook', unhandled.append)
+    planner = client([behavior, 'recovered'])
+    planner.startup_timeout = 0.025
+    assert planner.warmup_background()
+    planner._warmup_thread.join(timeout=1)
+    assert not planner._warmup_thread.is_alive()
+    assert not unhandled
+    assert not planner.ready
+    assert isinstance(planner.startup_error, RuntimeError)
+    assert error in str(planner.startup_error)
+    assert planner.startup_duration >= 0.0
+    assert all(item.closed for item in planner._ctx.queues)
+    assert not planner.warmup_background()
+    assert planner.warmup() >= 0.0
+    assert planner.ready
+    assert planner.startup_error is None
+    planner.shutdown()
+
+
+def test_shutdown_interrupts_background_startup_and_prevents_restart():
+    planner = client(['startup_hung'])
+    planner.warmup_background()
+    assert planner._ctx.started.wait(timeout=1)
+    process = planner._ctx.processes[0]
+    started = time.perf_counter()
+    planner.shutdown()
+    assert time.perf_counter() - started < 1.0
+    planner._warmup_thread.join(timeout=1)
+    assert not planner._warmup_thread.is_alive()
+    assert process.terminated
+    assert not planner.ready
+    assert planner._process is None
+    assert all(item.closed for item in planner._ctx.queues)
+    process.responses.put({'type': 'ready', 'generation': planner._generation})
+    for operation in (planner.warmup_background, planner.warmup,
+                      lambda: planner._request({'command': 'plan_configuration'})):
+        with pytest.raises(RuntimeError, match='shut down'):
+            operation()
+    assert len(planner._ctx.processes) == 1
+    planner.shutdown()
+
+
+def test_shutdown_before_warmup_thread_runs_prevents_late_spawn(monkeypatch):
+    planner = client(['ready'])
+    release = threading.Event()
+    warmup = planner._warmup_background
+
+    def delayed_warmup():
+        assert release.wait(timeout=1)
+        warmup()
+
+    monkeypatch.setattr(planner, '_warmup_background', delayed_warmup)
+    planner.warmup_background()
+    try:
+        planner.shutdown()
+    finally:
+        release.set()
+        planner._warmup_thread.join(timeout=1)
+    assert not planner._warmup_thread.is_alive()
+    assert not planner._ctx.processes
+    assert not planner.ready
+
+
+def test_ready_message_after_stop_signal_does_not_mark_worker_ready(monkeypatch):
+    planner = client(['ready'])
+    get = FakeQueue.get
+
+    def get_and_stop(self, timeout=None):
+        message = get(self, timeout=timeout)
+        if message.get('type') == 'ready':
+            planner._shutdown.set()
+        return message
+
+    monkeypatch.setattr(FakeQueue, 'get', get_and_stop)
+    planner.warmup_background()
+    planner._warmup_thread.join(timeout=1)
+    assert not planner._warmup_thread.is_alive()
+    assert not planner.ready
+    assert planner._process is None
+    assert planner._ctx.processes[0].terminated
+    assert all(item.closed for item in planner._ctx.queues)
+    assert 'shut down' in str(planner.startup_error)
+    planner.shutdown()
+
+
 def test_worker_messages_include_generation_and_request_id(monkeypatch):
     class StubWorker:
         def __init__(self, init_args):
@@ -201,7 +402,9 @@ def test_worker_messages_include_generation_and_request_id(monkeypatch):
         args=({'generation': 7, 'ompl_seed': None}, requests, responses),
     )
     thread.start()
-    assert responses.get(timeout=1) == {'type': 'ready', 'generation': 7}
+    assert responses.get(timeout=1) == {
+        'type': 'ready', 'generation': 7, 'ompl_seed': None,
+    }
     requests.put({'command': 'plan_configuration', 'request_id': 1})
     result = responses.get(timeout=1)
     assert result['type'] == 'result'

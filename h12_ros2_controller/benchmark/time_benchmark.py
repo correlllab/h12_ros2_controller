@@ -105,7 +105,7 @@ class TimeBenchmark:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Timing benchmark script')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     args = parser.parse_args()
 
     config= load_controller_config(args.config)

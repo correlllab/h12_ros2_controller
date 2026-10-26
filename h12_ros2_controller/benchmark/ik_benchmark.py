@@ -7,7 +7,8 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import replace
+from dataclasses import asdict, replace
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import numpy as np
@@ -40,7 +41,7 @@ COMPARISON_PLANNERS = ('RRTConnect', 'BITstar', 'InformedRRTstar')
 
 
 def compare_planners(cases_path=CORPUS, case_ids=COMPARISON_CASES, seed=42,
-                     repeats=1, config_name='debug.yaml', output=None):
+                      repeats=1, config_name='sim_safety_split.yaml', output=None):
     '''Compare independently seeded offline planners on identical saved cases'''
     if not case_ids or repeats < 1 or seed < 0:
         raise ValueError('Comparison needs cases, positive repeats, and nonnegative seed')
@@ -71,6 +72,16 @@ def compare_planners(cases_path=CORPUS, case_ids=COMPARISON_CASES, seed=42,
             detours = [record['plan_metadata']['joint_path_ratio'] for record in successes]
             deviations = [max(record['plan_metadata'].get(
                 'hand_segment_deviation', {}).values(), default=0.0) for record in successes]
+            ompl_attempts = [
+                attempt for record in records
+                for attempt in record['candidate_planning_attempts']
+                if not attempt['direct_only']
+            ]
+            ompl_times = [
+                attempt['metadata'].get('stage_timings', {}).get('ompl')
+                for attempt in ompl_attempts
+            ]
+            ompl_times = [duration for duration in ompl_times if duration is not None]
             summary[name] = {
                 'successes': len(successes), 'attempts': len(records),
                 'success_rate': len(successes) / len(records),
@@ -78,8 +89,15 @@ def compare_planners(cases_path=CORPUS, case_ids=COMPARISON_CASES, seed=42,
                 'planner_calls_p95_s': float(np.percentile(times, 95)),
                 'joint_detour_median': float(np.median(detours)) if detours else None,
                 'hand_deviation_max_m': max(deviations, default=None),
-                'ompl_calls': sum(any(not attempt['direct_only'] for attempt in
+                'frame_cases': sum(record['ik_success'] is not None for record in records),
+                'named_cases': sum(record['ik_success'] is None for record in records),
+                'ompl_cases': sum(any(not attempt['direct_only'] for attempt in
                                       record['candidate_planning_attempts']) for record in records),
+                'ompl_attempts': len(ompl_attempts),
+                'ompl_search_p50_s': (float(np.percentile(ompl_times, 50))
+                                      if ompl_times else None),
+                'ompl_search_p95_s': (float(np.percentile(ompl_times, 95))
+                                      if ompl_times else None),
                 'results': records,
             }
             row = summary[name]
@@ -89,13 +107,15 @@ def compare_planners(cases_path=CORPUS, case_ids=COMPARISON_CASES, seed=42,
                   f'p95={row["planner_calls_p95_s"]:.3f}s, '
                   f'joint detour median={row["joint_detour_median"]}, '
                   f'hand deviation max={row["hand_deviation_max_m"]}, '
-                  f'OMPL cases={row["ompl_calls"]}')
+                  f'OMPL cases={row["ompl_cases"]}, '
+                  f'OMPL search p95={row["ompl_search_p95_s"]}')
     if output is not None:
         Path(output).write_text(json.dumps(_jsonable({
             'schema_version': 1, 'seed': seed, 'repeats': repeats,
             'case_ids': list(case_ids), 'corpus_sha256': hashlib.sha256(
                 Path(cases_path).read_bytes()).hexdigest(),
             'config': config_name, 'mode': 'offline', 'reuse_policy': 'isolated',
+            'trial_independence': 'cache-disabled shared RNG stream',
             'planners': summary,
         }), indent=2, allow_nan=False) + '\n')
     return summary
@@ -124,6 +144,17 @@ def _asset_ids(config_name):
         else str(path): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in paths
     }
+
+
+def _dependency_versions():
+    '''Record installed solver versions alongside benchmark results'''
+    versions = {}
+    for name in ('ompl', 'pin', 'pin-pink', 'qpsolvers'):
+        try:
+            versions[name] = version(name)
+        except PackageNotFoundError:
+            versions[name] = None
+    return versions
 
 
 def _resolve_case(case, pipeline):
@@ -177,13 +208,16 @@ class _MeasuredPlanner:
             self.setup_time = time.perf_counter() - started
 
     def plan(self, start, goal, active_mask=None, direct_only=False,
-             local_frames=(), timeout=None):
+             local_frames=(), timeout=None, local_joint_padding=None,
+             deadline=None):
         started = time.perf_counter()
         if self.client is None:
             result = self.offline.plan(
                 start, goal, active_mask=active_mask, direct_only=direct_only,
                 local_frames=local_frames, timeout=timeout,
                 allow_reuse=self.reuse_enabled,
+                local_joint_padding=local_joint_padding,
+                deadline=deadline,
             )
         else:
             result = self.client.plan_configuration(
@@ -191,6 +225,9 @@ class _MeasuredPlanner:
                 active_mask=active_mask, direct_only=direct_only,
                 local_frames=local_frames, timeout=timeout,
                 allow_reuse=self.reuse_enabled,
+                local_joint_padding=local_joint_padding,
+                planning_budget=(None if deadline is None else
+                                 max(0.01, deadline - time.perf_counter())),
             )
         self.attempts.append({
             'direct_only': direct_only, 'success': result.success,
@@ -262,7 +299,7 @@ def _record(index, repeat, case, result, start, pipeline, planner, total):
 
 
 def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
-         config_name='debug.yaml', start_name='arms_front_45', cases_path=None,
+          config_name='sim_safety_split.yaml', start_name='arms_front_45', cases_path=None,
          repeats=1, output=None, mode='offline', reuse_policy='isolated',
          planner_name=None, case_ids=None):
     if repeats < 1 or seed < 0 or mode not in ('offline', 'worker'):
@@ -326,7 +363,8 @@ def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
                         )
                         plan = planner.plan(pipeline.robot_model.state_reduced['q'], goal,
                                             direct_only=case.get('direct_only', False),
-                                            local_frames=local_frames)
+                                            local_frames=local_frames,
+                                            local_joint_padding=0.0)
                         result = KinematicPlan(plan=plan, elapsed_time=time.perf_counter() - started)
                     else:
                         result = pipeline.plan_case(case)
@@ -374,10 +412,18 @@ def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
                 'planner': pipeline.planner.offline.config.planner,
                 'case_ids': list(case_ids) if case_ids is not None else None,
                 'reuse_policy': reuse_policy,
-                'ompl_seed': max(1, seed) if seed_api or mode == 'worker' else None,
-                'seeded_ompl': seed_api or mode == 'worker', 'repeats': repeats,
+                'trial_independence': ('cache-disabled shared RNG stream'
+                                       if reuse_policy == 'isolated' else
+                                       'sequential with path reuse'),
+                'ompl_seed': (max(1, seed) if seed_api else
+                              planner.client.ompl_seed_effective if mode == 'worker' else None),
+                'seeded_ompl': (seed_api if mode == 'offline' else
+                                planner.client.ompl_seed_effective == max(1, seed)),
+                'repeats': repeats,
                 'revision': revision.stdout.strip() if revision.returncode == 0 else None,
                 'worktree_dirty': status.returncode != 0 or bool(status.stdout.strip()),
+                'dependency_versions': _dependency_versions(),
+                'effective_planner_config': _jsonable(asdict(pipeline.planner_config)),
                 'config': config_name, 'assets': _asset_ids(config_name),
                 'corpus_sha256': hashlib.sha256(Path(cases_path).read_bytes()).hexdigest()
                 if cases_path is not None else None,
@@ -397,7 +443,7 @@ if __name__ == '__main__':
     parser.add_argument('--ik-timeout', type=float, default=1.0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--visualize', action='store_true')
-    parser.add_argument('--config', default='debug.yaml', help='Controller YAML profile')
+    parser.add_argument('--config', default='sim_safety_split.yaml', help='Controller YAML profile')
     parser.add_argument('--start', default='arms_front_45',
                         help='Named starting configuration')
     parser.add_argument('--cases', help='Saved frame case JSON (single case or list)')
@@ -407,7 +453,8 @@ if __name__ == '__main__':
     parser.add_argument('--output', help='Write per-case results as JSON')
     parser.add_argument('--mode', choices=('offline', 'worker'), default='offline')
     parser.add_argument('--reuse-policy', choices=('isolated', 'sequential'),
-                        default='isolated')
+                        default='isolated',
+                        help='isolated disables cache; trials still share a progressing RNG stream')
     parser.add_argument('--planner', choices=COMPARISON_PLANNERS,
                         help='Use this planner instead of the configured default')
     parser.add_argument('--planners', action='store_true',

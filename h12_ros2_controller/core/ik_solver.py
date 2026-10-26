@@ -5,6 +5,8 @@ import pink
 import qpsolvers
 import meshcat_shapes
 import numpy as np
+import pinocchio as pin
+from pink.tasks import LinearHolonomicTask
 
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -209,9 +211,9 @@ class IKSolver:
         visualizer = self.robot_model.visualizer
         if visualizer is not None and visualizer.viz is not None:
             viewer = visualizer.viz.viewer
-            torso_to_world = self.robot_model.get_frame_transformation('torso_link')
+            pelvis_to_world = self.robot_model.get_frame_transformation('pelvis')
             for task_name, task in self.frame_tasks.items():
-                target_to_world = torso_to_world @ task.transform_target_to_world.np
+                target_to_world = pelvis_to_world @ task.transform_target_to_world.np
                 viewer[task_name].set_transform(target_to_world)
                 frame_name = task.frame
                 if not self._frame_is_valid(frame_name):
@@ -283,27 +285,36 @@ class IKSolver:
         )
 
     def _frame_task_errors(self, configuration):
-        '''Compute the worst frame residual for per-target convergence'''
+        '''Compute worst physical frame position and orientation residuals'''
         linear_err = 0.0
         angular_err = 0.0
         for task in self.frame_tasks.values():
-            err = task.compute_error(configuration)
-            if not np.all(np.isfinite(err)):
-                return float('inf'), float('inf')
-            linear_err = max(linear_err, np.linalg.norm(err[:3]))
-            angular_err = max(angular_err, np.linalg.norm(err[3:]))
+            linear, angular = self._frame_task_residual(task, configuration)
+            linear_err = max(linear_err, linear)
+            angular_err = max(angular_err, angular)
         return linear_err, angular_err
+
+    def _frame_task_residual(self, task, configuration):
+        '''Measure Cartesian error rather than coupled SE(3) log translation'''
+        target = getattr(task, 'transform_target_to_world', None)
+        if target is not None and hasattr(configuration, 'get_transform_frame_to_world'):
+            current = configuration.get_transform_frame_to_world(task.frame)
+            linear = np.linalg.norm(current.translation - target.translation)
+            angular = np.linalg.norm(pin.log3(current.rotation.T @ target.rotation))
+        else:
+            error = task.compute_error(configuration)
+            linear = np.linalg.norm(error[:3])
+            angular = np.linalg.norm(error[3:])
+        if not np.isfinite(linear) or not np.isfinite(angular):
+            return float('inf'), float('inf')
+        return float(linear), float(angular)
 
     def _frame_error_details(self, configuration):
         '''Return individual frame residuals for candidate diagnostics'''
         return {
-            getattr(task, 'frame', name): (
-                float(np.linalg.norm(error[:3])),
-                float(np.linalg.norm(error[3:])),
-            )
+            getattr(task, 'frame', name): self._frame_task_residual(task, configuration)
             for name, task in self.frame_tasks.items()
             if hasattr(task, 'compute_error')
-            for error in (task.compute_error(configuration),)
         }
 
     def _task_error_score(self, attempt, linear_threshold, angular_threshold):
@@ -395,8 +406,13 @@ class IKSolver:
                     q = self._normalize_reduced_seed(seed, seed_name)
                     if active_mask is not None:
                         q = np.where(active_mask, q, self._batch_reduced_reference)
+                    model = self.robot_model.model_body_reduced
                 else:
                     q = self._normalize_full_seed(seed, seed_name)
+                    model = self.robot_model.model_body
+                if (np.any(q < model.lowerPositionLimit) or
+                        np.any(q > model.upperPositionLimit)):
+                    raise ValueError(f'{seed_name} seed exceeds joint limits')
             except (TypeError, ValueError, OverflowError) as exc:
                 seeds.append((seed_name, None, str(exc)))
                 continue
@@ -577,6 +593,15 @@ class IKSolver:
     def _solve_ik_reduced_attempt(self, seed_name, q_seed, alpha, deadline,
                                     linear_threshold, angular_threshold, active_mask=None):
         self.configuration_reduced.update(q_seed)
+        inactive_constraint = None
+        if active_mask is not None and not np.all(active_mask):
+            model = self.configuration_reduced.model
+            if model.nq != model.nv:
+                raise ValueError('Reduced IK active mask requires nq == nv')
+            selector = np.eye(model.nv)[~active_mask]
+            inactive_constraint = LinearHolonomicTask(
+                A=selector, b=np.zeros(len(selector)), q_0=q_seed.copy(),
+            )
         preferred, costs = self._batch_posture_preference(q_seed)
         original_cost = getattr(self.posture_task, 'cost', None)
         if original_cost is not None:
@@ -599,12 +624,17 @@ class IKSolver:
                 if time.monotonic() >= deadline:
                     reason = 'timeout'
                     break
-                vel = self._ik_reduced(list(self.frame_tasks.values()) + [self.posture_task], alpha)
+                constraints = None
+                if inactive_constraint is not None:
+                    # lock inactive displacement in the QP, not after solving it
+                    inactive_constraint.q_0 = self.configuration_reduced.q.copy()
+                    constraints = [inactive_constraint]
+                tasks = list(self.frame_tasks.values()) + [self.posture_task]
+                vel = (self._ik_reduced(tasks, alpha, constraints=constraints)
+                       if constraints else self._ik_reduced(tasks, alpha))
                 if not np.all(np.isfinite(vel)):
                     reason = 'non-finite velocity'
                     break
-                if active_mask is not None:
-                    vel = np.where(active_mask, vel, 0.)
                 self.configuration_reduced.integrate_inplace(vel, alpha)
                 if not np.all(np.isfinite(self.configuration_reduced.q)):
                     reason = 'non-finite configuration'
@@ -777,7 +807,9 @@ class IKSolver:
                             attempt.success = False
                             attempt.reason = 'joint limits'
                         elif (hasattr(self.robot_model, 'check_collision_free_reduced') and
-                              not self.robot_model.check_collision_free_reduced(q_reduced)):
+                               not self.robot_model.check_collision_free_reduced(
+                                   q_reduced, min_distance=self.d_min,
+                               )):
                             attempt.success = False
                             attempt.reason = 'self-collision'
                     except Exception as exc:

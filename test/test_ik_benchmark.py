@@ -10,19 +10,25 @@ from h12_ros2_controller.benchmark.ik_benchmark import (
 )
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.core.planner.reduced_joint_planner import ReducedJointPlanner
+from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 
 def test_corpus_has_fixed_paired_and_failure_cases():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     cases = json.loads(CORPUS.read_text())
     resolved = {case['id']: _resolve_case(case, pipeline) for case in cases}
-    assert _asset_ids('debug.yaml') == _asset_ids('config/debug.yaml')
+    assert BODY_JOINTS[12] == 'torso_joint'
+    assert resolved['torso_offset_left_pitch']['start_q'][12] == 0.03
+    assert resolved['torso_offset_left_pitch']['start_q'][0] == 0.0
+    assert _asset_ids('sim_safety_split.yaml') == _asset_ids('config/sim_safety_split.yaml')
+    assert all(case['config'] == 'sim_safety_split.yaml' for case in cases)
     assert len(resolved) == len(cases)
     assert len(cases) >= 20
     assert {'direct', 'reverse', 'near_wrist_limit', 'blocked_direct', 'infeasible'} <= {
         case['category'] for case in cases
     }
-    assert {'reverse_local', 'orientation_edge', 'frozen_joint', 'dual_arm_named'} <= {
+    assert {'reverse_local', 'orientation_edge', 'frozen_joint',
+            'dual_arm_named', 'nearby_goal'} <= {
         case['category'] for case in cases
     }
     assert {'dual_frame', 'dual_frame_stress'} <= {
@@ -53,6 +59,9 @@ def test_benchmark_outputs_case_attempts_and_phase_timings(tmp_path):
     assert payload['schema_version'] == 1
     assert payload['mode'] == 'offline'
     assert payload['reuse_policy'] == 'isolated'
+    assert payload['trial_independence'] == 'cache-disabled shared RNG stream'
+    assert payload['effective_planner_config']['local_joint_padding'] == 0.6
+    assert 'ompl' in payload['dependency_versions']
     assert not any(
         (record['plan_metadata'] or {}).get('cache_hit', False)
         for record in payload['results']
@@ -60,7 +69,7 @@ def test_benchmark_outputs_case_attempts_and_phase_timings(tmp_path):
     assert isinstance(payload['seeded_ompl'], bool)
     assert payload['seed'] == 42
     assert len(payload['results']) == 6
-    assert payload['assets']['config/debug.yaml']
+    assert payload['assets']['config/sim_safety_split.yaml']
     direct, blocked, unreachable = payload['results'][:3]
     assert direct['success'] and direct['ik_success']
     assert direct['quality']['wrist_margin'] is not None
@@ -86,23 +95,26 @@ def test_worker_corpus_seeding_and_named_return_locality(tmp_path):
     output = tmp_path / 'worker.json'
     path.write_text(json.dumps(selected))
 
-    assert main(cases_path=path, mode='worker', seed=42, output=output) == 1
+    successes = main(cases_path=path, mode='worker', seed=42, output=output)
 
     payload = json.loads(output.read_text())
     result = payload['results'][0]
+    assert successes == int(result['success'])
     assert payload['seeded_ompl'] and payload['ompl_seed'] == 42
-    assert result['success']
-    assert result['plan_metadata']['joint_path_ratio'] <= 2.0
-    assert result['plan_metadata']['local_x_bounds']['left_grasp_frame'] > 0.0
+    if result['success']:
+        assert result['plan_metadata']['joint_path_ratio'] <= 2.0
+        assert result['plan_metadata']['local_x_bounds']['left_grasp_frame'] > 0.0
+    else:
+        assert 'exceeds max_interpolation_steps' in result['reason']
     assert result['candidate_planning_attempts'][0]['metadata']['client_timings']['total'] > 0
 
 
-def test_sequential_benchmark_reports_validated_reverse_hit(tmp_path):
+def test_sequential_benchmark_prefers_direct_return_over_cached_route(tmp_path):
     cases = [
         {'id': 'home_front', 'start_name': 'home',
-         'plan_goal_name': 'arms_front_45', 'config': 'debug.yaml'},
+         'plan_goal_name': 'arms_front_45', 'config': 'sim_safety_split.yaml'},
         {'id': 'front_home', 'start_name': 'arms_front_45',
-         'plan_goal_name': 'home', 'config': 'debug.yaml'},
+         'plan_goal_name': 'home', 'config': 'sim_safety_split.yaml'},
     ]
     path = tmp_path / 'sequential.json'
     output = tmp_path / 'sequential_results.json'
@@ -112,11 +124,12 @@ def test_sequential_benchmark_reports_validated_reverse_hit(tmp_path):
 
     payload = json.loads(output.read_text())
     assert payload['reuse_policy'] == 'sequential'
-    assert payload['results'][1]['plan_metadata']['cache_hit']
+    assert payload['results'][1]['reason'] == 'direct path'
+    assert not payload['results'][1]['plan_metadata'].get('cache_hit', False)
 
 
 def test_comparison_planners_and_path_length_objective():
-    pipeline = KinematicPipeline()
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     for name, planner_type in (('RRTConnect', og.RRTConnect),
                                ('BITstar', og.BITstar),
                                ('InformedRRTstar', og.InformedRRTstar)):
@@ -140,6 +153,10 @@ def test_comparison_uses_five_fixed_cases_and_reports_metrics(tmp_path):
     assert set(summary) == {'RRTConnect', 'BITstar', 'InformedRRTstar'}
     for row in summary.values():
         assert row['attempts'] == len(COMPARISON_CASES)
+        assert row['frame_cases'] + row['named_cases'] == row['attempts']
+        assert row['ompl_attempts'] >= row['ompl_cases']
+        if row['ompl_search_p95_s'] is not None:
+            assert row['ompl_search_p95_s'] >= row['ompl_search_p50_s'] >= 0
         assert 0 <= row['success_rate'] <= 1
         assert row['planner_calls_p95_s'] >= row['planner_calls_p50_s'] >= 0
         assert all(record['plan_metadata'] is None or

@@ -62,17 +62,12 @@ class UpperController:
         self.command_seed_max_gap = float(
             controller_cfg.get('command_seed_max_gap', COMMAND_SEED_MAX_GAP)
         )
-        self.frozen_joint_tolerance = float(
-            controller_cfg.get('frozen_joint_tolerance', 0.01)
-        )
         self.plan_max_age = float(controller_cfg.get('plan_max_age', 30.0))
         for name in ('threshold_linear', 'threshold_angular'):
             value = float(controller_cfg.get(name, 1e-3 if name == 'threshold_linear' else 1e-2))
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f'Controller {name} must be finite and positive')
-        for name in ('execution_start_tolerance', 'command_seed_max_gap',
-                     'frozen_joint_tolerance',
-                     'plan_max_age'):
+        for name in ('execution_start_tolerance', 'command_seed_max_gap', 'plan_max_age'):
             value = getattr(self, name)
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f'Controller {name} must be finite and positive')
@@ -149,18 +144,22 @@ class UpperController:
             startup_timeout=planner_config.worker_startup_timeout,
         )
         self._prior_ik = None
-
-        if self.visualize:
-            self.robot_model.init_visualizer()
-            self.robot_model.config_visualizer(show_com=True, show_zmp=True)
-
         # default end effector frame names for velocity limiting
         self.left_ee_name = 'left_wrist_yaw_link'
         self.right_ee_name = 'right_wrist_yaw_link'
 
-        if init:
-            # move through staged init poses before rotating torso to avoid hand/hip scraping
-            self._startup_routine(torso_init, self.torso_target)
+        try:
+            if planner_config.prewarm_worker:
+                self.planner.warmup_background()
+            if self.visualize:
+                self.robot_model.init_visualizer()
+                self.robot_model.config_visualizer(show_com=True, show_zmp=True)
+            if init:
+                # move through init poses before rotating torso to avoid hand/hip scraping
+                self._startup_routine(torso_init, self.torso_target)
+        except Exception:
+            self.shutdown()
+            raise
 
     def _startup_routine(self, torso_init, torso_target):
         for config_name in ('init_1', 'init_2', 'init_3', 'home'):
@@ -382,7 +381,9 @@ class UpperController:
 
     def _plan_configuration_result(self, q_reduced, start=None, active_mask=None,
                                     current_q=None, direct_only=False,
-                                    timeout=None, local_frames=None):
+                                    timeout=None, local_frames=None,
+                                    response_timeout=None, local_joint_padding=None,
+                                    planning_budget=None):
         '''Return the planner result without discarding failure diagnostics'''
         if not getattr(self, 'config', {}).get('planner'):
             raise ValueError('Planned motion requires an explicit planner YAML block')
@@ -406,6 +407,8 @@ class UpperController:
                 start, q_reduced, self.planner.planner_config.frame_names,
                 active_mask=active_mask,
             )
+            if local_joint_padding is None:
+                local_joint_padding = 0.0
         moving_speed, max_interpolation_steps = self._planner_speed_overrides()
         result = self.planner.plan_configuration(
             current_q=current_q,
@@ -417,6 +420,9 @@ class UpperController:
             direct_only=direct_only,
             timeout=timeout,
             local_frames=local_frames,
+            local_joint_padding=local_joint_padding,
+            response_timeout=response_timeout,
+            planning_budget=planning_budget,
         )
         if result.success:
             result.metadata['execution_context'] = {
@@ -433,6 +439,7 @@ class UpperController:
 
     def plan_to_ik_target(self, start=None, ik_timeout=1.0, ik_alpha=0.1):
         '''Solve current IK tasks, then plan to the IK joint solution'''
+        started = time.perf_counter()
         self.last_plan_result = None
         measured_q = np.copy(self.robot_model.state['q'])
         command_q, from_command = self._command_seed(measured_q)
@@ -448,6 +455,7 @@ class UpperController:
         # Use the same active joints and start pose for IK and planning.
         active_mask = self._active_task_mask()
         planning_config = self.planner.planner_config
+        deadline = started + planning_config.request_planning_budget
         targets = tuple(sorted((
             (
                 task.frame,
@@ -479,23 +487,35 @@ class UpperController:
             if task.frame in self.planner.planner_config.frame_names
         )
         controller_cfg = getattr(self, 'config', {}).get('controller', {})
-        ik_result, result, selected, attempts, _, fallback_reason = plan_frame_tasks(
-            self.ik_solver, start_q, active_mask, self.robot_model.reduced_mask,
-            local_frames,
-            lambda goal, mask, frames, direct_only, timeout: self._plan_configuration_result(
+
+        def plan_goal(goal, mask, frames, direct_only, timeout):
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0.0:
+                raise TimeoutError('Frame planning deadline exceeded')
+            return self._plan_configuration_result(
                 goal, start=start_reduced, active_mask=mask,
                 current_q=measured_q, direct_only=direct_only,
                 timeout=timeout, local_frames=frames,
-            ),
+                response_timeout=min(planning_config.worker_request_timeout, remaining),
+                planning_budget=remaining,
+            )
+
+        ik_result, result, selected, attempts, _, fallback_reason = plan_frame_tasks(
+            self.ik_solver, start_q, active_mask, self.robot_model.reduced_mask,
+            local_frames,
+            plan_goal,
             planning_config, alpha=ik_alpha, ik_timeout=ik_timeout,
             linear_threshold=float(controller_cfg.get('threshold_linear', 1e-3)),
             angular_threshold=float(controller_cfg.get('threshold_angular', 1e-2)),
             preferred_positions=preferred,
+            deadline=deadline,
         )
         self.last_ik_result = ik_result
         self.last_plan_attempts = attempts
         self.last_plan_result = result
         if selected is None:
+            if ik_result is None:
+                raise TimeoutError('Frame planning deadline exceeded before IK')
             if not ik_result.success:
                 reasons = ', '.join(
                     f'{attempt.seed_name}: {attempt.reason or "no convergence"}'
@@ -594,10 +614,6 @@ class UpperController:
             ))
             if np.any(np.abs(path[0] - seed[reduced_mask]) > start_allowance):
                 raise ValueError('Robot command state drifted from planned start')
-            if np.max(np.abs(measured[~reduced_mask] - context['frozen'])) > getattr(
-                self, 'frozen_joint_tolerance', 0.01,
-            ):
-                raise ValueError('Frozen joints drifted from planned reference')
             clip_limits = getattr(self.low_cmd_handler, '_q_clip_limits', None)
             if clip_limits is not None:
                 limits = np.asarray(clip_limits)[reduced_mask]
@@ -613,22 +629,18 @@ class UpperController:
                 raise PathExecutionCancelled('Path execution canceled')
             step_start_time = time.monotonic()
             self.check_state_fresh()
+            q = np.asarray(self.robot_model.state['q'], dtype=float).copy()
+            q[self.robot_model.reduced_mask] = q_reduced
             if validate:
-                frozen = np.asarray(self.robot_model.state['q'])[
-                    ~self.robot_model.reduced_mask
-                ]
-                if np.max(np.abs(frozen - context['frozen'])) > getattr(
-                    self, 'frozen_joint_tolerance', 0.01,
-                ):
-                    raise RuntimeError('Frozen joints drifted during path execution')
-                # recheck reduced limits and collisions before each command
+                # measured frozen joints are included in each full-body clearance check
                 if not self.robot_model.check_within_limits_reduced(q_reduced):
                     raise ValueError('Path waypoint is outside joint limits')
-                if not self.robot_model.check_collision_free_reduced(q_reduced):
-                    raise ValueError('Path waypoint is in self-collision')
+                if not self.robot_model.check_collision_free(
+                    q,
+                    min_distance=self.planner.planner_config.self_collision_clearance,
+                ):
+                    raise ValueError('Path waypoint violates current self-collision clearance')
 
-            q = np.copy(self.robot_model.state['q'])
-            q[self.robot_model.reduced_mask] = q_reduced
             self._apply_joint_position(q)
             self.update_robot_model()
             # subtract validation and FK work from the next control-period wait

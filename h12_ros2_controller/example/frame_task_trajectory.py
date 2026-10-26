@@ -272,7 +272,7 @@ def run_trajectory(controller, controller_cfg, waypoints, duration=0.0,
     return True
 
 
-def main(traj, config_name='debug.yaml', duration=0.0,
+def main(traj, config_name='safety_split.yaml', duration=0.0,
          pause=0.0, com=False, speed_scale=0.4, visualize=True):
     # load trajectory before commanding the robot
     traj_path = resolve_trajectory_path(traj)
@@ -307,7 +307,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         type=str,
-        default='debug.yaml',
+        default='safety_split.yaml',
         help='YAML file name under config/',
     )
     parser.add_argument(

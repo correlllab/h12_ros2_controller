@@ -59,10 +59,20 @@ def test_checked_in_balance_profile_keeps_empty_zmp_mapping():
     assert config['zmp'] == {}
 
 
+@pytest.mark.parametrize('profile, topic', (
+    ('sim_safety_split.yaml', 'rt/safety/lowcmd_upper_in'),
+    ('safety_split.yaml', 'rt/safety/lowcmd_upper_in'),
+    ('safety_full.yaml', 'rt/safety/lowcmd_in'),
+))
+def test_supported_default_profiles_resolve_to_safety_inputs(profile, topic):
+    config = load_controller_config(profile)
+
+    assert config['topics']['low_cmd'] == topic
+
+
 @pytest.mark.parametrize('controller', (
     'execution_start_tolerance: .nan',
     'command_seed_max_gap: 0',
-    'frozen_joint_tolerance: -0.1',
     'plan_max_age: 0',
     'threshold_angular: .inf',
 ))

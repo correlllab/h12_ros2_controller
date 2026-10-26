@@ -61,7 +61,7 @@ def input_frame_task():
             continue
 
 def main(com=False,
-         config_name='debug.yaml'):
+         config_name='safety_split.yaml'):
     config= load_controller_config(config_name)
     controller_cfg = config['controller']
     timeout = controller_cfg['timeout']
@@ -229,7 +229,7 @@ def main(com=False,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Frame Controller Goto')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     parser.add_argument('--com', action='store_true', help='Use center of mass control')
     args = parser.parse_args()
     main(com=args.com, config_name=args.config)

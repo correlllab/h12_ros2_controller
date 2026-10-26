@@ -14,7 +14,7 @@ from h12_ros2_controller.utility.path_definition import (
     SRDF_MAGPIE_SPHERE_PATH,
 )
 
-def main(config_name='debug.yaml'):
+def main(config_name='safety_split.yaml'):
     config= load_controller_config(config_name)
     init_channel_factory_guard(config)
     # example usage
@@ -157,6 +157,6 @@ def main(config_name='debug.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     args = parser.parse_args()
     main(config_name=args.config)

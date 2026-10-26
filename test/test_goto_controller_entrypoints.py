@@ -85,7 +85,7 @@ def test_direct_frame_tasks_installed_before_first_step(monkeypatch, command, co
 @pytest.mark.parametrize('command,count', [
     (ARM_SINGLE, 1), (ARM_PAIR, 2),
 ])
-def test_arm_targets_installed_before_first_step(monkeypatch, command, count):
+def test_arm_targets_installed_before_first_step(monkeypatch, capsys, command, count):
     calls = []
 
     class FakeArm:
@@ -137,6 +137,9 @@ def test_arm_targets_installed_before_first_step(monkeypatch, command, count):
     assert np.allclose(calls[1][1], [4, 5, 6, 0, 0, -np.pi / 2] if count == 2
                        else np.zeros(6))
     assert calls[2:4] == ['sync', 'step']
+    output = capsys.readouterr().out
+    assert 'Target reached!' in output
+    assert 'Exception occurred:' not in output
 
 
 @pytest.mark.parametrize('command,count', [(SINGLE, 1), (PAIR, 2)])

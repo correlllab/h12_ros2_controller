@@ -159,7 +159,11 @@ def select_planner(controller, planners, z_floor):
                 original.srdf_sphere_path,
                 planner_config=replace(original.planner_config, frame_z_min=None),
                 handless=original.handless,
+                request_timeout=original.planner_config.worker_request_timeout,
+                startup_timeout=original.planner_config.worker_startup_timeout,
             )
+            if original.planner_config.prewarm_worker:
+                planners[False].warmup_background()
         planner = planners[False]
     controller.planner = planner
 
@@ -201,7 +205,9 @@ def send(controller, q, dq, balanced, check_collision=False):
         reduced = q[controller.robot_model.reduced_mask]
         if not controller.robot_model.check_within_limits_reduced(reduced):
             raise ValueError('Planned command exceeds reduced joint position limits')
-        if not controller.robot_model.check_collision_free_reduced(reduced):
+        if not controller.robot_model.check_collision_free_reduced(
+            reduced, min_distance=controller.d_min,
+        ):
             raise ValueError('Planned command fails self-collision check')
     if balanced:
         controller.control_configuration_step(
@@ -219,11 +225,26 @@ def send(controller, q, dq, balanced, check_collision=False):
 
 def check_path(controller, path):
     path = np.asarray(path, dtype=float)
-    start = fresh_state(controller)[controller.robot_model.reduced_mask]
-    if (path.ndim != 2 or path.shape[1:] != start.shape
+    measured = fresh_state(controller)[controller.robot_model.reduced_mask]
+    if (path.ndim != 2 or path.shape[1:] != measured.shape
             or len(path) < 2 or not np.isfinite(path).all()):
         raise ValueError('Planner returned an invalid reduced path')
-    if np.max(np.abs(path[0] - start)) > 0.05:
+    planned = getattr(controller, 'last_plan_result', None)
+    if planned is not None:
+        if not planned.success or not np.array_equal(path, planned.path):
+            raise ValueError('Path differs from the most recent validated plan')
+        context = planned.metadata.get('execution_context')
+        if context is None:
+            raise ValueError('Path is missing its planning-start context')
+        commanded = controller.low_cmd_handler.q_cmd[controller.robot_model.reduced_mask]
+        max_gap = getattr(controller, 'command_seed_max_gap', 0.1)
+        start_tolerance = getattr(controller, 'execution_start_tolerance', 0.01)
+        # a guarded command seed may legitimately lead the measured arm position
+        if (np.max(np.abs(measured - commanded)) > max_gap or
+                np.max(np.abs(path[0] - context['start'])) > start_tolerance or
+                np.max(np.abs(path[0] - commanded)) > start_tolerance):
+            raise RuntimeError('Robot moved since planning; replan from current state')
+    elif np.max(np.abs(path[0] - measured)) > 0.05:
         raise RuntimeError('Robot moved since planning; replan from current state')
     step_limit = controller.dq_lim * controller.dt
     if not np.isfinite(step_limit) or step_limit <= 0:
@@ -239,7 +260,9 @@ def check_path(controller, path):
         raise ValueError('Retimed path exceeds controller joint speed limit')
     for waypoint in path:
         if (not controller.robot_model.check_within_limits_reduced(waypoint)
-                or not controller.robot_model.check_collision_free_reduced(waypoint)):
+                or not controller.robot_model.check_collision_free_reduced(
+                    waypoint, min_distance=controller.d_min,
+                )):
             raise ValueError('Planned path has an invalid waypoint')
     return path, dq
 
