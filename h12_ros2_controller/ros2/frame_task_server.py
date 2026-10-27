@@ -370,7 +370,7 @@ class FrameTaskServer(Node):
         self.get_logger().info('Planning path to target frame poses')
         try:
             # solve ik, plan a reduced-joint path, then execute it
-            path = self.controller.plan_to_ik_target(ik_timeout=self.timeout)
+            path = self.controller.plan_to_ik_target()
             self._visualize_planned_path(path)
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
@@ -666,8 +666,10 @@ class FrameTaskServer(Node):
                 result.success = False
                 return result
 
-            steady_state_converged = self.controller.steady_state_step()
-            joint_error = self._named_config_joint_error()
+            self.controller.steady_state_step()
+            joint_error = float(np.max(np.abs(
+                self.controller.robot_model.state_reduced['q'] - q_reduced
+            )))
 
             # publish joint-space feedback during the hold phase
             self._publish_named_config_feedback(goal_handle, joint_error)
@@ -675,10 +677,7 @@ class FrameTaskServer(Node):
             blocked = self._limit_block_reason()
             if blocked is not None:
                 break
-            steady_state_converged = (
-                steady_state_converged or
-                joint_error < self.threshold_joint
-            )
+            steady_state_converged = joint_error < self.threshold_joint
             if steady_state_converged:
                 break
 

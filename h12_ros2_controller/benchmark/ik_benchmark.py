@@ -298,7 +298,7 @@ def _record(index, repeat, case, result, start, pipeline, planner, total):
     })
 
 
-def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
+def main(samples=3, ik_timeout=None, seed=0, visualize=False,
           config_name='sim_safety_split.yaml', start_name='arms_front_45', cases_path=None,
          repeats=1, output=None, mode='offline', reuse_policy='isolated',
          planner_name=None, case_ids=None):
@@ -322,6 +322,8 @@ def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
         )
     pipeline = KinematicPipeline(visualize=visualize, config_name=config_name,
                                  planner_config=planner_config)
+    if ik_timeout is None:
+        ik_timeout = pipeline.planner_config.ik_total_timeout
     pipeline_setup_time = time.perf_counter() - setup_started
     raw_cases = None
     if cases_path is not None:
@@ -361,10 +363,12 @@ def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
                         local_frames = moving_grasp_frames(
                             named_start, goal, planner.frame_names,
                         )
-                        plan = planner.plan(pipeline.robot_model.state_reduced['q'], goal,
-                                            direct_only=case.get('direct_only', False),
-                                            local_frames=local_frames,
-                                            local_joint_padding=0.0)
+                        plan = planner.plan(
+                            named_start, goal,
+                            direct_only=case.get('direct_only', False),
+                            local_frames=local_frames, local_joint_padding=0.0,
+                            deadline=started + pipeline.planner_config.named_planning_budget,
+                        )
                         result = KinematicPlan(plan=plan, elapsed_time=time.perf_counter() - started)
                     else:
                         result = pipeline.plan_case(case)
@@ -440,7 +444,6 @@ def main(samples=3, ik_timeout=1.0, seed=0, visualize=False,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=3)
-    parser.add_argument('--ik-timeout', type=float, default=1.0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--config', default='sim_safety_split.yaml', help='Controller YAML profile')
@@ -468,7 +471,8 @@ if __name__ == '__main__':
                          tuple(args.case_ids.split(',')) if args.case_ids else COMPARISON_CASES,
                          args.seed, args.repeats, args.config, args.output)
     else:
-        main(args.samples, args.ik_timeout, args.seed, args.visualize, args.config,
-             args.start, args.cases, args.repeats, args.output, args.mode,
-             args.reuse_policy, args.planner,
-             tuple(args.case_ids.split(',')) if args.case_ids else None)
+        main(samples=args.samples, seed=args.seed, visualize=args.visualize,
+             config_name=args.config, start_name=args.start, cases_path=args.cases,
+             repeats=args.repeats, output=args.output, mode=args.mode,
+             reuse_policy=args.reuse_policy, planner_name=args.planner,
+             case_ids=tuple(args.case_ids.split(',')) if args.case_ids else None)

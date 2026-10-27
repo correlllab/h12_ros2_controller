@@ -46,13 +46,20 @@ class IKSolver:
     wrist_posture_cost = 5e-3
     shoulder_seed_offset = 0.45
     elbow_seed_offset = 0.60
+    frame_lm_damping = 3.0
+    batch_frame_lm_damping = None
+    batch_stagnation_iterations = 12
+    batch_stagnation_relative_improvement = 0.001
 
     def __init__(self,
                  robot_model: RobotModel,
                  dt: float = 0.02,
                  d_min: float = 0.05,
                  *, wrist_movement_weight=None, wrist_posture_cost=None,
-                 shoulder_seed_offset=None, elbow_seed_offset=None):
+                 shoulder_seed_offset=None, elbow_seed_offset=None,
+                 frame_lm_damping=3.0, batch_frame_lm_damping=None,
+                 batch_stagnation_iterations=12,
+                 batch_stagnation_relative_improvement=0.001):
         '''
         Initialize the IK solver with robot model and collision parameters
         Uses model_body (no free-flyer) for IK solving
@@ -64,6 +71,26 @@ class IKSolver:
         self.robot_model = robot_model
         self.dt = dt
         self.d_min = d_min
+        frame_lm_damping = float(frame_lm_damping)
+        if not np.isfinite(frame_lm_damping) or frame_lm_damping < 0.0:
+            raise ValueError('frame_lm_damping must be finite and nonnegative')
+        if (isinstance(batch_stagnation_iterations, bool) or
+                not isinstance(batch_stagnation_iterations, int) or
+                batch_stagnation_iterations < 1):
+            raise ValueError('batch_stagnation_iterations must be a positive integer')
+        improvement = float(batch_stagnation_relative_improvement)
+        if not np.isfinite(improvement) or not 0.0 < improvement < 1.0:
+            raise ValueError(
+                'batch_stagnation_relative_improvement must be finite and between 0 and 1'
+            )
+        self.frame_lm_damping = frame_lm_damping
+        if batch_frame_lm_damping is not None:
+            batch_frame_lm_damping = float(batch_frame_lm_damping)
+            if not np.isfinite(batch_frame_lm_damping) or batch_frame_lm_damping < 0.0:
+                raise ValueError('batch_frame_lm_damping must be finite and nonnegative')
+        self.batch_frame_lm_damping = batch_frame_lm_damping
+        self.batch_stagnation_iterations = batch_stagnation_iterations
+        self.batch_stagnation_relative_improvement = improvement
         for name, value in (
             ('wrist_movement_weight', wrist_movement_weight),
             ('wrist_posture_cost', wrist_posture_cost),
@@ -174,13 +201,13 @@ class IKSolver:
     def add_frame_task(self, task_name: str, frame_name: str,
                        position_cost: float = 50.0,
                        orientation_cost: float = 30.0,
-                       lm_damping: float = 3.0):
+                       lm_damping: float = None):
         '''Add a frame task to the IK solver'''
         self.frame_tasks[task_name] = pink.tasks.FrameTask(
             frame_name,
             position_cost=position_cost,
             orientation_cost=orientation_cost,
-            lm_damping=lm_damping
+            lm_damping=self.frame_lm_damping if lm_damping is None else lm_damping
         )
         # add frame to visualizer
         visualizer = self.robot_model.visualizer
@@ -615,11 +642,35 @@ class IKSolver:
         linear_err = angular_err = float('inf')
         reason = ''
         last_q = np.copy(q_seed)
+        best_score = checkpoint_score = float('inf')
+        best_errors = (linear_err, angular_err)
+        checkpoint_iteration = 0
+        original_damping = []
         try:
+            if self.batch_frame_lm_damping is not None:
+                for task in self.frame_tasks.values():
+                    original_damping.append((task, task.lm_damping))
+                    task.lm_damping = self.batch_frame_lm_damping
             linear_err, angular_err = self._frame_task_errors(self.configuration_reduced)
-            while (linear_err >= linear_threshold or angular_err >= angular_threshold):
+            while True:
                 if not np.all(np.isfinite([linear_err, angular_err])):
                     reason = 'non-finite task error'
+                    break
+                score = linear_err / linear_threshold + angular_err / angular_threshold
+                converged = linear_err < linear_threshold and angular_err < angular_threshold
+                if score < best_score or converged:
+                    best_score = score
+                    last_q = self.configuration_reduced.q.copy()
+                    best_errors = (linear_err, angular_err)
+                if converged:
+                    break
+                # accumulate small gains against a meaningful progress checkpoint
+                if (not np.isfinite(checkpoint_score) or score <= checkpoint_score *
+                        (1.0 - self.batch_stagnation_relative_improvement)):
+                    checkpoint_score = score
+                    checkpoint_iteration = iterations
+                elif iterations - checkpoint_iteration >= self.batch_stagnation_iterations:
+                    reason = 'stagnation'
                     break
                 if time.monotonic() >= deadline:
                     reason = 'timeout'
@@ -639,15 +690,18 @@ class IKSolver:
                 if not np.all(np.isfinite(self.configuration_reduced.q)):
                     reason = 'non-finite configuration'
                     break
-                last_q = np.copy(self.configuration_reduced.q)
                 iterations += 1
                 linear_err, angular_err = self._frame_task_errors(self.configuration_reduced)
         except Exception as exc:
             reason = f'{type(exc).__name__}: {exc}'
         finally:
+            for task, damping in original_damping:
+                task.lm_damping = damping
             if original_cost is not None:
                 self.posture_task.cost = original_cost
 
+        self.configuration_reduced.update(last_q)
+        linear_err, angular_err = best_errors
         return IKAttemptResult(
             q=self._reduced_q_to_full(last_q),
             success=(

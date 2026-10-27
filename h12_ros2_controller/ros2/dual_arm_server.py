@@ -242,7 +242,7 @@ class DualArmServer(Node):
         self.get_logger().info('Planning path to target end-effector poses')
         try:
             # solve ik, plan a reduced-joint path, then execute it
-            path = self.controller.plan_to_ik_target(ik_timeout=self.timeout)
+            path = self.controller.plan_to_ik_target()
             self.get_logger().info(
                 f'Executing planned path with {len(path)} waypoints'
             )
@@ -497,6 +497,7 @@ class DualArmServer(Node):
         self.controller.init_steady_state()
         start_time = time.time()
         steady_state_converged = False
+        blocked = False
         while time.time() - start_time < timeout:
             frame_start_time = time.time()
 
@@ -507,16 +508,18 @@ class DualArmServer(Node):
                 result.success = False
                 return result
 
-            steady_state_converged = self.controller.steady_state_step()
-            joint_error = self._named_config_joint_error()
+            self.controller.steady_state_step()
+            joint_error = float(np.max(np.abs(
+                self.controller.robot_model.state_reduced['q'] - q_reduced
+            )))
 
             # publish joint-space feedback during the hold phase
             self._publish_named_config_feedback(goal_handle, joint_error)
 
-            steady_state_converged = (
-                steady_state_converged or
-                joint_error < self.threshold_joint
-            )
+            blocked = bool(self.controller.steady_state_limited_joints)
+            if blocked:
+                break
+            steady_state_converged = joint_error < self.threshold_joint
             if steady_state_converged:
                 break
 
@@ -525,7 +528,9 @@ class DualArmServer(Node):
                 self.controller.dt - (time.time() - frame_start_time)
             ))
 
-        if steady_state_converged:
+        if blocked:
+            self.get_logger().warn('Hold blocked at a joint position limit')
+        elif steady_state_converged:
             self.get_logger().info('Goal reached')
         else:
             self.get_logger().warn('Timed out during steady-state hold')

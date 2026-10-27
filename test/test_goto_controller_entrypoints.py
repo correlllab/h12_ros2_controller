@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 
 import numpy as np
 import pytest
@@ -7,6 +8,7 @@ from h12_ros2_controller.example import arm_controller_goto as arm
 from h12_ros2_controller.example import frame_controller_counter_balance_goto as counter
 from h12_ros2_controller.example import frame_controller_goto as direct
 from h12_ros2_controller.example import frame_controller_plan_goto as planned
+from h12_ros2_controller.core.planner import PlannerConfig
 
 
 LEFT = 'left_wrist_yaw_link'
@@ -27,6 +29,7 @@ def test_planned_frame_tasks_installed_before_single_plan(monkeypatch, command, 
     calls = []
     controller = SimpleNamespace(
         config={'controller': {'timeout': 0, 'threshold_joint': 0}},
+        planner=SimpleNamespace(planner_config=PlannerConfig()),
         clear_frame_tasks=lambda: calls.append(('clear',)),
         add_frame_task=lambda name, frame, pose: calls.append((name, frame, pose.copy())),
         plan_to_ik_target=lambda **kwargs: calls.append(('plan', kwargs)) or np.zeros((2, 14)),
@@ -47,6 +50,34 @@ def test_planned_frame_tasks_installed_before_single_plan(monkeypatch, command, 
     assert calls[1][2][3] == pytest.approx(np.pi / 2)
     if count == 2:
         assert calls[2][2][5] == pytest.approx(-np.pi / 2)
+
+
+def test_failed_frame_goal_can_save_exact_live_start_for_offline_replay(monkeypatch, tmp_path):
+    start = np.zeros(27)
+    start[12] = 0.03
+    controller = SimpleNamespace(
+        config={'controller': {'timeout': 0, 'threshold_joint': 0}},
+        planner=SimpleNamespace(planner_config=PlannerConfig()),
+        last_planning_start=start,
+        shutdown=lambda: None,
+    )
+    monkeypatch.setattr(planned, 'init_frame_controller', lambda config: controller)
+
+    def failed_plan(*args, **kwargs):
+        controller.last_planning_start = start.copy()
+        raise RuntimeError('IK timeout')
+
+    monkeypatch.setattr(planned, 'plan_goal', failed_plan)
+    answers(monkeypatch, ('frame left_grasp_frame 0.4 0.2 0.2 0 70 0', 'quit'))
+    path = tmp_path / 'failed.json'
+
+    planned.main(failure_case=path)
+
+    saved = json.loads(path.read_text())
+    assert saved['start_q'][12] == 0.03
+    assert saved['tasks'][0]['frame'] == 'left_grasp_frame'
+    assert saved['tasks'][0]['pose'][4] == pytest.approx(np.deg2rad(70))
+    assert saved['ik_timeout'] == 3.0
 
 
 @pytest.mark.parametrize('command,count', [(SINGLE, 1), (PAIR, 2)])
@@ -147,7 +178,7 @@ def test_arm_targets_installed_before_first_step(monkeypatch, capsys, command, c
 def test_counter_plain_frame_tasks_precede_live_or_plan(monkeypatch, command, count, plan):
     calls = []
     controller = SimpleNamespace(
-        planner=SimpleNamespace(),
+        planner=SimpleNamespace(planner_config=PlannerConfig()),
         clear_frame_tasks=lambda: calls.append('clear'),
         add_frame_task=lambda name, frame, pose: calls.append((frame, pose.copy())),
         shutdown=lambda: None,
@@ -244,3 +275,84 @@ def test_arm_refuses_unsupported_frame_without_stepping(monkeypatch, capsys):
 
     assert not calls
     assert 'supports only left and right' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('error_index', [0, 3])
+@pytest.mark.parametrize('named,miss,blocked,expected', [
+    (True, True, False, False), (True, False, False, True),
+    (False, True, False, False), (False, False, False, True),
+    (True, False, True, False), (False, False, True, False),
+])
+def test_planned_hold_requires_measured_goal(monkeypatch, capsys, named, miss,
+                                            blocked, expected, error_index):
+    clock = [0.0]
+    monkeypatch.setattr(planned.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(planned.time, 'sleep',
+                        lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    calls = []
+    right_error = np.zeros(6)
+    right_error[error_index] = 0.01 if miss else 0.0
+    controller = SimpleNamespace(
+        config={'controller': {'threshold_linear': 0.001, 'threshold_angular': 0.002}},
+        dt=0.01, init_steady_state=lambda: None,
+        steady_state_step=lambda threshold: calls.append('hold') or True,
+        steady_state_limited_joints=['joint'] if blocked else [],
+        robot_model=SimpleNamespace(state_reduced={'q': np.array([0.1 if miss else 0.0])}),
+        get_frame_task_errors=lambda: {
+            'left_task': np.zeros(6),
+            'right_task': right_error,
+        },
+    )
+
+    result = planned.hold_steady_state(
+        controller, 0.03, 0.01, q_reduced=np.zeros(1) if named else None,
+    )
+
+    assert result is expected
+    assert calls
+    output = capsys.readouterr().out
+    assert ('Steady state reached!' in output) is expected
+    if blocked:
+        assert 'blocked' in output
+    elif not expected:
+        assert 'Timed out' in output
+
+
+@pytest.mark.parametrize('command', ['home', PAIR])
+def test_planned_caller_passes_requested_goal_after_confirmation(monkeypatch, command):
+    calls = []
+    controller = SimpleNamespace(
+        config={'controller': {'timeout': 2, 'threshold_joint': 0.01}},
+        planner=SimpleNamespace(planner_config=PlannerConfig()),
+        visualize_path=lambda path: calls.append('visualize'),
+        execute_path=lambda path: calls.append('execute'),
+        shutdown=lambda: calls.append('shutdown'),
+    )
+    monkeypatch.setattr(planned, 'init_frame_controller', lambda config: controller)
+    monkeypatch.setattr(planned, 'plan_goal', lambda *args, **kwargs: (
+        np.zeros((2, 14)), 0.0,
+    ))
+
+    def hold(obj, timeout, threshold, q_reduced=None):
+        assert calls == ['visualize', 'confirm', 'execute']
+        assert obj is controller
+        assert (timeout, threshold) == (2, 0.01)
+        if command == 'home':
+            np.testing.assert_array_equal(q_reduced, planned.NAMED_CONFIGS['home'])
+        else:
+            assert q_reduced is None
+        calls.append('hold')
+
+    monkeypatch.setattr(planned, 'hold_steady_state', hold)
+    responses = iter((command, '', 'n'))
+
+    def respond(prompt):
+        if 'Press ENTER to execute' in prompt:
+            calls.append('confirm')
+        return next(responses)
+
+    monkeypatch.setattr('builtins.input', respond)
+
+    planned.main()
+
+    assert calls == ['visualize', 'confirm', 'execute', 'hold', 'shutdown']

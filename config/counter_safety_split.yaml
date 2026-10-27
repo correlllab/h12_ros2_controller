@@ -27,7 +27,7 @@ controller:
 
 planner:
   planner: RRTConnect
-  timeout: 1.0
+  timeout: 2.0
   range: 0.0
   try_direct: true
   simplify: true
@@ -41,15 +41,23 @@ planner:
   frame_rotation_radius: 0.20
   max_ik_candidates: 3
   ik_max_seeds: 8
-  ik_seed_timeout: 0.30
+  ik_total_timeout: 3.0
+  ik_seed_timeout: 0.50
+  ik_alpha: 0.1
+  ik_frame_lm_damping: 1.0
+  ik_stagnation_iterations: 20
+  ik_stagnation_relative_improvement: 0.001
   ik_wrist_motion_weight: 3.0
   ik_wrist_posture_cost: 0.005
   ik_shoulder_seed_offset: 0.45
   ik_elbow_seed_offset: 0.60
   ik_reuse_translation: 0.12
   ik_reuse_rotation: 0.50
-  candidate_planning_budget: 2.0
-  request_planning_budget: 8.0
+  named_planning_budget: 6.0
+  candidate_planning_budget: 4.0
+  request_planning_budget: 12.0
+  prefer_coordinated_motion: true
+  coordination_search_fraction: 0.5
   bimanual_fallback_budget: 5.0
   bimanual_coordination_knots: 24
   bimanual_coordination_delay: 0.25
@@ -58,14 +66,14 @@ planner:
   recent_path_cache_size: 6
   nearby_reuse_joint_tolerance: 0.12
   nearby_reuse_knots: 24
-  candidate_ompl_timeout: 0.75
+  candidate_ompl_timeout: 1.5
   candidate_ik_weight: 0.1
   candidate_hand_weight: 2.0
   candidate_compact_weight: 3.0
   candidate_clearance_weight: 5.0
   candidate_wrist_path_weight: 0.20
   candidate_duration_weight: 0.05
-  worker_request_timeout: 10.0
+  worker_request_timeout: 15.0
   worker_startup_timeout: 30.0
   prewarm_worker: true
   validity_resolution: 0.0025

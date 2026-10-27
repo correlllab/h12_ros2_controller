@@ -28,10 +28,18 @@ def moving_grasp_frames(start, goal, frame_names, active_mask=None):
         if mask.shape != start.shape:
             raise ValueError('active_mask must match the reduced configuration')
         delta[~mask] = 0.0
+    return active_grasp_frames(delta > 1e-6, frame_names)
+
+
+def active_grasp_frames(active_mask, frame_names):
+    '''Select planning grasp landmarks independently of the requested IK frame'''
+    active_mask = np.asarray(active_mask, dtype=bool)
+    if active_mask.shape != (_ARM_REDUCED_NQ,):
+        raise ValueError('Planning grasp selection requires a 14-joint active mask')
     frames = []
     for name, joints in (('left_grasp_frame', slice(0, 7)),
                          ('right_grasp_frame', slice(7, 14))):
-        if np.any(delta[joints] > 1e-6):
+        if np.any(active_mask[joints]):
             if name not in frame_names:
                 raise ValueError(f'Planner locality requires {name} in frame_names')
             frames.append(name)
@@ -43,7 +51,7 @@ class PlannerConfig:
     '''Configuration for reduced joint-space planning'''
 
     planner: str = 'RRTConnect'
-    timeout: float = 1.0
+    timeout: float = 2.0
     range: float = 0.0
     try_direct: bool = True
     simplify: bool = True
@@ -79,15 +87,21 @@ class PlannerConfig:
     frame_rotation_radius: float = 0.20
     max_ik_candidates: int = 3
     ik_max_seeds: int = 8
-    ik_seed_timeout: float = 0.30
+    ik_total_timeout: float = 3.0
+    ik_seed_timeout: float = 0.50
+    ik_alpha: float = 0.1
+    ik_frame_lm_damping: float = 1.0
+    ik_stagnation_iterations: int = 20
+    ik_stagnation_relative_improvement: float = 0.001
     ik_wrist_motion_weight: float = 3.0
     ik_wrist_posture_cost: float = 0.005
     ik_shoulder_seed_offset: float = 0.45
     ik_elbow_seed_offset: float = 0.60
     ik_reuse_translation: float = 0.12
     ik_reuse_rotation: float = 0.50
-    candidate_planning_budget: float = 2.0
-    request_planning_budget: float = 8.0
+    candidate_planning_budget: float = 4.0
+    named_planning_budget: float = 6.0
+    request_planning_budget: float = 12.0
     bimanual_fallback_budget: float = 5.0
     bimanual_coordination_knots: int = 24
     bimanual_coordination_delay: float = 0.25
@@ -96,14 +110,16 @@ class PlannerConfig:
     recent_path_cache_size: int = 6
     nearby_reuse_joint_tolerance: float = 0.12
     nearby_reuse_knots: int = 24
-    candidate_ompl_timeout: float = 0.75
+    candidate_ompl_timeout: float = 1.5
     candidate_ik_weight: float = 0.1
     candidate_hand_weight: float = 2.0
     candidate_compact_weight: float = 3.0
     candidate_clearance_weight: float = 5.0
     candidate_wrist_path_weight: float = 0.20
     candidate_duration_weight: float = 0.05
-    worker_request_timeout: float = 10.0
+    worker_request_timeout: float = 15.0
+    prefer_coordinated_motion: bool = True
+    coordination_search_fraction: float = 0.5
     worker_startup_timeout: float = 30.0
     prewarm_worker: bool = False
     # measured starts can sit marginally past joint limits; only clamp small overshoots
@@ -225,11 +241,14 @@ class ReducedJointPlanner:
             value = getattr(self.config, name)
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f'Planner {name} must be finite and positive')
-        for name in ('frame_rotation_radius', 'ik_seed_timeout',
+        for name in ('frame_rotation_radius', 'ik_total_timeout', 'ik_seed_timeout',
+                     'ik_alpha',
                      'ik_wrist_motion_weight', 'ik_wrist_posture_cost',
+                     'ik_frame_lm_damping',
                      'ik_shoulder_seed_offset', 'ik_elbow_seed_offset',
                      'ik_reuse_translation', 'ik_reuse_rotation',
-                     'candidate_planning_budget', 'request_planning_budget',
+                     'candidate_planning_budget', 'named_planning_budget',
+                     'request_planning_budget',
                      'candidate_ompl_timeout',
                      'bimanual_fallback_budget',
                      'bimanual_refinement_budget', 'bimanual_refinement_duration',
@@ -243,10 +262,13 @@ class ReducedJointPlanner:
             value = getattr(self.config, name)
             if not np.isfinite(value) or value < 0.0:
                 raise ValueError(f'Planner {name} must be finite and non-negative')
-        for name in ('max_ik_candidates', 'ik_max_seeds'):
+        for name in ('max_ik_candidates', 'ik_max_seeds', 'ik_stagnation_iterations'):
             value = getattr(self.config, name)
             if not isinstance(value, int) or value < 1:
                 raise ValueError(f'Planner {name} must be a positive integer')
+        if (not np.isfinite(self.config.ik_stagnation_relative_improvement) or
+                not 0.0 < self.config.ik_stagnation_relative_improvement < 1.0):
+            raise ValueError('Planner ik_stagnation_relative_improvement must be between 0 and 1')
         if (not isinstance(self.config.bimanual_coordination_knots, int) or
                 not 2 <= self.config.bimanual_coordination_knots <= 64):
             raise ValueError('Planner bimanual_coordination_knots must be between 2 and 64')
@@ -258,6 +280,11 @@ class ReducedJointPlanner:
             raise ValueError('Planner recent_path_cache_size must be between 1 and 32')
         if not isinstance(self.config.prewarm_worker, bool):
             raise ValueError('Planner prewarm_worker must be a boolean')
+        if not isinstance(self.config.prefer_coordinated_motion, bool):
+            raise ValueError('Planner prefer_coordinated_motion must be a boolean')
+        if (not np.isfinite(self.config.coordination_search_fraction) or
+                not 0.0 < self.config.coordination_search_fraction < 1.0):
+            raise ValueError('Planner coordination_search_fraction must lie between 0 and 1')
         if (not isinstance(self.config.nearby_reuse_knots, int) or
                 not 4 <= self.config.nearby_reuse_knots <= 64):
             raise ValueError('Planner nearby_reuse_knots must be between 4 and 64')
@@ -1123,7 +1150,9 @@ class ReducedJointPlanner:
         started = perf_counter()
         if deadline is not None and not np.isfinite(deadline):
             raise ValueError('Planner deadline must be finite')
-        fallback_deadline = started + self.config.candidate_planning_budget
+        budget = (self.config.named_planning_budget if local_joint_padding == 0.0
+                  else self.config.candidate_planning_budget)
+        fallback_deadline = started + budget
         if deadline is not None:
             fallback_deadline = min(fallback_deadline, deadline)
         result = self._plan_once(
@@ -1134,6 +1163,19 @@ class ReducedJointPlanner:
         if (result.success or direct_only or self.nq != _ARM_REDUCED_NQ or
                 result.reason.startswith(('start ', 'goal ', 'goal differs'))):
             return result
+        remaining = fallback_deadline - perf_counter()
+        if (len(local_frames) == 1 and local_joint_padding == 0.0 and
+                self.config.local_joint_padding > 0.0 and remaining > 0.1):
+            # a named return's first random route can be valid but too long to time
+            retry = self._plan_once(
+                start, goal, active_mask=active_mask, local_frames=local_frames,
+                timeout=min(self.config.timeout, remaining), allow_reuse=allow_reuse,
+                local_joint_padding=self.config.local_joint_padding,
+            )
+            retry.metadata['initial_failure'] = result.reason
+            retry.metadata.setdefault('stage_timings', {})['total'] = perf_counter() - started
+            retry.planning_time = retry.metadata['stage_timings']['total']
+            return retry
         return self._staged_two_arm_plan(
             start, goal, active_mask, local_frames, allow_reuse, result, started,
             local_joint_padding, fallback_deadline,
@@ -1145,11 +1187,25 @@ class ReducedJointPlanner:
         '''Synchronize two valid arm routes and revalidate their combined path'''
         if deadline is None:
             deadline = started + self.config.candidate_planning_budget
-        legs = []
+        legs, reason = self._same_start_arm_paths(
+            start, goal, active_mask, allow_reuse, local_joint_padding, deadline,
+        )
+        if not all(leg is not None for leg in legs):
+            return None, reason
+        return self._coordinate_arm_paths(
+            start, goal, active_mask, frames, legs, started, deadline,
+        )
+
+    def _same_start_arm_paths(self, start, goal, active_mask, allow_reuse,
+                              local_joint_padding, deadline):
+        '''Find separate arm routes, retaining partial results for staging'''
+        legs = [None, None]
+        failures = []
         for arm, name in enumerate(('left_grasp_frame', 'right_grasp_frame')):
             remaining = deadline - perf_counter()
             if remaining <= 0.0:
-                return None, 'coordination budget exhausted'
+                failures.append('coordination budget exhausted')
+                break
             mask = np.zeros(self.nq, dtype=bool)
             mask[arm * 7:arm * 7 + 7] = (
                 True if active_mask is None else active_mask[arm * 7:arm * 7 + 7]
@@ -1158,17 +1214,16 @@ class ReducedJointPlanner:
             endpoint[mask] = goal[mask]
             leg = self._plan_once(
                 start, endpoint, active_mask=mask, local_frames=(name,),
-                timeout=min(self.config.timeout, remaining / (2 - arm)),
+                # reserve some of the coordination allowance for combined validation
+                timeout=min(self.config.timeout, remaining / (3 - arm)),
                 allow_reuse=allow_reuse,
                 local_joint_padding=local_joint_padding,
             )
             if not leg.success:
-                return None, f'{name}: {leg.reason}'
-            legs.append(leg)
-        return self._coordinate_arm_paths(
-            start, goal, active_mask, frames, legs, started,
-            deadline,
-        )
+                failures.append(f'{name}: {leg.reason}')
+                continue
+            legs[arm] = leg
+        return legs, '; '.join(failures)
 
     def _coordinate_arm_paths(self, start, goal, active_mask, frames, legs,
                               started, deadline):
@@ -1259,6 +1314,25 @@ class ReducedJointPlanner:
             if not np.any(active_mask[:7]) or not np.any(active_mask[7:]):
                 return result
         failures = []
+        same_start_legs = [None, None]
+        if self.config.prefer_coordinated_motion:
+            remaining = deadline - perf_counter()
+            coordination_deadline = perf_counter() + max(0.0, remaining) * (
+                self.config.coordination_search_fraction
+            )
+            same_start_legs, reason = self._same_start_arm_paths(
+                start, goal, active_mask, allow_reuse, local_joint_padding,
+                coordination_deadline,
+            )
+            if all(leg is not None for leg in same_start_legs):
+                coordinated, reason = self._coordinate_arm_paths(
+                    start, goal, active_mask, frames, same_start_legs, started,
+                    coordination_deadline,
+                )
+                if coordinated is not None:
+                    coordinated.metadata['stage_timings']['original_attempt'] = result.planning_time
+                    return coordinated
+            failures.append(f'coordination: {reason}')
         for first_arm in (1, 0):
             second_arm = 1 - first_arm
             mid = start.copy()
@@ -1278,13 +1352,16 @@ class ReducedJointPlanner:
                     True if active_mask is None else active_mask[arm * 7:arm * 7 + 7]
                 )
                 name = ('left_grasp_frame', 'right_grasp_frame')[arm]
-                leg = self._plan_once(
-                    leg_start, leg_goal, active_mask=mask,
-                    local_frames=(name,),
-                    timeout=min(self.config.timeout, remaining),
-                    allow_reuse=allow_reuse,
-                    local_joint_padding=local_joint_padding,
-                )
+                # only the first leg has the original inactive-arm collision context
+                leg = same_start_legs[arm] if not legs else None
+                if leg is None:
+                    leg = self._plan_once(
+                        leg_start, leg_goal, active_mask=mask,
+                        local_frames=(name,),
+                        timeout=min(self.config.timeout, remaining / (2 - len(legs))),
+                        allow_reuse=allow_reuse,
+                        local_joint_padding=local_joint_padding,
+                    )
                 if not leg.success:
                     failures.append(f'{name}: {leg.reason}')
                     break
@@ -1404,7 +1481,8 @@ class ReducedJointPlanner:
                 planning_time=metadata['stage_timings']['total'],
                 planner_name=self.config.planner, metadata=metadata,
             )
-            if duration <= self.config.bimanual_refinement_duration:
+            if (not self.config.prefer_coordinated_motion and
+                    duration <= self.config.bimanual_refinement_duration):
                 return staged
             ordered_legs = (legs[0], legs[1]) if first_arm == 0 else (legs[1], legs[0])
             proposal, _ = self._coordinate_arm_paths(
@@ -1422,17 +1500,17 @@ class ReducedJointPlanner:
                 proposal.metadata['stage_timings']['total'] = proposal.planning_time
                 return proposal
             return staged
-        # retain the fast staged route; search shared-start coordination only on failure
-        coordinated, reason = self._coordinate_same_start_arms(
-            start, goal, active_mask, frames, allow_reuse, started,
-            local_joint_padding, deadline=deadline,
-        )
-        if coordinated is not None:
-            coordinated.planning_time = perf_counter() - started
-            coordinated.metadata['stage_timings']['original_attempt'] = result.planning_time
-            coordinated.metadata['stage_timings']['total'] = coordinated.planning_time
-            return coordinated
-        failures.append(f'coordination: {reason}')
+        if not self.config.prefer_coordinated_motion:
+            coordinated, reason = self._coordinate_same_start_arms(
+                start, goal, active_mask, frames, allow_reuse, started,
+                local_joint_padding, deadline=deadline,
+            )
+            if coordinated is not None:
+                coordinated.planning_time = perf_counter() - started
+                coordinated.metadata['stage_timings']['original_attempt'] = result.planning_time
+                coordinated.metadata['stage_timings']['total'] = coordinated.planning_time
+                return coordinated
+            failures.append(f'coordination: {reason}')
         result.reason += '; staged fallback: ' + '; '.join(failures)
         return result
 

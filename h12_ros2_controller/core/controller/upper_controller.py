@@ -8,9 +8,12 @@ from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.core.planner import PlannerClient
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
-    plan_frame_tasks, planner_config_from_controller,
+    frame_target_snapshot, frame_targets_close, plan_frame_tasks,
+    planner_config_from_controller,
 )
-from h12_ros2_controller.core.planner.reduced_joint_planner import moving_grasp_frames
+from h12_ros2_controller.core.planner.reduced_joint_planner import (
+    active_grasp_frames, moving_grasp_frames,
+)
 from h12_ros2_controller.utility.controller_config import dds_domain_id, load_controller_config
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.joint_definition import (
@@ -133,6 +136,11 @@ class UpperController:
             wrist_posture_cost=planner_config.ik_wrist_posture_cost,
             shoulder_seed_offset=planner_config.ik_shoulder_seed_offset,
             elbow_seed_offset=planner_config.ik_elbow_seed_offset,
+            batch_frame_lm_damping=planner_config.ik_frame_lm_damping,
+            batch_stagnation_iterations=planner_config.ik_stagnation_iterations,
+            batch_stagnation_relative_improvement=(
+                planner_config.ik_stagnation_relative_improvement
+            ),
         )
         self.planner = PlannerClient(
             urdf_path=urdf_path,
@@ -373,6 +381,7 @@ class UpperController:
                               current_q=None):
         '''Plan from the move's start configuration to a reduced joint target'''
         self.last_plan_result = None
+        self._prior_ik = None
         result = self._plan_configuration_result(
             q_reduced, start=start, active_mask=active_mask, current_q=current_q,
         )
@@ -403,8 +412,13 @@ class UpperController:
             start = start[self.robot_model.reduced_mask]
         q_reduced = np.asarray(q_reduced, dtype=float)
         if local_frames is None:
+            planning_config = self.planner.planner_config
+            if planning_budget is None:
+                planning_budget = planning_config.named_planning_budget
+            if response_timeout is None:
+                response_timeout = planning_config.worker_request_timeout
             local_frames = moving_grasp_frames(
-                start, q_reduced, self.planner.planner_config.frame_names,
+                start, q_reduced, planning_config.frame_names,
                 active_mask=active_mask,
             )
             if local_joint_padding is None:
@@ -437,7 +451,7 @@ class UpperController:
             }
         return result
 
-    def plan_to_ik_target(self, start=None, ik_timeout=1.0, ik_alpha=0.1):
+    def plan_to_ik_target(self, start=None, ik_timeout=None, ik_alpha=None):
         '''Solve current IK tasks, then plan to the IK joint solution'''
         started = time.perf_counter()
         self.last_plan_result = None
@@ -449,6 +463,7 @@ class UpperController:
             start_q = measured_q.copy()
             start_q[self.robot_model.reduced_mask] = np.asarray(start, dtype=float)
         start_reduced = start_q[self.robot_model.reduced_mask].copy()
+        self.last_planning_start = start_q.copy()
         self.update_ik_solver(measured_q=measured_q, command_seed=command_q)
         if not from_command:
             self._tau_bias[:] = 0.0
@@ -456,36 +471,16 @@ class UpperController:
         active_mask = self._active_task_mask()
         planning_config = self.planner.planner_config
         deadline = started + planning_config.request_planning_budget
-        targets = tuple(sorted((
-            (
-                task.frame,
-                np.asarray(task.transform_target_to_world.translation).copy(),
-                np.asarray(task.transform_target_to_world.rotation).copy(),
-            ) for task in self.ik_solver.frame_tasks.values()
-        ), key=lambda item: item[0]))
+        targets = frame_target_snapshot(self.ik_solver.frame_tasks)
         preferred = None
         previous = getattr(self, '_prior_ik', None)
         if (previous is not None and len(targets) == len(previous['targets']) and
-                np.array_equal(active_mask, previous['active_mask']) and
-                np.array_equal(
-                    measured_q[~self.robot_model.reduced_mask], previous['frozen'],
-                )):
-            close_targets = all(
-                frame == old_frame and
-                np.linalg.norm(position - old_position) <=
-                planning_config.ik_reuse_translation and
-                np.linalg.norm(pin.log3(old_rotation.T @ rotation)) <=
-                planning_config.ik_reuse_rotation
-                for (frame, position, rotation),
-                    (old_frame, old_position, old_rotation)
-                in zip(targets, previous['targets'])
-            )
+                np.array_equal(active_mask, previous['active_mask'])):
+            close_targets = frame_targets_close(targets, previous['targets'], planning_config)
             if close_targets:
-                preferred = previous['q']
-        local_frames = tuple(
-            task.frame for task in self.ik_solver.frame_tasks.values()
-            if task.frame in self.planner.planner_config.frame_names
-        )
+                # reuse only active joint angles; re-solve at the new measured torso pose
+                preferred = previous['q'][self.robot_model.reduced_mask].copy()
+        local_frames = active_grasp_frames(active_mask, planning_config.frame_names)
         controller_cfg = getattr(self, 'config', {}).get('controller', {})
 
         def plan_goal(goal, mask, frames, direct_only, timeout):
@@ -518,7 +513,9 @@ class UpperController:
                 raise TimeoutError('Frame planning deadline exceeded before IK')
             if not ik_result.success:
                 reasons = ', '.join(
-                    f'{attempt.seed_name}: {attempt.reason or "no convergence"}'
+                    f'{attempt.seed_name}: {attempt.reason or "no convergence"} '
+                    f'({attempt.linear_error * 1000:.1f}mm, '
+                    f'{attempt.angular_error:.4f}rad, {attempt.iterations} iterations)'
                     for attempt in ik_result.attempts
                 )
                 raise RuntimeError(
@@ -538,7 +535,6 @@ class UpperController:
         self._prior_ik = {
             'q': selected.q.copy(), 'targets': targets,
             'active_mask': active_mask.copy(),
-            'frozen': measured_q[~self.robot_model.reduced_mask].copy(),
         }
         return self._path_or_raise(result)
 

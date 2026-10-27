@@ -32,6 +32,7 @@ def load_planned_callbacks(server_file):
         'FrameTask': SimpleNamespace(Result=Result),
         'DualArm': SimpleNamespace(Result=Result),
         'NamedConfig': SimpleNamespace(Result=Result),
+        'np': np,
         'time': time,
     }
     for method in methods:
@@ -121,6 +122,19 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                 goal.abort.assert_not_called()
                 goal.succeed.assert_not_called()
                 self.assertIs(result.success, False)
+
+    def test_planned_actions_use_shared_controller_route_and_yaml_defaults(self):
+        for filename, method, named in self.cases:
+            with self.subTest(filename=filename, method=method):
+                _, controller, _ = self.run_callback(
+                    filename, method, named, cancel_after_plan=True,
+                )
+                if named:
+                    controller.plan_to_configuration.assert_called_once_with([0])
+                    controller.plan_to_ik_target.assert_not_called()
+                else:
+                    controller.plan_to_ik_target.assert_called_once_with()
+                    controller.plan_to_configuration.assert_not_called()
 
     def test_direct_cancel_requested_before_step_sends_no_commands(self):
         for filename, planned_method, named in self.cases:
@@ -228,6 +242,49 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                     self.assertIn('callback_group',
                                   [keyword.arg for keyword in server.keywords])
                 self.assertIn('ReentrantCallbackGroup', source.read_text())
+
+    def test_planned_named_success_requires_requested_measured_target(self):
+        for filename in ('frame_task_server.py', 'dual_arm_server.py'):
+            for measured, blocked, expected in (
+                    (0.2, False, False), (0.0, False, True), (0.0, True, False)):
+                with self.subTest(filename=filename, measured=measured, blocked=blocked):
+                    namespace = load_planned_callbacks(filename)
+                    clock = [0.0]
+                    namespace['time'] = SimpleNamespace(
+                        time=lambda: clock[0],
+                        sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds),
+                    )
+                    controller = Mock(dt=0.01)
+                    controller.plan_to_configuration.return_value = [0, 1]
+                    controller.steady_state_step.return_value = True
+                    controller.robot_model.state_reduced = {'q': np.array([measured])}
+                    controller.steady_state_limited_joints = ['joint'] if blocked else []
+                    # the command target can converge while the requested target is missed
+                    controller.reduced_configuration_error = np.zeros(1)
+                    server = SimpleNamespace(
+                        controller=controller, threshold_joint=0.01,
+                        get_logger=lambda: Mock(), _visualize_planned_path=Mock(),
+                        _limit_block_reason=lambda: 'joint' if blocked else None,
+                        _log_hold_outcome=Mock(), _publish_named_config_feedback=Mock(),
+                        _named_config_joint_error=lambda: 0.0,
+                    )
+                    goal = SimpleNamespace(is_cancel_requested=False, canceled=Mock(),
+                                           abort=Mock(), succeed=Mock())
+
+                    result = namespace['_plan_named_config_callback'](
+                        server, goal, np.zeros(1), 0.03,
+                    )
+
+                    self.assertIs(result.success, expected)
+                    controller.steady_state_step.assert_called()
+                    if expected:
+                        goal.succeed.assert_called_once()
+                        goal.abort.assert_not_called()
+                    else:
+                        goal.abort.assert_called_once()
+                        goal.succeed.assert_not_called()
+                    feedback = server._publish_named_config_feedback.call_args.args[1]
+                    self.assertAlmostEqual(feedback, measured)
 
 
 if __name__ == '__main__':

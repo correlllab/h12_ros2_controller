@@ -89,7 +89,7 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     controller.low_cmd_handler = SimpleNamespace(q_cmd=q.copy())
     controller._tau_bias = np.zeros(27)
     controller.planner = SimpleNamespace(
-        planner_config=PlannerConfig(frame_names=('left_grasp_frame',))
+        planner_config=PlannerConfig()
     )
     controller.update_ik_solver = lambda **kwargs: None
     controller._active_task_mask = lambda: np.ones(14, dtype=bool)
@@ -135,16 +135,31 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     assert np.array_equal(path[-1], np.full(14, 2.0))
     assert np.array_equal(updates[0], path[-1])
 
+    q[12] = 0.002
     controller.plan_to_ik_target(ik_timeout=0.8)
-    assert np.array_equal(calls[3]['preferred_positions'], goals[1])
+    assert np.array_equal(calls[3]['preferred_positions'], goals[1][mask])
+    assert calls[3]['start_q'][12] == 0.002
+
+    controller.plan_to_ik_target()
+    assert calls[6]['total_timeout'] == 3.0
+    assert calls[6]['timeout'] == 0.5
+    assert calls[6]['alpha'] == 0.1
 
     controller.planner.planner_config.request_planning_budget = 1e-9
     with pytest.raises(TimeoutError, match='planning deadline exceeded'):
         controller.plan_to_ik_target(ik_timeout=0.8)
-    assert len(calls) == 6
+    assert len(calls) == 9
 
 
-def test_named_controller_goal_enables_moving_arm_locality():
+@pytest.mark.parametrize('options, planning_budget, response_timeout', [
+    ({}, 6.0, 15.0),
+    ({'planning_budget': 2.5, 'response_timeout': 3.5}, 2.5, 3.5),
+    ({'local_frames': ()}, None, None),
+    ({'local_frames': ('left_grasp_frame',),
+      'planning_budget': 11.0, 'response_timeout': 9.0}, 11.0, 9.0),
+])
+def test_named_controller_goal_enables_moving_arm_locality(
+        options, planning_budget, response_timeout):
     controller = object.__new__(UpperController)
     controller.dt = 1.0 / 30.0
     controller.config = {'planner': {'planner': 'RRTConnect'}}
@@ -160,6 +175,7 @@ def test_named_controller_goal_enables_moving_arm_locality():
     controller.planner = SimpleNamespace(
         planner_config=SimpleNamespace(
             frame_names=('left_grasp_frame', 'right_grasp_frame'),
+            named_planning_budget=6.0, worker_request_timeout=15.0,
         ),
     )
     calls = []
@@ -174,11 +190,55 @@ def test_named_controller_goal_enables_moving_arm_locality():
     goal = np.zeros(14)
     goal[0] = 0.3
 
-    controller._plan_configuration_result(goal)
+    controller._plan_configuration_result(goal, **options)
 
-    assert calls[0]['local_frames'] == ('left_grasp_frame',)
-    assert calls[0]['local_joint_padding'] == 0.0
+    assert calls[0]['local_frames'] == options.get('local_frames', ('left_grasp_frame',))
+    assert calls[0]['local_joint_padding'] == (None if 'local_frames' in options else 0.0)
+    assert calls[0]['planning_budget'] == planning_budget
+    assert calls[0]['response_timeout'] == response_timeout
     assert np.array_equal(calls[0]['start'], np.zeros(14))
+
+
+def test_offline_named_goal_uses_named_planning_deadline(monkeypatch):
+    pipeline = object.__new__(KinematicPipeline)
+    pipeline.planner_config = SimpleNamespace(named_planning_budget=6.0)
+    pipeline.robot_model = SimpleNamespace(state_reduced={'q': np.zeros(14)})
+    calls = []
+
+    def plan(start, goal, **kwargs):
+        calls.append(kwargs)
+        return PlanResult(success=True, path=np.vstack([start, goal]))
+
+    pipeline.planner = SimpleNamespace(
+        frame_names=('left_grasp_frame', 'right_grasp_frame'), plan=plan,
+    )
+    monkeypatch.setattr(
+        'h12_ros2_controller.core.planner.kinematic_pipeline.time.perf_counter',
+        lambda: 100.0,
+    )
+
+    result = pipeline.plan_named('home')
+
+    assert result.plan.success
+    assert calls[0]['deadline'] == 106.0
+    assert calls[0]['local_joint_padding'] == 0.0
+
+
+@pytest.mark.parametrize('profile', [
+    'safety_split.yaml', 'safety_full.yaml', 'sim_safety_split.yaml',
+    'counter_safety_split.yaml', 'real_benchmark_upper.yaml',
+])
+def test_yaml_planning_budgets(profile):
+    config = load_controller_config(profile)['planner']
+    expected = {
+        'named_planning_budget': 6.0, 'candidate_planning_budget': 4.0,
+        'timeout': 2.0, 'candidate_ompl_timeout': 1.5,
+        'request_planning_budget': 12.0, 'worker_request_timeout': 15.0,
+        'prefer_coordinated_motion': True, 'coordination_search_fraction': 0.5,
+        'ik_total_timeout': 3.0, 'ik_seed_timeout': 0.5,
+    }
+    for key, value in expected.items():
+        assert config[key] == value, key
 
 
 def test_execution_preflight_rejects_invalid_timing_without_commands():
@@ -206,7 +266,8 @@ def test_execution_preflight_rejects_invalid_timing_without_commands():
         controller.execute_path(np.empty((0, 14)))
 
 
-def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
+@pytest.mark.parametrize('entrypoint', (UpperController.execute_path, demo.execute_path))
+def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch, entrypoint):
     controller = object.__new__(UpperController)
     controller.dt = 1.0 / 30.0
     controller.max_state_lag_ms = 0.0
@@ -236,31 +297,32 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
     controller.last_plan_result = PlanResult(
         success=True, path=path, metadata={'execution_context': context},
     )
+    execute = lambda values: entrypoint(controller, values)
 
     with pytest.raises(ValueError, match='most recent validated plan'):
-        controller.execute_path(np.full((2, 14), 0.001))
+        execute(np.full((2, 14), 0.001))
     assert not commands
 
     controller.low_cmd_handler.q_cmd[13:] = 0.08
     with pytest.raises(ValueError, match='drifted from planned start'):
-        controller.execute_path(path)
+        execute(path)
     controller.low_cmd_handler.q_cmd[13:] = 0.02
     with pytest.raises(ValueError, match='drifted from planned start'):
-        controller.execute_path(path)
+        execute(path)
     controller.low_cmd_handler.q_cmd[:] = 0.0
     q[0] = 0.02
-    controller.execute_path(path)
+    execute(path)
     assert len(commands) == 2
     assert commands[-1][0] == 0.02
     commands.clear()
     q[0] = 0.0
     context['planned_at'] -= 31.0
     with pytest.raises(ValueError, match='too old'):
-        controller.execute_path(path)
+        execute(path)
     context['planned_at'] = time.monotonic()
     controller.low_cmd_handler._q_clip_limits[13:, 0] = 0.01
     with pytest.raises(ValueError, match='clipped'):
-        controller.execute_path(path)
+        execute(path)
     controller.low_cmd_handler._q_clip_limits[13:, 0] = -1.0
 
     clearances = []
@@ -268,7 +330,7 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         lambda values, min_distance=0.0:
         clearances.append((values.copy(), min_distance)) or True
     )
-    controller.execute_path(path)
+    execute(path)
     assert len(commands) == 2
     assert [minimum for _, minimum in clearances] == (
         [controller.planner.planner_config.self_collision_clearance] * 2
@@ -280,7 +342,7 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         q[0] = 0.02
 
     controller._apply_joint_position = command_then_drift
-    controller.execute_path(path)
+    execute(path)
     assert len(commands) == 2
     assert clearances[-1][0][0] == 0.02
 
@@ -290,7 +352,7 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch):
         lambda values, min_distance=0.0: values[0] < 0.01
     )
     with pytest.raises(ValueError, match='current self-collision clearance'):
-        controller.execute_path(path)
+        execute(path)
     assert len(commands) == 1
 
 
@@ -442,7 +504,7 @@ def controller_fixture():
         state=state, state_reduced={'q': q[mask].copy()}, reduced_mask=mask,
         check_within_limits_reduced=lambda value: True,
         check_collision_free_reduced=lambda value, min_distance=0.0: True,
-        check_collision_free=lambda value: True,
+        check_collision_free=lambda value, min_distance=0.0: True,
         dynamics=SimpleNamespace(get_gravity_compensation=lambda value: np.ones(27)),
     )
     controller = SimpleNamespace(
@@ -507,6 +569,19 @@ def test_on_mode_passes_moving_velocity_to_counter_controller():
     assert sent_dq[0] == 0.4
     assert scale == 1.0
     assert not controller.low_cmd_handler.calls
+
+
+def test_unbalanced_path_delegates_unchanged_without_custom_playback(monkeypatch):
+    controller = controller_fixture()
+    path = np.zeros((2, 14))
+    calls = []
+    controller.execute_path = lambda values: calls.append(values) or 'executed'
+    monkeypatch.setattr(demo, 'check_path', lambda *args: pytest.fail('custom preflight'))
+
+    assert demo.execute_path(controller, path) == 'executed'
+    assert calls[0] is path
+    assert not controller.low_cmd_handler.calls
+    assert not controller.balance_calls
 
 
 def test_live_command_skips_planner_joint_and_collision_checks():
@@ -580,7 +655,7 @@ def test_counter_arm_fade_skips_unsafe_return_before_motion():
     controller = controller_fixture()
     controller.counter_arm_ids = list(range(20, 27))
     controller.low_cmd_handler.q_cmd[20:] = 0.5
-    controller.robot_model.check_collision_free = lambda q: q[20] > 0.2
+    controller.robot_model.check_collision_free = lambda q, min_distance=0.0: q[20] > 0.2
 
     assert demo.recover_counter_arm(controller) is False
 
@@ -827,13 +902,14 @@ def test_planned_balanced_collision_rejected_before_publication():
     fake = controller_fixture()
     controller.planned_balance = True
     controller.arm_ids = list(range(13, 27))
+    controller.d_min = fake.d_min
     controller.robot_model = fake.robot_model
     controller.robot_model.state['q'][2] = 0.5
     candidates = []
 
-    def collision(q):
-        candidates.append(q.copy())
-        return False
+    def collision(q, min_distance=0.0):
+        candidates.append((q.copy(), min_distance))
+        return 0.01 >= min_distance
 
     controller.robot_model.check_collision_free = collision
     controller.low_cmd_handler = fake.low_cmd_handler
@@ -841,7 +917,64 @@ def test_planned_balanced_collision_rejected_before_publication():
     with pytest.raises(ValueError, match='Combined planned'):
         controller._write_arm_command(np.zeros(14), np.zeros(14), np.zeros(14))
     assert not controller.low_cmd_handler.calls
-    assert candidates[0][2] == 0.5
+    assert candidates[0][0][2] == 0.5
+    assert candidates[0][1] == controller.d_min
+
+
+def test_balanced_clearance_uses_each_measured_full_body_snapshot():
+    controller = controller_fixture()
+    candidates = []
+
+    def collision(q, min_distance=0.0):
+        candidates.append((q.copy(), min_distance))
+        return q[2] < 0.5
+
+    controller.robot_model.check_collision_free = collision
+    arm_q = np.full(14, 0.1)
+    assert demo.valid_arm_command(controller, arm_q)
+    controller.robot_model.state['q'][2] = 0.5
+    assert not demo.valid_arm_command(controller, arm_q)
+    assert [q[2] for q, _ in candidates] == [0.0, 0.5]
+    assert all(np.array_equal(q[13:], arm_q) for q, _ in candidates)
+    assert all(margin == controller.d_min for _, margin in candidates)
+    assert np.array_equal(controller.robot_model.state['q'][13:], np.zeros(14))
+
+
+@pytest.mark.parametrize('delta, acceleration_limit, error', [
+    (0.05, 25.0, None), (0.2, 25.0, 'velocity limits'),
+    (0.05, 0.1, 'acceleration limits'),
+])
+def test_validated_plan_is_not_retimed_and_uses_controller_timing(
+        delta, acceleration_limit, error):
+    controller = controller_fixture()
+    controller.dq_lim = 0.01
+    controller.planner = SimpleNamespace(planner_config=PlannerConfig(
+        dt=controller.dt, joint_acceleration_limit=acceleration_limit,
+    ))
+    controller.robot_model.model_body_reduced = SimpleNamespace(
+        velocityLimit=np.full(14, 9.0),
+    )
+    controller._validate_path_timing = lambda path: UpperController._validate_path_timing(
+        controller, path,
+    )
+    path = np.zeros((2, 14))
+    path[1, 0] = delta
+    original = path.copy()
+    controller.last_plan_result = PlanResult(
+        success=True, path=path.copy(),
+        metadata={'execution_context': {'start': path[0].copy()}},
+    )
+
+    if error:
+        with pytest.raises(ValueError, match=error):
+            demo.check_path(controller, path)
+    else:
+        checked, velocities = demo.check_path(controller, path)
+        assert checked is path
+        assert np.array_equal(velocities, np.diff(original, axis=0) / controller.dt)
+    assert np.array_equal(path, original)
+    assert np.array_equal(controller.last_plan_result.path, original)
+    assert not controller.low_cmd_handler.calls
 
 
 def test_retiming_is_idempotent():
@@ -909,6 +1042,7 @@ def test_path_rejects_stale_start_and_retimes_excessive_velocity():
 
 def test_command_seeded_plan_is_not_rejected_for_safe_measured_lag():
     controller = controller_fixture()
+    controller._validate_path_timing = lambda path: None
     controller.low_cmd_handler.q_cmd[13] = 0.08
     path = np.zeros((2, 14))
     path[:, 0] = (0.08, 0.09)
@@ -935,7 +1069,7 @@ def test_retimed_path_checks_intermediate_waypoints_before_motion():
     )
 
     with pytest.raises(ValueError, match='invalid waypoint'):
-        demo.execute_path(controller, path)
+        demo.execute_path(controller, path, balanced=True)
 
     assert not controller.low_cmd_handler.calls
 

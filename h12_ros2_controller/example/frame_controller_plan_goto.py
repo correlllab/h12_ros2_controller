@@ -1,5 +1,7 @@
 import time
 import argparse
+import json
+from pathlib import Path
 import numpy as np
 
 import os
@@ -108,23 +110,38 @@ def plan_goal(
     return path, planning_time
 
 
-def hold_steady_state(frame_controller, timeout, threshold):
-    '''Run steady-state I control until convergence or timeout'''
+def hold_steady_state(frame_controller, timeout, threshold, q_reduced=None):
+    '''Hold until the measured requested goal converges, is blocked, or times out'''
     frame_controller.init_steady_state()
-    start_time = time.time()
-    converged = False
-    while time.time() - start_time < timeout:
-        step_start = time.time()
-        converged = frame_controller.steady_state_step(threshold)
+    controller_cfg = frame_controller.config['controller']
+    start_time = time.monotonic()
+    while time.monotonic() - start_time < timeout:
+        step_start = time.monotonic()
+        frame_controller.steady_state_step(threshold)
+        if frame_controller.steady_state_limited_joints:
+            print('Hold blocked at a joint position limit')
+            return False
+        if q_reduced is not None:
+            joint_error = np.max(np.abs(
+                frame_controller.robot_model.state_reduced['q'] - q_reduced
+            ))
+            converged = joint_error < threshold
+        else:
+            errors = frame_controller.get_frame_task_errors()
+            converged = bool(errors) and all(
+                np.linalg.norm(error[:3]) < controller_cfg['threshold_linear'] and
+                np.linalg.norm(error[3:]) < controller_cfg['threshold_angular']
+                for error in errors.values()
+            )
         if converged:
             print('Steady state reached!')
-            break
-        time.sleep(max(0.0, frame_controller.dt - (time.time() - step_start)))
-    if not converged:
-        print('Timed out during steady-state hold')
+            return True
+        time.sleep(max(0.0, frame_controller.dt - (time.monotonic() - step_start)))
+    print('Timed out during steady-state hold')
+    return False
 
 
-def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
+def main(config_name='safety_split.yaml', failure_case=None):
     frame_controller = init_frame_controller(config_name)
     controller_cfg = frame_controller.config['controller']
     steady_timeout = controller_cfg['timeout']
@@ -134,6 +151,12 @@ def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
         supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
     )
     console.help()
+    planner_cfg = frame_controller.planner.planner_config
+    ik_timeout = planner_cfg.ik_total_timeout
+    ik_alpha = planner_cfg.ik_alpha
+    console.say(f'IK budget: {ik_timeout:.2f}s total, '
+                f'{min(ik_timeout, planner_cfg.ik_seed_timeout):.2f}s per seed; '
+                'timeouts do not establish infeasibility')
 
     try:
         while True:
@@ -149,6 +172,7 @@ def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
             keyword = command.name if isinstance(command, NamedGoal) else ''
             tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
                      (command,) if isinstance(command, FrameGoal) else None)
+            frame_controller.last_planning_start = None
             try:
                 # plan and visualize first; execution waits for operator input
                 path, planning_time = plan_goal(
@@ -162,6 +186,20 @@ def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 )
             except Exception as err:
                 print(f'Planning failed: {err}')
+                if (failure_case is not None and tasks and
+                        frame_controller.last_planning_start is not None):
+                    case = {
+                        'config': config_name,
+                        'start_q': frame_controller.last_planning_start.tolist(),
+                        'tasks': [{'frame': task.frame_name, 'pose': task.pose.tolist()}
+                                  for task in tasks],
+                        'ik_timeout': ik_timeout, 'ik_alpha': ik_alpha,
+                    }
+                    try:
+                        Path(failure_case).write_text(json.dumps(case, indent=2) + '\n')
+                        console.say(f'Exact failed planning start saved to {failure_case}')
+                    except OSError as save_error:
+                        console.say(f'Cannot save failure case: {save_error}')
                 continue
 
             print(f'Planning time: {planning_time:.4f} s')
@@ -177,6 +215,12 @@ def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 print(f'IK attempts: {ik_elapsed:.3f}s, '
                       f'planner requests: {candidate_elapsed:.3f}s')
             print(f'Path shape: {path.shape}')
+            result = getattr(frame_controller, 'last_plan_result', None)
+            if result is not None and result.success:
+                metadata = result.metadata
+                print(f'Plan type: {metadata.get("path_kind", result.reason)}, '
+                      f'coordination: {metadata.get("coordination", "not applicable")}, '
+                      f'duration: {metadata.get("duration", 0.0):.3f}s')
             frame_controller.visualize_path(path)
 
             input('Press ENTER to execute the plan...')
@@ -188,6 +232,7 @@ def main(config_name='safety_split.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 frame_controller,
                 steady_timeout,
                 threshold_joint,
+                q_reduced=NAMED_CONFIGS[keyword] if keyword else None,
             )
 
             cont = input('Do you want to send another goal? (y/n): ').lower()
@@ -208,11 +253,9 @@ if __name__ == '__main__':
         default='safety_split.yaml',
         help='YAML file name under config/',
     )
-    parser.add_argument('--ik-timeout', type=float, default=1.0)
-    parser.add_argument('--ik-alpha', type=float, default=0.1)
+    parser.add_argument('--failure-case', help='Save the latest failed frame request as replayable JSON')
     args = parser.parse_args()
     main(
         config_name=args.config,
-        ik_timeout=args.ik_timeout,
-        ik_alpha=args.ik_alpha,
+        failure_case=args.failure_case,
     )

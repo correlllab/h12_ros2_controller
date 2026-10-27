@@ -19,8 +19,7 @@ from h12_ros2_controller.utility.goto_commands import (
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 
 
-def main(visualize=False, replay_delay=0.03, ik_timeout=1.0, ik_alpha=0.1,
-          config_name='sim_safety_split.yaml'):
+def main(visualize=False, replay_delay=0.03, config_name='sim_safety_split.yaml'):
     pipeline = KinematicPipeline(visualize=visualize, config_name=config_name)
     console = GotoConsole(
         title='Offline IK', named_goals=NAMED_CONFIGS,
@@ -75,6 +74,9 @@ def main(visualize=False, replay_delay=0.03, ik_timeout=1.0, ik_alpha=0.1,
                 last_start = np.asarray(last_case['start_q'], dtype=float)
                 last_ik = result.ik
             elif isinstance(command, (FrameGoal, MultiFrameGoal)):
+                planner_cfg = pipeline.planner_config
+                ik_timeout = planner_cfg.ik_total_timeout
+                ik_alpha = planner_cfg.ik_alpha
                 last_start = pipeline.robot_model.state['q'].copy()
                 tasks = command.tasks if isinstance(command, MultiFrameGoal) else (command,)
                 last_case = {
@@ -122,9 +124,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--visualize', action='store_true', help='Start Meshcat')
     parser.add_argument('--replay-delay', type=float, default=0.03)
-    parser.add_argument('--ik-timeout', type=float, default=1.0)
-    parser.add_argument('--ik-alpha', type=float, default=0.1)
     parser.add_argument('--config', default='sim_safety_split.yaml', help='Controller YAML profile')
     args = parser.parse_args()
-    main(args.visualize, args.replay_delay, args.ik_timeout, args.ik_alpha,
-         args.config)
+    main(args.visualize, args.replay_delay, args.config)

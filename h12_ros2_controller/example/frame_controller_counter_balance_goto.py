@@ -191,7 +191,9 @@ def valid_arm_command(controller, arm_q):
     candidate = fresh_state(controller)
     candidate[controller.arm_ids] = arm_q
     return (controller.robot_model.check_within_limits_reduced(arm_q)
-            and controller.robot_model.check_collision_free(candidate))
+            and controller.robot_model.check_collision_free(
+                candidate, min_distance=controller.d_min,
+            ))
 
 
 def send(controller, q, dq, balanced, check_collision=False):
@@ -246,17 +248,21 @@ def check_path(controller, path):
             raise RuntimeError('Robot moved since planning; replan from current state')
     elif np.max(np.abs(path[0] - measured)) > 0.05:
         raise RuntimeError('Robot moved since planning; replan from current state')
-    step_limit = controller.dq_lim * controller.dt
-    if not np.isfinite(step_limit) or step_limit <= 0:
-        raise ValueError('Controller joint speed limit and period must be positive')
-    retimed = [path[0]]
-    for first, last in zip(path[:-1], path[1:]):
-        steps = max(1, int(np.ceil(np.max(np.abs(last - first)) / step_limit - 1e-9)))
-        retimed.extend(first + (last - first) * (index / steps)
-                       for index in range(1, steps + 1))
-    path = np.asarray(retimed)
+    if planned is not None:
+        # preserve the planner's validated samples and timing provenance
+        controller._validate_path_timing(path)
+    else:
+        step_limit = controller.dq_lim * controller.dt
+        if not np.isfinite(step_limit) or step_limit <= 0:
+            raise ValueError('Controller joint speed limit and period must be positive')
+        retimed = [path[0]]
+        for first, last in zip(path[:-1], path[1:]):
+            steps = max(1, int(np.ceil(np.max(np.abs(last - first)) / step_limit - 1e-9)))
+            retimed.extend(first + (last - first) * (index / steps)
+                           for index in range(1, steps + 1))
+        path = np.asarray(retimed)
     dq = np.diff(path, axis=0) / controller.dt
-    if np.max(np.abs(dq)) > controller.dq_lim + 1e-6:
+    if planned is None and np.max(np.abs(dq)) > controller.dq_lim + 1e-6:
         raise ValueError('Retimed path exceeds controller joint speed limit')
     for waypoint in path:
         if (not controller.robot_model.check_within_limits_reduced(waypoint)
@@ -268,6 +274,8 @@ def check_path(controller, path):
 
 
 def execute_path(controller, path, balanced=False):
+    if not balanced:
+        return controller.execute_path(path)
     path, velocities = check_path(controller, path)
     controller.planned_balance = balanced
     try:
@@ -527,7 +535,7 @@ def startup_home(controller):
           'Start the external lower-body policy and verify standing.')
 
 
-def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
+def main(config_name='real_benchmark_upper.yaml'):
     config = load_controller_config(config_name)
     if config.get('mode') != 'debug' or config['topics']['low_cmd'] != 'rt/safety/lowcmd_upper_in':
         raise ValueError('Demo requires the split upper-body command relay config')
@@ -600,14 +608,15 @@ def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 if planned:
                     print(f'Planning to {goal_description}')
                     select_planner(controller, planners, ask_z_floor('this goal'))
+                    planner_cfg = controller.planner.planner_config
                     started = time.monotonic()
-                    path = plan_goal(controller, target, task, ik_timeout, ik_alpha)
+                    path = plan_goal(controller, target, task,
+                                     planner_cfg.ik_total_timeout, planner_cfg.ik_alpha)
                     planning_time = time.monotonic() - started
-                    planned_steps = len(path)
                     path, _ = check_path(controller, path)
                     length = np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1))
                     print(f'Planning time: {planning_time:.4f} s')
-                    print(f'Path shape: {path.shape} (retimed from {planned_steps} waypoints)')
+                    print(f'Path shape: {path.shape}')
                     print(f'Joint path length: {length:.3f} rad, '
                           f'nominal execution: {(len(path) - 1) * controller.dt:.2f} s')
                     if ask_choice('Execute plan? (y/N): ', ('y', 'n', '')) != 'y':
@@ -660,7 +669,5 @@ if __name__ == '__main__':
         '--config', default='real_benchmark_upper.yaml',
         help='YAML file name under config/',
     )
-    parser.add_argument('--ik-timeout', type=float, default=1.0)
-    parser.add_argument('--ik-alpha', type=float, default=0.1)
     args = parser.parse_args()
-    main(args.config, args.ik_timeout, args.ik_alpha)
+    main(args.config)

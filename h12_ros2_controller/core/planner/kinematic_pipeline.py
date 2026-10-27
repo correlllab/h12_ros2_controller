@@ -9,7 +9,7 @@ import pinocchio as pin
 
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
-    PlannerConfig, ReducedJointPlanner, moving_grasp_frames,
+    PlannerConfig, ReducedJointPlanner, active_grasp_frames, moving_grasp_frames,
 )
 from h12_ros2_controller.core.planner.path_quality import candidate_path_score
 from h12_ros2_controller.core.robot_model import RobotModel
@@ -34,6 +34,26 @@ class KinematicPlan:
     phase_timings: dict = field(default_factory=dict)
     candidate_attempts: list = field(default_factory=list)
     fallback_reason: str = ''
+
+
+def frame_target_snapshot(frame_tasks):
+    '''Copy frame targets for the same seed-reuse policy in every adapter'''
+    return tuple(sorted((
+        (task.frame, np.asarray(task.transform_target_to_world.translation).copy(),
+         np.asarray(task.transform_target_to_world.rotation).copy())
+        for task in frame_tasks.values()
+    ), key=lambda item: item[0]))
+
+
+def frame_targets_close(targets, previous, config):
+    '''Compare target changes using Cartesian distance and SO(3) rotation'''
+    return len(targets) == len(previous) and all(
+        name == old_name and
+        np.linalg.norm(position - old_position) <= config.ik_reuse_translation and
+        np.linalg.norm(pin.log3(old_rotation.T @ rotation)) <= config.ik_reuse_rotation
+        for (name, position, rotation), (old_name, old_position, old_rotation)
+        in zip(targets, previous)
+    )
 
 
 def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
@@ -235,10 +255,12 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
 
 
 def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames,
-                     plan_goal, config, alpha=0.1, ik_timeout=1.0,
+                     plan_goal, config, alpha=None, ik_timeout=None,
                      linear_threshold=1e-3, angular_threshold=1e-2,
                      preferred_positions=None, deadline=None):
     '''Use one shared candidate and bimanual fallback route for frame tasks'''
+    alpha = config.ik_alpha if alpha is None else alpha
+    ik_timeout = config.ik_total_timeout if ik_timeout is None else ik_timeout
     started = time.perf_counter()
     if deadline is not None and not np.isfinite(deadline):
         raise ValueError('deadline must be finite')
@@ -412,6 +434,11 @@ class KinematicPipeline:
             wrist_posture_cost=planner_config.ik_wrist_posture_cost,
             shoulder_seed_offset=planner_config.ik_shoulder_seed_offset,
             elbow_seed_offset=planner_config.ik_elbow_seed_offset,
+            batch_frame_lm_damping=planner_config.ik_frame_lm_damping,
+            batch_stagnation_iterations=planner_config.ik_stagnation_iterations,
+            batch_stagnation_relative_improvement=(
+                planner_config.ik_stagnation_relative_improvement
+            ),
         )
         self.planner = ReducedJointPlanner(self.robot_model, planner_config)
         self._prior_ik = None
@@ -422,11 +449,13 @@ class KinematicPipeline:
             raise ValueError(f'Unknown named configuration: {name}')
         self._prior_ik = None
         start_time = time.perf_counter()
+        deadline = start_time + self.planner_config.named_planning_budget
         start = self.robot_model.state_reduced['q']
         goal = np.asarray(NAMED_CONFIGS[name], dtype=float)
         local_frames = moving_grasp_frames(start, goal, self.planner.frame_names)
         plan = self.planner.plan(
             start, goal, local_frames=local_frames, local_joint_padding=0.0,
+            deadline=deadline,
         )
         elapsed = time.perf_counter() - start_time
         return KinematicPlan(
@@ -462,22 +491,22 @@ class KinematicPipeline:
         if 'tasks' in case:
             tasks = [(task['frame'], task['pose']) for task in case['tasks']]
             return self.plan_frames(
-                tasks, ik_timeout=case.get('ik_timeout', 1.0),
-                ik_alpha=case.get('ik_alpha', 0.1),
+                tasks, ik_timeout=case.get('ik_timeout'),
+                ik_alpha=case.get('ik_alpha'),
             )
         return self.plan_frame(
             case['frame'], case['pose'],
-            ik_timeout=case.get('ik_timeout', 1.0),
-            ik_alpha=case.get('ik_alpha', 0.1),
+            ik_timeout=case.get('ik_timeout'),
+            ik_alpha=case.get('ik_alpha'),
         )
 
-    def plan_frame(self, frame_name, pose, ik_timeout=1.0, ik_alpha=0.1):
+    def plan_frame(self, frame_name, pose, ik_timeout=None, ik_alpha=None):
         '''Plan one frame goal through the shared multi-frame path'''
         return self.plan_frames(
             ((frame_name, pose),), ik_timeout=ik_timeout, ik_alpha=ik_alpha,
         )
 
-    def plan_frames(self, tasks, ik_timeout=1.0, ik_alpha=0.1):
+    def plan_frames(self, tasks, ik_timeout=None, ik_alpha=None):
         '''Solve all pelvis-relative frame tasks in one IK and joint plan'''
         model = self.robot_model.model_body_reduced
         normalized = []
@@ -510,24 +539,13 @@ class KinematicPipeline:
         start_q = np.copy(self.robot_model.state['q'])
         preferred = None
         previous = self._prior_ik
-        targets = tuple(sorted((name, pose) for name, pose, _ in normalized))
-        if previous is not None and len(previous['tasks']) == len(targets):
-            if (np.array_equal(
-                    start_q[~self.robot_model.reduced_mask], previous['frozen']) and
-                    all(
-                        name == old_name and
-                        np.linalg.norm(pose[:3] - old_pose[:3]) <=
-                        self.planner_config.ik_reuse_translation and
-                        np.linalg.norm(pose[3:] - old_pose[3:]) <=
-                        self.planner_config.ik_reuse_rotation
-                        for (name, pose), (old_name, old_pose)
-                        in zip(targets, previous['tasks'])
-                    )):
-                preferred = previous['q']
+        targets = frame_target_snapshot(self.ik_solver.frame_tasks)
+        if previous is not None and frame_targets_close(
+            targets, previous['targets'], self.planner_config,
+        ):
+            preferred = previous['q'][self.robot_model.reduced_mask].copy()
         start = self.robot_model.state_reduced['q']
-        local_frames = tuple(
-            name for name, _, _ in normalized if name in self.planner.frame_names
-        )
+        local_frames = active_grasp_frames(active_mask, self.planner.frame_names)
         ik, plan, selected, attempts, timings, fallback_reason = plan_frame_tasks(
             self.ik_solver, start_q, active_mask, self.robot_model.reduced_mask,
             local_frames,
@@ -544,8 +562,7 @@ class KinematicPipeline:
         )
         if selected is not None:
             self._prior_ik = {
-                'tasks': tuple((name, pose.copy()) for name, pose in targets),
-                'frozen': start_q[~self.robot_model.reduced_mask].copy(),
+                'targets': targets,
                 'q': selected.q.copy(),
             }
         elapsed = time.perf_counter() - start_time

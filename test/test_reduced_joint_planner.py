@@ -77,7 +77,7 @@ def test_named_motion_selects_only_moving_arm_grasp_frames():
 def test_two_arm_fallback_stitches_valid_timed_single_arm_paths(partial_mask):
     planner = ReducedJointPlanner(FakeRobotModel(
         lower=-np.ones(14), upper=np.ones(14),
-    ))
+    ), config=PlannerConfig(prefer_coordinated_motion=False))
     start = np.zeros(14)
     goal = start.copy()
     goal[[0, 7]] = 0.1
@@ -111,9 +111,77 @@ def test_two_arm_fallback_stitches_valid_timed_single_arm_paths(partial_mask):
         assert np.array_equal(result.path[:, ~active], np.zeros((len(result.path), 12)))
 
 
+@pytest.mark.parametrize('partial_mask', (False, True))
+def test_two_arm_fallback_prefers_valid_synchronized_progress(partial_mask):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+    original = planner._plan_once
+    calls = []
+
+    def block_combined(first, second, **kwargs):
+        calls.append((np.asarray(first).copy(), np.asarray(second).copy()))
+        if np.any(np.asarray(first)[:7] != np.asarray(second)[:7]) and np.any(
+            np.asarray(first)[7:] != np.asarray(second)[7:]
+        ):
+            return PlanResult(success=False, path=np.empty((0, 14)), reason='no direct route')
+        return original(first, second, **kwargs)
+
+    planner._plan_once = block_combined
+    mask = np.zeros(14, dtype=bool)
+    mask[[0, 7]] = True
+    result = planner.plan(
+        start, goal, active_mask=mask if partial_mask else None,
+        local_frames=('left_grasp_frame', 'right_grasp_frame'),
+    )
+
+    assert result.success, result.reason
+    assert result.metadata['coordination'] == 'synchronous'
+    assert len(calls) == 3
+    assert np.allclose(result.path[-1], goal)
+    velocities = np.abs(np.diff(result.path, axis=0))
+    assert np.any((velocities[:, 0] > 1e-6) & (velocities[:, 7] > 1e-6))
+    if partial_mask:
+        assert np.allclose(result.path[:, ~mask], 0.0)
+
+
+def test_staging_reuses_same_start_route_but_replans_changed_second_arm_context():
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+    original = planner._plan_once
+    calls = []
+
+    def single_arm_only(first, second, **kwargs):
+        calls.append((np.asarray(first).copy(), np.asarray(second).copy()))
+        if len(calls) == 1:
+            return PlanResult(success=False, path=np.empty((0, 14)), reason='no combined route')
+        return original(first, second, **kwargs)
+
+    planner._plan_once = single_arm_only
+    planner._coordinate_arm_paths = lambda *args, **kwargs: (None, 'combined path blocked')
+    result = planner.plan(
+        start, goal, local_frames=('left_grasp_frame', 'right_grasp_frame'),
+    )
+
+    assert result.success, result.reason
+    assert result.metadata['path_kind'] == 'staged two-arm path'
+    assert len(calls) == 4
+    assert calls[-1][0][7] == goal[7]
+    assert calls[-1][0][0] == start[0]
+    assert np.array_equal(calls[-1][1], goal)
+
+
 def test_two_arm_fallback_retains_final_waypoint_cap():
     config = PlannerConfig(max_interpolation_steps=35,
-                           max_staged_interpolation_steps=40)
+                           max_staged_interpolation_steps=40,
+                           prefer_coordinated_motion=False)
     planner = ReducedJointPlanner(FakeRobotModel(
         lower=-np.ones(14), upper=np.ones(14),
     ), config=config)
@@ -168,7 +236,7 @@ def test_rejects_staged_cap_below_single_plan_cap():
 def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
     planner = ReducedJointPlanner(FakeRobotModel(
         lower=-np.ones(14), upper=np.ones(14),
-    ))
+    ), config=PlannerConfig(prefer_coordinated_motion=False))
     clock = [0.0]
     calls = []
     monkeypatch.setattr(
@@ -193,7 +261,7 @@ def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
 
     assert not result.success
     assert len(calls) == 2
-    assert calls[1] == pytest.approx(0.1)
+    assert 0.0 < calls[1] <= 0.1
     assert clock[0] == pytest.approx(0.4)
     assert 'budget exhausted' in result.reason
 
@@ -593,6 +661,34 @@ def test_small_named_goal_is_not_silently_projected_away():
 
     assert result.success, result.reason
     assert result.path[-1, 7] == pytest.approx(goal[7])
+
+
+def test_named_single_arm_return_retries_local_search_after_timing_rejection():
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ), config=PlannerConfig(local_joint_padding=0.6))
+    original = planner._plan_once
+    paddings = []
+
+    def reject_long_initial_route(*args, **kwargs):
+        paddings.append(kwargs.get('local_joint_padding'))
+        if kwargs.get('local_joint_padding') == 0.0:
+            return PlanResult(success=False, path=np.empty((0, 14)),
+                              reason='timing requires 907 points, exceeds max_interpolation_steps=600')
+        return original(*args, **kwargs)
+
+    planner._plan_once = reject_long_initial_route
+    start = np.zeros(14)
+    start[0] = 0.2
+    result = planner.plan(
+        start, np.zeros(14), local_frames=('left_grasp_frame',),
+        local_joint_padding=0.0,
+    )
+
+    assert result.success, result.reason
+    assert paddings == [0.0, 0.6]
+    assert '907' in result.metadata['initial_failure']
+    assert np.allclose(result.path[-1], 0.0)
 
 
 def test_conflicting_explicit_active_mask_rejects_goal():

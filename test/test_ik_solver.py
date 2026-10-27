@@ -351,6 +351,136 @@ def test_nonfinite_velocity_isolated_and_posture_fixed(solver):
     assert np.all(np.isfinite(result.q))
 
 
+@pytest.mark.parametrize('kwargs, parameter', [
+    ({'frame_lm_damping': -1.}, 'frame_lm_damping'),
+    ({'frame_lm_damping': np.nan}, 'frame_lm_damping'),
+    ({'frame_lm_damping': np.inf}, 'frame_lm_damping'),
+    ({'batch_stagnation_iterations': 0}, 'batch_stagnation_iterations'),
+    ({'batch_stagnation_iterations': 1.5}, 'batch_stagnation_iterations'),
+    ({'batch_stagnation_iterations': True}, 'batch_stagnation_iterations'),
+    ({'batch_stagnation_relative_improvement': 0.}, 'relative_improvement'),
+    ({'batch_stagnation_relative_improvement': -0.1}, 'relative_improvement'),
+    ({'batch_stagnation_relative_improvement': 1.}, 'relative_improvement'),
+    ({'batch_stagnation_relative_improvement': np.nan}, 'relative_improvement'),
+    ({'batch_stagnation_relative_improvement': np.inf}, 'relative_improvement'),
+])
+def test_batch_convergence_parameter_validation(kwargs, parameter):
+    with pytest.raises(ValueError, match=parameter):
+        IKSolver(SimpleNamespace(), **kwargs)
+
+
+def test_frame_damping_default_configuration_and_explicit_override(solver):
+    solver.robot_model.visualizer = None
+    solver.add_frame_task('default', 'left_grasp_frame')
+    assert solver.frame_tasks['default'].lm_damping == 3.0
+    solver.frame_lm_damping = 1.0
+    solver.add_frame_task('configured', 'left_grasp_frame',
+                          position_cost=12., orientation_cost=7.)
+    solver.add_frame_task('override', 'right_grasp_frame', lm_damping=0.1)
+    solver.add_frame_task('zero', 'right_grasp_frame', lm_damping=0.)
+
+    assert solver.frame_tasks['configured'].lm_damping == 1.0
+    np.testing.assert_array_equal(solver.frame_tasks['configured'].cost,
+                                  [12., 12., 12., 7., 7., 7.])
+    assert solver.frame_tasks['override'].lm_damping == 0.1
+    assert solver.frame_tasks['zero'].lm_damping == 0.
+
+
+def test_stagnant_reduced_seeds_stop_before_shared_timeout(solver, monkeypatch):
+    clock = [0.]
+    monkeypatch.setattr('h12_ros2_controller.core.ik_solver.time.monotonic',
+                        lambda: clock[0])
+    solver._frame_task_errors = lambda config: (1., 0.)
+    targets = []
+    solver.posture_task.set_target_from_configuration = (
+        lambda config: targets.append(config.q.copy())
+    )
+
+    def stagnant_step(tasks, dt):
+        clock[0] += 0.001
+        return np.zeros(4)
+
+    solver._ik_reduced = stagnant_step
+    result = solver.solve_ik_reduced(timeout=0.3, total_timeout=1., max_seeds=3)
+
+    assert not result.success
+    assert len(result.attempts) == 3
+    assert all(item.reason == 'stagnation' for item in result.attempts)
+    assert all(item.iterations == 12 for item in result.attempts)
+    assert clock[0] == pytest.approx(0.036)
+    assert len(targets) == 3
+
+
+@pytest.mark.parametrize('failure', ['stagnation', 'timeout', 'non-finite task error'])
+def test_failed_reduced_attempt_returns_best_finite_iterate(solver, monkeypatch, failure):
+    clock = [0.]
+    monkeypatch.setattr('h12_ros2_controller.core.ik_solver.time.monotonic',
+                        lambda: clock[0])
+    solver._batch_reduced_reference = np.zeros(4)
+
+    def errors(config):
+        if failure == 'non-finite task error' and config.q[0] > 0.3:
+            return np.inf, np.inf
+        return abs(config.q[0] - 0.2) + 0.5, 0.
+
+    def step(tasks, dt):
+        clock[0] += 0.001
+        return np.array([1., 0., 0., 0.])
+
+    solver._frame_task_errors = errors
+    solver._ik_reduced = step
+    result = solver._solve_ik_reduced_attempt(
+        'current', np.zeros(4), 0.1, 0.004 if failure == 'timeout' else 1.,
+        0.001, 0.002,
+    )
+
+    assert not result.success
+    assert result.reason == failure
+    np.testing.assert_allclose(result.q, [0.2, 0., 0., 0.])
+    assert result.linear_error == pytest.approx(0.5)
+    assert result.angular_error == 0.
+    np.testing.assert_array_equal(solver.q_reduced, result.q)
+
+
+def test_reduced_progress_checkpoint_accumulates_small_improvements(solver):
+    solver._batch_reduced_reference = np.zeros(4)
+    solver._frame_task_errors = lambda config: (
+        1. - 0.0002 * config.q[0] if config.q[0] < 30 else 0., 0.,
+    )
+    solver._ik_reduced = lambda tasks, dt: np.array([1., 0., 0., 0.])
+
+    result = solver._solve_ik_reduced_attempt(
+        'current', np.zeros(4), 1., float('inf'), 0.001, 0.002,
+    )
+
+    assert result.success
+    assert result.iterations == 30
+
+
+def test_improving_real_reduced_task_converges_with_configured_damping():
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
+    solver = IKSolver(pipeline.robot_model, d_min=pipeline.ik_solver.d_min,
+                      frame_lm_damping=1., batch_stagnation_iterations=12,
+                      batch_stagnation_relative_improvement=0.001)
+    solver.add_frame_task('left', 'left_grasp_frame')
+    solver.frame_tasks['left'].set_target(pin.SE3(
+        pin.rpy.rpyToMatrix(np.deg2rad([15., 80., -15.])),
+        np.array([0.43, 0.16, 0.25]),
+    ))
+    result = solver.solve_ik_reduced(
+        alpha=0.1, timeout=3., total_timeout=3., max_seeds=1,
+        linear_threshold=0.001, angular_threshold=0.002,
+        active_mask=np.array([True] * 7 + [False] * 7),
+    )
+
+    assert result.success, [(item.reason, item.iterations) for item in result.attempts]
+    assert result.attempts[0].iterations > solver.batch_stagnation_iterations
+    assert solver.frame_tasks['left'].lm_damping == 1.
+    assert result.linear_error < 0.001
+    assert result.angular_error < 0.002
+    np.testing.assert_allclose(result.q[pipeline.robot_model.reduced_mask][7:], 0.)
+
+
 def test_reference_positions_selects_nearest_candidate(solver):
     def attempt(name, seed, alpha, deadline, linear, angular):
         return IKAttemptResult(seed.copy(), True, 0., 0., name, 0, 0.)
@@ -423,6 +553,51 @@ def test_real_reduced_qp_keeps_untasked_arm_velocity_zero():
     assert result.ik.success and result.plan.success
     assert velocities
     assert np.allclose(result.plan.path[:, 7:], 0.0)
+
+
+def test_planned_ik_damping_restores_live_tracking_tasks():
+    pipeline = KinematicPipeline(config_name='safety_split.yaml')
+    original = pipeline.ik_solver._ik_reduced
+    seen = []
+
+    def inspect_damping(tasks, dt, **kwargs):
+        frames = pipeline.ik_solver.frame_tasks.values()
+        seen.extend(task.lm_damping for task in frames)
+        return original(tasks, dt, **kwargs)
+
+    pipeline.ik_solver._ik_reduced = inspect_damping
+    result = pipeline.plan_frame('left_grasp_frame', np.array([
+        0.4, 0.3, 0.2, 0., np.deg2rad(60), 0.,
+    ]))
+
+    assert result.ik.success
+    assert seen and set(seen) == {pipeline.planner_config.ik_frame_lm_damping}
+    assert all(task.lm_damping == 3.0 for task in
+               pipeline.ik_solver.frame_tasks.values())
+
+
+@pytest.mark.parametrize(('frame', 'values'), [
+    ('right_grasp_frame', [0.47, -0.14, 0.34, -15, 60, 15]),
+    ('right_grasp_frame', [0.49, -0.18, 0.28, -15, 70, 15]),
+    ('left_grasp_frame', [0.43, 0.16, 0.25, 15, 80, -15]),
+    ('left_grasp_frame', [0.4, 0.2, 0.2, 0, 80, 0]),
+    ('left_grasp_frame', [0.4, 0.2, 0.2, 0, 70, 0]),
+    ('left_grasp_frame', [0.4, 0.3, 0.2, 0, 70, 0]),
+    ('left_grasp_frame', [0.4, 0.3, 0.2, 0, 60, 0]),
+])
+def test_reported_pitch_targets_find_feasible_ik_from_home(frame, values):
+    pipeline = KinematicPipeline(config_name='safety_split.yaml')
+    pose = np.asarray(values, dtype=float)
+    pose[3:] = np.deg2rad(pose[3:])
+
+    result = pipeline.plan_frame(frame, pose, ik_timeout=1.0)
+
+    assert result.ik.success, [(attempt.seed_name, attempt.linear_error,
+                               attempt.angular_error, attempt.reason)
+                              for attempt in result.ik.attempts]
+    assert all(candidate.linear_error < pipeline.ik_linear_threshold and
+               candidate.angular_error < pipeline.ik_angular_threshold
+               for candidate in result.ik.candidates)
 
 
 def test_reduced_result_preserves_frozen_start_coordinates(solver):
@@ -538,6 +713,11 @@ def test_offline_and_controller_resolve_same_planner_profile():
     assert min(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert max(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert actual.ik_seed_timeout == config['planner']['ik_seed_timeout']
+    assert actual.ik_total_timeout == 3.0
+    assert actual.ik_seed_timeout == 0.5
+    assert actual.ik_alpha == 0.1
+    assert actual.ik_frame_lm_damping == config['planner']['ik_frame_lm_damping']
+    assert actual.ik_stagnation_iterations == config['planner']['ik_stagnation_iterations']
     assert actual.ik_wrist_motion_weight == config['planner']['ik_wrist_motion_weight']
     assert actual.ik_wrist_posture_cost == config['planner']['ik_wrist_posture_cost']
     assert actual.candidate_planning_budget == config['planner']['candidate_planning_budget']
@@ -847,7 +1027,8 @@ def test_candidate_selector_retries_after_rejected_ompl_detour():
     assert [call[:2] for call in calls] == [
         (1.0, True), (2.0, True), (1.0, False), (2.0, False),
     ]
-    assert all(0 < timeout <= 0.75 for _, direct, timeout in calls if not direct)
+    assert all(0 < timeout <= PlannerConfig().candidate_ompl_timeout
+               for _, direct, timeout in calls if not direct)
 
 
 def test_problematic_pitch_goal_has_local_path_from_home():
@@ -896,6 +1077,29 @@ def test_combined_overhang_arms_return_home_without_rearward_sweep():
         assert minimum >= home.plan.metadata['local_x_bounds'][frame] - 0.01
 
 
+def test_right_overhang_then_left_pure_pitch_can_return_home_in_one_request():
+    pipeline = KinematicPipeline(config_name='safety_split.yaml')
+    for frame, values in (
+        ('right_grasp_frame', [0.49, -0.18, 0.28, -15, 70, 15]),
+        ('left_grasp_frame', [0.4, 0.2, 0.2, 0, 80, 0]),
+    ):
+        pose = np.asarray(values, dtype=float)
+        pose[3:] = np.deg2rad(pose[3:])
+        outbound = pipeline.plan_frame(frame, pose)
+        assert outbound.plan is not None and outbound.plan.success
+        pipeline.replay(outbound.plan.path)
+
+    result = pipeline.plan_named('home')
+
+    assert result.plan.success, result.plan.reason
+    assert np.allclose(result.plan.path[-1], 0.0)
+    assert result.plan.metadata['joint_path_ratio'] <= 2.0
+    assert result.plan.metadata['minimum_self_clearance'] > 0.02
+    assert result.plan.metadata['actual_max_frame_speed'] <= (
+        pipeline.planner.config.moving_speed * (1.0 + 1e-6)
+    )
+
+
 def test_nearby_offline_goal_reuses_prior_ik_seed_but_explicit_reset_clears_it():
     pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
     pose = np.array([0.42, 0.16, 0.25, np.deg2rad(15),
@@ -913,7 +1117,9 @@ def test_nearby_offline_goal_reuses_prior_ik_seed_but_explicit_reset_clears_it()
     nearby = pose.copy()
     nearby[0] += 0.01
     pipeline.plan_frame('left_grasp_frame', nearby)
-    assert np.array_equal(inputs[-1], first.selected_candidate.q)
+    assert np.array_equal(
+        inputs[-1], first.selected_candidate.q[pipeline.robot_model.reduced_mask],
+    )
 
     pipeline.set_start(np.zeros(27))
     pipeline.plan_frame('left_grasp_frame', nearby)

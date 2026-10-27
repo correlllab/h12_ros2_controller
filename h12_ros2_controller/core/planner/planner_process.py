@@ -312,6 +312,9 @@ class _PlannerWorker:
         start = np.asarray(request['start'], dtype=float)
         goal = np.asarray(request['goal'], dtype=float)
         active_mask = _optional_array(request.get('active_mask'), dtype=bool)
+        timeout = request.get('timeout')
+        if timeout is not None and (not np.isfinite(timeout) or timeout <= 0.0):
+            raise ValueError('Planner timeout must be finite and positive')
         budget = request.get('planning_budget')
         if budget is not None:
             budget = float(budget)
@@ -321,10 +324,10 @@ class _PlannerWorker:
         with self._config_override(
             request.get('moving_speed'),
             request.get('max_interpolation_steps'),
-            request.get('timeout'),
         ):
             return self.planner.plan(
                 start, goal, active_mask=active_mask,
+                timeout=timeout,
                 direct_only=request.get('direct_only', False),
                 local_frames=request.get('local_frames', ()),
                 allow_reuse=request.get('allow_reuse', True),
