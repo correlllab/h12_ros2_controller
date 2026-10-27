@@ -1,6 +1,7 @@
 '''Test planned ROS action callbacks without requiring a ROS installation'''
 
 import ast
+import json
 import time
 import threading
 import unittest
@@ -34,6 +35,7 @@ def load_planned_callbacks(server_file):
         'NamedConfig': SimpleNamespace(Result=Result),
         'np': np,
         'time': time,
+        'json': json,
     }
     for method in methods:
         module = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
@@ -135,6 +137,33 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                 else:
                     controller.plan_to_ik_target.assert_called_once_with()
                     controller.plan_to_configuration.assert_not_called()
+
+    def test_failed_ros_frame_plan_logs_replayable_motor_start_and_targets(self):
+        callbacks = load_planned_callbacks('frame_task_server.py')
+        context = {
+            'start_q': [0.0] * 12 + [0.2] + [0.0] * 14,
+            'tasks': [{'frame': 'left_grasp_frame',
+                       'pose': [0.42, 0.16, 0.25, 0.26, 1.39, -0.26]}],
+        }
+        controller = Mock()
+        controller.last_planning_context = context
+        controller.plan_to_ik_target.side_effect = RuntimeError('IK failed')
+        logger = Mock()
+        server = SimpleNamespace(
+            controller=controller, config_name='safety_split.yaml',
+            get_logger=lambda: logger,
+        )
+        goal = SimpleNamespace(is_cancel_requested=False, abort=Mock())
+
+        result = callbacks['_plan_frame_task_callback'](server, goal, 1.0)
+
+        assert result.success is False
+        goal.abort.assert_called_once()
+        logged = logger.warn.call_args_list[-1].args[0]
+        case = json.loads(logged.removeprefix('Planning replay case: '))
+        assert case['start_q'][12] == 0.2
+        assert case['config'] == 'safety_split.yaml'
+        assert case['tasks'] == context['tasks']
 
     def test_direct_cancel_requested_before_step_sends_no_commands(self):
         for filename, planned_method, named in self.cases:

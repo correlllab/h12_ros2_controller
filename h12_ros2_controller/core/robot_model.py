@@ -24,6 +24,10 @@ class RobotModel:
         # model without free-flyer for IK solver (motor only)
         self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename, handless=self.handless)
         self.data_body = self.model_body.createData()
+        self._urdf_position_limits = np.column_stack((
+            self.model_body.lowerPositionLimit,
+            self.model_body.upperPositionLimit,
+        ))
 
         # placeholder for visualizer and state subscriber
         self.visualizer = None
@@ -49,6 +53,31 @@ class RobotModel:
         self.init_collision = False
         # placeholder mask for reduced model (motor only, length NUM_MOTOR)
         self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
+
+    def apply_position_limits(self, limits):
+        '''Intersect motor position limits with URDF bounds before reduced init
+
+        Repeated calls use the original URDF bounds, not the previous update.
+        Updating after reduced initialization is prohibited because IK and
+        planners may already cache reduced models and position-limit objects.
+        '''
+        if self.init_reduced:
+            raise RuntimeError('Apply position limits before reduced model initialization')
+        limits = np.asarray(limits, dtype=float)
+        if limits.shape != (self.model_body.nq, 2):
+            raise ValueError('Position limits must contain one lower/upper pair per motor')
+        if not np.all(np.isfinite(limits)):
+            raise ValueError('Position limits must be finite')
+        if np.any(limits[:, 0] >= limits[:, 1]):
+            raise ValueError('Position lower limits must be below upper limits')
+        lower = np.maximum(self._urdf_position_limits[:, 0], limits[:, 0])
+        upper = np.minimum(self._urdf_position_limits[:, 1], limits[:, 1])
+        if np.any(lower >= upper):
+            raise ValueError('Position-limit intersection with URDF bounds is empty')
+        self.model_body.lowerPositionLimit[:] = lower
+        self.model_body.upperPositionLimit[:] = upper
+        self.model.lowerPositionLimit[FREEFLYER_NQ:] = lower
+        self.model.upperPositionLimit[FREEFLYER_NQ:] = upper
 
     def init_reduced_model(self, enabled_joints):
         '''

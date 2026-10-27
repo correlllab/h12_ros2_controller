@@ -6,6 +6,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 
 import time
+import json
 import threading
 import sys
 from pathlib import Path
@@ -50,6 +51,7 @@ class FrameTaskServer(Node):
                  threshold_angular=None,
                  config_name='safety_split.yaml'):
         super().__init__('frame_task_server')
+        self.config_name = config_name
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         controller_cfg = config['controller']
         self.timeout = controller_cfg['timeout'] if timeout is None else timeout
@@ -394,6 +396,10 @@ class FrameTaskServer(Node):
             return result
         except Exception as err:
             self.get_logger().warn(f'Planning or execution failed: {err}')
+            context = getattr(self.controller, 'last_planning_context', None)
+            if isinstance(context, dict):
+                case = {**context, 'config': self.config_name}
+                self.get_logger().warn(f'Planning replay case: {json.dumps(case)}')
             goal_handle.abort()
             result = FrameTask.Result()
             result.success = False

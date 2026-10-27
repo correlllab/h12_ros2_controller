@@ -407,6 +407,11 @@ def test_controller_warmup_overlaps_startup_and_cleans_up_failed_init(monkeypatc
         def init_subscriber(self, **kwargs):
             pass
 
+        def apply_position_limits(self, limits):
+            limits = np.asarray(limits)
+            self.model_body.lowerPositionLimit = limits[:, 0].copy()
+            self.model_body.upperPositionLimit = limits[:, 1].copy()
+
         def update_kinematics(self):
             pass
 

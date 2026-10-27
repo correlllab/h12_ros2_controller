@@ -287,12 +287,14 @@ class _PlannerWorker:
             init_args['urdf_path'],
             handless=init_args['handless'],
         )
+        planner_config = PlannerConfig(**init_args['planner_config'])
+        if planner_config.motor_position_limits is not None:
+            self.robot_model.apply_position_limits(planner_config.motor_position_limits)
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(
             init_args['urdf_sphere_path'],
             init_args['srdf_sphere_path'],
         )
-        planner_config = PlannerConfig(**init_args['planner_config'])
         self.planner = ReducedJointPlanner(
             self.robot_model,
             config=planner_config,

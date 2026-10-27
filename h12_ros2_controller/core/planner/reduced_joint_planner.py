@@ -7,6 +7,7 @@ from ompl import base as ob
 from ompl import geometric as og
 from scipy.interpolate import PchipInterpolator
 
+from h12_ros2_controller.utility.joint_definition import NUM_MOTOR
 from h12_ros2_controller.core.planner.path_quality import (
     candidate_path_score, radial_excursions,
 )
@@ -124,6 +125,16 @@ class PlannerConfig:
     prewarm_worker: bool = False
     # measured starts can sit marginally past joint limits; only clamp small overshoots
     start_limit_tolerance: float = 0.05
+    motor_position_limits: tuple | None = None
+
+    def __post_init__(self):
+        if self.motor_position_limits is None:
+            return
+        limits = np.asarray(self.motor_position_limits, dtype=float)
+        if limits.shape != (NUM_MOTOR, 2) or not np.all(np.isfinite(limits)):
+            raise ValueError('motor_position_limits must contain 27 finite lower/upper pairs')
+        if np.any(limits[:, 0] >= limits[:, 1]):
+            raise ValueError('motor_position_limits lower bounds must be below upper bounds')
 
 
 @dataclass

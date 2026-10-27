@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 import numpy as np
 import pinocchio as pin
 from tqdm import tqdm
@@ -55,7 +56,7 @@ class UpperController:
                  handless: bool=False,
                  visualize=False,
                  config=None):
-        self.config = config if config is not None else load_controller_config()
+        self.config = deepcopy(config) if config is not None else load_controller_config()
         controller_cfg = self.config.get('controller', {})
         control_dt = 1.0 / float(self.config.get('frequency', {}).get('ctrl_hz', 50.0))
         planner_config = planner_config_from_controller(self.config, dt=control_dt)
@@ -77,6 +78,13 @@ class UpperController:
 
         # initialize robot model
         self.robot_model = RobotModel(urdf_path, handless=handless)
+        if planner_config.motor_position_limits is not None:
+            self.robot_model.apply_position_limits(planner_config.motor_position_limits)
+            self.config['limits']['q_clip_limits'] = np.column_stack((
+                self.robot_model.model_body.lowerPositionLimit,
+                self.robot_model.model_body.upperPositionLimit,
+            ))
+            planner_config = planner_config_from_controller(self.config, dt=control_dt)
         self.dt = control_dt
         self.v_lim = float(controller_cfg.get('v_lim', 1.0))
         self.w_lim = float(controller_cfg.get('w_lim', 2.0))
@@ -455,6 +463,7 @@ class UpperController:
         '''Solve current IK tasks, then plan to the IK joint solution'''
         started = time.perf_counter()
         self.last_plan_result = None
+        self.last_planning_context = None
         measured_q = np.copy(self.robot_model.state['q'])
         command_q, from_command = self._command_seed(measured_q)
         if start is None:
@@ -472,6 +481,21 @@ class UpperController:
         planning_config = self.planner.planner_config
         deadline = started + planning_config.request_planning_budget
         targets = frame_target_snapshot(self.ik_solver.frame_tasks)
+        self.last_planning_context = {
+            'start_q': start_q.tolist(),
+            'measured_q': measured_q.tolist(),
+            'tasks': [{
+                'frame': name,
+                'pose': np.r_[position, pin.rpy.matrixToRpy(rotation)].tolist(),
+            } for name, position, rotation in targets],
+            'ik_timeout': (planning_config.ik_total_timeout if ik_timeout is None
+                           else ik_timeout),
+            'ik_alpha': planning_config.ik_alpha if ik_alpha is None else ik_alpha,
+            'assets': {
+                key: str(getattr(self.planner, key, ''))
+                for key in ('urdf_path', 'urdf_sphere_path', 'srdf_sphere_path')
+            },
+        }
         preferred = None
         previous = getattr(self, '_prior_ik', None)
         if (previous is not None and len(targets) == len(previous['targets']) and
@@ -615,7 +639,15 @@ class UpperController:
                 limits = np.asarray(clip_limits)[reduced_mask]
                 if (np.any(path < limits[:, 0] - 1e-9) or
                         np.any(path > limits[:, 1] + 1e-9)):
-                    raise ValueError('Path would be clipped by command position limits')
+                    waypoint, joint = np.argwhere(
+                        (path < limits[:, 0] - 1e-9) | (path > limits[:, 1] + 1e-9)
+                    )[0]
+                    name = BODY_JOINTS[np.flatnonzero(reduced_mask)[joint]]
+                    raise ValueError(
+                        f'Path would be clipped by command position limits: '
+                        f'waypoint {waypoint}, {name}={path[waypoint, joint]:.6f}, '
+                        f'limits=[{limits[joint, 0]:.6f}, {limits[joint, 1]:.6f}]'
+                    )
             self._validate_path_timing(path)
 
         # planner returns waypoints time-parameterized at the control period

@@ -1,7 +1,7 @@
 '''Offline IK and reduced joint-space planning without DDS or motor commands'''
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -342,6 +342,9 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
 def planner_config_from_controller(config, dt=None):
     '''Resolve the same planner options for hardware and offline planning'''
     options = dict(config.get('planner', {}))
+    options['motor_position_limits'] = configured_position_limits(
+        config, options.get('motor_position_limits'),
+    )
     clearance = float(config.get('controller', {}).get('d_min', 0.02))
     if ('self_collision_clearance' in options and
             not np.isclose(options['self_collision_clearance'], clearance,
@@ -367,6 +370,25 @@ def planner_config_from_controller(config, dt=None):
     if 'frame_names' in options:
         options['frame_names'] = tuple(options['frame_names'])
     return PlannerConfig(**options)
+
+
+def configured_position_limits(config, requested=None):
+    '''Keep injected planning bounds inside the command publisher's bounds'''
+    command = config.get('limits', {}).get('q_clip_limits')
+    if command is None:
+        return requested
+    limits = np.asarray(command, dtype=float).copy()
+    if limits.shape != (len(BODY_JOINTS), 2) or not np.all(np.isfinite(limits)):
+        raise ValueError('Motor position limits must contain 27 finite lower/upper pairs')
+    if requested is not None:
+        proposed = np.asarray(requested, dtype=float)
+        if proposed.shape != limits.shape or not np.all(np.isfinite(proposed)):
+            raise ValueError('Motor position limits must contain 27 finite lower/upper pairs')
+        limits[:, 0] = np.maximum(limits[:, 0], proposed[:, 0])
+        limits[:, 1] = np.minimum(limits[:, 1], proposed[:, 1])
+    if np.any(limits[:, 0] >= limits[:, 1]):
+        raise ValueError('Motor position-limit intersection is empty')
+    return tuple(tuple(float(value) for value in pair) for pair in limits)
 
 
 def candidate_metrics(candidate, start, model, reduced_mask):
@@ -421,6 +443,21 @@ class KinematicPipeline:
             if not Path(asset).is_file():
                 raise FileNotFoundError(f'missing robot asset: {asset}')
         self.robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
+        planner_config = replace(
+            planner_config,
+            motor_position_limits=configured_position_limits(
+                config, planner_config.motor_position_limits,
+            ),
+        )
+        if planner_config.motor_position_limits is not None:
+            self.robot_model.apply_position_limits(planner_config.motor_position_limits)
+            planner_config = replace(
+                planner_config,
+                motor_position_limits=tuple(zip(
+                    self.robot_model.model_body.lowerPositionLimit.tolist(),
+                    self.robot_model.model_body.upperPositionLimit.tolist(),
+                )),
+            )
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
         self.robot_model.init_collision_model(URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH)
         if visualize:
