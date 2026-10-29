@@ -181,22 +181,32 @@ class IKSolver:
         return np.copy(self.configuration_reduced.q)
 
     def compute_error(self, task: pink.Task, q: np.ndarray) -> np.ndarray:
-        '''Compute the error for a specific task (motor-only q, 27)'''
-        configuration = pink.Configuration(
-            self.robot_model.model_body,
-            self.robot_model.data_body,
-            q
-        )
-        return task.compute_error(configuration)
+        '''Compute one task's local error at a full measured motor configuration'''
+        return self.compute_errors({'task': task}, q)['task']
+
+    def compute_errors(self, tasks: dict, q: np.ndarray) -> dict:
+        '''Evaluate tasks with one fixed-base FK update and isolated scratch data'''
+        if not tasks:
+            return {}
+        configuration = self._error_configuration(self.robot_model.model_body, q)
+        return {name: np.asarray(task.compute_error(configuration)).copy()
+                for name, task in tasks.items()}
+
+    @staticmethod
+    def _error_configuration(model, q):
+        '''Build feedback FK without modifying solver or robot-model working data'''
+        q = np.asarray(q, dtype=float)
+        if q.shape != (model.nq,) or not np.all(np.isfinite(q)):
+            raise ValueError(f'Feedback configuration must contain {model.nq} finite joint positions')
+        # fresh data belongs only to this evaluation; avoid Pink copying it again
+        return pink.Configuration(model, model.createData(), q.copy(), copy_data=False)
 
     def compute_error_reduced(self, task: pink.Task, q_reduced: np.ndarray) -> np.ndarray:
-        '''Compute the error for a specific task on reduced model'''
-        configuration_reduced = pink.Configuration(
-            self.robot_model.model_body_reduced,
-            self.robot_model.data_body_reduced,
-            q_reduced,
+        '''Evaluate a task at the reduced model's frozen reference, not live feedback'''
+        configuration_reduced = self._error_configuration(
+            self.robot_model.model_body_reduced, q_reduced,
         )
-        return task.compute_error(configuration_reduced)
+        return np.asarray(task.compute_error(configuration_reduced)).copy()
 
     def add_frame_task(self, task_name: str, frame_name: str,
                        position_cost: float = 50.0,

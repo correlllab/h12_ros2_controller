@@ -12,6 +12,7 @@ import pytest
 
 from h12_ros2_controller.core.controller.frame_controller import FrameController
 from h12_ros2_controller.core.ik_solver import IKSolver
+from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS
 from h12_ros2_controller.utility.path_definition import URDF_MAGPIE_PATH
@@ -54,6 +55,59 @@ def test_measured_frame_uses_pelvis_not_imu_or_frozen_reference():
     )
     with pytest.raises(ValueError, match='Unknown robot frame'):
         robot.get_frame_transformation_body('not_a_frame', q)
+
+
+def test_frame_completion_does_not_hide_measured_torso_motion():
+    pipeline = KinematicPipeline(config_name='safety_split.yaml')
+    robot = pipeline.robot_model
+    frame = 'left_grasp_frame'
+    target = robot.get_frame_transformation_body(frame, robot.state['q'])
+    controller = object.__new__(FrameController)
+    controller.robot_model = robot
+    controller.ik_solver = pipeline.ik_solver
+    controller.ik_solver.clear_frame_tasks()
+    controller.ik_solver.add_frame_task('left', frame)
+    controller.ik_solver.frame_tasks['left'].set_target(pin.SE3(target))
+    initial = controller.get_frame_task_error('left')
+    assert np.linalg.norm(initial) < 1e-9
+
+    # arms are unchanged, but the measured torso no longer matches the reduced reference
+    robot._q[BODY_JOINTS.index('torso_joint')] = 0.177
+    measured = controller.get_frame_task_error('left')
+    stale = controller.ik_solver.compute_error_reduced(
+        controller.ik_solver.frame_tasks['left'], robot.state_reduced['q'],
+    )
+
+    assert np.linalg.norm(stale) < 1e-9
+    assert np.linalg.norm(measured[:3]) > 0.05
+    assert np.linalg.norm(measured[3:]) > 0.17
+    np.testing.assert_allclose(controller.get_frame_task_errors()['left'], measured)
+
+
+def test_task_error_keeps_local_axes_and_ignores_world_imu_orientation():
+    robot = RobotModel(URDF_MAGPIE_PATH)
+    q = np.zeros(robot.model_body.nq)
+    q[BODY_JOINTS.index('left_shoulder_pitch_joint')] = -0.3
+    q[BODY_JOINTS.index('left_shoulder_yaw_joint')] = 0.4
+    state = {'q': q,
+             'imu_state': SimpleNamespace(quaternion=np.array([1., 0., 0., 0.]))}
+    robot.state_subscriber = SimpleNamespace(state=state)
+    current = pin.SE3(robot.get_frame_transformation_body('left_grasp_frame', q))
+    local_offset = pin.SE3(np.eye(3), np.array([0.01, 0., 0.]))
+    controller = object.__new__(FrameController)
+    controller.robot_model = robot
+    controller.ik_solver = object.__new__(IKSolver)
+    controller.ik_solver.robot_model = robot
+    controller.ik_solver.frame_tasks = {}
+    controller.ik_solver.add_frame_task('left', 'left_grasp_frame')
+    controller.ik_solver.frame_tasks['left'].set_target(current * local_offset)
+
+    initial = controller.get_frame_task_error('left')
+    state['imu_state'].quaternion = np.array([0.70710678, 0., 0., 0.70710678])
+    tilted = controller.get_frame_task_error('left')
+
+    np.testing.assert_allclose(initial, [0.01, 0., 0., 0., 0., 0.], atol=1e-12)
+    np.testing.assert_array_equal(tilted, initial)
 
 
 def test_meshcat_frame_targets_use_pelvis_world_transform():

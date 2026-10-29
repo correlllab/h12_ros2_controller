@@ -1012,6 +1012,7 @@ def test_plain_publication_bypasses_counter_overlay():
     controller.balanced_live = False
     controller.upper_ids = list(UPPER_BODY_INDEX)
     controller.low_cmd_handler = SimpleNamespace(
+        q_cmd=np.zeros(27),
         set_joint_commands=lambda *args: calls.append(args),
     )
     q = np.zeros(27)
@@ -1020,7 +1021,9 @@ def test_plain_publication_bypasses_counter_overlay():
 
     controller._publish_position_command(q, dq, tau)
 
-    assert calls == [(q, dq, tau)]
+    assert len(calls) == 1
+    for actual, expected in zip(calls[0], (q, dq, tau)):
+        np.testing.assert_array_equal(actual, expected)
     assert controller._steady_state_control_ids() == list(UPPER_BODY_INDEX)
 
 

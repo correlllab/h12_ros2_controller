@@ -54,25 +54,19 @@ class FrameController(UpperController):
         transform = pin.SE3(transformation)
         task.transform_target_to_world = transform
 
-    def get_frame_task_error(self, task_name: str):
-        '''Get error for a frame task'''
+    def get_frame_task_error(self, task_name: str, q=None):
+        '''Get task-local error from measured motor FK, without world/IMU orientation'''
         task = self.ik_solver.frame_tasks.get(task_name)
         if task is None:
             raise ValueError(f'Task {task_name} not found')
-        return self.ik_solver.compute_error_reduced(
-            task,
-            self.robot_model.state_reduced['q']
-        )
+        if q is None:
+            q = self.robot_model.state['q']
+        return self.ik_solver.compute_error(task, q)
 
     def get_frame_task_errors(self):
         '''Get errors for all frame tasks'''
-        errors = {}
-        for task_name, task in self.ik_solver.frame_tasks.items():
-            errors[task_name] = self.ik_solver.compute_error_reduced(
-                task,
-                self.robot_model.state_reduced['q']
-            )
-        return errors
+        q = self.robot_model.state['q']
+        return self.ik_solver.compute_errors(self.ik_solver.frame_tasks, q)
 
     def remove_frame_task(self, task_name: str):
         '''Remove a frame task'''
