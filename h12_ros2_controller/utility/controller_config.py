@@ -7,6 +7,7 @@ import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, UPPER_BODY_INDEX
+from h12_ros2_controller.utility.path_definition import resolve_config_resource
 from h12_ros2_controller.utility.joint_limits import (
     JOINT_POSITION_LIMITS,
     JOINT_VELOCITY_LIMITS,
@@ -14,8 +15,8 @@ from h12_ros2_controller.utility.joint_limits import (
 )
 
 DEFAULT_CONFIG_NAME = 'safety_split.yaml'
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
+
+
 def _ensure_yaml_extension(config_path: Path) -> Path:
     '''Append .yaml when config path has no suffix'''
     if config_path.suffix:
@@ -23,14 +24,10 @@ def _ensure_yaml_extension(config_path: Path) -> Path:
     return config_path.with_suffix('.yaml')
 
 def _resolve_config_path(config_name: str,
-                         config_dir: Path = DEFAULT_CONFIG_DIR) -> Path:
+                         config_dir: Path | None = None) -> Path:
     '''Resolve config from either bare name or config/<name> path'''
     config_path = _ensure_yaml_extension(Path(config_name))
-    if config_path.is_absolute():
-        return config_path
-    if config_path.parts and config_path.parts[0] == 'config':
-        return REPO_ROOT / config_path
-    return config_dir / config_path
+    return resolve_config_resource(config_path, config_dir)
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open('r', encoding='utf-8') as handle:
@@ -237,8 +234,8 @@ def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
     }
 
 def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
-                           config_dir=DEFAULT_CONFIG_DIR) -> dict[str, Any]:
-    config_path = _resolve_config_path(config_name, config_dir=Path(config_dir))
+                           config_dir=None) -> dict[str, Any]:
+    config_path = _resolve_config_path(config_name, config_dir=config_dir)
     if not config_path.exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
 

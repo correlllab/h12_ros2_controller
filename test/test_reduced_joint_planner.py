@@ -11,6 +11,7 @@ from h12_ros2_controller.core.planner.reduced_joint_planner import (
     moving_grasp_frames,
 )
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
+from h12_ros2_controller.core.planner import reduced_joint_planner
 
 
 class FakeRobotModel:
@@ -233,12 +234,14 @@ def test_rejects_staged_cap_below_single_plan_cap():
         ))
 
 
-def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
+@pytest.mark.parametrize('coordinated', [False, True])
+def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch, coordinated):
     planner = ReducedJointPlanner(FakeRobotModel(
         lower=-np.ones(14), upper=np.ones(14),
-    ), config=PlannerConfig(prefer_coordinated_motion=False))
+    ), config=PlannerConfig(prefer_coordinated_motion=coordinated))
     clock = [0.0]
     calls = []
+    deadlines = []
     monkeypatch.setattr(
         'h12_ros2_controller.core.planner.reduced_joint_planner.perf_counter',
         lambda: clock[0],
@@ -246,6 +249,7 @@ def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
 
     def unavailable(*args, **kwargs):
         calls.append(kwargs.get('timeout'))
+        deadlines.append(kwargs.get('deadline'))
         clock[0] += 0.2
         return PlanResult(success=False, path=np.empty((0, 14)),
                           reason='OMPL returned an approximate solution')
@@ -261,6 +265,7 @@ def test_two_arm_fallback_cannot_restart_expired_request_deadline(monkeypatch):
 
     assert not result.success
     assert len(calls) == 2
+    assert deadlines == [0.3, 0.25 if coordinated else 0.3]
     assert 0.0 < calls[1] <= 0.1
     assert clock[0] == pytest.approx(0.4)
     assert 'budget exhausted' in result.reason
@@ -1079,3 +1084,289 @@ def test_rebind_reduced_model_refreshes_bounds():
 
     assert planner.space.getBounds().high[0] == pytest.approx(0.5)
     assert planner.space.getBounds().high[1] == pytest.approx(1.0)
+
+
+@pytest.fixture
+def deadline_clock(monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr(reduced_joint_planner, 'perf_counter', lambda: clock[0])
+    return clock
+
+
+def test_expired_initial_deadline_does_no_planning_work(deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    monkeypatch.setattr(planner, '_plan_once', lambda *args, **kwargs: pytest.fail(
+        'expired request must not start its initial attempt',
+    ))
+    result = planner.plan([0.0, 0.0], [0.2, 0.0], deadline=0.0)
+    assert not result.success
+    assert 'deadline exceeded' in result.reason
+    assert result.path.shape == (0, 2)
+    assert planner._recent_paths == []
+    assert planner._deadline is None
+
+
+def test_initial_direct_retiming_stops_on_deadline_and_restores_scope(
+        deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    poses = planner._frame_poses
+    calls = []
+
+    def expensive_poses(*args, **kwargs):
+        calls.append(True)
+        deadline_clock[0] += 0.01
+        return poses(*args, **kwargs)
+
+    monkeypatch.setattr(planner, '_frame_poses', expensive_poses)
+    result = planner.plan([0.0, 0.0], [0.2, 0.0], deadline=0.05)
+    assert not result.success
+    assert 'deadline exceeded' in result.reason
+    assert len(calls) == 5
+    assert result.path.shape == (0, 2)
+    assert not planner._recent_paths
+    assert planner._deadline is None
+    monkeypatch.setattr(planner, '_frame_poses', poses)
+    assert planner.plan([0.0, 0.0], [0.2, 0.0]).success
+
+
+@pytest.mark.parametrize('phase', ['validity', 'clearance'])
+def test_initial_direct_validation_expiry_never_accepts_or_caches_partial_path(
+        deadline_clock, monkeypatch, phase):
+    robot = FakeRobotModel()
+    planner = ReducedJointPlanner(robot)
+    samples = np.linspace([0.0, 0.0], [0.2, 0.0], 20)
+    monkeypatch.setattr(planner, '_timed_path', lambda *args, **kwargs: (
+        samples.copy(), {}, '',
+    ))
+    calls = []
+
+    def expensive_check(q, min_distance=0.0):
+        calls.append(q.copy())
+        deadline_clock[0] += 0.1
+        return True if phase == 'validity' else 0.1
+
+    if phase == 'validity':
+        robot.check_collision_free_reduced = expensive_check
+    else:
+        robot.minimum_self_clearance_reduced = expensive_check
+    result = planner.plan(samples[0], samples[-1], deadline=0.35)
+    assert not result.success
+    assert 'deadline exceeded' in result.reason
+    assert result.path.shape == (0, 2)
+    assert len(calls) == 4
+    assert not planner._recent_paths
+
+
+@pytest.mark.parametrize('phase', ['solve', 'simplify'])
+def test_native_work_is_capped_by_remaining_initial_deadline(
+        deadline_clock, monkeypatch, phase):
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        try_direct=False, timeout=2.0, simplify_time=1.0,
+    ))
+    budgets = []
+    path = SimpleNamespace(getStates=lambda: [[0.0, 0.0], [0.2, 0.0]])
+
+    def solve(budget):
+        budgets.append(('solve', budget))
+        deadline_clock[0] += budget if phase == 'solve' else 0.1
+        return phase == 'simplify'
+
+    def simplify(budget):
+        budgets.append(('simplify', budget))
+        deadline_clock[0] += budget
+
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None, setStartAndGoalStates=lambda *args: None,
+        solve=solve, haveExactSolutionPath=lambda: True,
+        getSolutionPath=lambda: path, simplifySolution=simplify,
+    ))
+    result = planner.plan([0.0, 0.0], [0.2, 0.0], deadline=0.25)
+    assert not result.success
+    assert result.path.shape == (0, 2)
+    assert budgets[0] == ('solve', 0.25)
+    if phase == 'simplify':
+        assert budgets[1][0] == 'simplify'
+        assert budgets[1][1] == pytest.approx(0.15)
+    assert not planner._recent_paths
+    assert planner.space.getBounds().low[0] == planner.model_lower[0]
+
+
+@pytest.mark.parametrize('reuse', ['reverse', 'nearby'])
+def test_reuse_validation_expires_without_accepting_cached_path(
+        deadline_clock, monkeypatch, reuse):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start, goal = np.zeros(2), np.array([0.2, 0.0])
+    assert planner.plan(start, goal).success
+    planner.config.try_direct = False
+    planner._recent_paths[0]['config'] = planner._path_context(())[0]
+    original_cache = planner._recent_paths.copy()
+    calls = []
+
+    def expensive_collision(q, min_distance=0.0):
+        calls.append(True)
+        deadline_clock[0] += 0.1
+        return True
+
+    planner.robot_model.check_collision_free_reduced = expensive_collision
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        solve=lambda *args: pytest.fail('expired reuse must not start OMPL'),
+    ))
+    first, last = ((goal, start) if reuse == 'reverse' else
+                   (start, goal + np.array([0.01, 0.0])))
+    result = planner.plan(first, last, deadline=0.35)
+    assert not result.success
+    assert len(calls) == 4
+    assert not result.metadata.get('cache_hit')
+    assert planner._recent_paths == original_cache
+
+
+def test_validated_pchip_survives_optional_segment_refinement_expiry(
+        deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(try_direct=False))
+    sparse = np.array([[0.0, 0.0], [0.1, 0.0], [0.2, 0.0]])
+    calls = []
+
+    def collision(q, min_distance=0.0):
+        deadline_clock[0] += 0.001
+        return True
+
+    planner.robot_model.check_collision_free_reduced = collision
+
+    def timed(path, profile='segment'):
+        calls.append(profile)
+        if profile == 'segment':
+            deadline_clock[0] = 1.0
+            planner._check_deadline()
+        return path.copy(), {'time_profile': profile, 'duration': 1.0}, ''
+
+    monkeypatch.setattr(planner, '_timed_path', timed)
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None, setStartAndGoalStates=lambda *args: None,
+        solve=lambda budget: True, haveExactSolutionPath=lambda: True,
+        getSolutionPath=lambda: SimpleNamespace(getStates=lambda: sparse),
+    ))
+    monkeypatch.setattr(planner, '_shorten_path', lambda path: None)
+    result = planner.plan(sparse[0], sparse[-1], deadline=0.5)
+    assert result.success, result.reason
+    assert np.array_equal(result.path, sparse)
+    assert result.metadata['time_profile'] == 'pchip'
+    assert 'joint_path_length' in result.metadata
+    timings = result.metadata['stage_timings']
+    assert 0.0 < timings['validation'] < timings['total']
+    assert timings['postprocess'] >= 0.0
+    assert calls == ['pchip', 'segment']
+    assert np.array_equal(planner._recent_paths[0]['path'], sparse)
+    assert planner._deadline is None
+
+
+def test_coordination_validation_checks_its_own_deadline(deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    start = np.zeros(14)
+    goal = start.copy()
+    goal[[0, 7]] = 0.1
+    legs = []
+    for arm in (0, 1):
+        endpoint = start.copy()
+        endpoint[arm * 7] = 0.1
+        legs.append(PlanResult(True, np.linspace(start, endpoint, 10)))
+
+    def expensive_collision(q, min_distance=0.0):
+        deadline_clock[0] += 0.1
+        return True
+
+    planner.robot_model.check_collision_free_reduced = expensive_collision
+    result, reason = planner._coordinate_arm_paths(
+        start, goal, None, planner.frame_names, legs, 0.0, 0.25,
+    )
+    assert result is None
+    assert reason == 'coordination budget exhausted'
+    assert deadline_clock[0] == pytest.approx(0.3)
+    assert planner._deadline is None
+
+
+def test_validated_staged_path_survives_optional_coordination_expiry(
+        deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ), PlannerConfig(
+        prefer_coordinated_motion=False, bimanual_refinement_duration=0.001,
+    ))
+    original = planner._plan_once
+
+    def single_arm_only(start, goal, **kwargs):
+        if np.any(start[:7] != goal[:7]) and np.any(start[7:] != goal[7:]):
+            return PlanResult(False, np.empty((0, 14)), reason='combined route blocked')
+        return original(start, goal, **kwargs)
+
+    def expensive_refinement(*args):
+        deadline_clock[0] = 1.0
+        planner._check_deadline()
+
+    monkeypatch.setattr(planner, '_plan_once', single_arm_only)
+    monkeypatch.setattr(planner, '_coordinate_arm_paths_impl', expensive_refinement)
+    goal = np.zeros(14)
+    goal[[0, 7]] = 0.1
+    result = planner.plan(
+        np.zeros(14), goal, local_frames=planner.frame_names, deadline=0.5,
+    )
+    assert result.success, result.reason
+    assert result.metadata['path_kind'] == 'staged two-arm path'
+    assert np.array_equal(result.path[-1], goal)
+    assert result.planning_time == 1.0
+    assert result.metadata['stage_timings']['total'] == 1.0
+    assert planner._deadline is None
+
+
+def test_initial_edge_validation_expiry_is_not_a_valid_path(deadline_clock, monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    samples = np.array([[0.0, 0.0], [0.2, 0.0]])
+    monkeypatch.setattr(planner, '_timed_path', lambda *args, **kwargs: (
+        samples.copy(), {}, '',
+    ))
+    calls = []
+
+    def collision(q, min_distance=0.0):
+        calls.append(q.copy())
+        deadline_clock[0] += 0.1
+        return True
+
+    planner.robot_model.check_collision_free_reduced = collision
+    result = planner.plan(samples[0], samples[-1], deadline=0.55)
+    assert not result.success
+    assert result.path.shape == (0, 2)
+    assert 0.0 < calls[-1][0] < 0.2
+    assert len(calls) == 6
+    assert not planner._recent_paths
+
+
+@pytest.mark.parametrize('named, deadline', [
+    (False, None), (True, None), (False, 2.0), (False, 20.0),
+])
+def test_initial_attempt_honors_configured_and_explicit_deadline(
+        deadline_clock, monkeypatch, named, deadline):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    samples = np.array([[0.0, 0.0], [0.2, 0.0]])
+    monkeypatch.setattr(planner, '_timed_path', lambda *args, **kwargs: (
+        samples.copy(), {}, '',
+    ))
+
+    def expensive_collision(q, min_distance=0.0):
+        deadline_clock[0] += 1.0
+        return True
+
+    planner.robot_model.check_collision_free_reduced = expensive_collision
+    result = planner.plan(
+        samples[0], samples[-1], local_joint_padding=0.0 if named else None,
+        deadline=deadline,
+    )
+    budget = (planner.config.named_planning_budget if named else
+              planner.config.candidate_planning_budget)
+    expected = budget if deadline is None else min(budget, deadline)
+    assert not result.success
+    assert 'deadline exceeded' in result.reason
+    assert result.path.shape == (0, 2)
+    assert deadline_clock[0] == expected
+    assert not planner._recent_paths
+    assert planner._deadline is None

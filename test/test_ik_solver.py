@@ -964,7 +964,8 @@ def test_candidate_deadline_stops_probes_and_keeps_validated_path(monkeypatch):
                                   seed_name=f'seed_{i}') for i in (1, 2, 3)]
     calls = []
 
-    def plan_goal(goal, direct_only, timeout):
+    def plan_goal(goal, direct_only, timeout, deadline):
+        assert deadline == 1.0
         calls.append((goal[0], direct_only, timeout))
         clock[0] += 0.6
         return PlanResult(
@@ -988,7 +989,8 @@ def test_candidate_deadline_returns_validated_path_after_later_timeout(monkeypat
     candidates = [SimpleNamespace(q=np.array([float(i)]), score=0.0,
                                   seed_name=f'seed_{i}') for i in (1, 2)]
 
-    def plan_goal(goal, direct_only, timeout):
+    def plan_goal(goal, direct_only, timeout, deadline):
+        assert deadline == 1.0
         if goal[0] == 2:
             raise TimeoutError('worker deadline')
         return PlanResult(success=True, path=np.array([[0.0], goal]))
@@ -998,6 +1000,25 @@ def test_candidate_deadline_returns_validated_path_after_later_timeout(monkeypat
         deadline=1.0,
     )
     assert plan.success and candidate.seed_name == 'seed_1'
+
+
+def test_candidate_phase_deadline_is_forwarded_without_restarting_budget(monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr(kinematic_pipeline.time, 'perf_counter', lambda: clock[0])
+    candidates = [SimpleNamespace(q=np.array([1.0]), score=0.0, seed_name='seed')]
+    deadlines = []
+
+    def plan_goal(goal, direct_only, timeout, deadline):
+        deadlines.append(deadline)
+        clock[0] += 0.1
+        return PlanResult(success=not direct_only, path=np.array([[0.0], goal]))
+
+    plan, _ = plan_ik_candidates(
+        SimpleNamespace(candidates=candidates), plan_goal, np.array([True]),
+        planning_budget=0.5, deadline=110.0,
+    )
+    assert plan.success
+    assert deadlines == [100.5, 100.5]
 
 
 def test_candidate_selector_retries_after_rejected_ompl_detour():

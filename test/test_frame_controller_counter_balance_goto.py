@@ -159,7 +159,9 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
       'planning_budget': 11.0, 'response_timeout': 9.0}, 11.0, 9.0),
 ])
 def test_named_controller_goal_enables_moving_arm_locality(
-        options, planning_budget, response_timeout):
+        options, planning_budget, response_timeout, monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr(time, 'perf_counter', lambda: clock[0])
     controller = object.__new__(UpperController)
     controller.dt = 1.0 / 30.0
     controller.config = {'planner': {'planner': 'RRTConnect'}}
@@ -169,7 +171,9 @@ def test_named_controller_goal_enables_moving_arm_locality(
         state={'q': q}, reduced_mask=reduced_mask,
         reduced_reference_q=q.copy(),
     )
-    controller.check_state_fresh = lambda: None
+    def check_state_fresh():
+        clock[0] += 1.0
+    controller.check_state_fresh = check_state_fresh
     controller._command_seed = lambda measured: (measured.copy(), True)
     controller._planner_speed_overrides = lambda: (None, None)
     controller.planner = SimpleNamespace(
@@ -196,6 +200,9 @@ def test_named_controller_goal_enables_moving_arm_locality(
     assert calls[0]['local_joint_padding'] == (None if 'local_frames' in options else 0.0)
     assert calls[0]['planning_budget'] == planning_budget
     assert calls[0]['response_timeout'] == response_timeout
+    assert calls[0]['deadline'] == (
+        None if planning_budget is None else 100.0 + planning_budget
+    )
     assert np.array_equal(calls[0]['start'], np.zeros(14))
 
 

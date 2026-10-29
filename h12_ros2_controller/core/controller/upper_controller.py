@@ -408,10 +408,15 @@ class UpperController:
                                     current_q=None, direct_only=False,
                                     timeout=None, local_frames=None,
                                     response_timeout=None, local_joint_padding=None,
-                                    planning_budget=None):
+                                    planning_budget=None, deadline=None):
         '''Return the planner result without discarding failure diagnostics'''
+        started = time.perf_counter()
         if not getattr(self, 'config', {}).get('planner'):
             raise ValueError('Planned motion requires an explicit planner YAML block')
+        if local_frames is None and planning_budget is None:
+            planning_budget = self.planner.planner_config.named_planning_budget
+        if deadline is None and planning_budget is not None:
+            deadline = started + planning_budget
         self.check_state_fresh()
         if current_q is None:
             current_q = np.copy(self.robot_model.state['q'])
@@ -453,6 +458,7 @@ class UpperController:
             local_joint_padding=local_joint_padding,
             response_timeout=response_timeout,
             planning_budget=planning_budget,
+            deadline=deadline,
         )
         if result.success:
             result.metadata['execution_context'] = {
@@ -515,7 +521,7 @@ class UpperController:
         local_frames = active_grasp_frames(active_mask, planning_config.frame_names)
         controller_cfg = getattr(self, 'config', {}).get('controller', {})
 
-        def plan_goal(goal, mask, frames, direct_only, timeout):
+        def plan_goal(goal, mask, frames, direct_only, timeout, deadline=deadline):
             remaining = deadline - time.perf_counter()
             if remaining <= 0.0:
                 raise TimeoutError('Frame planning deadline exceeded')
@@ -525,6 +531,7 @@ class UpperController:
                 timeout=timeout, local_frames=frames,
                 response_timeout=min(planning_config.worker_request_timeout, remaining),
                 planning_budget=remaining,
+                deadline=deadline,
             )
 
         ik_result, result, selected, attempts, _, fallback_reason = plan_frame_tasks(

@@ -6,7 +6,8 @@ import numpy as np
 from ompl import geometric as og
 
 from h12_ros2_controller.benchmark.ik_benchmark import (
-    CORPUS, COMPARISON_CASES, _asset_ids, _resolve_case, compare_planners, main,
+    COMPARISON_CASES, _asset_ids, _resolve_case, benchmark_corpus_path,
+    compare_planners, main,
 )
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.core.planner.reduced_joint_planner import ReducedJointPlanner
@@ -15,7 +16,7 @@ from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 def test_corpus_has_fixed_paired_and_failure_cases():
     pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
-    cases = json.loads(CORPUS.read_text())
+    cases = json.loads(benchmark_corpus_path().read_text())
     resolved = {case['id']: _resolve_case(case, pipeline) for case in cases}
     assert BODY_JOINTS[12] == 'torso_joint'
     assert resolved['torso_offset_left_pitch']['start_q'][12] == 0.03
@@ -46,7 +47,7 @@ def test_corpus_has_fixed_paired_and_failure_cases():
 
 
 def test_benchmark_outputs_case_attempts_and_phase_timings(tmp_path):
-    corpus = json.loads(CORPUS.read_text())
+    corpus = json.loads(benchmark_corpus_path().read_text())
     selected = [next(case for case in corpus if case['id'] == name)
                 for name in ('home_left_pitch', 'cross_staging_blocked',
                              'unreachable_left')]
@@ -89,7 +90,7 @@ def test_benchmark_outputs_case_attempts_and_phase_timings(tmp_path):
 
 
 def test_worker_corpus_seeding_and_named_return_locality(tmp_path):
-    cases = json.loads(CORPUS.read_text())
+    cases = json.loads(benchmark_corpus_path().read_text())
     selected = [case for case in cases if case['id'] == 'left_pitch_80_return']
     path = tmp_path / 'reverse.json'
     output = tmp_path / 'worker.json'

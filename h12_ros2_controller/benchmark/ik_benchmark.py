@@ -26,12 +26,10 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.path_definition import (
-    PROJECT_ROOT, SRDF_MAGPIE_SPHERE_PATH, URDF_MAGPIE_PATH,
-    URDF_MAGPIE_SPHERE_PATH,
+    PROJECT_ROOT, resolve_config_resource, resolve_model_paths,
 )
 
 
-CORPUS = PROJECT_ROOT / 'config' / 'ik_benchmark_cases.json'
 COMPARISON_CASES = (
     'left_pitch_80_local', 'right_pitch_80_local',
     'left_pitch_80_return', 'right_pitch_80_return',
@@ -40,11 +38,17 @@ COMPARISON_CASES = (
 COMPARISON_PLANNERS = ('RRTConnect', 'BITstar', 'InformedRRTstar')
 
 
-def compare_planners(cases_path=CORPUS, case_ids=COMPARISON_CASES, seed=42,
+def benchmark_corpus_path():
+    '''Resolve the packaged corpus only when it is requested'''
+    return resolve_config_resource('ik_benchmark_cases.json')
+
+
+def compare_planners(cases_path=None, case_ids=COMPARISON_CASES, seed=42,
                       repeats=1, config_name='sim_safety_split.yaml', output=None):
     '''Compare independently seeded offline planners on identical saved cases'''
     if not case_ids or repeats < 1 or seed < 0:
         raise ValueError('Comparison needs cases, positive repeats, and nonnegative seed')
+    cases_path = benchmark_corpus_path() if cases_path is None else Path(cases_path)
     raw = json.loads(Path(cases_path).read_text())
     if isinstance(raw, dict):
         raw = [raw]
@@ -135,10 +139,10 @@ def _jsonable(value):
     return value
 
 
-def _asset_ids(config_name):
+def _asset_ids(config_name, model_paths=None):
     config_path = _resolve_config_path(config_name)
-    paths = (config_path, Path(URDF_MAGPIE_PATH), Path(URDF_MAGPIE_SPHERE_PATH),
-             Path(SRDF_MAGPIE_SPHERE_PATH))
+    model_paths = resolve_model_paths() if model_paths is None else model_paths
+    paths = (config_path, *(Path(path) for path in model_paths))
     return {
         str(path.relative_to(PROJECT_ROOT)) if path.is_relative_to(PROJECT_ROOT)
         else str(path): hashlib.sha256(path.read_bytes()).hexdigest()
@@ -197,8 +201,7 @@ class _MeasuredPlanner:
         self.reuse_enabled = False
         if mode == 'worker':
             self.client = PlannerClient(
-                URDF_MAGPIE_PATH, URDF_MAGPIE_SPHERE_PATH,
-                SRDF_MAGPIE_SPHERE_PATH, self.offline.config,
+                *pipeline.model_paths, self.offline.config,
                 ompl_seed=seed,
                 request_timeout=self.offline.config.worker_request_timeout,
                 startup_timeout=self.offline.config.worker_startup_timeout,
@@ -428,7 +431,7 @@ def main(samples=3, ik_timeout=None, seed=0, visualize=False,
                 'worktree_dirty': status.returncode != 0 or bool(status.stdout.strip()),
                 'dependency_versions': _dependency_versions(),
                 'effective_planner_config': _jsonable(asdict(pipeline.planner_config)),
-                'config': config_name, 'assets': _asset_ids(config_name),
+                'config': config_name, 'assets': _asset_ids(config_name, pipeline.model_paths),
                 'corpus_sha256': hashlib.sha256(Path(cases_path).read_bytes()).hexdigest()
                 if cases_path is not None else None,
                 'pipeline_setup_time': pipeline_setup_time,
@@ -450,8 +453,8 @@ if __name__ == '__main__':
     parser.add_argument('--start', default='arms_front_45',
                         help='Named starting configuration')
     parser.add_argument('--cases', help='Saved frame case JSON (single case or list)')
-    parser.add_argument('--corpus', action='store_const', const=CORPUS, dest='cases',
-                        help='Use the checked-in representative case corpus')
+    parser.add_argument('--corpus', action='store_true',
+                        help='Use the packaged representative case corpus')
     parser.add_argument('--repeats', type=int, default=1)
     parser.add_argument('--output', help='Write per-case results as JSON')
     parser.add_argument('--mode', choices=('offline', 'worker'), default='offline')
@@ -464,15 +467,18 @@ if __name__ == '__main__':
                         help='Compare three planners in separately seeded offline runs')
     parser.add_argument('--case-ids', help='Comma-separated IDs from --cases')
     args = parser.parse_args()
+    cases_path = args.cases
+    if cases_path is None and (args.corpus or args.planners):
+        cases_path = benchmark_corpus_path()
     if args.planners:
         if args.planner or args.mode != 'offline' or args.reuse_policy != 'isolated' or args.visualize:
             parser.error('--planners requires offline, isolated, headless mode without --planner')
-        compare_planners(args.cases or CORPUS,
+        compare_planners(cases_path,
                          tuple(args.case_ids.split(',')) if args.case_ids else COMPARISON_CASES,
                          args.seed, args.repeats, args.config, args.output)
     else:
         main(samples=args.samples, seed=args.seed, visualize=args.visualize,
-             config_name=args.config, start_name=args.start, cases_path=args.cases,
+             config_name=args.config, start_name=args.start, cases_path=cases_path,
              repeats=args.repeats, output=args.output, mode=args.mode,
              reuse_policy=args.reuse_policy, planner_name=args.planner,
              case_ids=tuple(args.case_ids.split(',')) if args.case_ids else None)

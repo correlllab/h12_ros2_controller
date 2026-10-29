@@ -2,7 +2,6 @@
 
 import time
 from dataclasses import dataclass, field, replace
-from pathlib import Path
 
 import numpy as np
 import pinocchio as pin
@@ -18,11 +17,7 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.utility.path_definition import (
-    SRDF_MAGPIE_SPHERE_PATH,
-    URDF_MAGPIE_PATH,
-    URDF_MAGPIE_SPHERE_PATH,
-)
+from h12_ros2_controller.utility.path_definition import resolve_model_paths
 
 
 @dataclass
@@ -61,7 +56,8 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
                        deadline=None):
     '''Prefer short direct paths, then bounded local OMPL candidates
 
-    plan_goal accepts goal, direct_only, and timeout keyword arguments.
+    plan_goal accepts goal, direct_only, and timeout keyword arguments, plus
+    an absolute deadline when this route is bounded.
     Returns (PlanResult or None, selected IK attempt or None).
     '''
     config = config if config is not None else PlannerConfig()
@@ -118,7 +114,10 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
             if remaining <= 0:
                 break
         try:
-            plan = plan_goal(goal, direct_only=True, timeout=remaining if bounded else None)
+            plan = plan_goal(
+                goal, direct_only=True, timeout=remaining if bounded else None,
+                **({'deadline': deadline} if bounded else {}),
+            )
         except TimeoutError:
             if not bounded or not direct_plans:
                 raise
@@ -143,7 +142,10 @@ def plan_ik_candidates(ik_result, plan_goal, reduced_mask, max_candidates=None,
                       remaining / (len(candidates) - index))
         attempt_start = time.perf_counter()
         try:
-            plan = plan_goal(goal, direct_only=False, timeout=timeout)
+            plan = plan_goal(
+                goal, direct_only=False, timeout=timeout,
+                **({'deadline': deadline} if bounded else {}),
+            )
         except TimeoutError:
             if not bounded or best is None:
                 raise
@@ -224,9 +226,9 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
                 return None, 'bimanual fallback budget exhausted before arm planning'
             arm_plan, chosen = plan_ik_candidates(
                 arm_ik,
-                lambda goal, direct_only, timeout: plan_goal(
+                lambda goal, direct_only, timeout, **limits: plan_goal(
                     goal, arm_mask, (f'{side}_grasp_frame',), direct_only,
-                    timeout,
+                    timeout, **limits,
                 ),
                 reduced_mask, config=config,
                 planning_budget=min(
@@ -282,8 +284,9 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
     if ik is not None and ik.success and (deadline is None or time.perf_counter() < deadline):
         plan, selected = plan_ik_candidates(
             ik,
-            lambda goal, direct_only, timeout: plan_goal(
+            lambda goal, direct_only, timeout, **limits: plan_goal(
                 goal, active_mask, local_frames, direct_only, timeout,
+                **limits,
             ),
             reduced_mask, config=config, attempts=attempts, deadline=deadline,
         )
@@ -317,9 +320,9 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
                     if remaining > (0 if deadline is not None else 0.1):
                         plan, selected = plan_ik_candidates(
                             ik,
-                            lambda goal, direct_only, timeout: plan_goal(
+                            lambda goal, direct_only, timeout, **limits: plan_goal(
                                 goal, active_mask, local_frames, direct_only,
-                                timeout,
+                                timeout, **limits,
                             ),
                             reduced_mask, config=config, attempts=attempts,
                             planning_budget=min(config.candidate_planning_budget,
@@ -439,10 +442,9 @@ class KinematicPipeline:
             rtol=0.0, atol=1e-9,
         ):
             raise ValueError('Planner self_collision_clearance must match controller d_min')
-        for asset in (URDF_MAGPIE_PATH, URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH):
-            if not Path(asset).is_file():
-                raise FileNotFoundError(f'missing robot asset: {asset}')
-        self.robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
+        self.model_paths = resolve_model_paths()
+        urdf, collision_urdf, collision_srdf = self.model_paths
+        self.robot_model = RobotModel(urdf, handless=False)
         planner_config = replace(
             planner_config,
             motor_position_limits=configured_position_limits(
@@ -459,7 +461,7 @@ class KinematicPipeline:
                 )),
             )
         self.robot_model.init_reduced_model(ENABLED_JOINTS)
-        self.robot_model.init_collision_model(URDF_MAGPIE_SPHERE_PATH, SRDF_MAGPIE_SPHERE_PATH)
+        self.robot_model.init_collision_model(collision_urdf, collision_srdf)
         if visualize:
             self.robot_model.init_visualizer()
             self.robot_model.update_visualizer()
@@ -586,7 +588,7 @@ class KinematicPipeline:
         ik, plan, selected, attempts, timings, fallback_reason = plan_frame_tasks(
             self.ik_solver, start_q, active_mask, self.robot_model.reduced_mask,
             local_frames,
-            lambda goal, mask, frames, direct_only, timeout: self.planner.plan(
+            lambda goal, mask, frames, direct_only, timeout, deadline=deadline: self.planner.plan(
                 start, goal, active_mask=mask, local_frames=frames,
                 direct_only=direct_only, timeout=timeout,
                 deadline=deadline,

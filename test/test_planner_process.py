@@ -1,6 +1,7 @@
 import queue
 import threading
 import time
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -425,3 +426,172 @@ def test_invalid_request_timeout(timeout):
     with pytest.raises(ValueError, match='request_timeout'):
         PlannerClient('robot', 'spheres', 'srdf', PlannerConfig(),
                       request_timeout=timeout)
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    value = [0.0]
+    monkeypatch.setattr(planner_process, 'perf_counter', lambda: value[0])
+
+    def get(self, timeout=None):
+        try:
+            return self.items.get_nowait()
+        except queue.Empty:
+            value[0] += timeout
+            raise
+
+    monkeypatch.setattr(FakeQueue, 'get', get)
+    return value
+
+
+@pytest.mark.parametrize('deadline', [float('inf'), float('nan')])
+def test_invalid_absolute_deadline_does_not_spawn(deadline):
+    planner = client(['ready'])
+    with pytest.raises(ValueError, match='deadline must be finite'):
+        planner._request({'command': 'plan_configuration'}, deadline=deadline)
+    assert not planner._ctx.processes
+
+
+def test_expired_absolute_deadline_does_not_spawn(clock):
+    planner = client(['ready'])
+    with pytest.raises(TimeoutError, match='deadline exceeded'):
+        planner._request({'command': 'plan_configuration'}, deadline=0.0)
+    assert not planner._ctx.processes
+
+
+def test_absolute_deadline_bounds_lock_wait_without_stopping_active_worker(clock):
+    planner = client(['ready'])
+    planner.warmup()
+    lock = planner._lock
+    waits = []
+
+    def acquire(timeout):
+        waits.append(timeout)
+        clock[0] += timeout
+        return False
+
+    planner._lock = SimpleNamespace(acquire=acquire)
+    try:
+        with pytest.raises(TimeoutError, match='waiting for worker lock'):
+            planner._request({'command': 'plan_configuration'}, deadline=0.25)
+        assert waits == [0.25]
+        assert planner.ready
+        assert not planner._ctx.processes[0].terminated
+        assert planner._ctx.processes[0].requests.items.empty()
+    finally:
+        planner._lock = lock
+        planner.shutdown()
+
+
+def test_absolute_deadline_stops_cold_start_before_dispatch_and_recovers(clock, monkeypatch):
+    planner = client(['ready', 'recovered'])
+    start = FakeProcess.start
+
+    def slow_start(self):
+        start(self)
+        clock[0] += 0.6
+
+    monkeypatch.setattr(FakeProcess, 'start', slow_start)
+    with pytest.raises(TimeoutError, match='deadline exceeded during startup'):
+        planner._request({'command': 'plan_configuration'}, deadline=0.5)
+    first = planner._ctx.processes[0]
+    assert first.requests.items.empty()
+    assert first.terminated
+    result = planner._request({'command': 'plan_configuration'}, deadline=2.0)
+    assert result.reason == 'recovered'
+    assert planner._generation == 2
+    planner.shutdown()
+
+
+def test_absolute_deadline_caps_startup_polling(clock):
+    planner = client(['startup_hung'])
+    with pytest.raises(TimeoutError, match='deadline exceeded during startup'):
+        planner._request({'command': 'plan_configuration'}, deadline=0.25)
+    assert clock[0] == pytest.approx(0.25)
+    assert planner._ctx.processes[0].terminated
+
+
+def test_legacy_response_cap_still_excludes_startup(clock, monkeypatch):
+    planner = client(['ready'])
+    start = FakeProcess.start
+
+    def slow_start(self):
+        start(self)
+        clock[0] += 2.0
+
+    monkeypatch.setattr(FakeProcess, 'start', slow_start)
+    result = planner._request({'command': 'plan_configuration'}, response_timeout=0.1)
+    assert result.success
+    assert result.metadata['client_timings']['startup'] == 2.0
+    planner.shutdown()
+
+
+def test_absolute_deadline_caps_response_wait_after_startup(clock, monkeypatch):
+    planner = client(['hung'])
+    planner.request_timeout = 5.0
+    start = FakeProcess.start
+
+    def slow_start(self):
+        start(self)
+        clock[0] += 0.2
+
+    monkeypatch.setattr(FakeProcess, 'start', slow_start)
+    with pytest.raises(TimeoutError, match='response timed out'):
+        planner._request({'command': 'plan_configuration'}, deadline=0.3)
+    assert clock[0] == pytest.approx(0.3)
+    assert planner._ctx.processes[0].terminated
+
+
+@pytest.mark.parametrize('phase', ['dispatch', 'response'])
+def test_absolute_deadline_rejects_late_dispatch_or_response(clock, monkeypatch, phase):
+    planner = client(['ready'])
+    planner.warmup()
+    if phase == 'dispatch':
+        respond = planner._request_queue.on_put
+
+        def slow_dispatch(request):
+            clock[0] += 0.3
+            respond(request)
+
+        planner._request_queue.on_put = slow_dispatch
+    else:
+        get = FakeQueue.get
+
+        def slow_response(self, timeout=None):
+            message = get(self, timeout=timeout)
+            clock[0] += 0.3
+            return message
+
+        monkeypatch.setattr(FakeQueue, 'get', slow_response)
+    with pytest.raises(TimeoutError, match='response timed out'):
+        planner._request({'command': 'plan_configuration'}, deadline=0.25)
+    process = planner._ctx.processes[0]
+    assert process.requests.items.get_nowait()['deadline'] == 0.25
+    assert process.terminated
+
+
+@pytest.mark.parametrize('sync_time, success', [(0.2, True), (0.3, False)])
+def test_worker_model_sync_consumes_relative_and_absolute_budget(clock, sync_time, success):
+    worker = object.__new__(planner_process._PlannerWorker)
+    calls = []
+
+    def sync(q):
+        clock[0] += sync_time
+
+    def plan(*args, **kwargs):
+        calls.append(kwargs)
+        return PlanResult(True, np.zeros((2, 1)))
+
+    worker._set_current_q = sync
+    worker.planner = SimpleNamespace(config=PlannerConfig(), plan=plan)
+    result = worker._plan_configuration({
+        'current_q': np.zeros(1), 'start': np.zeros(1), 'goal': np.zeros(1),
+        'planning_budget': 0.25, 'deadline': 1.0,
+    })
+    assert result.success is success
+    if success:
+        assert calls[0]['deadline'] == 0.25
+    else:
+        assert not calls
+        assert result.path.shape == (0, 1)
+        assert 'during model sync' in result.reason

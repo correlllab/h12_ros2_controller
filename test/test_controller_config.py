@@ -4,7 +4,7 @@ import pytest
 
 from h12_ros2_controller.utility.joint_definition import UPPER_BODY_INDEX
 from h12_ros2_controller.utility.controller_config import (
-    DEFAULT_CONFIG_DIR,
+    _resolve_config_path,
     load_controller_config,
 )
 
@@ -53,7 +53,7 @@ def test_load_controller_config_rejects_non_mapping_zmp(tmp_path, zmp_section):
 
 def test_checked_in_balance_profile_keeps_empty_zmp_mapping():
     config = load_controller_config(
-        'balance_safety_split.yaml', config_dir=DEFAULT_CONFIG_DIR)
+        'balance_safety_split.yaml')
 
     assert config['topics']['low_cmd'] == 'rt/safety/lowcmd_upper_in'
     assert config['zmp'] == {}
@@ -81,3 +81,20 @@ def test_load_controller_config_rejects_invalid_motion_policy(tmp_path, controll
 
     with pytest.raises(ValueError, match='must be finite and positive'):
         load_controller_config('test.yaml', config_dir=tmp_path)
+
+
+@pytest.mark.parametrize('name', ('test', 'test.yaml', 'config/test', 'config/test.yaml'))
+def test_explicit_config_dir_applies_to_bare_and_prefixed_names(tmp_path, name):
+    expected = _write_config(tmp_path, 'topics: {low_state: rt/custom_state}')
+
+    assert _resolve_config_path(name, tmp_path) == expected
+    assert load_controller_config(name, config_dir=tmp_path)['topics']['low_state'] == 'rt/custom_state'
+
+
+def test_absolute_config_precedes_explicit_config_dir(tmp_path):
+    expected = _write_config(tmp_path, 'topics: {low_state: rt/absolute_state}')
+
+    assert _resolve_config_path(expected, tmp_path / 'wrong') == expected
+    assert load_controller_config(
+        expected.with_suffix(''), config_dir=tmp_path / 'wrong',
+    )['topics']['low_state'] == 'rt/absolute_state'

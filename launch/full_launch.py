@@ -32,6 +32,7 @@ def generate_launch_description():
             package=package_name,
             executable='joint_state_publisher',
             name='joint_state_publisher',
+            arguments=['--config', config],
             output='screen'
         ),
         TimerAction(

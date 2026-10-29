@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Controller of the h12 robot with ROS2 services"
 readme = "README.md"
 requires-python = ">=3.10"
+dynamic = ["scripts"]
 dependencies = [
     "cmeel-tinyxml2>=11",
     "crocoddyl>=3.2.1",

@@ -58,12 +58,14 @@ class PlannerClient:
                            max_interpolation_steps=None, direct_only=False,
                            local_frames=(), timeout=None, allow_reuse=True,
                            response_timeout=None, local_joint_padding=None,
-                           planning_budget=None):
+                           planning_budget=None, deadline=None):
         '''Plan to a reduced joint target in the planner process
 
         The worker's PlannerConfig is serialized once at spawn, so per-goal
         speed changes have to travel with the request. Leave the overrides at
         None to plan with the config the worker was started with.
+        deadline is an optional absolute perf_counter limit including lock and
+        startup waits; response_timeout remains a post-dispatch cap.
         '''
         return self._request({
             'command': 'plan_configuration',
@@ -79,7 +81,7 @@ class PlannerClient:
             'allow_reuse': bool(allow_reuse),
             'local_joint_padding': local_joint_padding,
             'planning_budget': planning_budget,
-        }, response_timeout=response_timeout)
+        }, response_timeout=response_timeout, deadline=deadline)
 
     def warmup(self):
         '''Initialize the planner worker before its first motion request'''
@@ -166,8 +168,10 @@ class PlannerClient:
                     connection.cancel_join_thread()
                     connection.close()
 
-    def _start(self):
+    def _start(self, deadline=None):
         self._check_shutdown()
+        if deadline is not None and perf_counter() >= deadline:
+            raise TimeoutError('Planner request deadline exceeded before startup')
         if self.ready:
             return
 
@@ -179,6 +183,8 @@ class PlannerClient:
         self._generation += 1
         try:
             self._check_shutdown()
+            if deadline is not None and perf_counter() >= deadline:
+                raise TimeoutError('Planner request deadline exceeded before startup')
             self._request_queue = self._ctx.Queue()
             self._response_queue = self._ctx.Queue()
             init_args = {
@@ -197,20 +203,28 @@ class PlannerClient:
                 daemon=True,
             )
             self._process.start()
-            deadline = perf_counter() + self.startup_timeout
+            startup_deadline = perf_counter() + self.startup_timeout
+            if deadline is not None:
+                startup_deadline = min(startup_deadline, deadline)
             while True:
                 self._check_shutdown()
+                if deadline is not None and perf_counter() >= deadline:
+                    raise TimeoutError('Planner request deadline exceeded during startup')
                 try:
                     message = self._response_queue.get(
-                        timeout=min(0.1, max(0.0, deadline - perf_counter()))
+                        timeout=min(0.1, max(0.0, startup_deadline - perf_counter()))
                     )
                     break
                 except queue.Empty as exc:
                     if not self._process.is_alive():
                         raise RuntimeError('Planner process exited during startup') from exc
-                    if perf_counter() >= deadline:
+                    if deadline is not None and perf_counter() >= deadline:
+                        raise TimeoutError('Planner request deadline exceeded during startup') from exc
+                    if perf_counter() >= startup_deadline:
                         raise RuntimeError('Planner process did not start in time') from exc
             self._check_shutdown()
+            if deadline is not None and perf_counter() >= deadline:
+                raise TimeoutError('Planner request deadline exceeded during startup')
             if message.get('type') == 'startup_error':
                 raise RuntimeError(message['error'])
             if message.get('type') != 'ready' or message.get('generation') != self._generation:
@@ -224,29 +238,40 @@ class PlannerClient:
         finally:
             self._startup_duration = perf_counter() - started
 
-    def _request(self, request, response_timeout=None):
+    def _request(self, request, response_timeout=None, deadline=None):
         if response_timeout is not None:
             response_timeout = float(response_timeout)
             if not np.isfinite(response_timeout) or response_timeout <= 0.0:
                 raise ValueError('response_timeout must be finite and positive')
+        if deadline is not None and not np.isfinite(deadline):
+            raise ValueError('deadline must be finite')
         started = perf_counter()
-        with self._lock:
+        if deadline is None:
+            self._lock.acquire()
+        elif not self._lock.acquire(timeout=max(0.0, deadline - started)):
+            raise TimeoutError('Planner request deadline exceeded waiting for worker lock')
+        try:
             acquired = perf_counter()
-            self._start()
+            self._start(deadline=deadline)
             ready = perf_counter()
             self._request_id += 1
-            request = {**request, 'request_id': self._request_id}
+            request = {**request, 'request_id': self._request_id,
+                       'deadline': deadline}
             generation = self._generation
             try:
                 self._check_shutdown()
+                if deadline is not None and perf_counter() >= deadline:
+                    raise TimeoutError('Planner request deadline exceeded before dispatch')
                 self._request_queue.put(request)
-                deadline = perf_counter() + min(
+                response_deadline = perf_counter() + min(
                     self.request_timeout,
                     response_timeout if response_timeout is not None else self.request_timeout,
                 )
+                if deadline is not None:
+                    response_deadline = min(response_deadline, deadline)
                 while True:
                     self._check_shutdown()
-                    remaining = deadline - perf_counter()
+                    remaining = response_deadline - perf_counter()
                     if remaining <= 0.0:
                         raise TimeoutError('Planner process response timed out')
                     try:
@@ -255,7 +280,7 @@ class PlannerClient:
                         if not self._process.is_alive():
                             raise RuntimeError('Planner process exited unexpectedly') from exc
                         continue
-                    if perf_counter() >= deadline:
+                    if perf_counter() >= response_deadline:
                         raise TimeoutError('Planner process response timed out')
                     if (message.get('generation') != generation or
                             message.get('request_id') != self._request_id):
@@ -276,6 +301,8 @@ class PlannerClient:
             except Exception:
                 self._stop()
                 raise
+        finally:
+            self._lock.release()
 
 
 class _PlannerWorker:
@@ -310,7 +337,7 @@ class _PlannerWorker:
         raise ValueError(f'Unsupported planner command: {command}')
 
     def _plan_configuration(self, request):
-        self._set_current_q(request['current_q'])
+        started = perf_counter()
         start = np.asarray(request['start'], dtype=float)
         goal = np.asarray(request['goal'], dtype=float)
         active_mask = _optional_array(request.get('active_mask'), dtype=bool)
@@ -322,7 +349,20 @@ class _PlannerWorker:
             budget = float(budget)
             if not np.isfinite(budget) or budget <= 0.0:
                 raise ValueError('planning_budget must be finite and positive')
-        deadline = None if budget is None else perf_counter() + budget
+        deadline = request.get('deadline')
+        if deadline is not None and not np.isfinite(deadline):
+            raise ValueError('deadline must be finite')
+        if budget is not None:
+            deadline = (started + budget if deadline is None else
+                        min(deadline, started + budget))
+        if deadline is not None and perf_counter() >= deadline:
+            return PlanResult(False, np.empty((0, len(start))),
+                              reason='Planning deadline exceeded before model sync')
+        self._set_current_q(request['current_q'])
+        if deadline is not None and perf_counter() >= deadline:
+            return PlanResult(False, np.empty((0, len(start))),
+                              reason='Planning deadline exceeded during model sync',
+                              planning_time=perf_counter() - started)
         with self._config_override(
             request.get('moving_speed'),
             request.get('max_interpolation_steps'),

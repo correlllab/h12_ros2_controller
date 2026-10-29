@@ -4,7 +4,6 @@ import numpy as np
 
 import os
 import sys
-from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -13,28 +12,17 @@ from h12_ros2_controller.core.planner.reduced_joint_planner import (
     PlannerConfig,
     ReducedJointPlanner,
 )
-from h12_ros2_controller.utility.path_definition import (
-    URDF_MAGPIE_PATH,
-    URDF_MAGPIE_SPHERE_PATH,
-    SRDF_MAGPIE_SPHERE_PATH,
-)
+from h12_ros2_controller.utility.path_definition import resolve_model_paths
 
 
 def build_robot_model(visualize=False):
     '''Build an offline robot model for reduced arm planning'''
-    for path in [
-        URDF_MAGPIE_PATH,
-        URDF_MAGPIE_SPHERE_PATH,
-        SRDF_MAGPIE_SPHERE_PATH,
-    ]:
-        if not Path(path).exists():
-            raise FileNotFoundError(f'missing robot asset: {path}')
-
-    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
+    urdf, collision_urdf, collision_srdf = resolve_model_paths()
+    robot_model = RobotModel(urdf, handless=False)
     robot_model.init_reduced_model(ENABLED_JOINTS)
     robot_model.init_collision_model(
-        URDF_MAGPIE_SPHERE_PATH,
-        SRDF_MAGPIE_SPHERE_PATH,
+        collision_urdf,
+        collision_srdf,
     )
     if visualize:
         robot_model.init_visualizer()
