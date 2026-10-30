@@ -13,6 +13,9 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
@@ -58,7 +61,7 @@ def input_frame_task():
             continue
 
 def main(com=False,
-         config_name='debug.yaml'):
+         config_name='safety_split.yaml'):
     config= load_controller_config(config_name)
     controller_cfg = config['controller']
     timeout = controller_cfg['timeout']
@@ -76,11 +79,27 @@ def main(com=False,
                                        visualize=True,
                                        config=config)
     maybe_start_controller_logging(frame_controller)
+    console = GotoConsole(
+        'Frame Goto', NAMED_CONFIGS,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+    )
+    console.help()
 
     try:
         while True:
             # get keyword or frame task input
-            keyword, frame_name, pose = input_keyword_or_frame_task()
+            try:
+                command = console.read_command()
+            except ValueError as err:
+                print(f'Invalid goal: {err}')
+                continue
+            if isinstance(command, Quit):
+                break
+            if command is None:
+                continue
+            keyword = command.name if isinstance(command, NamedGoal) else ''
+            tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
+                     (command,) if isinstance(command, FrameGoal) else ())
 
             # handle keyword configuration
             if keyword in NAMED_CONFIGS:
@@ -95,10 +114,12 @@ def main(com=False,
             else:
                 # manual frame task input
                 print('Going to manual frame task')
-                task_name = f'{frame_name}_task'
                 # add frame task
                 frame_controller.clear_frame_tasks()
-                frame_controller.add_frame_task(task_name, frame_name, pose)
+                for task in tasks:
+                    frame_controller.add_frame_task(
+                        f'{task.frame_name}_task', task.frame_name, task.pose,
+                    )
                 step_function = lambda: frame_controller.control_step_reduced(com=com)
                 # step_function = lambda: frame_controller.sim_step_reduced(com=com)
 
@@ -127,9 +148,10 @@ def main(com=False,
                         )
                     # print error for manual frame task
                     else:
-                        error = frame_controller.get_frame_task_error(task_name)
-                        linear_error = np.linalg.norm(error[:3])
-                        angular_error = np.linalg.norm(error[3:])
+                        errors = [frame_controller.get_frame_task_error(
+                            f'{task.frame_name}_task') for task in tasks]
+                        linear_error = max(np.linalg.norm(error[:3]) for error in errors)
+                        angular_error = max(np.linalg.norm(error[3:]) for error in errors)
 
                         print(
                             f'Linear Error: {linear_error:.4f}, '
@@ -155,14 +177,15 @@ def main(com=False,
                             error < threshold_joint
                         )
                     else:
-                        error = frame_controller.get_frame_task_error(task_name)
-                        linear_error = np.linalg.norm(error[:3])
-                        angular_error = np.linalg.norm(error[3:])
+                        errors = [frame_controller.get_frame_task_error(
+                            f'{task.frame_name}_task') for task in tasks]
+                        linear_error = max(np.linalg.norm(error[:3]) for error in errors)
+                        angular_error = max(np.linalg.norm(error[3:]) for error in errors)
                         print(
                             f'Linear Error: {linear_error:.4f}, '
                             f'Angular Error: {angular_error:.4f}'
                         )
-                        steady_state_converged = steady_state_converged or (
+                        steady_state_converged = (
                             linear_error < threshold_linear and
                             angular_error < threshold_angular
                         )
@@ -187,9 +210,10 @@ def main(com=False,
                 error = frame_controller.reduced_configuration_error
                 print(f'Final Configuration Error: {np.max(np.abs(error)):.4f}')
             else:
-                error = frame_controller.get_frame_task_error(task_name)
-                linear_error = np.linalg.norm(error[:3])
-                angular_error = np.linalg.norm(error[3:])
+                errors = [frame_controller.get_frame_task_error(
+                    f'{task.frame_name}_task') for task in tasks]
+                linear_error = max(np.linalg.norm(error[:3]) for error in errors)
+                angular_error = max(np.linalg.norm(error[3:]) for error in errors)
                 print(f'Final Linear Error: {linear_error:.4f}, '
                     f'Final Angular Error: {angular_error:.4f}')
 
@@ -205,7 +229,7 @@ def main(com=False,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Frame Controller Goto')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     parser.add_argument('--com', action='store_true', help='Use center of mass control')
     args = parser.parse_args()
     main(com=args.com, config_name=args.config)

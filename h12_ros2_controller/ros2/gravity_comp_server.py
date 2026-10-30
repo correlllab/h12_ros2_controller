@@ -1,11 +1,15 @@
 import threading
 import time
+import sys
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.core.controller.gravity_comp_controller import GravityCompController
 from h12_ros2_controller.utility.controller_config import (

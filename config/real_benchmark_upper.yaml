@@ -22,31 +22,87 @@ controller:
   threshold_joint: 0.001
   threshold_linear: 0.001
   threshold_angular: 0.002
+  execution_start_tolerance: 0.01
+  command_seed_max_gap: 0.10
+  plan_max_age: 30.0
 
 planner:
   planner: RRTConnect
-  timeout: 1.0
+  timeout: 6.0
   range: 0.0
   try_direct: true
   simplify: true
   simplify_time: 1.0
-  shortcut: true
   moving_speed: 0.30
   min_interpolation_steps: 30
-  max_interpolation_steps: 300
+  max_interpolation_steps: 1200
+  max_staged_interpolation_steps: 1200
+  joint_acceleration_limit: 25.0
+  continuous_timing: true
+  frame_rotation_radius: 0.20
+  max_ik_candidates: 3
+  ik_max_seeds: 8
+  ik_total_timeout: 8.0
+  ik_seed_timeout: 1.0
+  ik_alpha: 0.1
+  ik_frame_lm_damping: 1.0
+  ik_stagnation_iterations: 20
+  ik_stagnation_relative_improvement: 0.001
+  ik_wrist_motion_weight: 3.0
+  ik_wrist_posture_cost: 0.005
+  ik_shoulder_seed_offset: 0.45
+  ik_elbow_seed_offset: 0.60
+  ik_reuse_translation: 0.12
+  ik_reuse_rotation: 0.50
+  # ceilings for difficult cases; successful fast paths return immediately
+  named_planning_budget: 30.0
+  candidate_planning_budget: 20.0
+  request_planning_budget: 60.0
+  prefer_coordinated_motion: true
+  coordination_search_fraction: 0.5
+  bimanual_fallback_budget: 25.0
+  bimanual_coordination_knots: 24
+  bimanual_coordination_delay: 0.25
+  bimanual_refinement_budget: 0.6
+  bimanual_refinement_duration: 12.0
+  recent_path_cache_size: 6
+  nearby_reuse_joint_tolerance: 0.12
+  nearby_reuse_knots: 24
+  candidate_ompl_timeout: 5.0
+  candidate_ik_weight: 0.1
+  candidate_hand_weight: 2.0
+  candidate_compact_weight: 3.0
+  candidate_clearance_weight: 5.0
+  candidate_wrist_path_weight: 0.20
+  candidate_duration_weight: 0.05
+  worker_request_timeout: 65.0
+  worker_startup_timeout: 30.0
+  prewarm_worker: true
   validity_resolution: 0.0025
   constraint_check_steps: 10
   frame_names:
     - left_grasp_frame
     - right_grasp_frame
+  frame_x_max: 0.50
+  frame_y_min: -0.45
+  frame_y_max: 0.45
   frame_z_min: 0.0
-  frame_z_min_margin: 0.01
+  frame_z_max: 0.50
+  frame_limit_margin: 0.001
   frame_z_corridor_margin: 0.05
+  local_x_backtrack: 0.15
+  elbow_x_backtrack: 0.22
+  max_local_path_ratio: 2.0
+  local_joint_padding: 0.6
+  local_search_fraction: 0.35
+  max_hand_deviation: 0.45
+  compact_radial_slack: 0.08
+  preferred_clearance: 0.05
+  inactive_goal_tolerance: 0.000001
 
 frequency:
   ctrl_hz: 30
   pub_hz: 500
-  check_hz: 1000
 
 gains:
   # torso followed by the fourteen arms; unchanged safety_split hardware gains
@@ -59,10 +115,6 @@ limits:
     position_offset: 0.001
     velocity_ratio: 0.10
     torque_ratio: 0.60
-  estop:
-    position_offset: 0.0
-    velocity_ratio: [0.30, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60]
-    torque_ratio: [0.50, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00]
 
 # frozen 3C iteration-6B wide formulation; real hardware caps still intersect it
 reactive_counter_balance:

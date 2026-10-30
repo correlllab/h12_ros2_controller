@@ -4,7 +4,6 @@ import numpy as np
 
 import os
 import sys
-from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
@@ -13,42 +12,33 @@ from h12_ros2_controller.core.planner.reduced_joint_planner import (
     PlannerConfig,
     ReducedJointPlanner,
 )
-from h12_ros2_controller.utility.path_definition import (
-    URDF_MAGPIE_PATH,
-    URDF_MAGPIE_SPHERE_PATH,
-    SRDF_MAGPIE_SPHERE_PATH,
-)
+from h12_ros2_controller.utility.path_definition import resolve_model_paths
 
 
 def build_robot_model(visualize=False):
     '''Build an offline robot model for reduced arm planning'''
-    for path in [
-        URDF_MAGPIE_PATH,
-        URDF_MAGPIE_SPHERE_PATH,
-        SRDF_MAGPIE_SPHERE_PATH,
-    ]:
-        if not Path(path).exists():
-            raise FileNotFoundError(f'missing robot asset: {path}')
-
-    robot_model = RobotModel(URDF_MAGPIE_PATH, handless=False)
+    urdf, collision_urdf, collision_srdf = resolve_model_paths()
+    robot_model = RobotModel(urdf, handless=False)
     robot_model.init_reduced_model(ENABLED_JOINTS)
     robot_model.init_collision_model(
-        URDF_MAGPIE_SPHERE_PATH,
-        SRDF_MAGPIE_SPHERE_PATH,
+        collision_urdf,
+        collision_srdf,
     )
     if visualize:
         robot_model.init_visualizer()
     return robot_model
 
 
-def inspect_path(robot_model, path):
+def inspect_path(robot_model, path, min_distance=0.0):
     '''Print validity for every waypoint'''
     all_valid = True
     for idx, q_reduced in enumerate(path):
         # print joint-limit and collision results separately for debugging
         start_time = time.perf_counter()
         within_limits = robot_model.check_within_limits_reduced(q_reduced)
-        collision_free = robot_model.check_collision_free_reduced(q_reduced)
+        collision_free = robot_model.check_collision_free_reduced(
+            q_reduced, min_distance=min_distance,
+        )
         valid = within_limits and collision_free
         check_time = time.perf_counter() - start_time
         all_valid = all_valid and valid
@@ -135,6 +125,7 @@ def main():
         path_valid = inspect_path(
             robot_model,
             result.path,
+            min_distance=config.self_collision_clearance,
         )
         print(f'All waypoints valid: {path_valid}')
         if args.visualize:

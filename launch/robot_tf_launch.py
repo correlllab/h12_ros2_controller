@@ -1,15 +1,23 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 from h12_ros2_controller.utility.path_definition_ros import URDF_MAGPIE_ROS_PATH
 
 def generate_launch_description():
     package_name = 'h12_ros2_controller'
+    config = LaunchConfiguration('config')
 
     with open(URDF_MAGPIE_ROS_PATH, 'r') as urdf_file:
         robot_description = urdf_file.read()
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'config',
+            default_value='safety_split.yaml',
+            description='Controller YAML profile',
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -21,6 +29,7 @@ def generate_launch_description():
             package=package_name,
             executable='joint_state_publisher',
             name='joint_state_publisher',
+            arguments=['--config', config],
             output='screen'
         )
     ])

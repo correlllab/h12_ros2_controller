@@ -15,7 +15,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'config',
-            default_value='debug.yaml',
+            default_value='safety_split.yaml',
             description='Controller config file name under config/'
         ),
         Node(
@@ -29,6 +29,7 @@ def generate_launch_description():
             package=package_name,
             executable='joint_state_publisher',
             name='joint_state_publisher',
+            arguments=['--config', config],
             output='screen'
         ),
         # TimerAction(

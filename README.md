@@ -94,16 +94,23 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
 ## Usage
 
+### Offline Planner And Benchmark
+
+- Use the simulation profile for hardware-free IK and planning; these commands do not start a DDS controller:
+
+    ```bash
+    uv run python -m h12_ros2_controller.example.kinematic_plan_goto --config sim_safety_split.yaml
+    uv run python -m h12_ros2_controller.benchmark.ik_benchmark --corpus --config sim_safety_split.yaml
+    ```
+
 ### `arm_controller_goto.py`
 
 - Run arm controller that prompt for target end-effector positions in command line.
 
     ```bash
-    # choose config file depending on usage; every config publishes to an
-    # h12_safety_layer input (rt/safety/*), so run the safety layer alongside
-    uv run h12_ros2_controller/arm_controller_goto.py --config debug.yaml # default (safety layer full-body input)
-    uv run h12_ros2_controller/arm_controller_goto.py --config safety_full.yaml # safety layer full-body mode
-    uv run h12_ros2_controller/arm_controller_goto.py --config safety_split.yaml # safety layer split mode
+    # Start the matching safety layer before running a controller.
+    uv run h12_ros2_controller/example/arm_controller_goto.py --config safety_split.yaml # default: upper-body safety input
+    uv run h12_ros2_controller/example/arm_controller_goto.py --config safety_full.yaml # full-body safety input
     ```
 
 - Change `visualize=True` when initializing the controller to have the meshcat visualization
@@ -123,7 +130,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 
 - Example usage with mujoco sim:
     - Launch [mujoco simulation](https://github.com/HIRO-group/h1_mujoco) using `python h12_mujoco.py`.
-    - Launch arm controller in debug mode using `python h12_ros2_controller/arm_controller_goto.py --debug`.
+    - Launch the matching safety layer and run `uv run h12_ros2_controller/example/arm_controller_goto.py --config safety_split.yaml`.
 
     ![Mujoco Example](./figures/Mujoco_Example.png)
 
@@ -134,8 +141,8 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - Launch the server first
 
     ```bash
-    ros2 run h12_ros2_controller dual_arm_server --config debug.yaml # default
-    # other available configs: safety_full.yaml, safety_split.yaml
+    ros2 run h12_ros2_controller dual_arm_server --config safety_split.yaml # default
+    # For a full-body safety layer, use safety_full.yaml instead.
     ```
 
 - Then launch the client and enter either a named config goal targets for both wrists.
@@ -152,8 +159,8 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - Launch the server first
 
     ```bash
-    ros2 run h12_ros2_controller frame_task_server --config debug.yaml # default
-    # other available configs: safety_full.yaml, safety_split.yaml
+    ros2 run h12_ros2_controller frame_task_server --config safety_split.yaml # default
+    # For a full-body safety layer, use safety_full.yaml instead.
     ```
 
 - Then launch the client and enter either a named config or manual frame targets.
@@ -177,8 +184,7 @@ uv run --with-requirements docs/requirements.txt python -m mkdocs build
 - `robot_launch.py` and `full_launch.py` accept `config:=...` for the controller server node, for example:
 
     ```bash
-    ros2 launch h12_ros2_controller robot_launch.py config:=debug
-    ros2 launch h12_ros2_controller robot_launch.py config:=debug.yaml
+    ros2 launch h12_ros2_controller robot_launch.py config:=safety_split.yaml
     ros2 launch h12_ros2_controller full_launch.py config:=config/safety_full
     ```
 

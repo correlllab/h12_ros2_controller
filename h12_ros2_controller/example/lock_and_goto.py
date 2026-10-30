@@ -21,7 +21,7 @@ def configuration_path(name):
         name = f'{name}.npy'
     return os.path.join('./data', name)
 
-def save(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
+def save(config_name='safety_split.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     init_channel_factory_guard(config)
     print('Initializing RobotModel...')
@@ -35,7 +35,7 @@ def save(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
     q = robot_model.state['q']
     np.save(path, q)
 
-def lock(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
+def lock(config_name='safety_split.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     init_channel_factory_guard(config)
     print('Initializing UpperController...')
@@ -56,7 +56,7 @@ def lock(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
         upper_controller.lock_configuration(q)
         time.sleep(upper_controller.dt)
 
-def goto(config_name='debug.yaml', name=DEFAULT_CONFIGURATION_NAME):
+def goto(config_name='safety_split.yaml', name=DEFAULT_CONFIGURATION_NAME):
     config = load_controller_config(config_name)
     init_channel_factory_guard(config)
     print('Initializing UpperController...')
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     group.add_argument("--save", action="store_true", help="Call the save() function")
     group.add_argument("--lock", action="store_true", help="Call the lock() function")
     group.add_argument("--goto", action="store_true", help="Call the goto() function")
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     parser.add_argument('--name', type=str, default=DEFAULT_CONFIGURATION_NAME, help='Saved configuration file name under data/')
 
     args = parser.parse_args()

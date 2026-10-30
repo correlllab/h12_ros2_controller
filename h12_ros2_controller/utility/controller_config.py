@@ -7,15 +7,16 @@ import numpy as np
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 
 from h12_ros2_controller.utility.joint_definition import NUM_MOTOR, UPPER_BODY_INDEX
+from h12_ros2_controller.utility.path_definition import resolve_config_resource
 from h12_ros2_controller.utility.joint_limits import (
     JOINT_POSITION_LIMITS,
     JOINT_VELOCITY_LIMITS,
     JOINT_TORQUE_LIMITS,
 )
 
-DEFAULT_CONFIG_NAME = 'debug.yaml'
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONFIG_DIR = REPO_ROOT / 'config'
+DEFAULT_CONFIG_NAME = 'safety_split.yaml'
+
+
 def _ensure_yaml_extension(config_path: Path) -> Path:
     '''Append .yaml when config path has no suffix'''
     if config_path.suffix:
@@ -23,14 +24,10 @@ def _ensure_yaml_extension(config_path: Path) -> Path:
     return config_path.with_suffix('.yaml')
 
 def _resolve_config_path(config_name: str,
-                         config_dir: Path = DEFAULT_CONFIG_DIR) -> Path:
+                         config_dir: Path | None = None) -> Path:
     '''Resolve config from either bare name or config/<name> path'''
     config_path = _ensure_yaml_extension(Path(config_name))
-    if config_path.is_absolute():
-        return config_path
-    if config_path.parts and config_path.parts[0] == 'config':
-        return REPO_ROOT / config_path
-    return config_dir / config_path
+    return resolve_config_resource(config_path, config_dir)
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     with path.open('r', encoding='utf-8') as handle:
@@ -237,8 +234,8 @@ def _process_gains(raw_gains: dict[str, Any]) -> dict[str, Any]:
     }
 
 def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
-                           config_dir=DEFAULT_CONFIG_DIR) -> dict[str, Any]:
-    config_path = _resolve_config_path(config_name, config_dir=Path(config_dir))
+                           config_dir=None) -> dict[str, Any]:
+    config_path = _resolve_config_path(config_name, config_dir=config_dir)
     if not config_path.exists():
         raise FileNotFoundError(f'Config file not found: {config_path}')
 
@@ -272,10 +269,10 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
 
     ctrl_hz = float(frequency.get('ctrl_hz', 50.0))
     pub_hz = float(frequency.get('pub_hz', 500.0))
-    if ctrl_hz <= 0.0:
-        raise ValueError('frequency.ctrl_hz must be positive')
-    if pub_hz <= 0.0:
-        raise ValueError('frequency.pub_hz must be positive')
+    if not np.isfinite(ctrl_hz) or ctrl_hz <= 0.0:
+        raise ValueError('frequency.ctrl_hz must be finite and positive')
+    if not np.isfinite(pub_hz) or pub_hz <= 0.0:
+        raise ValueError('frequency.pub_hz must be finite and positive')
 
     processed_limits = build_processed_limits(limits)
     processed_gains = _process_gains(gains)
@@ -290,6 +287,18 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
     threshold_joint = float(controller.get('threshold_joint', 0.01))
     threshold_linear = float(controller.get('threshold_linear', 0.002))
     threshold_angular = float(controller.get('threshold_angular', 0.01))
+    execution_start_tolerance = float(controller.get('execution_start_tolerance', 0.01))
+    command_seed_max_gap = float(controller.get('command_seed_max_gap', 0.1))
+    plan_max_age = float(controller.get('plan_max_age', 30.0))
+    for name, value in (
+        ('execution_start_tolerance', execution_start_tolerance),
+        ('command_seed_max_gap', command_seed_max_gap),
+        ('plan_max_age', plan_max_age),
+        ('threshold_linear', threshold_linear),
+        ('threshold_angular', threshold_angular),
+    ):
+        if not np.isfinite(value) or value <= 0.0:
+            raise ValueError(f'controller.{name} must be finite and positive')
     # refuse/abort motion when rt/lowstate is staler than this; enforced only
     # on DDS domain 0 (the sims stamp tick in sim steps); <= 0 disables
     max_state_lag_ms = float(controller.get('max_state_lag_ms', 50.0))
@@ -315,6 +324,9 @@ def load_controller_config(config_name=DEFAULT_CONFIG_NAME,
             'threshold_joint': threshold_joint,
             'threshold_linear': threshold_linear,
             'threshold_angular': threshold_angular,
+            'execution_start_tolerance': execution_start_tolerance,
+            'command_seed_max_gap': command_seed_max_gap,
+            'plan_max_age': plan_max_age,
             'max_state_lag_ms': max_state_lag_ms,
         },
         'planner': dict(planner),

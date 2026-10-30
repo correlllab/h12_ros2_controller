@@ -24,6 +24,10 @@ class RobotModel:
         # model without free-flyer for IK solver (motor only)
         self.model_body, self.collision_model_body, _ = self._load_urdf_body(filename, handless=self.handless)
         self.data_body = self.model_body.createData()
+        self._urdf_position_limits = np.column_stack((
+            self.model_body.lowerPositionLimit,
+            self.model_body.upperPositionLimit,
+        ))
 
         # placeholder for visualizer and state subscriber
         self.visualizer = None
@@ -50,6 +54,31 @@ class RobotModel:
         # placeholder mask for reduced model (motor only, length NUM_MOTOR)
         self.reduced_mask = np.ones(NUM_MOTOR, dtype=bool)
 
+    def apply_position_limits(self, limits):
+        '''Intersect motor position limits with URDF bounds before reduced init
+
+        Repeated calls use the original URDF bounds, not the previous update.
+        Updating after reduced initialization is prohibited because IK and
+        planners may already cache reduced models and position-limit objects.
+        '''
+        if self.init_reduced:
+            raise RuntimeError('Apply position limits before reduced model initialization')
+        limits = np.asarray(limits, dtype=float)
+        if limits.shape != (self.model_body.nq, 2):
+            raise ValueError('Position limits must contain one lower/upper pair per motor')
+        if not np.all(np.isfinite(limits)):
+            raise ValueError('Position limits must be finite')
+        if np.any(limits[:, 0] >= limits[:, 1]):
+            raise ValueError('Position lower limits must be below upper limits')
+        lower = np.maximum(self._urdf_position_limits[:, 0], limits[:, 0])
+        upper = np.minimum(self._urdf_position_limits[:, 1], limits[:, 1])
+        if np.any(lower >= upper):
+            raise ValueError('Position-limit intersection with URDF bounds is empty')
+        self.model_body.lowerPositionLimit[:] = lower
+        self.model_body.upperPositionLimit[:] = upper
+        self.model.lowerPositionLimit[FREEFLYER_NQ:] = lower
+        self.model.upperPositionLimit[FREEFLYER_NQ:] = upper
+
     def init_reduced_model(self, enabled_joints):
         '''
         create reduced model from model_body (no free-flyer) for IK
@@ -72,6 +101,7 @@ class RobotModel:
             self.model_body, self.frozen_ids_body, reference_q
         )
         self.data_body_reduced = self.model_body_reduced.createData()
+        self.reduced_reference_q = np.asarray(reference_q, dtype=float).copy()
 
     def rebuild_reduced_model(self, reference_q=None):
         '''
@@ -386,6 +416,18 @@ class RobotModel:
     def get_frame_transformation(self, frame_name: str, q: np.ndarray=None):
         return self._get_frame_transformation(frame_name, q).np
 
+    def get_frame_transformation_body(self, frame_name: str, q: np.ndarray=None):
+        '''Get measured pelvis-relative FK from the unreduced fixed-base model'''
+        if q is None:
+            q = self.state['q']
+        frame_id = self.model_body.getFrameId(frame_name)
+        if frame_id >= len(self.model_body.frames):
+            raise ValueError(f'Unknown robot frame: {frame_name}')
+        data = self.model_body.createData()
+        pin.forwardKinematics(self.model_body, data, np.asarray(q).copy())
+        pin.updateFramePlacements(self.model_body, data)
+        return data.oMf[frame_id].np
+
     def get_frame_position(self, frame_name: str, q: np.ndarray=None):
         return self._get_frame_transformation(frame_name, q).translation
 
@@ -483,24 +525,61 @@ class RobotModel:
             })
         return violations
 
-    def check_collision_free(self, q):
-        '''
-        check if the given joint position violates collision constraints
-        q is motor-only (27), uses collision_model_body (no free-flyer)
-        '''
+    def check_collision_free(self, q, min_distance=0.0):
+        '''Check motor-only full-body collision and optional self-clearance'''
         assert(self.init_collision), 'Collision model is not initialized.'
-        return not pin.computeCollisions(
+        if not np.isfinite(min_distance) or min_distance < 0.0:
+            raise ValueError('min_distance must be finite and non-negative')
+        if pin.computeCollisions(
             self.model_body, self.data_body,
             self.collision_model_body, self.collision_data_body, q,
             stop_at_first_collision=True
+        ):
+            return False
+        if min_distance == 0.0:
+            return True
+        return self.minimum_self_clearance(q) > min_distance
+
+    @staticmethod
+    def _minimum_self_clearance(model, data, collision_model, collision_data, q):
+        '''Measure the nearest enabled SRDF collision pair'''
+        pair_index = pin.computeDistances(model, data, collision_model, collision_data, q)
+        if pair_index >= len(collision_model.collisionPairs):
+            raise RuntimeError('Collision geometry has no active distance pairs')
+        distance = collision_data.distanceResults[pair_index].min_distance
+        if not np.isfinite(distance):
+            raise RuntimeError('Collision distance is not finite')
+        return float(distance)
+
+    def minimum_self_clearance(self, q):
+        '''Measure full-body clearance at current frozen and active joint angles'''
+        assert(self.init_collision), 'Collision model is not initialized.'
+        return self._minimum_self_clearance(
+            self.model_body, self.data_body,
+            self.collision_model_body, self.collision_data_body, q,
         )
 
-    def check_collision_free_reduced(self, q_reduced):
-        '''Check collision for the reduced model (model_body_reduced)'''
+    def check_collision_free_reduced(self, q_reduced, min_distance=0.0):
+        '''Check reduced self-collision and optional SRDF-pair clearance'''
         assert(self.init_reduced), 'Reduced model is not initialized.'
         assert(self.init_collision), 'Collision model is not initialized.'
-        return not pin.computeCollisions(
+        if not np.isfinite(min_distance) or min_distance < 0.0:
+            raise ValueError('min_distance must be finite and non-negative')
+        if pin.computeCollisions(
             self.model_body_reduced, self.data_body_reduced,
             self.collision_model_body_reduced, self.collision_data_body_reduced, q_reduced,
             stop_at_first_collision=True
+        ):
+            return False
+        if min_distance == 0.0:
+            return True
+        return self.minimum_self_clearance_reduced(q_reduced) > min_distance
+
+    def minimum_self_clearance_reduced(self, q_reduced):
+        '''Measure the nearest active SRDF-filtered reduced collision pair'''
+        assert(self.init_reduced), 'Reduced model is not initialized.'
+        assert(self.init_collision), 'Collision model is not initialized.'
+        return self._minimum_self_clearance(
+            self.model_body_reduced, self.data_body_reduced,
+            self.collision_model_body_reduced, self.collision_data_body_reduced, q_reduced,
         )

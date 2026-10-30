@@ -151,14 +151,14 @@ def main_loop(gui, robot_model, command_publisher):
     except Exception as e:
         print(f'Exception occurred: {e}')
 
-def main(config_name='debug.yaml'):
+def main(config_name='safety_full.yaml'):
     config = load_controller_config(config_name)
     init_channel_factory_guard(config)
 
     # initialize robot model and command publisher
     robot_model = RobotModel(URDF_HANDLESS_PATH, handless=True)
-    robot_model.init_subscriber()
-    command_publisher = LowCmdPublisher()
+    robot_model.init_subscriber(low_state_topic=config['topics']['low_state'])
+    command_publisher = LowCmdPublisher(low_cmd_topic=config['topics']['low_cmd'])
 
     # wait for initial state
     time.sleep(1.0)
@@ -193,6 +193,6 @@ def main(config_name='debug.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Motor debug GUI')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_full.yaml', help='YAML file name under config/')
     args = parser.parse_args()
     main(config_name=args.config)

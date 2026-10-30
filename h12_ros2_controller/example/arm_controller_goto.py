@@ -1,10 +1,12 @@
-import time
-import argparse
-import numpy as np
-
 import os
 import sys
+import time
+import argparse
+
+import numpy as np
+
 sys.path.append(os.path.abspath(os.path.join(__file__, '../../..')))
+
 from h12_ros2_controller.core.controller.arm_controller import ArmController
 from h12_ros2_controller.utility.controller_config import (
     load_controller_config,
@@ -12,53 +14,17 @@ from h12_ros2_controller.utility.controller_config import (
     maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
 from h12_ros2_controller.utility.path_definition import (
     URDF_MAGPIE_PATH,
     URDF_MAGPIE_SPHERE_PATH,
     SRDF_MAGPIE_SPHERE_PATH,
 )
 
-def input_keyword_or_poses():
-    '''
-    Ask user for keyword command or manual pose input
-    Returns (keyword, left_pose, right_pose) tuple
-    If keyword is provided, poses will be None
-    If no keyword, poses will be provided
-    '''
-    print(f'Available keywords: {list(NAMED_CONFIGS.keys())}')
 
-    choice = input('Enter keyword (or press Enter for manual poses): ').strip()
-
-    if choice:
-        # user entered a keyword
-        return choice, None, None
-    else:
-        # user wants manual pose input
-        left_pose = input_pose('left')
-        right_pose = input_pose('right')
-        return '', left_pose, right_pose
-
-def input_pose(side):
-    print(f'{side.capitalize()} end-effector pose...')
-
-    while True:
-        input_pose = input('Enter x y z roll pitch yaw (separated by space): ')
-        parts = input_pose.strip().split()
-
-        if len(parts) != 6:
-            print('Invalid input. Please enter exactly 6 values.')
-            continue
-        try:
-            values = [float(val) for val in parts]
-            # degrees to radian
-            values[3:] = np.deg2rad(values[3:])
-            return values
-        except ValueError:
-            print('Invalid input. Make sure all 6 values are numeric.')
-            continue
-
-
-def main(config_name='debug.yaml'):
+def main(config_name='safety_split.yaml'):
     # parse threshold and timeout from config
     config= load_controller_config(config_name)
     controller_cfg = config['controller']
@@ -79,11 +45,33 @@ def main(config_name='debug.yaml'):
                                    visualize=True,
                                    config=config)
     maybe_start_controller_logging(arm_controller)
+    console = GotoConsole(
+        'Arm Goto', NAMED_CONFIGS,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+    )
+    console.help()
+    console.say('Arm names: left or right (wrist-yaw target poses)')
 
     try:
         while True:
             # get keyword or target poses
-            keyword, left_pose, right_pose = input_keyword_or_poses()
+            try:
+                command = console.read_command()
+            except ValueError as err:
+                print(f'Invalid goal: {err}')
+                continue
+            if isinstance(command, Quit):
+                break
+            if command is None:
+                continue
+            keyword = command.name if isinstance(command, NamedGoal) else ''
+            tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
+                     (command,) if isinstance(command, FrameGoal) else ())
+            if tasks and (len(tasks) > 2 or any(
+                task.frame_name not in ('left', 'right') for task in tasks
+            )):
+                print('Arm goto supports only left and right')
+                continue
 
             # handle keyword configuration
             if keyword in NAMED_CONFIGS:
@@ -98,9 +86,14 @@ def main(config_name='debug.yaml'):
             else:
                 # manual pose input
                 print('Going to target end-effector poses')
-                # set target poses
-                arm_controller.left_ee_target_pose = left_pose
-                arm_controller.right_ee_target_pose = right_pose
+                # keep the unspecified arm at its current pose
+                targets = {task.frame_name: task.pose for task in tasks}
+                arm_controller.left_ee_target_pose = targets.get(
+                    'left', arm_controller.left_ee_pose,
+                )
+                arm_controller.right_ee_target_pose = targets.get(
+                    'right', arm_controller.right_ee_pose,
+                )
                 step_function = lambda: arm_controller.control_step_reduced()
                 # step_function = lambda: arm_controller.sim_step_reduced()
 
@@ -169,11 +162,18 @@ def main(config_name='debug.yaml'):
                               f'Left Error Angular: {left_error_angular:.4f}, '
                               f'Right Error Linear: {right_error_linear:.4f}, '
                               f'Right Error Angular: {right_error_angular:.4f}')
-                        steady_state_converged = steady_state_converged or (
-                            left_error_linear < threshold_linear and
-                            left_error_angular < threshold_angular and
-                            right_error_linear < threshold_linear and
-                            right_error_angular < threshold_angular
+                        reached = {
+                            'left': (
+                                left_error_linear < threshold_linear and
+                                left_error_angular < threshold_angular
+                            ),
+                            'right': (
+                                right_error_linear < threshold_linear and
+                                right_error_angular < threshold_angular
+                            ),
+                        }
+                        steady_state_converged = all(
+                            reached[task.frame_name] for task in tasks
                         )
 
                     if steady_state_converged:
@@ -214,6 +214,6 @@ def main(config_name='debug.yaml'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Arm Controller Goto')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_split.yaml', help='YAML file name under config/')
     args = parser.parse_args()
     main(config_name=args.config)

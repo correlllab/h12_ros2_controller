@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -6,8 +9,14 @@ from geometry_msgs.msg import Pose, PoseStamped
 from pynput import keyboard
 
 from custom_ros_messages.action import DualArm, NamedConfig
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
-from h12_ros2_controller.ros2.utility import input_pose
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
+from h12_ros2_controller.ros2.utility import action_result_summary, list_to_pose
 
 class DualArmClient(Node):
     def __init__(self):
@@ -106,8 +115,7 @@ class DualArmClient(Node):
         # wait till finish
         future_result = self.goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, future_result)
-        result = future_result.result().result
-        self.get_logger().info(f'Final result: success = {result.success}')
+        self.get_logger().info(f'Final result: {action_result_summary(future_result.result())}')
         # stop the cancel listener thread
         listener.stop()
 
@@ -150,8 +158,7 @@ class DualArmClient(Node):
         # wait till finish
         future_result = self.goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, future_result)
-        result = future_result.result().result
-        self.get_logger().info(f'Final result: success = {result.success}')
+        self.get_logger().info(f'Final result: {action_result_summary(future_result.result())}')
         # stop the cancel listener thread
         listener.stop()
 
@@ -174,55 +181,43 @@ def input_plan():
         print('Please enter y or n')
 
 
-def input_config_name_or_poses():
-    '''
-    Ask user for config name or manual pose input
-    Returns (config_name, left_pose, right_pose, plan) tuple
-    If config_name is provided, poses will be None
-    If no config_name, poses will be provided
-    '''
-    print(f'Available config names: {list(NAMED_CONFIGS.keys())}')
-
-    while True:
-        choice = input(
-            'Enter config name (or press Enter for manual poses): '
-        ).strip()
-        if choice == '' or choice in NAMED_CONFIGS:
-            break
-        print(f'Unknown config name: {choice}')
-
-    if choice:
-        # user entered a config name
-        plan = input_plan()
-        return choice, None, None, plan
-    else:
-        print('Enter left end-effector pose:')
-        left_pose = input_pose()
-        print('Enter right end-effector pose:')
-        right_pose = input_pose()
-        plan = input_plan()
-        return '', left_pose, right_pose, plan
-
-
 def main(args=None):
     rclpy.init(args=args)
     node = DualArmClient()
+    console = GotoConsole(
+        title='Dual Arm', named_goals=NAMED_CONFIGS,
+        supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+    )
+    console.help()
 
     try:
         while rclpy.ok():
-            config_name, left_pose, right_pose, plan = (
-                input_config_name_or_poses()
-            )
-            if config_name != '':
-                node.send_named_config_goal(config_name, plan=plan)
-            else:
-                node.send_dual_arm_goal(left_pose, right_pose, plan=plan)
-
-            input('Press any key to continue...') # flush the input buffer
-            cont = input('Do you want to send another goal? (y/n): ').lower()
-            if cont != 'y':
+            try:
+                command = console.read_command()
+                if isinstance(command, (FrameGoal, MultiFrameGoal)):
+                    tasks = command.tasks if isinstance(command, MultiFrameGoal) else (command,)
+                    if len(tasks) != 2 or {task.frame_name for task in tasks} != {
+                        'left', 'right',
+                    }:
+                        raise ValueError(
+                            'Dual arm requires exactly one left and one right target'
+                        )
+            except ValueError as exc:
+                console.say(str(exc))
+                continue
+            if isinstance(command, Quit):
                 break
-    except KeyboardInterrupt:
+            if command is None:
+                continue
+            plan = input_plan()
+            if isinstance(command, NamedGoal):
+                node.send_named_config_goal(command.name, plan=plan)
+            else:
+                poses = {task.frame_name: list_to_pose(task.pose) for task in tasks}
+                node.send_dual_arm_goal(
+                    poses['left'], poses['right'], plan=plan,
+                )
+    except (KeyboardInterrupt, EOFError):
         pass
     finally:
         node.destroy_node()

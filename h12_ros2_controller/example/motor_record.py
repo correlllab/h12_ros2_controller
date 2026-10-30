@@ -118,7 +118,7 @@ def main(joint_name_list,
          q_end_list,
          savepath,
          duration=5.0,
-         config_name='debug.yaml'):
+         config_name='safety_full.yaml'):
     # initialize channel
     config = load_controller_config(config_name)
     dt = 1.0 / float(config['frequency']['ctrl_hz'])
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Motor recording script')
     parser.add_argument('--save', type=str, required=True,
                         help='Folder name to save motor recordings in data/motor_record/')
-    parser.add_argument('--config', type=str, default='debug.yaml', help='YAML file name under config/')
+    parser.add_argument('--config', type=str, default='safety_full.yaml', help='YAML file name under config/')
     parser.add_argument('--time', type=float, default=1.0,
                         help='Action duration in seconds for each segment')
     args = parser.parse_args()

@@ -26,6 +26,9 @@ from h12_ros2_controller.utility.controller_config import (
 )
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, UPPER_BODY_INDEX
 from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
+from h12_ros2_controller.utility.goto_commands import (
+    FrameGoal, GotoConsole, MultiFrameGoal, NamedGoal, Quit,
+)
 from h12_ros2_controller.utility.path_definition import (
     SRDF_MAGPIE_SPHERE_PATH,
     URDF_MAGPIE_PATH,
@@ -156,7 +159,11 @@ def select_planner(controller, planners, z_floor):
                 original.srdf_sphere_path,
                 planner_config=replace(original.planner_config, frame_z_min=None),
                 handless=original.handless,
+                request_timeout=original.planner_config.worker_request_timeout,
+                startup_timeout=original.planner_config.worker_startup_timeout,
             )
+            if original.planner_config.prewarm_worker:
+                planners[False].warmup_background()
         planner = planners[False]
     controller.planner = planner
 
@@ -169,7 +176,7 @@ def fresh_state(controller):
 
 
 def hold(controller):
-    if controller.low_cmd_handler._estopped:
+    if getattr(controller.low_cmd_handler, '_estopped', False):
         return
     ids = UPPER_BODY_INDEX
     controller.low_cmd_handler.set_joint_commands(
@@ -184,7 +191,9 @@ def valid_arm_command(controller, arm_q):
     candidate = fresh_state(controller)
     candidate[controller.arm_ids] = arm_q
     return (controller.robot_model.check_within_limits_reduced(arm_q)
-            and controller.robot_model.check_collision_free(candidate))
+            and controller.robot_model.check_collision_free(
+                candidate, min_distance=controller.d_min,
+            ))
 
 
 def send(controller, q, dq, balanced, check_collision=False):
@@ -198,7 +207,9 @@ def send(controller, q, dq, balanced, check_collision=False):
         reduced = q[controller.robot_model.reduced_mask]
         if not controller.robot_model.check_within_limits_reduced(reduced):
             raise ValueError('Planned command exceeds reduced joint position limits')
-        if not controller.robot_model.check_collision_free_reduced(reduced):
+        if not controller.robot_model.check_collision_free_reduced(
+            reduced, min_distance=controller.d_min,
+        ):
             raise ValueError('Planned command fails self-collision check')
     if balanced:
         controller.control_configuration_step(
@@ -215,38 +226,76 @@ def send(controller, q, dq, balanced, check_collision=False):
 
 
 def check_path(controller, path):
+    controller.check_state_fresh()
     path = np.asarray(path, dtype=float)
-    start = fresh_state(controller)[controller.robot_model.reduced_mask]
-    if (path.ndim != 2 or path.shape[1:] != start.shape
+    measured = fresh_state(controller)[controller.robot_model.reduced_mask]
+    if (path.ndim != 2 or path.shape[1:] != measured.shape
             or len(path) < 2 or not np.isfinite(path).all()):
         raise ValueError('Planner returned an invalid reduced path')
-    if np.max(np.abs(path[0] - start)) > 0.05:
+    planned = getattr(controller, 'last_plan_result', None)
+    if planned is not None:
+        if not planned.success or not np.array_equal(path, planned.path):
+            raise ValueError('Path differs from the most recent validated plan')
+        context = planned.metadata.get('execution_context')
+        if context is None:
+            raise ValueError('Path is missing its planning-start context')
+        if time.monotonic() - context['planned_at'] > getattr(
+                controller, 'plan_max_age', 30.0):
+            raise ValueError('Path is too old to execute')
+        if not np.isclose(context['dt'], controller.dt, rtol=0.0, atol=1e-9):
+            raise ValueError('Path period differs from controller period')
+        commanded = controller.low_cmd_handler.q_cmd[controller.robot_model.reduced_mask]
+        max_gap = getattr(controller, 'command_seed_max_gap', 0.1)
+        start_tolerance = getattr(controller, 'execution_start_tolerance', 0.01)
+        # a guarded command seed may legitimately lead the measured arm position
+        seed = commanded if np.max(np.abs(measured - commanded)) <= max_gap else measured
+        if (np.max(np.abs(path[0] - context['start'])) > start_tolerance or
+                np.max(np.abs(path[0] - seed)) > start_tolerance):
+            raise RuntimeError('Robot moved since planning; replan from current state')
+    elif np.max(np.abs(path[0] - measured)) > 0.05:
         raise RuntimeError('Robot moved since planning; replan from current state')
-    step_limit = controller.dq_lim * controller.dt
-    if not np.isfinite(step_limit) or step_limit <= 0:
-        raise ValueError('Controller joint speed limit and period must be positive')
-    retimed = [path[0]]
-    for first, last in zip(path[:-1], path[1:]):
-        steps = max(1, int(np.ceil(np.max(np.abs(last - first)) / step_limit - 1e-9)))
-        retimed.extend(first + (last - first) * (index / steps)
-                       for index in range(1, steps + 1))
-    path = np.asarray(retimed)
+    if planned is not None:
+        # preserve the planner's validated samples and timing provenance
+        controller._validate_path_timing(path)
+    else:
+        step_limit = controller.dq_lim * controller.dt
+        if not np.isfinite(step_limit) or step_limit <= 0:
+            raise ValueError('Controller joint speed limit and period must be positive')
+        retimed = [path[0]]
+        for first, last in zip(path[:-1], path[1:]):
+            steps = max(1, int(np.ceil(np.max(np.abs(last - first)) / step_limit - 1e-9)))
+            retimed.extend(first + (last - first) * (index / steps)
+                           for index in range(1, steps + 1))
+        path = np.asarray(retimed)
     dq = np.diff(path, axis=0) / controller.dt
-    if np.max(np.abs(dq)) > controller.dq_lim + 1e-6:
+    if planned is None and np.max(np.abs(dq)) > controller.dq_lim + 1e-6:
         raise ValueError('Retimed path exceeds controller joint speed limit')
     for waypoint in path:
         if (not controller.robot_model.check_within_limits_reduced(waypoint)
-                or not controller.robot_model.check_collision_free_reduced(waypoint)):
+                or not controller.robot_model.check_collision_free_reduced(
+                    waypoint, min_distance=controller.d_min,
+                )):
             raise ValueError('Planned path has an invalid waypoint')
     return path, dq
 
 
 def execute_path(controller, path, balanced=False):
+    if not balanced:
+        plain_goto = getattr(controller, 'plain_goto', False)
+        balanced_live = getattr(controller, 'balanced_live', False)
+        controller.plain_goto = True
+        controller.balanced_live = False
+        try:
+            return controller.execute_path(path)
+        finally:
+            controller.plain_goto = plain_goto
+            controller.balanced_live = balanced_live
     path, velocities = check_path(controller, path)
     controller.planned_balance = balanced
     try:
         for waypoint, velocity in zip(path[1:], velocities):
             started = time.monotonic()
+            controller.check_state_fresh()
             q = fresh_state(controller)
             q[controller.robot_model.reduced_mask] = waypoint
             dq = np.zeros(27)
@@ -333,10 +382,11 @@ def settle_target(controller, target, balanced, frame_task):
         controller.steady_state_step(threshold)
         fresh_state(controller)
         if frame_task:
-            error = controller.get_frame_task_error(frame_task)
+            task_names = (frame_task,) if isinstance(frame_task, str) else frame_task
+            errors = [controller.get_frame_task_error(name) for name in task_names]
             settings = controller.config['controller']
-            linear_error = np.linalg.norm(error[:3])
-            angular_error = np.linalg.norm(error[3:])
+            linear_error = max(np.linalg.norm(error[:3]) for error in errors)
+            angular_error = max(np.linalg.norm(error[3:]) for error in errors)
             reached = (linear_error < settings['threshold_linear']
                        and angular_error < settings['threshold_angular'])
             error_description = (f'linear={linear_error:.4f} m, '
@@ -385,19 +435,21 @@ def live_goto(controller, target, balanced, frame_task=None):
                     controller.init_steady_state()
                     print('IK converged; entering steady-state hold')
             else:
-                steady = controller.steady_state_step(settings['threshold_joint'])
+                controller.steady_state_step(settings['threshold_joint'])
                 if frame_task:
-                    error = controller.get_frame_task_error(frame_task)
-                    steady = steady or (
-                        np.linalg.norm(error[:3]) < settings['threshold_linear']
-                        and np.linalg.norm(error[3:]) < settings['threshold_angular']
+                    task_names = (frame_task,) if isinstance(frame_task, str) else frame_task
+                    errors = [controller.get_frame_task_error(name) for name in task_names]
+                    steady = all(
+                        np.linalg.norm(error[:3]) < settings['threshold_linear'] and
+                        np.linalg.norm(error[3:]) < settings['threshold_angular']
+                        for error in errors
                     )
                 else:
-                    error = controller.reduced_configuration_error
+                    error = controller.robot_model.state_reduced['q'] - target
                     if balanced:
                         ids = slice(0, 7) if controller.moving_arm == 'left' else slice(7, 14)
                         error = error[ids]
-                    steady = steady or np.max(np.abs(error)) < settings['threshold_joint']
+                    steady = np.max(np.abs(error)) < settings['threshold_joint']
                 if steady:
                     print('Steady state reached!')
                     reached = True
@@ -454,12 +506,44 @@ def prepare_goal(controller, name, side, pose, balanced):
     return target, None
 
 
-def plan_goal(controller, target, frame_task, ik_timeout, ik_alpha):
+def prepare_frame_goals(controller, tasks, balanced):
+    if balanced and len(tasks) != 1:
+        raise ValueError('Counter-balance supports exactly one moving-arm frame task')
+    if balanced and tasks[0].frame_name not in FRAMES.values():
+        raise ValueError('Counter-balance requires a left/right grasp frame')
+    controller.clear_frame_tasks()
+    names = []
+    for task in tasks:
+        name = f'{task.frame_name}_task'
+        if balanced:
+            controller.set_frame_target(task.frame_name, task.pose, task_name=name)
+        else:
+            controller.add_frame_task(name, task.frame_name, task.pose)
+        names.append(name)
+    return None, tuple(names)
+
+
+def plan_goal(controller, target, frame_task, ik_timeout, ik_alpha, balanced=False):
     if frame_task:
         return controller.plan_to_ik_target(
             ik_timeout=ik_timeout, ik_alpha=ik_alpha,
         )
-    return controller.plan_to_configuration(target)
+    if not balanced:
+        return controller.plan_to_configuration(target)
+    controller.check_state_fresh()
+    measured = fresh_state(controller)
+    start_q, from_command = controller._command_seed(measured)
+    if not from_command:
+        controller._tau_bias[controller.enabled_ids] = 0.0
+    start = start_q[controller.robot_model.reduced_mask].copy()
+    active_mask = np.zeros_like(start, dtype=bool)
+    active_mask[:7] = controller.moving_arm == 'left'
+    active_mask[7:] = controller.moving_arm == 'right'
+    target = np.asarray(target).copy()
+    target[~active_mask] = start[~active_mask]
+    return controller.plan_to_configuration(
+        target, start=start, active_mask=active_mask, current_q=measured,
+    )
 
 
 def startup_home(controller):
@@ -481,7 +565,7 @@ def startup_home(controller):
           'Start the external lower-body policy and verify standing.')
 
 
-def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
+def main(config_name='real_benchmark_upper.yaml'):
     config = load_controller_config(config_name)
     if config.get('mode') != 'debug' or config['topics']['low_cmd'] != 'rt/safety/lowcmd_upper_in':
         raise ValueError('Demo requires the split upper-body command relay config')
@@ -512,41 +596,58 @@ def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
                     return
         if ask_choice('Standing and lower-body policy verified? (y/N): ', ('y', 'n', '')) != 'y':
             return
+        console = GotoConsole(
+            'Counter Balance Goto', DEMO_CONFIGS,
+            supported=(NamedGoal, FrameGoal, MultiFrameGoal, Quit),
+        )
+        console.help()
         while True:
             print(f'Available named configs: {list(DEMO_CONFIGS.keys())}')
-            name = input(
-                'Enter named config (or press Enter for frame task, q to quit): '
-            ).strip().lower()
-            if name == 'q':
-                break
-            if name and name not in DEMO_CONFIGS:
-                print(f'Unknown named configuration: {name}')
+            try:
+                command = console.read_command()
+            except ValueError as error:
+                print(f'Invalid goal: {error}')
                 continue
+            if isinstance(command, Quit):
+                break
+            name = command.name if isinstance(command, NamedGoal) else ''
             side, pose = (None, None)
-            if not name:
+            if command is None:
                 side = ask_choice('Enter moving arm (left/right): ', FRAMES)
                 pose = ask_pose()
-            goal_description = (
-                f'named configuration: {name}' if name else f'frame task: {FRAMES[side]}'
-            )
+            tasks = (command.tasks if isinstance(command, MultiFrameGoal) else
+                     (command,) if isinstance(command, FrameGoal) else ())
+            if name:
+                goal_description = f'named configuration: {name}'
+            elif tasks:
+                goal_description = 'frame tasks: ' + ', '.join(
+                    task.frame_name for task in tasks
+                )
+            else:
+                goal_description = f'frame task: {FRAMES[side]}'
             planned = ask_choice('Plan this goto? (y/N): ', ('y', 'n', '')) == 'y'
             balanced = ask_choice('Enable counter-balance? (y/N): ', ('y', 'n', '')) == 'y'
             try:
                 if name in OVERHANG_CONFIGS:
                     print('Offline overhang joint target: inspect the path; '
                           'HOME-to-first and counter reaction are not hardware-qualified')
-                target, task = prepare_goal(controller, name or None, side, pose, balanced)
+                if tasks:
+                    target, task = prepare_frame_goals(controller, tasks, balanced)
+                else:
+                    target, task = prepare_goal(controller, name or None, side, pose, balanced)
                 if planned:
                     print(f'Planning to {goal_description}')
                     select_planner(controller, planners, ask_z_floor('this goal'))
+                    planner_cfg = controller.planner.planner_config
                     started = time.monotonic()
-                    path = plan_goal(controller, target, task, ik_timeout, ik_alpha)
+                    path = plan_goal(controller, target, task,
+                                     planner_cfg.ik_total_timeout, planner_cfg.ik_alpha,
+                                     balanced)
                     planning_time = time.monotonic() - started
-                    planned_steps = len(path)
                     path, _ = check_path(controller, path)
                     length = np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1))
                     print(f'Planning time: {planning_time:.4f} s')
-                    print(f'Path shape: {path.shape} (retimed from {planned_steps} waypoints)')
+                    print(f'Path shape: {path.shape}')
                     print(f'Joint path length: {length:.3f} rad, '
                           f'nominal execution: {(len(path) - 1) * controller.dt:.2f} s')
                     if ask_choice('Execute plan? (y/N): ', ('y', 'n', '')) != 'y':
@@ -570,7 +671,7 @@ def main(config_name='real_benchmark_upper.yaml', ik_timeout=1.0, ik_alpha=0.1):
                 if planned and isinstance(error, KeyboardInterrupt):
                     # discard an interrupted request so its response cannot serve the next goal
                     try:
-                        controller.planner.shutdown()
+                        controller.planner.cancel_current_request()
                     except Exception as planner_error:
                         print(f'Could not stop interrupted planner: {planner_error}')
                 print(f'Goal refused or stopped: {type(error).__name__}: {error}')
@@ -599,7 +700,5 @@ if __name__ == '__main__':
         '--config', default='real_benchmark_upper.yaml',
         help='YAML file name under config/',
     )
-    parser.add_argument('--ik-timeout', type=float, default=1.0)
-    parser.add_argument('--ik-alpha', type=float, default=0.1)
     args = parser.parse_args()
-    main(args.config, args.ik_timeout, args.ik_alpha)
+    main(args.config)
