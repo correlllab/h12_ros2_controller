@@ -878,6 +878,52 @@ class ReducedJointPlanner:
             return validate(path, metadata, failure)
         return validate(*self._timed_path(sparse_path))
 
+    def _compact_path(self, sparse, path, metadata, start, goal, frames):
+        '''Try at most 14 coordinate contractions within 0.5 seconds'''
+        excess = max(metadata.get('compact_radial_excess', {}).values(), default=0.0)
+        if excess <= 0.03 or len(sparse) < 3:
+            return path, metadata
+        started = perf_counter()
+        attempts = 0
+        accepted = False
+        # contract coordinates independently so a tight workspace bound on
+        # one joint need not prevent improvements elsewhere
+        lengths = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(sparse, axis=0), axis=1))]
+        if lengths[-1] <= 0.0:
+            return path, metadata
+        straight = start + (lengths / lengths[-1])[:, None] * (goal - start)
+        try:
+            with self._deadline_scope(started + 0.5):
+                proposal = sparse.copy()
+                for index in np.flatnonzero(self.active_mask)[:14]:
+                    self._check_deadline()
+                    attempts += 1
+                    proposal[:, index] += 0.25 * (straight[:, index] - proposal[:, index])
+                    if self._path_validity_failure(proposal):
+                        proposal[:, index] = sparse[:, index]
+                if np.array_equal(proposal, sparse):
+                    candidate, quality, failure = None, {}, 'unchanged'
+                else:
+                    candidate, quality, failure = self._select_timed_path(
+                        proposal, start, goal, frames,
+                    )
+                candidate_excess = max(
+                    quality.get('compact_radial_excess', {}).values(), default=0.0,
+                )
+                if (not failure and candidate is not None and
+                        candidate_excess <= excess and
+                        quality['duration'] <= metadata['duration'] and
+                        candidate_path_score(quality, 0.0, self.config) <
+                        candidate_path_score(metadata, 0.0, self.config)):
+                    path, metadata = candidate, quality
+                    accepted = True
+        except _PlanningDeadlineExpired:
+            pass
+        metadata.update(compaction_attempts=attempts, compaction_accepted=accepted,
+                        compaction_time=perf_counter() - started)
+        metadata.pop('validation_time', None)
+        return path, metadata
+
     def _workspace_constraint_failure(self, q_reduced, name):
         if (
             not self.frame_min_z and
@@ -1813,8 +1859,18 @@ class ReducedJointPlanner:
                 ('local', padding, local_time),
                 ('global', 0.0, solve_timeout - local_time),
             ]
-        approximate = False
-        exact = False
+        failures = {}
+        metadata = {}
+
+        def deadline_failure(exc):
+            metadata.update(validity_checks=self.validity_checks,
+                            region_failures=failures.copy())
+            reasons = [f'{region}: {reason}' for region, reason in failures.items()]
+            return finish(PlanResult(
+                False, self._empty_path(), reason='; '.join(reasons + [str(exc)]),
+                planner_name=self.config.planner, metadata=metadata,
+            ))
+
         search_region = 'global'
         for search_region, padding, budget in searches:
             self._apply_active_bounds(start, goal, padding=padding)
@@ -1825,76 +1881,80 @@ class ReducedJointPlanner:
                 self._make_state(start), self._make_state(goal),
             )
             search_started = perf_counter()
-            budget = self._remaining_time(budget)
-            solved = self.ss.solve(budget)
+            try:
+                budget = self._remaining_time(budget)
+                solved = self.ss.solve(budget)
+                self._check_deadline()
+            except _PlanningDeadlineExpired as exc:
+                timings[f'ompl_{search_region}'] = perf_counter() - search_started
+                timings['ompl'] = sum(timings.get(f'ompl_{region}', 0.0)
+                                      for region, _, _ in searches)
+                return deadline_failure(exc)
             timings[f'ompl_{search_region}'] = perf_counter() - search_started
-            approximate |= bool(solved)
-            if bool(solved) and self.ss.haveExactSolutionPath():
-                exact = True
-                break
-        timings['ompl'] = perf_counter() - stage_start
-        self._apply_active_bounds()
-        self._check_deadline()
-        if not approximate:
+            timings['ompl'] = sum(timings.get(f'ompl_{region}', 0.0)
+                                  for region, _, _ in searches)
+            if not bool(solved) or not self.ss.haveExactSolutionPath():
+                failures[search_region] = (self._approximate_reason(direct_failure)
+                                           if bool(solved) else
+                                           self._timeout_reason(direct_failure))
+                continue
+            # an exact geometric solution is not accepted until retiming and
+            # all final-path checks pass; a rejected local route may go global
+            postprocess_started = perf_counter()
+            self._apply_active_bounds()
+            path = self.ss.getSolutionPath()
+            try:
+                self._shorten_path(path)
+                sparse_path = self._path_to_array(path, cap=False)
+            except _PlanningDeadlineExpired as exc:
+                timings[f'postprocess_{search_region}'] = perf_counter() - postprocess_started
+                return deadline_failure(exc)
+            failure = ''
+            if (len(sparse_path) < 2 or
+                    not np.all(np.isfinite(sparse_path)) or
+                    not np.allclose(sparse_path[0], start, rtol=0, atol=1e-6) or
+                    not np.allclose(sparse_path[-1], goal, rtol=0, atol=1e-6)):
+                failure = 'OMPL solution does not connect the requested endpoints'
+                metadata = {}
+            else:
+                try:
+                    path_array, metadata, failure = self._select_timed_path(
+                        sparse_path, start, goal, local_frames,
+                    )
+                except _PlanningDeadlineExpired as exc:
+                    timings[f'postprocess_{search_region}'] = perf_counter() - postprocess_started
+                    return deadline_failure(exc)
+                if not failure:
+                    failure = self._inactive_path_failure(path_array)
+            validation = metadata.pop('validation_time', 0.0)
+            timings[f'validation_{search_region}'] = validation
+            timings[f'postprocess_{search_region}'] = (
+                perf_counter() - postprocess_started - validation
+            )
+            for phase in ('validation', 'postprocess'):
+                timings[phase] = sum(timings.get(f'{phase}_{region}', 0.0)
+                                     for region, _, _ in searches)
+            if failure:
+                failures[search_region] = failure
+                continue
+            path_array, metadata = self._compact_path(
+                sparse_path, path_array, metadata, start, goal, local_frames,
+            )
+            timings['compaction'] = metadata.get('compaction_time', 0.0)
+            metadata.update(path_kind='ompl path', search_region=search_region,
+                            actual_waypoints=len(path_array),
+                            validity_checks=self.validity_checks,
+                            region_failures=failures.copy())
             return finish(PlanResult(
-                success=False,
-                path=self._empty_path(),
-                reason=self._timeout_reason(direct_failure),
-                planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
-            ))
-
-        # bool(PlannerStatus) is True for APPROXIMATE_SOLUTION as well as
-        # EXACT_SOLUTION. An approximate path ends at the closest state OMPL
-        # reached, NOT at the goal, so executing it drives the arm to a
-        # near-miss and leaves the steady-state controller to chase a gap it
-        # cannot close. Treat it as a planning failure instead.
-        if not exact:
-            return finish(PlanResult(
-                success=False,
-                path=self._empty_path(),
-                reason=self._approximate_reason(direct_failure),
-                planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
-            ))
-
-        # simplify once, then validate the final candidate path
-        stage_start = perf_counter()
-        path = self.ss.getSolutionPath()
-        self._shorten_path(path)
-        sparse_path = self._path_to_array(path, cap=False)
-        if (len(sparse_path) < 2 or
-                not np.all(np.isfinite(sparse_path)) or
-                not np.allclose(sparse_path[0], start, rtol=0, atol=1e-6) or
-                not np.allclose(sparse_path[-1], goal, rtol=0, atol=1e-6)):
-            return finish(PlanResult(
-                success=False, path=self._empty_path(),
-                reason='OMPL solution does not connect the requested endpoints',
-                planner_name=self.config.planner,
-                metadata={'validity_checks': self.validity_checks},
-            ))
-        path_array, metadata, timing_failure = self._select_timed_path(
-            sparse_path, start, goal, local_frames,
-        )
-        metadata['path_kind'] = 'ompl path'
-        metadata['search_region'] = search_region
-        timings['validation'] = metadata.pop('validation_time', 0.0)
-        timings['postprocess'] = perf_counter() - stage_start - timings['validation']
-        if timing_failure:
-            metadata['validity_checks'] = self.validity_checks
-            return finish(PlanResult(
-                success=False, path=self._empty_path(), reason=timing_failure,
+                success=True, path=path_array, reason='success',
                 planner_name=self.config.planner, metadata=metadata,
             ))
-        metadata['actual_waypoints'] = path_array.shape[0]
-        metadata['validity_checks'] = self.validity_checks
-
+        self._apply_active_bounds()
+        metadata.update(validity_checks=self.validity_checks, region_failures=failures)
+        reason = '; '.join(f'{region}: {failure}' for region, failure in failures.items())
         return finish(PlanResult(
-            success=True,
-            path=path_array,
-            reason='success',
-            planner_name=self.config.planner,
-            metadata=metadata,
+            success=False, path=self._empty_path(), reason=reason,
+            planner_name=self.config.planner, metadata=metadata,
         ))
 
     def _timeout_reason(self, direct_failure):

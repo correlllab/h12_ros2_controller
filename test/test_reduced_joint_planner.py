@@ -1472,6 +1472,181 @@ def test_edge_validation_spacing_does_not_inherit_prior_bounds_or_mask():
     assert np.max(np.diff(np.sort(expected[:, 0]))) <= 0.005 + 1e-12
 
 
+@pytest.mark.parametrize('rejections', [
+    ['path detour ratio exceeds local limit', ''],
+    ['timing requires too many points', ''],
+    ['', 'must not search global'],
+    ['local quality rejected', 'global timing rejected'],
+])
+def test_region_search_requires_full_acceptance(monkeypatch, deadline_clock, rejections):
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        try_direct=False, simplify=False, timeout=1.0, local_joint_padding=0.1,
+    ))
+    sparse = np.array([[0.0, 0.0], [0.2, 0.1]])
+    budgets = []
+    validations = []
+
+    def solve(budget):
+        budgets.append(budget)
+        deadline_clock[0] += 0.1
+        return True
+
+    def validate(*args):
+        failure = rejections[len(validations)]
+        validations.append(True)
+        deadline_clock[0] += 0.1
+        return sparse.copy(), {'validation_time': 0.1}, failure
+
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None, setPlanner=lambda planner: None,
+        setStartAndGoalStates=lambda *args: None, solve=solve,
+        haveExactSolutionPath=lambda: True,
+        getSolutionPath=lambda: SimpleNamespace(getStates=lambda: sparse),
+    ))
+    monkeypatch.setattr(planner, '_select_timed_path', validate)
+    result = planner._plan_once(
+        *sparse, local_frames=planner.frame_names, deadline=0.45,
+    )
+    expected = 2 if rejections[0] else 1
+    assert len(budgets) == len(validations) == expected
+    assert result.success == (not rejections[expected - 1])
+    assert budgets[0] <= 0.45
+    if expected == 2:
+        assert budgets[1] <= 0.25 + 1e-12
+        assert result.metadata['region_failures']['local'] == rejections[0]
+        assert result.metadata['stage_timings']['validation'] == pytest.approx(0.2)
+    if result.success:
+        assert result.metadata['search_region'] == ('local' if expected == 1 else 'global')
+        assert np.array_equal(planner._recent_paths[-1]['path'], result.path)
+    else:
+        assert all(reason in result.reason for reason in rejections)
+        assert not planner._recent_paths
+
+
+def test_rejected_local_preserves_reason_when_global_deadline_expires(
+        monkeypatch, deadline_clock):
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        try_direct=False, simplify=False, timeout=1.0, local_joint_padding=0.1,
+    ))
+    sparse = np.array([[0.0, 0.0], [0.2, 0.1]])
+    budgets = []
+
+    def solve(budget):
+        budgets.append(budget)
+        deadline_clock[0] += 0.1 if len(budgets) == 1 else budget
+        return True
+
+    def reject(*args):
+        deadline_clock[0] += 0.1
+        return None, {}, 'local quality rejected'
+
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None, setPlanner=lambda planner: None,
+        setStartAndGoalStates=lambda *args: None, solve=solve,
+        haveExactSolutionPath=lambda: True,
+        getSolutionPath=lambda: SimpleNamespace(getStates=lambda: sparse),
+    ))
+    monkeypatch.setattr(planner, '_select_timed_path', reject)
+    result = planner._plan_once(*sparse, local_frames=planner.frame_names, deadline=0.3)
+    assert not result.success
+    assert 'local quality rejected' in result.reason
+    assert 'deadline exceeded' in result.reason
+    assert budgets[1] == pytest.approx(0.1)
+    assert deadline_clock[0] == pytest.approx(0.3)
+    assert result.metadata['stage_timings']['ompl_global'] == pytest.approx(0.1)
+    assert planner._deadline is None
+    assert not planner._recent_paths
+
+
+@pytest.mark.parametrize('outcome', ['better', 'invalid', 'worse', 'slower', 'expiry'])
+def test_compaction_retains_valid_fallback_unless_quality_improves(
+        monkeypatch, deadline_clock, outcome):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    sparse = np.array([[0.0, 0.0], [0.3, 0.4], [0.5, 0.0]])
+    planner._set_active_mask([True, False], sparse[0])
+    sparse[:, 1] = 0.0
+    metadata = {'joint_path_length': 2.0, 'duration': 2.0,
+                'compact_radial_excess': {'elbow': 0.2}}
+    candidate_metadata = {'joint_path_length': 1.0, 'duration': 2.0,
+                          'compact_radial_excess': {'elbow': 0.1}}
+    candidate = sparse.copy()
+    candidate[1, 0] = 0.2
+    calls = []
+
+    def validate(proposal, *args):
+        calls.append(proposal.copy())
+        assert np.array_equal(proposal[[0, -1]], sparse[[0, -1]])
+        assert np.array_equal(proposal[:, 1], sparse[:, 1])
+        if outcome == 'expiry':
+            deadline_clock[0] = 0.2
+            planner._check_deadline()
+        if outcome == 'worse':
+            candidate_metadata['compact_radial_excess']['elbow'] = 0.3
+        if outcome == 'slower':
+            candidate_metadata['duration'] = 2.1
+        return candidate, candidate_metadata, 'rejected' if outcome == 'invalid' else ''
+
+    # make the middle knot non-collinear in the active coordinates
+    sparse[1, 0] = 0.6
+    monkeypatch.setattr(planner, '_path_validity_failure', lambda path: '')
+    monkeypatch.setattr(planner, '_select_timed_path', validate)
+    with planner._deadline_scope(0.2):
+        path, quality = planner._compact_path(
+            sparse, sparse, metadata, sparse[0], sparse[-1], (),
+        )
+    assert len(calls) == 1
+    assert quality['compaction_attempts'] == 1
+    assert quality['compaction_accepted'] == (outcome == 'better')
+    assert path is (candidate if outcome == 'better' else sparse)
+    assert planner._deadline is None
+
+
+def test_compaction_skips_already_compact_path(monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    sparse = np.array([[0., 0.], [0.3, 0.2], [0.5, 0.]])
+    metadata = {'compact_radial_excess': {'elbow': 0.0}}
+    monkeypatch.setattr(planner, '_select_timed_path',
+                        lambda *args: pytest.fail('compact fast path must not refine'))
+    path, quality = planner._compact_path(
+        sparse, sparse, metadata, sparse[0], sparse[-1], (),
+    )
+    assert path is sparse and quality is metadata
+
+
+def test_compaction_work_cap_and_expired_budget_keep_original(monkeypatch, deadline_clock):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(20), upper=np.ones(20),
+    ))
+    sparse = np.array([np.zeros(20), np.full(20, 0.6), np.full(20, 0.5)])
+    metadata = {'joint_path_length': 5.0, 'duration': 2.0,
+                'compact_radial_excess': {'elbow': 0.2}}
+    checks = []
+    monkeypatch.setattr(planner, '_path_validity_failure',
+                        lambda path: checks.append(path.copy()) or '')
+    monkeypatch.setattr(planner, '_select_timed_path', lambda *args: (None, {}, 'invalid'))
+    path, quality = planner._compact_path(
+        sparse, sparse, metadata, sparse[0], sparse[-1], (),
+    )
+    assert path is sparse
+    assert len(checks) == quality['compaction_attempts'] == 14
+    checks.clear()
+
+    def slow_validation(path):
+        checks.append(path.copy())
+        deadline_clock[0] += 0.1
+        planner._check_deadline()
+        return ''
+
+    monkeypatch.setattr(planner, '_path_validity_failure', slow_validation)
+    path, quality = planner._compact_path(
+        sparse, sparse, metadata, sparse[0], sparse[-1], (),
+    )
+    assert path is sparse and not quality['compaction_accepted']
+    assert len(checks) == 5
+    assert deadline_clock[0] == pytest.approx(0.5)
+    assert planner._deadline is None
+
+
 def test_local_global_searches_get_fresh_planners_and_current_resolution(monkeypatch):
     planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
         try_direct=False, simplify=False, timeout=0.2, local_joint_padding=0.1,
