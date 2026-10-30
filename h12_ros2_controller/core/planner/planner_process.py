@@ -43,8 +43,11 @@ class PlannerClient:
         self._lock = Lock()
         self._lifecycle_lock = Lock()
         self._shutdown = Event()
+        self._cancel = Event()
         self._ready = Event()
+        self._pending_response = None
         self._warmup_thread = None
+        self._warmup_cancel = None
         self._startup_error = None
         self._startup_duration = None
         self._generation = 0
@@ -65,7 +68,9 @@ class PlannerClient:
         speed changes have to travel with the request. Leave the overrides at
         None to plan with the config the worker was started with.
         deadline is an optional absolute perf_counter limit including lock and
-        startup waits; response_timeout remains a post-dispatch cap.
+        startup waits. response_timeout is an independent hard watchdog starting
+        at dispatch, including cleanup of work that outlives the phase deadline.
+        Expired paths are discarded, never returned to a later request.
         '''
         return self._request({
             'command': 'plan_configuration',
@@ -83,43 +88,83 @@ class PlannerClient:
             'planning_budget': planning_budget,
         }, response_timeout=response_timeout, deadline=deadline)
 
-    def warmup(self):
-        '''Initialize the planner worker before its first motion request'''
+    def warmup(self, deadline=None):
+        '''Wait for worker readiness within an optional absolute deadline
+
+        Call before starting a per-solve phase budget so native startup and
+        recovery consume only the overall request allowance.
+        '''
+        if deadline is not None and not np.isfinite(deadline):
+            raise ValueError('deadline must be finite')
         started = perf_counter()
-        with self._lock:
-            self._start()
+        cancel = self._cancel
+        if deadline is None:
+            self._lock.acquire()
+        elif not self._lock.acquire(timeout=max(0.0, deadline - started)):
+            raise TimeoutError('Planner request deadline exceeded waiting for worker lock')
+        try:
+            self._start(deadline=deadline, cancel=cancel)
             return perf_counter() - started
+        finally:
+            self._lock.release()
 
     def warmup_background(self):
-        '''Schedule one nonblocking warmup attempt, returning whether scheduled
+        '''Schedule a nonblocking warmup attempt, returning whether scheduled
 
-        Repeated calls do nothing, including after a failed attempt. Inspect
-        startup_error for failures; warmup() can explicitly retry them.
+        Concurrent calls share one attempt. A completed failed attempt can be
+        retried explicitly; failures do not start an unbounded retry loop.
         '''
+        return self._schedule_warmup(self._cancel)
+
+    def _schedule_warmup(self, cancel):
         with self._lifecycle_lock:
             self._check_shutdown()
-            if self._warmup_thread is not None or self.ready:
+            if cancel.is_set() or cancel is not self._cancel:
+                return False
+            if self._warmup_cancel is cancel or self.ready:
                 return False
             self._warmup_thread = Thread(
                 target=self._warmup_background,
+                args=(cancel,),
                 name='planner_warmup',
                 daemon=True,
             )
-            self._warmup_thread.start()
+            self._warmup_cancel = cancel
+            try:
+                self._warmup_thread.start()
+            except Exception:
+                self._warmup_cancel = None
+                raise
             return True
 
-    def _warmup_background(self):
+    def _warmup_background(self, cancel):
+        succeeded = False
         try:
-            self.warmup()
+            with self._lock:
+                self._start(cancel=cancel)
+                succeeded = True
         except Exception:
             # _start records failures while holding the worker lock
             pass
+        finally:
+            with self._lifecycle_lock:
+                if self._warmup_cancel is cancel:
+                    self._warmup_cancel = None
+                recover = (succeeded and self._pending_response is not None
+                           and not self._shutdown.is_set() and not cancel.is_set())
+            if recover:
+                # a request can expire just as the previous warmup releases its lock
+                try:
+                    self._schedule_warmup(cancel)
+                except RuntimeError:
+                    pass
 
     @property
     def ready(self):
         '''Whether the worker has completed startup and is still alive'''
         process = self._process
         return (not self._shutdown.is_set() and self._ready.is_set()
+                and self._pending_response is None
                 and process is not None and process.is_alive())
 
     @property
@@ -140,12 +185,27 @@ class PlannerClient:
         with self._lock:
             self._stop(graceful=True)
 
+    def cancel_current_request(self):
+        '''Cancel pending work and discard its worker without closing the client'''
+        with self._lifecycle_lock:
+            self._check_shutdown()
+            self._cancel.set()
+            with self._lock:
+                self._stop()
+                self._cancel = Event()
+
     def _check_shutdown(self):
         if self._shutdown.is_set():
             raise RuntimeError('Planner client is shut down')
 
+    def _check_active(self, cancel):
+        self._check_shutdown()
+        if cancel is not None and cancel.is_set():
+            raise RuntimeError('Planner request cancelled')
+
     def _stop(self, graceful=False):
         self._ready.clear()
+        self._pending_response = None
         process = self._process
         try:
             if process is not None:
@@ -168,10 +228,51 @@ class PlannerClient:
                     connection.cancel_join_thread()
                     connection.close()
 
-    def _start(self, deadline=None):
-        self._check_shutdown()
+    def _drain_response(self, deadline, cancel):
+        '''Discard expired work, retaining a responsive worker under its hard cap'''
+        generation, request_id, hard_deadline = self._pending_response
+        while True:
+            self._check_active(cancel)
+            now = perf_counter()
+            if deadline is not None and now >= deadline:
+                raise TimeoutError('Planner request deadline exceeded during recovery')
+            if now >= hard_deadline:
+                self._stop()
+                return
+            limit = hard_deadline if deadline is None else min(deadline, hard_deadline)
+            try:
+                message = self._response_queue.get(timeout=min(0.1, limit - now))
+            except queue.Empty:
+                if not self._process.is_alive():
+                    self._stop()
+                    return
+                continue
+            self._check_active(cancel)
+            if (message.get('generation') != generation or
+                    message.get('request_id') != request_id):
+                continue
+            if (perf_counter() >= hard_deadline or message.get('type') != 'result'
+                    or not isinstance(message.get('result'), PlanResult)):
+                self._stop()
+            else:
+                self._pending_response = None
+            return
+
+    def _start(self, deadline=None, cancel=None):
+        self._check_active(cancel)
         if deadline is not None and perf_counter() >= deadline:
             raise TimeoutError('Planner request deadline exceeded before startup')
+        if self._pending_response is not None:
+            try:
+                self._drain_response(deadline, cancel)
+            except TimeoutError:
+                raise
+            except Exception:
+                self._stop()
+                raise
+        self._check_active(cancel)
+        if deadline is not None and perf_counter() >= deadline:
+            raise TimeoutError('Planner request deadline exceeded during recovery')
         if self.ready:
             return
 
@@ -182,7 +283,7 @@ class PlannerClient:
         # lazily start the worker so spawn cost is paid only when needed
         self._generation += 1
         try:
-            self._check_shutdown()
+            self._check_active(cancel)
             if deadline is not None and perf_counter() >= deadline:
                 raise TimeoutError('Planner request deadline exceeded before startup')
             self._request_queue = self._ctx.Queue()
@@ -203,11 +304,11 @@ class PlannerClient:
                 daemon=True,
             )
             self._process.start()
-            startup_deadline = perf_counter() + self.startup_timeout
+            startup_deadline = started + self.startup_timeout
             if deadline is not None:
                 startup_deadline = min(startup_deadline, deadline)
             while True:
-                self._check_shutdown()
+                self._check_active(cancel)
                 if deadline is not None and perf_counter() >= deadline:
                     raise TimeoutError('Planner request deadline exceeded during startup')
                 try:
@@ -222,9 +323,11 @@ class PlannerClient:
                         raise TimeoutError('Planner request deadline exceeded during startup') from exc
                     if perf_counter() >= startup_deadline:
                         raise RuntimeError('Planner process did not start in time') from exc
-            self._check_shutdown()
+            self._check_active(cancel)
             if deadline is not None and perf_counter() >= deadline:
                 raise TimeoutError('Planner request deadline exceeded during startup')
+            if perf_counter() >= startup_deadline:
+                raise RuntimeError('Planner process did not start in time')
             if message.get('type') == 'startup_error':
                 raise RuntimeError(message['error'])
             if message.get('type') != 'ready' or message.get('generation') != self._generation:
@@ -246,31 +349,38 @@ class PlannerClient:
         if deadline is not None and not np.isfinite(deadline):
             raise ValueError('deadline must be finite')
         started = perf_counter()
+        cancel = self._cancel
+        recover = False
         if deadline is None:
             self._lock.acquire()
         elif not self._lock.acquire(timeout=max(0.0, deadline - started)):
             raise TimeoutError('Planner request deadline exceeded waiting for worker lock')
         try:
             acquired = perf_counter()
-            self._start(deadline=deadline)
+            self._start(deadline=deadline, cancel=cancel)
             ready = perf_counter()
             self._request_id += 1
             request = {**request, 'request_id': self._request_id,
                        'deadline': deadline}
             generation = self._generation
+            dispatched = False
+            completed_response = False
+            hard_deadline = None
             try:
-                self._check_shutdown()
+                self._check_active(cancel)
                 if deadline is not None and perf_counter() >= deadline:
                     raise TimeoutError('Planner request deadline exceeded before dispatch')
-                self._request_queue.put(request)
-                response_deadline = perf_counter() + min(
+                hard_deadline = perf_counter() + min(
                     self.request_timeout,
                     response_timeout if response_timeout is not None else self.request_timeout,
                 )
+                self._request_queue.put(request)
+                dispatched = True
+                response_deadline = hard_deadline
                 if deadline is not None:
                     response_deadline = min(response_deadline, deadline)
                 while True:
-                    self._check_shutdown()
+                    self._check_active(cancel)
                     remaining = response_deadline - perf_counter()
                     if remaining <= 0.0:
                         raise TimeoutError('Planner process response timed out')
@@ -280,8 +390,7 @@ class PlannerClient:
                         if not self._process.is_alive():
                             raise RuntimeError('Planner process exited unexpectedly') from exc
                         continue
-                    if perf_counter() >= response_deadline:
-                        raise TimeoutError('Planner process response timed out')
+                    self._check_active(cancel)
                     if (message.get('generation') != generation or
                             message.get('request_id') != self._request_id):
                         continue
@@ -289,6 +398,9 @@ class PlannerClient:
                         raise RuntimeError(message['error'])
                     if message.get('type') != 'result' or not isinstance(message.get('result'), PlanResult):
                         raise RuntimeError(f'Unexpected planner response: {message}')
+                    completed_response = True
+                    if perf_counter() >= response_deadline:
+                        raise TimeoutError('Planner process response timed out')
                     response = message['result']
                     completed = perf_counter()
                     response.metadata['client_timings'] = {
@@ -298,11 +410,28 @@ class PlannerClient:
                         'total': completed - started,
                     }
                     return response
-            except Exception:
-                self._stop()
+            except Exception as exc:
+                if isinstance(exc, TimeoutError) and not dispatched:
+                    pass
+                elif (isinstance(exc, TimeoutError) and dispatched
+                        and deadline is not None and perf_counter() >= deadline
+                        and perf_counter() < hard_deadline
+                        and not self._shutdown.is_set() and not cancel.is_set()):
+                    # return at the phase deadline; never accept its late path
+                    if not completed_response:
+                        self._pending_response = (generation, self._request_id, hard_deadline)
+                        recover = True
+                else:
+                    self._stop()
                 raise
         finally:
             self._lock.release()
+            if recover:
+                try:
+                    self._schedule_warmup(cancel)
+                except RuntimeError:
+                    # terminal shutdown won the race with recovery scheduling
+                    pass
 
 
 class _PlannerWorker:

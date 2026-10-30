@@ -713,8 +713,8 @@ def test_offline_and_controller_resolve_same_planner_profile():
     assert min(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert max(actual.joint_velocity_limit) == pytest.approx(1.0)
     assert actual.ik_seed_timeout == config['planner']['ik_seed_timeout']
-    assert actual.ik_total_timeout == 3.0
-    assert actual.ik_seed_timeout == 0.5
+    assert actual.ik_total_timeout == 8.0
+    assert actual.ik_seed_timeout == 1.0
     assert actual.ik_alpha == 0.1
     assert actual.ik_frame_lm_damping == config['planner']['ik_frame_lm_damping']
     assert actual.ik_stagnation_iterations == config['planner']['ik_stagnation_iterations']
@@ -1158,3 +1158,110 @@ def test_interactive_goto_reads_command_before_dispatch(monkeypatch, capsys):
     kinematic_plan_goto.main()
 
     assert 'Plan a frame goal, then enter save <file>' in capsys.readouterr().out
+
+
+def test_reduced_attempt_restores_cost_and_barrier_after_setup_failure(solver):
+    original_cost = np.ones(4)
+    replacement = object()
+
+    def fail_target(target):
+        raise RuntimeError('injected posture setup failure')
+
+    solver.posture_task = SimpleNamespace(cost=original_cost, set_target=fail_target)
+    solver.collision_barrier_reduced = object()
+    solver._new_reduced_collision_barrier = lambda: replacement
+    solver._batch_posture_preference = lambda q: (q, np.full(4, 2.0))
+    result = solver._solve_ik_reduced_attempt('current', np.zeros(4), 0.1, 1e20, 1e-3, 1e-2)
+
+    assert not result.success
+    assert 'injected posture setup failure' in result.reason
+    assert solver.posture_task.cost is original_cost
+    assert solver.collision_barrier_reduced is replacement
+    solver.posture_task.set_target = lambda target: None
+    retry = solver._solve_ik_reduced_attempt('current', np.zeros(4), 0.1, 1e20, 1e-3, 1e-2)
+    assert retry.success
+
+
+def test_reduced_rebind_commits_only_after_all_bindings_are_ready(solver, monkeypatch):
+    old_configuration = solver.configuration_reduced
+    old_barrier = solver.collision_barrier_reduced = object()
+    old_limits = solver.limits_reduced = [object()]
+    solver.robot_model.data_body_reduced = object()
+    solver.robot_model.collision_model_body_reduced = object()
+    solver.robot_model.collision_data_body_reduced = object()
+    solver.robot_model.state_reduced = {'q': np.zeros(4)}
+    solver.com_task_reduced = SimpleNamespace(set_target_from_configuration=lambda config: None)
+    new_configuration = Configuration(np.zeros(4))
+    solver._new_reduced_collision_barrier = lambda: object()
+    monkeypatch.setattr('pink.Configuration', lambda *args, **kwargs: new_configuration)
+
+    def fail_limit(model):
+        raise RuntimeError('injected limit setup failure')
+
+    monkeypatch.setattr('pink.limits.ConfigurationLimit', fail_limit)
+    with pytest.raises(RuntimeError, match='injected limit setup failure'):
+        solver.rebuild_reduced()
+    assert solver.configuration_reduced is old_configuration
+    assert solver.collision_barrier_reduced is old_barrier
+    assert solver.limits_reduced is old_limits
+    monkeypatch.setattr('pink.limits.ConfigurationLimit', lambda model: object())
+    monkeypatch.setattr('pink.limits.VelocityLimit', lambda model: object())
+    monkeypatch.setattr('pink.limits.AccelerationLimit', lambda model, values: object())
+    solver.rebuild_reduced()
+    assert solver.configuration_reduced is new_configuration
+    assert solver.collision_barrier_reduced is not old_barrier
+    assert solver.limits_reduced is not old_limits
+
+
+def test_frame_task_clear_is_complete_when_visualization_cleanup_fails(solver):
+    class Viewer:
+        def __getitem__(self, name):
+            return self
+
+        def delete(self):
+            raise RuntimeError('injected viewer failure')
+
+    solver.robot_model.visualizer = SimpleNamespace(viz=SimpleNamespace(viewer=Viewer()))
+    solver.frame_tasks = {
+        'left': SimpleNamespace(frame='left_grasp_frame'),
+        'right': SimpleNamespace(frame='right_grasp_frame'),
+    }
+    with pytest.raises(RuntimeError, match='injected viewer failure'):
+        solver.clear_frame_tasks()
+    assert solver.frame_tasks == {}
+    solver.robot_model.visualizer = None
+    solver.frame_tasks['next'] = SimpleNamespace(frame='left_grasp_frame')
+    solver.clear_frame_tasks()
+    assert solver.frame_tasks == {}
+
+
+def test_reported_goal_order_recovers_after_failed_bimanual_plan(monkeypatch):
+    pipeline = KinematicPipeline(config_name='sim_safety_split.yaml')
+    left = np.array([0.4, 0.2, 0.2, 0.0, 80.0, 0.0])
+    left[3:] = np.deg2rad(left[3:])
+    both = [
+        ('left_grasp_frame', np.array([0.47, 0.14, 0.34, 15.0, 60.0, -15.0])),
+        ('right_grasp_frame', np.array([0.47, -0.14, 0.34, -15.0, 60.0, 15.0])),
+    ]
+    for _, pose in both:
+        pose[3:] = np.deg2rad(pose[3:])
+    first = pipeline.plan_frame('left_grasp_frame', left)
+    assert first.plan.success, first.plan.reason
+    pipeline.replay(first.plan.path)
+    bimanual = pipeline.plan_frames(both)
+    assert bimanual.plan.success, bimanual.plan.reason
+    pipeline.replay(bimanual.plan.path)
+
+    def fail_retiming(*args, **kwargs):
+        raise RuntimeError('injected retiming failure')
+
+    with monkeypatch.context() as failure:
+        failure.setattr(pipeline.planner, '_timed_path', fail_retiming)
+        with pytest.raises(RuntimeError, match='injected retiming failure'):
+            pipeline.plan_frames(both)
+    home = pipeline.plan_named('home')
+    assert home.plan.success, home.plan.reason
+    pipeline.replay(home.plan.path)
+    pipeline.set_start(np.zeros(27))
+    retry = pipeline.plan_frame('left_grasp_frame', left)
+    assert retry.plan.success, retry.plan.reason

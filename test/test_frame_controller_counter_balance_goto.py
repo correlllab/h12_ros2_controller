@@ -141,8 +141,8 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     assert calls[3]['start_q'][12] == 0.002
 
     controller.plan_to_ik_target()
-    assert calls[6]['total_timeout'] == 3.0
-    assert calls[6]['timeout'] == 0.5
+    assert calls[6]['total_timeout'] == controller.planner.planner_config.ik_total_timeout
+    assert calls[6]['timeout'] == controller.planner.planner_config.ik_seed_timeout
     assert calls[6]['alpha'] == 0.1
 
     controller.planner.planner_config.request_planning_budget = 1e-9
@@ -151,6 +151,7 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
     assert len(calls) == 9
 
 
+@pytest.mark.parametrize('startup', [0.0, 8.0])
 @pytest.mark.parametrize('options, planning_budget, response_timeout', [
     ({}, 6.0, 15.0),
     ({'planning_budget': 2.5, 'response_timeout': 3.5}, 2.5, 3.5),
@@ -159,7 +160,7 @@ def test_frame_planning_retries_ranked_ik_goals_from_one_start():
       'planning_budget': 11.0, 'response_timeout': 9.0}, 11.0, 9.0),
 ])
 def test_named_controller_goal_enables_moving_arm_locality(
-        options, planning_budget, response_timeout, monkeypatch):
+        options, planning_budget, response_timeout, monkeypatch, startup):
     clock = [100.0]
     monkeypatch.setattr(time, 'perf_counter', lambda: clock[0])
     controller = object.__new__(UpperController)
@@ -180,8 +181,16 @@ def test_named_controller_goal_enables_moving_arm_locality(
         planner_config=SimpleNamespace(
             frame_names=('left_grasp_frame', 'right_grasp_frame'),
             named_planning_budget=6.0, worker_request_timeout=15.0,
+            request_planning_budget=30.0,
         ),
     )
+    warmup_deadlines = []
+
+    def warmup(deadline):
+        warmup_deadlines.append(deadline)
+        clock[0] += startup
+
+    controller.planner.warmup = warmup
     calls = []
     def plan_configuration(**kwargs):
         calls.append(kwargs)
@@ -201,14 +210,19 @@ def test_named_controller_goal_enables_moving_arm_locality(
     assert calls[0]['planning_budget'] == planning_budget
     assert calls[0]['response_timeout'] == response_timeout
     assert calls[0]['deadline'] == (
-        None if planning_budget is None else 100.0 + planning_budget
+        None if planning_budget is None else
+        100.0 + (startup if 'local_frames' not in options else 0.0) + planning_budget
     )
+    assert warmup_deadlines == ([] if 'local_frames' in options else [130.0])
     assert np.array_equal(calls[0]['start'], np.zeros(14))
 
 
-def test_offline_named_goal_uses_named_planning_deadline(monkeypatch):
+@pytest.mark.parametrize('startup', [0.0, 8.0])
+def test_offline_named_goal_uses_named_planning_deadline(monkeypatch, startup):
     pipeline = object.__new__(KinematicPipeline)
-    pipeline.planner_config = SimpleNamespace(named_planning_budget=6.0)
+    pipeline.planner_config = SimpleNamespace(
+        named_planning_budget=6.0, request_planning_budget=30.0,
+    )
     pipeline.robot_model = SimpleNamespace(state_reduced={'q': np.zeros(14)})
     calls = []
 
@@ -219,15 +233,24 @@ def test_offline_named_goal_uses_named_planning_deadline(monkeypatch):
     pipeline.planner = SimpleNamespace(
         frame_names=('left_grasp_frame', 'right_grasp_frame'), plan=plan,
     )
+    clock = [100.0]
+    warmup_deadlines = []
+
+    def warmup(deadline):
+        warmup_deadlines.append(deadline)
+        clock[0] += startup
+
+    pipeline.planner.warmup = warmup
     monkeypatch.setattr(
         'h12_ros2_controller.core.planner.kinematic_pipeline.time.perf_counter',
-        lambda: 100.0,
+        lambda: clock[0],
     )
 
     result = pipeline.plan_named('home')
 
     assert result.plan.success
-    assert calls[0]['deadline'] == 106.0
+    assert calls[0]['deadline'] == 106.0 + startup
+    assert warmup_deadlines == [130.0]
     assert calls[0]['local_joint_padding'] == 0.0
 
 
@@ -238,11 +261,11 @@ def test_offline_named_goal_uses_named_planning_deadline(monkeypatch):
 def test_yaml_planning_budgets(profile):
     config = load_controller_config(profile)['planner']
     expected = {
-        'named_planning_budget': 6.0, 'candidate_planning_budget': 4.0,
-        'timeout': 2.0, 'candidate_ompl_timeout': 1.5,
-        'request_planning_budget': 12.0, 'worker_request_timeout': 15.0,
+        'named_planning_budget': 30.0, 'candidate_planning_budget': 20.0,
+        'timeout': 6.0, 'candidate_ompl_timeout': 5.0,
+        'request_planning_budget': 60.0, 'worker_request_timeout': 65.0,
         'prefer_coordinated_motion': True, 'coordination_search_fraction': 0.5,
-        'ik_total_timeout': 3.0, 'ik_seed_timeout': 0.5,
+        'ik_total_timeout': 8.0, 'ik_seed_timeout': 1.0,
     }
     for key, value in expected.items():
         assert config[key] == value, key
@@ -523,6 +546,7 @@ def controller_fixture():
         robot_model=model, low_cmd_handler=CommandHandler(),
         arm_ids=list(range(13, 27)), moving_arm='left', dt=0.1, dq_lim=1.,
         torso_target=0.0, d_min=0.02,
+        check_state_fresh=lambda: None,
         config={'controller': {'timeout': 0.02, 'threshold_ik': 0.0001,
                                'threshold_joint': 0.01,
                                'threshold_linear': 0.01, 'threshold_angular': 0.01}},
@@ -587,13 +611,19 @@ def test_unbalanced_path_delegates_unchanged_without_custom_playback(monkeypatch
     controller = controller_fixture()
     path = np.zeros((2, 14))
     calls = []
-    controller.execute_path = lambda values: calls.append(values) or 'executed'
+    def execute(values):
+        assert controller.plain_goto
+        calls.append(values)
+        return 'executed'
+
+    controller.execute_path = execute
     monkeypatch.setattr(demo, 'check_path', lambda *args: pytest.fail('custom preflight'))
 
     assert demo.execute_path(controller, path) == 'executed'
     assert calls[0] is path
     assert not controller.low_cmd_handler.calls
     assert not controller.balance_calls
+    assert not controller.plain_goto
 
 
 def test_live_command_skips_planner_joint_and_collision_checks():
@@ -859,6 +889,7 @@ def test_balanced_and_plain_integrate_identical_moving_commands(moving_arm):
         controller._tau_bias = np.zeros(27)
         controller._tau_bias_decay = 1.0
         controller.arm_ids = list(range(13, 27))
+        controller.enabled_ids = controller.arm_ids
         local = list(range(7)) if moving_arm == 'left' else list(range(7, 14))
         controller.moving_local = np.asarray(local)
         controller.moving_ids = [13 + index for index in local]
@@ -974,7 +1005,9 @@ def test_validated_plan_is_not_retimed_and_uses_controller_timing(
     original = path.copy()
     controller.last_plan_result = PlanResult(
         success=True, path=path.copy(),
-        metadata={'execution_context': {'start': path[0].copy()}},
+        metadata={'execution_context': {
+            'start': path[0].copy(), 'planned_at': time.monotonic(), 'dt': controller.dt,
+        }},
     )
 
     if error:
@@ -1020,7 +1053,7 @@ def test_plain_publication_bypasses_counter_overlay():
     controller.upper_ids = list(UPPER_BODY_INDEX)
     controller.low_cmd_handler = SimpleNamespace(
         q_cmd=np.zeros(27),
-        set_joint_commands=lambda *args: calls.append(args),
+        set_joint_commands=lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     q = np.zeros(27)
     dq = np.zeros(27)
@@ -1029,8 +1062,9 @@ def test_plain_publication_bypasses_counter_overlay():
     controller._publish_position_command(q, dq, tau)
 
     assert len(calls) == 1
-    for actual, expected in zip(calls[0], (q, dq, tau)):
-        np.testing.assert_array_equal(actual, expected)
+    for actual, expected in zip(calls[0][0], (q, dq, tau)):
+        np.testing.assert_array_equal(actual, expected[UPPER_BODY_INDEX])
+    assert calls[0][1]['joint_ids'] == list(UPPER_BODY_INDEX)
     assert controller._steady_state_control_ids() == list(UPPER_BODY_INDEX)
 
 
@@ -1063,7 +1097,9 @@ def test_command_seeded_plan_is_not_rejected_for_safe_measured_lag():
     path[:, 0] = (0.08, 0.09)
     controller.last_plan_result = PlanResult(
         success=True, path=path.copy(),
-        metadata={'execution_context': {'start': path[0].copy()}},
+        metadata={'execution_context': {
+            'start': path[0].copy(), 'planned_at': time.monotonic(), 'dt': controller.dt,
+        }},
     )
 
     checked, _ = demo.check_path(controller, path)
@@ -1241,8 +1277,12 @@ def test_goal_and_repeat_prompts_match_goto_examples(monkeypatch, capsys):
 @pytest.mark.parametrize('error', (RuntimeError('failed'), AttributeError('bad API'), KeyboardInterrupt()))
 def test_goal_failure_returns_to_prompt_and_next_goal_runs(monkeypatch, capsys, phase, error):
     controller = controller_fixture()
-    controller.planner = SimpleNamespace()
     calls = []
+    controller.planner = SimpleNamespace(
+        planner_config=PlannerConfig(),
+        cancel_current_request=lambda: calls.append('cancel'),
+        shutdown=lambda: pytest.fail('cached planner permanently shut down'),
+    )
     controller.shutdown = lambda: calls.append('shutdown')
     answers = ['y', 'y', 'home', 'n' if phase == 'live' else 'y', 'n']
     if phase != 'live':
@@ -1279,7 +1319,8 @@ def test_goal_failure_returns_to_prompt_and_next_goal_runs(monkeypatch, capsys, 
 
     demo.main()
 
-    assert calls == ['next goal', 'shutdown']
+    expected = ['cancel'] if phase != 'live' and isinstance(error, KeyboardInterrupt) else []
+    assert calls == expected + ['next goal', 'shutdown']
     assert 'Returning to goal selection' in capsys.readouterr().out
 
 
@@ -1468,3 +1509,173 @@ def test_noop_warmup_starts_real_planner_worker_without_motion():
         assert result.metadata['joint_path_ratio'] == pytest.approx(1.0)
     finally:
         planner.shutdown()
+
+
+def test_hold_without_optional_estop_attribute_preserves_upper_command():
+    controller = controller_fixture()
+    del controller.low_cmd_handler._estopped
+    controller.low_cmd_handler.q_cmd[12:] = 0.2
+    controller.low_cmd_handler.tau_cmd[12:] = 0.3
+
+    demo.hold(controller)
+
+    assert np.all(controller.low_cmd_handler.q_cmd[12:] == 0.2)
+    assert np.all(controller.low_cmd_handler.tau_cmd[12:] == 0.3)
+    assert controller.low_cmd_handler.calls[-1][2] == list(UPPER_BODY_INDEX)
+
+
+def test_unbalanced_playback_resets_plain_mode_after_failure():
+    controller = controller_fixture()
+
+    def execute(path):
+        assert controller.plain_goto
+        raise RuntimeError('playback failed')
+
+    controller.execute_path = execute
+    with pytest.raises(RuntimeError, match='playback failed'):
+        demo.execute_path(controller, np.zeros((2, 14)))
+    assert not controller.plain_goto
+
+
+def test_unbalanced_playback_bypasses_retained_counter_ownership():
+    controller = object.__new__(demo.DemoController)
+    controller.low_cmd_handler = CommandHandler()
+    controller.moving_arm = 'left'
+    controller.plain_goto = False
+    controller.balanced_live = True
+    controller.control_configuration_step = lambda *args, **kwargs: pytest.fail('counter overlay')
+    target = np.full(27, 0.2)
+    controller.execute_path = lambda path: controller._publish_position_command(
+        target, np.zeros(27), np.zeros(27),
+    )
+
+    demo.execute_path(controller, np.zeros((2, 14)), balanced=False)
+
+    np.testing.assert_array_equal(controller.low_cmd_handler.q_cmd[13:], target[13:])
+    assert not controller.plain_goto
+    assert controller.balanced_live
+
+
+@pytest.mark.parametrize('arm', ('left', 'right'))
+@pytest.mark.parametrize('command_gap', (0.04, 0.2))
+def test_balanced_named_plan_pins_inactive_goal_to_guarded_start(arm, command_gap):
+    controller = controller_fixture()
+    controller.moving_arm = arm
+    controller.enabled_ids = list(range(13, 27))
+    controller._tau_bias = np.ones(27)
+    controller.low_cmd_handler.q_cmd[13:] = command_gap
+    controller._command_seed = lambda q: UpperController._command_seed(controller, q)
+    calls = []
+    controller.plan_to_configuration = lambda target, **kwargs: calls.append(
+        (target.copy(), kwargs)
+    ) or 'path'
+    target = np.ones(14)
+
+    assert demo.plan_goal(controller, target, None, 3.0, 0.1, balanced=True) == 'path'
+
+    goal, options = calls[0]
+    mask = np.r_[np.full(7, arm == 'left'), np.full(7, arm == 'right')]
+    start = np.full(14, command_gap if command_gap <= 0.1 else 0.0)
+    np.testing.assert_array_equal(options['active_mask'], mask)
+    np.testing.assert_array_equal(options['start'], start)
+    np.testing.assert_array_equal(options['current_q'], np.zeros(27))
+    np.testing.assert_array_equal(goal[~mask], start[~mask])
+    np.testing.assert_array_equal(goal[mask], target[mask])
+    np.testing.assert_array_equal(target, np.ones(14))
+    if command_gap > 0.1:
+        assert not controller._tau_bias[13:].any()
+        assert controller._tau_bias[12] == 1.0
+
+
+def test_balanced_frame_plan_preserves_shared_frame_route():
+    controller = controller_fixture()
+    calls = []
+    controller.plan_to_ik_target = lambda **kwargs: calls.append(kwargs) or 'frame path'
+
+    assert demo.plan_goal(controller, None, 'left_task', 2.0, 0.1, True) == 'frame path'
+    assert calls == [{'ik_timeout': 2.0, 'ik_alpha': 0.1}]
+
+
+@pytest.mark.parametrize('failure', ('stale', 'old'))
+def test_balanced_preflight_does_not_publish_on_stale_state_or_old_plan(failure):
+    controller = controller_fixture()
+    path = np.zeros((2, 14))
+    controller.last_plan_result = PlanResult(
+        success=True, path=path,
+        metadata={'execution_context': {
+            'planned_at': time.monotonic() - 31.0, 'dt': controller.dt,
+            'start': path[0].copy(),
+        }},
+    )
+    if failure == 'stale':
+        def stale():
+            raise RuntimeError('stale state')
+        controller.check_state_fresh = stale
+
+    with pytest.raises((ValueError, RuntimeError), match='stale state|too old'):
+        demo.execute_path(controller, path, balanced=True)
+    assert not controller.balance_calls
+    assert not controller.low_cmd_handler.calls
+
+
+def test_balanced_playback_checks_freshness_before_each_prediction(monkeypatch):
+    controller = controller_fixture()
+    path = np.zeros((3, 14))
+    path[1, 0], path[2, 0] = 0.01, 0.02
+    checks = []
+
+    def check_fresh():
+        checks.append(True)
+        if len(checks) == 3:
+            raise RuntimeError('stale during playback')
+
+    controller.check_state_fresh = check_fresh
+    monkeypatch.setattr(demo.time, 'sleep', lambda seconds: None)
+    with pytest.raises(RuntimeError, match='stale during playback'):
+        demo.execute_path(controller, path, balanced=True)
+
+    assert len(checks) == 3
+    assert len(controller.balance_calls) == 1
+    q, dq, _ = controller.balance_calls[0]
+    np.testing.assert_allclose(q, path[1])
+    np.testing.assert_allclose(dq, (path[1] - path[0]) / controller.dt)
+    assert not controller.planned_balance
+
+
+def test_balanced_preflight_accepts_guarded_measured_start_after_large_command_gap():
+    controller = controller_fixture()
+    controller.low_cmd_handler.q_cmd[13:] = 0.2
+    controller._validate_path_timing = lambda path: None
+    path = np.zeros((2, 14))
+    controller.last_plan_result = PlanResult(
+        success=True, path=path,
+        metadata={'execution_context': {
+            'start': path[0].copy(), 'planned_at': time.monotonic(), 'dt': controller.dt,
+        }},
+    )
+
+    checked, _ = demo.check_path(controller, path)
+
+    assert checked is path
+    assert not controller.low_cmd_handler.calls
+
+
+@pytest.mark.parametrize('balanced', (False, True))
+@pytest.mark.parametrize('moving_reached', (False, True))
+def test_direct_named_success_checks_requested_joints_not_hold_convergence(
+        monkeypatch, balanced, moving_reached):
+    controller = controller_fixture()
+    controller.dt = 0.01
+    controller.config['controller']['timeout'] = 0.05
+    controller.update_ik_solver = lambda: None
+    controller.goto_reduced_configuration = lambda target: np.zeros(27)
+    controller.steady_state_step = lambda threshold: True
+    target = np.ones(14)
+    if moving_reached:
+        controller.robot_model.state_reduced['q'][:7] = 1.0
+    clock = [0.0]
+    monkeypatch.setattr(demo.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(demo.time, 'sleep', lambda seconds:
+                        clock.__setitem__(0, clock[0] + max(seconds, 0.001)))
+
+    assert demo.live_goto(controller, target, balanced) is (balanced and moving_reached)

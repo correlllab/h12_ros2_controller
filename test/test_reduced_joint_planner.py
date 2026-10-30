@@ -1061,6 +1061,7 @@ def test_ompl_timeout_reports_real_stage_timings():
     try:
         planner.ss = SimpleNamespace(
             clear=lambda: None,
+            setPlanner=lambda planner: None,
             setStartAndGoalStates=lambda start, goal: None,
             solve=lambda timeout: False,
         )
@@ -1176,7 +1177,8 @@ def test_native_work_is_capped_by_remaining_initial_deadline(
         deadline_clock[0] += budget
 
     monkeypatch.setattr(planner, 'ss', SimpleNamespace(
-        clear=lambda: None, setStartAndGoalStates=lambda *args: None,
+        clear=lambda: None, setPlanner=lambda planner: None,
+        setStartAndGoalStates=lambda *args: None,
         solve=solve, haveExactSolutionPath=lambda: True,
         getSolutionPath=lambda: path, simplifySolution=simplify,
     ))
@@ -1209,6 +1211,7 @@ def test_reuse_validation_expires_without_accepting_cached_path(
 
     planner.robot_model.check_collision_free_reduced = expensive_collision
     monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None,
         solve=lambda *args: pytest.fail('expired reuse must not start OMPL'),
     ))
     first, last = ((goal, start) if reuse == 'reverse' else
@@ -1241,7 +1244,8 @@ def test_validated_pchip_survives_optional_segment_refinement_expiry(
 
     monkeypatch.setattr(planner, '_timed_path', timed)
     monkeypatch.setattr(planner, 'ss', SimpleNamespace(
-        clear=lambda: None, setStartAndGoalStates=lambda *args: None,
+        clear=lambda: None, setPlanner=lambda planner: None,
+        setStartAndGoalStates=lambda *args: None,
         solve=lambda budget: True, haveExactSolutionPath=lambda: True,
         getSolutionPath=lambda: SimpleNamespace(getStates=lambda: sparse),
     ))
@@ -1346,7 +1350,9 @@ def test_initial_edge_validation_expiry_is_not_a_valid_path(deadline_clock, monk
 ])
 def test_initial_attempt_honors_configured_and_explicit_deadline(
         deadline_clock, monkeypatch, named, deadline):
-    planner = ReducedJointPlanner(FakeRobotModel())
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        candidate_planning_budget=4.0, named_planning_budget=6.0,
+    ))
     samples = np.array([[0.0, 0.0], [0.2, 0.0]])
     monkeypatch.setattr(planner, '_timed_path', lambda *args, **kwargs: (
         samples.copy(), {}, '',
@@ -1370,3 +1376,255 @@ def test_initial_attempt_honors_configured_and_explicit_deadline(
     assert deadline_clock[0] == expected
     assert not planner._recent_paths
     assert planner._deadline is None
+
+
+@pytest.mark.parametrize('reuse', ['nearby', 'reverse'])
+def test_cache_rejects_changed_inactive_pins_below_nearby_tolerance(reuse):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    mask = np.array([True, False])
+    start, goal = np.zeros(2), np.array([0.2, 0.0])
+    assert planner.plan(start, goal, active_mask=mask).success
+    assert len(planner._recent_paths) == 1
+    old_path = planner._recent_paths[0]['path'].copy()
+    start[1] = goal[1] = 0.05
+    assert 0.05 < planner.config.nearby_reuse_joint_tolerance
+    if reuse == 'reverse':
+        start, goal = goal, start
+    planner._set_active_mask(mask, start)
+    planner._set_workspace_corridor(start, goal)
+    method = (planner._nearby_previous_path if reuse == 'nearby' else
+              planner._reversed_previous_path)
+
+    assert method(start, goal, ()) is None
+    result = planner.plan(start, goal, active_mask=mask)
+
+    assert result.success, result.reason
+    assert not result.metadata.get('cache_hit', False)
+    assert np.array_equal(result.path[:, 1], np.full(len(result.path), 0.05))
+    assert np.array_equal(planner._recent_paths[0]['path'], old_path)
+
+
+@pytest.mark.parametrize('route', [
+    'direct', 'nearby', 'reverse', 'ompl', 'coordinated', 'staged',
+])
+def test_final_path_validation_rejects_inactive_waypoint_motion(monkeypatch, route):
+    planner = ReducedJointPlanner(FakeRobotModel())
+    start, goal = np.zeros(2), np.array([0.2, 0.0])
+    bad_path = np.array([start, [0.1, 0.05], goal])
+    mask = np.array([True, False])
+    if route == 'direct':
+        monkeypatch.setattr(planner, '_timed_path', lambda *args, **kwargs: (
+            bad_path.copy(), {}, '',
+        ))
+    elif route in ('nearby', 'reverse'):
+        planner.config.try_direct = False
+        reused = PlanResult(True, bad_path.copy())
+        method = ('_nearby_previous_path' if route == 'nearby' else
+                  '_reversed_previous_path')
+        monkeypatch.setattr(planner, method, lambda *args: reused)
+    elif route in ('coordinated', 'staged'):
+        def combined(*args):
+            planner._set_active_mask(mask, start)
+            return PlanResult(True, bad_path.copy(), metadata={'path_kind': route})
+
+        monkeypatch.setattr(planner, '_plan', combined)
+    else:
+        planner.config.try_direct = False
+        monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+            clear=lambda: None, setPlanner=lambda planner: None,
+            setStartAndGoalStates=lambda *args: None,
+            solve=lambda budget: True, haveExactSolutionPath=lambda: True,
+            getSolutionPath=lambda: SimpleNamespace(getStates=lambda: [start, goal]),
+        ))
+        monkeypatch.setattr(planner, '_shorten_path', lambda path: None)
+        monkeypatch.setattr(planner, '_select_timed_path', lambda *args: (
+            bad_path.copy(), {}, '',
+        ))
+
+    result = planner.plan(start, goal, active_mask=mask, direct_only=route == 'direct')
+
+    assert not result.success
+    assert 'inactive joints' in result.reason
+    assert result.path.shape == (0, 2)
+    assert not planner._recent_paths
+
+
+def test_edge_validation_spacing_does_not_inherit_prior_bounds_or_mask():
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        constraint_check_steps=1, frame_z_max=None,
+    ))
+    path = np.array([[0.0, 0.0], [0.2, 0.0]])
+    samples = []
+    planner.robot_model.check_collision_free_reduced = lambda q, **kwargs: (
+        samples.append(q.copy()) or True
+    )
+    for prior_mask, padding in ((None, 0.0), ([False, True], 0.01)):
+        planner._set_active_mask(prior_mask, path[0])
+        planner._apply_active_bounds(path[0], path[-1], padding)
+        planner._set_active_mask([True, False], path[0])
+        samples.clear()
+        assert planner._path_validity_failure(path) == ''
+        if prior_mask is None:
+            expected = np.array(samples)
+        else:
+            assert np.array_equal(samples, expected)
+    assert len(expected) == 41
+    assert np.max(np.diff(np.sort(expected[:, 0]))) <= 0.005 + 1e-12
+
+
+def test_local_global_searches_get_fresh_planners_and_current_resolution(monkeypatch):
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        try_direct=False, simplify=False, timeout=0.2, local_joint_padding=0.1,
+    ))
+    instances = []
+    searches = []
+    current = [None]
+
+    def fresh_planner():
+        instance = SimpleNamespace(range=0.0, start_tree=True)
+        instances.append(instance)
+        return instance
+
+    def solve(budget):
+        instance = current[0]
+        assert instance.range == 0.0 and instance.start_tree
+        extent = planner.space.getMaximumExtent()
+        assert planner.space.getLongestValidSegmentLength() == pytest.approx(
+            extent * planner.config.validity_resolution,
+        )
+        searches.append((instance, extent, budget))
+        instance.range = extent * 0.2
+        instance.start_tree = False
+        return False
+
+    monkeypatch.setattr(planner, '_make_planner', fresh_planner)
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=lambda: None, setPlanner=lambda instance: current.__setitem__(0, instance),
+        setStartAndGoalStates=lambda *args: None, solve=solve,
+    ))
+
+    result = planner.plan([0.0, 0.0], [0.2, 0.0], active_mask=[True, False],
+                          local_frames=('left_grasp_frame',), allow_reuse=False)
+
+    assert not result.success
+    assert len(instances) == 2
+    assert searches[0][1:] == pytest.approx((0.4, 0.07))
+    assert searches[1][1:] == pytest.approx((2.0, 0.13))
+    assert planner.space.getLongestValidSegmentLength() == pytest.approx(
+        np.linalg.norm(planner.model_upper - planner.model_lower) *
+        planner.config.validity_resolution,
+    )
+
+
+@pytest.mark.parametrize('failure', ['timeout', 'deadline', 'exception', 'interrupt'])
+def test_failed_bimanual_search_cannot_contaminate_single_arm_or_home(
+        monkeypatch, deadline_clock, failure):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ), PlannerConfig(try_direct=False, simplify=False, local_joint_padding=0.1))
+    pending = []
+    clears = []
+
+    def clear():
+        pending.clear()
+        clears.append(True)
+
+    def solve(budget):
+        pending.append('retained tree')
+        if failure == 'deadline':
+            deadline_clock[0] = 1.0
+        elif failure == 'exception':
+            raise RuntimeError('native search failed')
+        elif failure == 'interrupt':
+            raise KeyboardInterrupt()
+        return False
+
+    monkeypatch.setattr(planner, 'ss', SimpleNamespace(
+        clear=clear, setPlanner=lambda instance: None,
+        setStartAndGoalStates=lambda *args: None, solve=solve,
+    ))
+    goal = np.zeros(14)
+    goal[[0, 7]] = 0.1
+    kwargs = dict(local_frames=planner.frame_names, deadline=0.5)
+    if failure in ('exception', 'interrupt'):
+        with pytest.raises(RuntimeError if failure == 'exception' else KeyboardInterrupt):
+            planner.plan(np.zeros(14), goal, **kwargs)
+    else:
+        assert not planner.plan(np.zeros(14), goal, **kwargs).success
+
+    assert clears and not pending
+    assert planner._deadline is None
+    assert np.all(planner.active_mask)
+    assert np.array_equal(planner.pinned_q, np.zeros(14))
+    assert not planner.corridor_min_z and not planner.local_min_x
+    assert not planner.local_elbow_min_x
+    assert not planner._recent_paths
+    bounds = planner.space.getBounds()
+    assert np.array_equal(bounds.low, planner.model_lower)
+    assert np.array_equal(bounds.high, planner.model_upper)
+
+    planner.config.try_direct = True
+    start = np.zeros(14)
+    start[7:] = 0.05
+    goal = start.copy()
+    goal[0] = 0.1
+    single = planner.plan(start, goal, deadline=deadline_clock[0] + 0.5)
+    home = planner.plan(goal, np.zeros(14), deadline=deadline_clock[0] + 0.5)
+    assert single.success and home.success
+    assert single.reason == home.reason == 'direct path'
+    assert np.array_equal(single.path[:, 7:], np.full((len(single.path), 7), 0.05))
+    assert np.array_equal(home.path[-1], np.zeros(14))
+    assert set(single.metadata['stage_timings']) == {
+        'setup', 'direct', 'direct_validation', 'total',
+    }
+    assert planner._deadline is None
+
+
+def test_active_mask_is_copied_from_caller():
+    planner = ReducedJointPlanner(FakeRobotModel())
+    mask = np.array([True, False])
+    planner._set_active_mask(mask, np.zeros(2))
+    mask[:] = True
+    assert np.array_equal(planner.active_mask, [True, False])
+
+
+def test_expired_noop_cannot_leave_zero_extent_for_next_direct_plan(
+        monkeypatch, deadline_clock):
+    planner = ReducedJointPlanner(FakeRobotModel(
+        lower=-np.ones(14), upper=np.ones(14),
+    ))
+    timed = planner._timed_path
+
+    def expire(*args, **kwargs):
+        deadline_clock[0] = 1.0
+        planner._check_deadline()
+
+    monkeypatch.setattr(planner, '_timed_path', expire)
+    start = np.zeros(14)
+    result = planner.plan(start, start, deadline=0.5)
+    assert not result.success
+    assert planner.space.getMaximumExtent() > 0.0
+    assert np.all(planner.active_mask)
+    monkeypatch.setattr(planner, '_timed_path', timed)
+    goal = start.copy()
+    goal[0] = 0.1
+
+    result = planner.plan(start, goal)
+
+    assert result.success, result.reason
+    assert result.reason == 'direct path'
+    assert np.array_equal(result.path[:, 7:], np.zeros((len(result.path), 7)))
+
+
+def test_longer_playback_horizon_preserves_velocity_and_acceleration_limits():
+    planner = ReducedJointPlanner(FakeRobotModel(), PlannerConfig(
+        joint_velocity_limit=0.1,
+    ))
+    path, _, reason = planner._timed_path(np.array([[0.0, 0.0], [1.5, 0.0]]))
+
+    assert not reason
+    assert 600 < len(path) <= planner.config.max_interpolation_steps
+    assert np.max(np.abs(np.diff(path, axis=0) / planner.config.dt)) <= 0.1 + 1e-6
+    assert np.max(np.abs(np.diff(path, n=2, axis=0) / planner.config.dt ** 2)) <= (
+        planner.config.joint_acceleration_limit + 1e-6
+    )

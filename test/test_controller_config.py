@@ -98,3 +98,27 @@ def test_absolute_config_precedes_explicit_config_dir(tmp_path):
     assert load_controller_config(
         expected.with_suffix(''), config_dir=tmp_path / 'wrong',
     )['topics']['low_state'] == 'rt/absolute_state'
+
+
+@pytest.mark.parametrize('profile', (
+    'sim_safety_split', 'safety_split', 'safety_full',
+    'counter_safety_split', 'real_benchmark_upper',
+))
+def test_active_profiles_allow_hard_case_search_without_relaxing_motion_limits(profile):
+    config = load_controller_config(profile)
+    planner = config['planner']
+    assert planner['timeout'] == 6.0
+    assert planner['ik_total_timeout'] == 8.0
+    assert planner['ik_seed_timeout'] == 1.0
+    assert planner['named_planning_budget'] == 30.0
+    assert planner['candidate_planning_budget'] == 20.0
+    assert planner['request_planning_budget'] == 60.0
+    assert planner['bimanual_fallback_budget'] == 25.0
+    assert planner['candidate_ompl_timeout'] == 5.0
+    assert planner['max_interpolation_steps'] == 1200
+    assert planner['worker_request_timeout'] >= planner['request_planning_budget']
+    assert planner['named_planning_budget'] >= planner['worker_startup_timeout']
+    assert planner['moving_speed'] == 0.30
+    assert planner['joint_acceleration_limit'] == 25.0
+    assert planner['validity_resolution'] == 0.0025
+    assert config['controller']['d_min'] == 0.02

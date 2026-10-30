@@ -211,7 +211,7 @@ def compose_bimanual_seed(ik_solver, start_q, active_mask, plan_goal, config,
             remaining = deadline - time.perf_counter()
             if remaining <= (0 if bounded else 0.2):
                 return None, 'bimanual fallback budget exhausted before arm IK'
-            arm_ik_budget = min(0.8, remaining / (3 - index))
+            arm_ik_budget = min(config.ik_total_timeout, remaining / (3 - index))
             arm_ik = ik_solver.solve_ik_reduced(
                 alpha=alpha, timeout=min(config.ik_seed_timeout, arm_ik_budget),
                 total_timeout=arm_ik_budget, max_seeds=config.ik_max_seeds,
@@ -340,6 +340,13 @@ def plan_frame_tasks(ik_solver, start_q, active_mask, reduced_mask, local_frames
         'bimanual_fallback': fallback_time, 'total': elapsed,
     }
     return ik, plan, selected, attempts, timings, fallback_reason
+
+
+def warmup_planner(planner, deadline):
+    '''Charge process startup and recovery to the overall request, not a solve phase'''
+    warmup = getattr(planner, 'warmup', None)
+    if warmup is not None:
+        warmup(deadline=deadline)
 
 
 def planner_config_from_controller(config, dt=None):
@@ -488,7 +495,11 @@ class KinematicPipeline:
             raise ValueError(f'Unknown named configuration: {name}')
         self._prior_ik = None
         start_time = time.perf_counter()
-        deadline = start_time + self.planner_config.named_planning_budget
+        deadline = start_time + self.planner_config.request_planning_budget
+        warmup_planner(self.planner, deadline)
+        deadline = min(
+            deadline, time.perf_counter() + self.planner_config.named_planning_budget,
+        )
         start = self.robot_model.state_reduced['q']
         goal = np.asarray(NAMED_CONFIGS[name], dtype=float)
         local_frames = moving_grasp_frames(start, goal, self.planner.frame_names)
@@ -512,10 +523,13 @@ class KinematicPipeline:
         frozen = ~model.reduced_mask
         model._q = q.copy()
         model._dq = np.zeros_like(q)
-        if not np.array_equal(q[frozen], model.reduced_reference_q[frozen]):
+        if (getattr(self, '_reduced_rebuild_pending', False) or
+                not np.array_equal(q[frozen], model.reduced_reference_q[frozen])):
+            self._reduced_rebuild_pending = True
             model.rebuild_reduced_model(reference_q=q)
             self.ik_solver.rebuild_reduced()
             self.planner.rebind_reduced_model()
+            self._reduced_rebuild_pending = False
         self.ik_solver.update_configurations(q)
         model.update_kinematics()
         model.update_visualizer()
@@ -561,6 +575,7 @@ class KinematicPipeline:
             raise ValueError('Frame goals must be nonempty with distinct frame names')
         start_time = time.perf_counter()
         deadline = start_time + self.planner_config.request_planning_budget
+        warmup_planner(self.planner, deadline)
         self.ik_solver.clear_frame_tasks()
         for index, (frame_name, _, _) in enumerate(normalized):
             self.ik_solver.add_frame_task(f'offline_target_{index}', frame_name)

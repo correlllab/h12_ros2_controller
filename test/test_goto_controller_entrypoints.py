@@ -77,7 +77,7 @@ def test_failed_frame_goal_can_save_exact_live_start_for_offline_replay(monkeypa
     assert saved['start_q'][12] == 0.03
     assert saved['tasks'][0]['frame'] == 'left_grasp_frame'
     assert saved['tasks'][0]['pose'][4] == pytest.approx(np.deg2rad(70))
-    assert saved['ik_timeout'] == 3.0
+    assert saved['ik_timeout'] == PlannerConfig().ik_total_timeout
 
 
 @pytest.mark.parametrize('command,count', [(SINGLE, 1), (PAIR, 2)])

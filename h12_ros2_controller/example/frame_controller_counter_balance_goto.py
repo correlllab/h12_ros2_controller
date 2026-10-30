@@ -176,7 +176,7 @@ def fresh_state(controller):
 
 
 def hold(controller):
-    if controller.low_cmd_handler._estopped:
+    if getattr(controller.low_cmd_handler, '_estopped', False):
         return
     ids = UPPER_BODY_INDEX
     controller.low_cmd_handler.set_joint_commands(
@@ -226,6 +226,7 @@ def send(controller, q, dq, balanced, check_collision=False):
 
 
 def check_path(controller, path):
+    controller.check_state_fresh()
     path = np.asarray(path, dtype=float)
     measured = fresh_state(controller)[controller.robot_model.reduced_mask]
     if (path.ndim != 2 or path.shape[1:] != measured.shape
@@ -238,13 +239,18 @@ def check_path(controller, path):
         context = planned.metadata.get('execution_context')
         if context is None:
             raise ValueError('Path is missing its planning-start context')
+        if time.monotonic() - context['planned_at'] > getattr(
+                controller, 'plan_max_age', 30.0):
+            raise ValueError('Path is too old to execute')
+        if not np.isclose(context['dt'], controller.dt, rtol=0.0, atol=1e-9):
+            raise ValueError('Path period differs from controller period')
         commanded = controller.low_cmd_handler.q_cmd[controller.robot_model.reduced_mask]
         max_gap = getattr(controller, 'command_seed_max_gap', 0.1)
         start_tolerance = getattr(controller, 'execution_start_tolerance', 0.01)
         # a guarded command seed may legitimately lead the measured arm position
-        if (np.max(np.abs(measured - commanded)) > max_gap or
-                np.max(np.abs(path[0] - context['start'])) > start_tolerance or
-                np.max(np.abs(path[0] - commanded)) > start_tolerance):
+        seed = commanded if np.max(np.abs(measured - commanded)) <= max_gap else measured
+        if (np.max(np.abs(path[0] - context['start'])) > start_tolerance or
+                np.max(np.abs(path[0] - seed)) > start_tolerance):
             raise RuntimeError('Robot moved since planning; replan from current state')
     elif np.max(np.abs(path[0] - measured)) > 0.05:
         raise RuntimeError('Robot moved since planning; replan from current state')
@@ -275,12 +281,21 @@ def check_path(controller, path):
 
 def execute_path(controller, path, balanced=False):
     if not balanced:
-        return controller.execute_path(path)
+        plain_goto = getattr(controller, 'plain_goto', False)
+        balanced_live = getattr(controller, 'balanced_live', False)
+        controller.plain_goto = True
+        controller.balanced_live = False
+        try:
+            return controller.execute_path(path)
+        finally:
+            controller.plain_goto = plain_goto
+            controller.balanced_live = balanced_live
     path, velocities = check_path(controller, path)
     controller.planned_balance = balanced
     try:
         for waypoint, velocity in zip(path[1:], velocities):
             started = time.monotonic()
+            controller.check_state_fresh()
             q = fresh_state(controller)
             q[controller.robot_model.reduced_mask] = waypoint
             dq = np.zeros(27)
@@ -420,7 +435,7 @@ def live_goto(controller, target, balanced, frame_task=None):
                     controller.init_steady_state()
                     print('IK converged; entering steady-state hold')
             else:
-                steady = controller.steady_state_step(settings['threshold_joint'])
+                controller.steady_state_step(settings['threshold_joint'])
                 if frame_task:
                     task_names = (frame_task,) if isinstance(frame_task, str) else frame_task
                     errors = [controller.get_frame_task_error(name) for name in task_names]
@@ -430,11 +445,11 @@ def live_goto(controller, target, balanced, frame_task=None):
                         for error in errors
                     )
                 else:
-                    error = controller.reduced_configuration_error
+                    error = controller.robot_model.state_reduced['q'] - target
                     if balanced:
                         ids = slice(0, 7) if controller.moving_arm == 'left' else slice(7, 14)
                         error = error[ids]
-                    steady = steady or np.max(np.abs(error)) < settings['threshold_joint']
+                    steady = np.max(np.abs(error)) < settings['threshold_joint']
                 if steady:
                     print('Steady state reached!')
                     reached = True
@@ -508,12 +523,27 @@ def prepare_frame_goals(controller, tasks, balanced):
     return None, tuple(names)
 
 
-def plan_goal(controller, target, frame_task, ik_timeout, ik_alpha):
+def plan_goal(controller, target, frame_task, ik_timeout, ik_alpha, balanced=False):
     if frame_task:
         return controller.plan_to_ik_target(
             ik_timeout=ik_timeout, ik_alpha=ik_alpha,
         )
-    return controller.plan_to_configuration(target)
+    if not balanced:
+        return controller.plan_to_configuration(target)
+    controller.check_state_fresh()
+    measured = fresh_state(controller)
+    start_q, from_command = controller._command_seed(measured)
+    if not from_command:
+        controller._tau_bias[controller.enabled_ids] = 0.0
+    start = start_q[controller.robot_model.reduced_mask].copy()
+    active_mask = np.zeros_like(start, dtype=bool)
+    active_mask[:7] = controller.moving_arm == 'left'
+    active_mask[7:] = controller.moving_arm == 'right'
+    target = np.asarray(target).copy()
+    target[~active_mask] = start[~active_mask]
+    return controller.plan_to_configuration(
+        target, start=start, active_mask=active_mask, current_q=measured,
+    )
 
 
 def startup_home(controller):
@@ -611,7 +641,8 @@ def main(config_name='real_benchmark_upper.yaml'):
                     planner_cfg = controller.planner.planner_config
                     started = time.monotonic()
                     path = plan_goal(controller, target, task,
-                                     planner_cfg.ik_total_timeout, planner_cfg.ik_alpha)
+                                     planner_cfg.ik_total_timeout, planner_cfg.ik_alpha,
+                                     balanced)
                     planning_time = time.monotonic() - started
                     path, _ = check_path(controller, path)
                     length = np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1))
@@ -640,7 +671,7 @@ def main(config_name='real_benchmark_upper.yaml'):
                 if planned and isinstance(error, KeyboardInterrupt):
                     # discard an interrupted request so its response cannot serve the next goal
                     try:
-                        controller.planner.shutdown()
+                        controller.planner.cancel_current_request()
                     except Exception as planner_error:
                         print(f'Could not stop interrupted planner: {planner_error}')
                 print(f'Goal refused or stopped: {type(error).__name__}: {error}')

@@ -210,6 +210,10 @@ class _MeasuredPlanner:
             self.client.warmup()
             self.setup_time = time.perf_counter() - started
 
+    def warmup(self, deadline=None):
+        if self.client is not None:
+            self.client.warmup(deadline=deadline)
+
     def plan(self, start, goal, active_mask=None, direct_only=False,
              local_frames=(), timeout=None, local_joint_padding=None,
              deadline=None):
@@ -230,7 +234,9 @@ class _MeasuredPlanner:
                 allow_reuse=self.reuse_enabled,
                 local_joint_padding=local_joint_padding,
                 planning_budget=(None if deadline is None else
-                                 max(0.01, deadline - time.perf_counter())),
+                                  max(0.01, deadline - time.perf_counter())),
+                deadline=deadline,
+                response_timeout=self.pipeline.planner_config.worker_request_timeout,
             )
         self.attempts.append({
             'direct_only': direct_only, 'success': result.success,
@@ -366,11 +372,17 @@ def main(samples=3, ik_timeout=None, seed=0, visualize=False,
                         local_frames = moving_grasp_frames(
                             named_start, goal, planner.frame_names,
                         )
+                        deadline = started + pipeline.planner_config.request_planning_budget
+                        planner.warmup(deadline=deadline)
+                        deadline = min(
+                            deadline, time.perf_counter() +
+                            pipeline.planner_config.named_planning_budget,
+                        )
                         plan = planner.plan(
                             named_start, goal,
                             direct_only=case.get('direct_only', False),
                             local_frames=local_frames, local_joint_padding=0.0,
-                            deadline=started + pipeline.planner_config.named_planning_budget,
+                            deadline=deadline,
                         )
                         result = KinematicPlan(plan=plan, elapsed_time=time.perf_counter() - started)
                     else:

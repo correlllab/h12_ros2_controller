@@ -1,16 +1,20 @@
 import json
+from types import SimpleNamespace
 from dataclasses import replace
 
+import pytest
 import numpy as np
 
 from ompl import geometric as og
 
 from h12_ros2_controller.benchmark.ik_benchmark import (
     COMPARISON_CASES, _asset_ids, _resolve_case, benchmark_corpus_path,
-    compare_planners, main,
+    _MeasuredPlanner, compare_planners, main,
 )
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
-from h12_ros2_controller.core.planner.reduced_joint_planner import ReducedJointPlanner
+from h12_ros2_controller.core.planner.reduced_joint_planner import (
+    PlanResult, PlannerConfig, ReducedJointPlanner,
+)
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
 
@@ -162,3 +166,31 @@ def test_comparison_uses_five_fixed_cases_and_reports_metrics(tmp_path):
         assert row['planner_calls_p95_s'] >= row['planner_calls_p50_s'] >= 0
         assert all(record['plan_metadata'] is None or
                    not record['plan_metadata'].get('cache_hit') for record in row['results'])
+
+
+@pytest.mark.parametrize('deadline', [99.0, 105.0])
+def test_worker_adapter_preserves_absolute_deadline_and_hard_watchdog(monkeypatch, deadline):
+    planner = object.__new__(_MeasuredPlanner)
+    planner.pipeline = SimpleNamespace(
+        planner_config=PlannerConfig(), robot_model=SimpleNamespace(state={'q': np.zeros(27)}),
+    )
+    planner.reuse_enabled = True
+    planner.attempts = []
+    warmups = []
+    calls = []
+
+    def plan_configuration(*args, **kwargs):
+        calls.append(kwargs)
+        return PlanResult(False, np.empty((0, 14)), reason='stub')
+
+    planner.client = SimpleNamespace(
+        warmup=lambda deadline: warmups.append(deadline),
+        plan_configuration=plan_configuration,
+    )
+    monkeypatch.setattr('h12_ros2_controller.benchmark.ik_benchmark.time.perf_counter',
+                        lambda: 100.0)
+    planner.warmup(deadline=120.0)
+    planner.plan(np.zeros(14), np.zeros(14), deadline=deadline)
+    assert warmups == [120.0]
+    assert calls[0]['deadline'] == deadline
+    assert calls[0]['response_timeout'] == planner.pipeline.planner_config.worker_request_timeout

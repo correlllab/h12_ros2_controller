@@ -6,6 +6,8 @@ import pytest
 
 import h12_ros2_controller.core.ik_solver as ik_module
 from h12_ros2_controller.core.controller.frame_controller import FrameController
+from h12_ros2_controller.core.controller.upper_controller import UpperController
+from h12_ros2_controller.core.planner import PlanResult, PlannerConfig
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS
 
@@ -145,3 +147,69 @@ def test_controller_single_error_delegates_without_reading_an_explicit_snapshot(
     assert calls[0][0] is task and calls[0][1] is q
     with pytest.raises(ValueError, match='Task missing not found'):
         controller.get_frame_task_error('missing')
+
+
+@pytest.mark.parametrize('entrypoint', ('ik', 'plan'))
+@pytest.mark.parametrize('failure_stage', ('collision', 'ik'))
+def test_parent_reduced_rebuild_retries_same_frozen_reference_after_failure(
+        entrypoint, failure_stage):
+    controller = object.__new__(UpperController)
+    measured = np.zeros(27)
+    measured[12] = 0.02
+    mask = np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)]
+    calls = []
+    failed = [False]
+    controller.robot_model = SimpleNamespace(
+        state={'q': measured}, reduced_mask=mask, reduced_reference_q=np.zeros(27),
+    )
+
+    def maybe_fail(stage):
+        if failure_stage == stage and not failed[0]:
+            failed[0] = True
+            raise RuntimeError(f'{stage} rebuild failed')
+
+    def rebuild_model(reference_q):
+        calls.append('model')
+        # reproduce a committed kinematic reference before collision rebuilding
+        controller.robot_model.reduced_reference_q = reference_q.copy()
+        maybe_fail('collision')
+
+    def rebuild_ik():
+        calls.append('ik')
+        maybe_fail('ik')
+
+    controller.robot_model.rebuild_reduced_model = rebuild_model
+    controller.ik_solver = SimpleNamespace(
+        rebuild_reduced=rebuild_ik,
+        update_configurations=lambda q: calls.append('seed'),
+    )
+    controller.check_state_fresh = lambda: None
+    controller._command_seed = lambda q: (q.copy(), True)
+    controller._tau_bias = np.zeros(27)
+    controller.dt = 0.02
+    controller.config = {'planner': {'planner': 'RRTConnect'}}
+    controller._planner_speed_overrides = lambda: (None, None)
+
+    def plan(**kwargs):
+        calls.append('plan')
+        return PlanResult(success=True, path=np.zeros((2, 14)))
+
+    controller.planner = SimpleNamespace(
+        planner_config=PlannerConfig(), plan_configuration=plan,
+    )
+    invoke = (controller.update_ik_solver if entrypoint == 'ik' else
+              lambda: controller.plan_to_configuration(np.zeros(14)))
+
+    with pytest.raises(RuntimeError, match='rebuild failed'):
+        invoke()
+    assert controller._reduced_rebuild_pending
+    assert 'seed' not in calls and 'plan' not in calls
+
+    invoke()
+
+    assert not controller._reduced_rebuild_pending
+    assert calls.count('model') == 2
+    assert calls.count('ik') == (1 if failure_stage == 'collision' else 2)
+    assert calls[-1] == ('seed' if entrypoint == 'ik' else 'plan')
+    invoke()
+    assert calls.count('model') == 2

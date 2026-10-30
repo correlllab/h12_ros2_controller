@@ -57,7 +57,7 @@ class PlannerConfig:
     '''Configuration for reduced joint-space planning'''
 
     planner: str = 'RRTConnect'
-    timeout: float = 2.0
+    timeout: float = 6.0
     range: float = 0.0
     try_direct: bool = True
     simplify: bool = True
@@ -69,7 +69,7 @@ class PlannerConfig:
     self_collision_clearance: float = 0.02
     continuous_timing: bool = True
     min_interpolation_steps: int = 2
-    max_interpolation_steps: int = 600
+    max_interpolation_steps: int = 1200
     max_staged_interpolation_steps: int = 1200
     validity_resolution: float = 0.0025
     constraint_check_steps: int = 10
@@ -93,8 +93,8 @@ class PlannerConfig:
     frame_rotation_radius: float = 0.20
     max_ik_candidates: int = 3
     ik_max_seeds: int = 8
-    ik_total_timeout: float = 3.0
-    ik_seed_timeout: float = 0.50
+    ik_total_timeout: float = 8.0
+    ik_seed_timeout: float = 1.0
     ik_alpha: float = 0.1
     ik_frame_lm_damping: float = 1.0
     ik_stagnation_iterations: int = 20
@@ -105,10 +105,10 @@ class PlannerConfig:
     ik_elbow_seed_offset: float = 0.60
     ik_reuse_translation: float = 0.12
     ik_reuse_rotation: float = 0.50
-    candidate_planning_budget: float = 4.0
-    named_planning_budget: float = 6.0
-    request_planning_budget: float = 12.0
-    bimanual_fallback_budget: float = 5.0
+    candidate_planning_budget: float = 20.0
+    named_planning_budget: float = 30.0
+    request_planning_budget: float = 60.0
+    bimanual_fallback_budget: float = 25.0
     bimanual_coordination_knots: int = 24
     bimanual_coordination_delay: float = 0.25
     bimanual_refinement_budget: float = 0.6
@@ -116,14 +116,14 @@ class PlannerConfig:
     recent_path_cache_size: int = 6
     nearby_reuse_joint_tolerance: float = 0.12
     nearby_reuse_knots: int = 24
-    candidate_ompl_timeout: float = 1.5
+    candidate_ompl_timeout: float = 5.0
     candidate_ik_weight: float = 0.1
     candidate_hand_weight: float = 2.0
     candidate_compact_weight: float = 3.0
     candidate_clearance_weight: float = 5.0
     candidate_wrist_path_weight: float = 0.20
     candidate_duration_weight: float = 0.05
-    worker_request_timeout: float = 15.0
+    worker_request_timeout: float = 65.0
     prefer_coordinated_motion: bool = True
     coordination_search_fraction: float = 0.5
     worker_startup_timeout: float = 30.0
@@ -205,7 +205,7 @@ class ReducedJointPlanner:
         self._recent_paths = []
         self._deadline = None
 
-        # build OMPL problem objects once; plan() only resets start/goal
+        # reuse problem infrastructure, but give every search a fresh planner
         self.space = self._make_space()
         self.ss = og.SimpleSetup(self.space)
         self.si = self.ss.getSpaceInformation()
@@ -427,6 +427,12 @@ class ReducedJointPlanner:
         lower[~self.active_mask] = self.pinned_q[~self.active_mask]
         upper[~self.active_mask] = self.pinned_q[~self.active_mask]
         self.space.setBounds(self._make_bounds(lower, upper))
+        self.si.setStateValidityCheckingResolution(
+            float(self.config.validity_resolution)
+        )
+        # changing bounds does not invalidate OMPL's cached segment length
+        if self.space.getMaximumExtent() > 0.0:
+            self.si.setup()
 
     def _project_inactive(self, q):
         '''Force inactive joints to their pinned start values'''
@@ -1088,17 +1094,27 @@ class ReducedJointPlanner:
         self._check_deadline()
         return metrics, ''
 
+    def _inactive_path_failure(self, path):
+        if not np.allclose(
+            path[:, ~self.active_mask], self.pinned_q[~self.active_mask],
+            atol=1e-12, rtol=0.0,
+        ):
+            return 'path moves inactive joints'
+        return ''
+
     def _path_validity_failure(self, path):
         self._check_deadline()
+        reason = self._inactive_path_failure(path)
+        if reason:
+            return reason
         for idx, q in enumerate(path):
             reason = self._validity_failure(q, f'path waypoint {idx}')
             if reason:
                 return reason
 
-        # Match OMPL's joint-space resolution even when output was capped
-        resolution = (
-            self.space.getMaximumExtent() * self.config.validity_resolution
-        )
+        # use this request's full active subspace, never prior search bounds
+        extent = np.linalg.norm((self.model_upper - self.model_lower)[self.active_mask])
+        resolution = max(float(extent) * self.config.validity_resolution, 1e-12)
         for idx in range(len(path) - 1):
             steps = max(
                 1, int(self.config.constraint_check_steps),
@@ -1148,6 +1164,7 @@ class ReducedJointPlanner:
         return (config == cached['config'] and frames == cached['frames'] and
                 np.array_equal(frozen, cached['frozen']) and
                 np.array_equal(mask, cached['mask']) and
+                np.array_equal(cached['start'][~mask], self.pinned_q[~mask]) and
                 np.array_equal(velocity, cached['velocity']))
 
     def _reversed_previous_path(self, start, goal, local_frames):
@@ -1226,16 +1243,29 @@ class ReducedJointPlanner:
             raise ValueError('Planner deadline must be finite')
         try:
             with self._deadline_scope(deadline):
-                return self._plan(
+                result = self._plan(
                     start, goal, active_mask, direct_only, local_frames, timeout,
                     allow_reuse, local_joint_padding, deadline,
                 )
+                if result.success:
+                    failure = self._inactive_path_failure(result.path)
+                    if failure:
+                        result.success = False
+                        result.path = self._empty_path()
+                        result.reason = failure
+                return result
         except _PlanningDeadlineExpired as exc:
             return PlanResult(
                 False, self._empty_path(), reason=str(exc),
                 planning_time=perf_counter() - started,
                 planner_name=self.config.planner,
             )
+        finally:
+            self._set_active_mask(None, np.zeros(self.nq))
+            self.corridor_min_z = {}
+            self.local_min_x = {}
+            self.local_elbow_min_x = {}
+            self._apply_active_bounds()
 
     def _plan(self, start, goal, active_mask, direct_only, local_frames, timeout,
               allow_reuse, local_joint_padding, deadline):
@@ -1637,12 +1667,14 @@ class ReducedJointPlanner:
                     allow_reuse, local_joint_padding,
                 )
         except _PlanningDeadlineExpired as exc:
-            self._apply_active_bounds()
             return PlanResult(
                 False, self._empty_path(), reason=str(exc),
                 planning_time=perf_counter() - started,
                 planner_name=self.config.planner,
             )
+        finally:
+            self.ss.clear()
+            self._apply_active_bounds()
 
     def _plan_once_impl(self, start, goal, active_mask=None, direct_only=False,
                         local_frames=(), timeout=None, allow_reuse=True,
@@ -1654,6 +1686,12 @@ class ReducedJointPlanner:
         self._diagnostics = []
 
         def finish(result):
+            if result.success:
+                failure = self._inactive_path_failure(result.path)
+                if failure:
+                    result.success = False
+                    result.path = self._empty_path()
+                    result.reason = failure
             result.planning_time = perf_counter() - started
             result.metadata['stage_timings'] = timings.copy()
             result.metadata['stage_timings']['total'] = result.planning_time
@@ -1760,10 +1798,6 @@ class ReducedJointPlanner:
                 return finish(reused)
 
         stage_start = perf_counter()
-        # reset OMPL state; collapse inactive joint bounds to pin them
-        self.si.setStateValidityCheckingResolution(
-            float(self.config.validity_resolution)
-        )
         solve_timeout = self.config.timeout if timeout is None else float(timeout)
         if not np.isfinite(solve_timeout) or solve_timeout <= 0.0:
             raise ValueError('Planner timeout must be finite and positive')
@@ -1785,6 +1819,8 @@ class ReducedJointPlanner:
         for search_region, padding, budget in searches:
             self._apply_active_bounds(start, goal, padding=padding)
             self.ss.clear()
+            # clear() retains auto-range, setup state and RRT tree alternation
+            self.ss.setPlanner(self._make_planner())
             self.ss.setStartAndGoalStates(
                 self._make_state(start), self._make_state(goal),
             )
@@ -1910,7 +1946,7 @@ class ReducedJointPlanner:
             active_mask = np.asarray(active_mask, dtype=bool).reshape(-1)
             if active_mask.shape != (self.nq,):
                 raise ValueError(f'active_mask must have shape ({self.nq},)')
-            self.active_mask = active_mask
+            self.active_mask = active_mask.copy()
         self.pinned_q = np.array(start, dtype=float)
 
     def _direct_path(self, start, goal):

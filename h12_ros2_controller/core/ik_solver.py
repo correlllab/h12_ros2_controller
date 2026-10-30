@@ -149,26 +149,33 @@ class IKSolver:
         collision barrier all see the newly locked frozen-joint reference.
         '''
         robot_model = self.robot_model
-        self.configuration_reduced = pink.Configuration(
+        configuration = pink.Configuration(
             robot_model.model_body_reduced,
             robot_model.data_body_reduced,
             robot_model.state_reduced['q'],
             collision_model=robot_model.collision_model_body_reduced,
             collision_data=robot_model.collision_data_body_reduced
         )
-        self.com_task_reduced.set_target_from_configuration(self.configuration_reduced)
-        self.collision_barrier_reduced = pink.barriers.SelfCollisionBarrier(
-            n_collision_pairs=len(robot_model.collision_model_body_reduced.collisionPairs),
-            gain=20.0,
-            safe_displacement_gain=1.0,
-            d_min=self.d_min,
-        )
-        self.limits_reduced = [
+        barrier = self._new_reduced_collision_barrier()
+        limits = [
             pink.limits.ConfigurationLimit(robot_model.model_body_reduced),
             pink.limits.VelocityLimit(robot_model.model_body_reduced),
             pink.limits.AccelerationLimit(robot_model.model_body_reduced,
                                           25.0 * np.ones(robot_model.model_body_reduced.nv))
         ]
+        self.com_task_reduced.set_target_from_configuration(configuration)
+        self.configuration_reduced = configuration
+        self.collision_barrier_reduced = barrier
+        self.limits_reduced = limits
+
+    def _new_reduced_collision_barrier(self):
+        '''Create a barrier without retaining cached values from a failed solve'''
+        return pink.barriers.SelfCollisionBarrier(
+            n_collision_pairs=len(self.robot_model.collision_model_body_reduced.collisionPairs),
+            gain=20.0,
+            safe_displacement_gain=1.0,
+            d_min=self.d_min,
+        )
 
     @property
     def q(self):
@@ -241,8 +248,16 @@ class IKSolver:
     def clear_frame_tasks(self):
         '''Clear all frame tasks'''
         task_names = list(self.frame_tasks.keys())
+        error = None
         for task_name in task_names:
-            self.remove_frame_task(task_name)
+            try:
+                self.remove_frame_task(task_name)
+            except Exception as exc:
+                # finish removing targets even if visualization cleanup fails
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
 
     def update_visualizer(self):
         visualizer = self.robot_model.visualizer
@@ -641,12 +656,6 @@ class IKSolver:
             )
         preferred, costs = self._batch_posture_preference(q_seed)
         original_cost = getattr(self.posture_task, 'cost', None)
-        if original_cost is not None:
-            self.posture_task.cost = costs
-        if hasattr(self.posture_task, 'set_target'):
-            self.posture_task.set_target(preferred)
-        else:
-            self.posture_task.set_target_from_configuration(self.configuration_reduced)
         start_time = time.monotonic()
         iterations = 0
         linear_err = angular_err = float('inf')
@@ -657,6 +666,12 @@ class IKSolver:
         checkpoint_iteration = 0
         original_damping = []
         try:
+            if original_cost is not None:
+                self.posture_task.cost = costs
+            if hasattr(self.posture_task, 'set_target'):
+                self.posture_task.set_target(preferred)
+            else:
+                self.posture_task.set_target_from_configuration(self.configuration_reduced)
             if self.batch_frame_lm_damping is not None:
                 for task in self.frame_tasks.values():
                     original_damping.append((task, task.lm_damping))
@@ -704,6 +719,8 @@ class IKSolver:
                 linear_err, angular_err = self._frame_task_errors(self.configuration_reduced)
         except Exception as exc:
             reason = f'{type(exc).__name__}: {exc}'
+            if getattr(self, 'collision_barrier_reduced', None) is not None:
+                self.collision_barrier_reduced = self._new_reduced_collision_barrier()
         finally:
             for task, damping in original_damping:
                 task.lm_damping = damping

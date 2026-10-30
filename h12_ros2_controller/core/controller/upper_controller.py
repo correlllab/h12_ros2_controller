@@ -10,7 +10,7 @@ from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.core.planner import PlannerClient
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
     frame_target_snapshot, frame_targets_close, plan_frame_tasks,
-    planner_config_from_controller,
+    planner_config_from_controller, warmup_planner,
 )
 from h12_ros2_controller.core.planner.reduced_joint_planner import (
     active_grasp_frames, moving_grasp_frames,
@@ -315,12 +315,7 @@ class UpperController:
         # reduced-model FK agrees with the robot's actual kinematics (and the
         # TF tree); frozen-at-zero, a torso holding e.g. -0.04 rad offsets
         # every arm frame by a constant ~15 mm that IK can never converge away
-        frozen = ~self.robot_model.reduced_mask
-        if not np.array_equal(
-            measured_q[frozen], self.robot_model.reduced_reference_q[frozen]
-        ):
-            self.robot_model.rebuild_reduced_model(reference_q=measured_q)
-            self.ik_solver.rebuild_reduced()
+        self._sync_reduced_model(measured_q)
         # start IK from the last command, not the measured state: the arm sits
         # below its command (gravity, PD lag), and restarting from the measured
         # position would step the command down and drop the arm
@@ -328,8 +323,19 @@ class UpperController:
         if command_seed is not None and from_command:
             q_seed = np.asarray(command_seed, dtype=float).copy()
         if not from_command:
-            self._tau_bias[:] = 0.0
+            self._tau_bias[self.enabled_ids] = 0.0
         self.ik_solver.update_configurations(q_seed)
+
+    def _sync_reduced_model(self, reference_q):
+        '''Retry incomplete model, collision and IK rebuilds before reuse'''
+        frozen = ~self.robot_model.reduced_mask
+        if (getattr(self, '_reduced_rebuild_pending', False) or not np.array_equal(
+                reference_q[frozen], self.robot_model.reduced_reference_q[frozen])):
+            # the model reference can change before collision or IK rebuilding fails
+            self._reduced_rebuild_pending = True
+            self.robot_model.rebuild_reduced_model(reference_q=reference_q)
+            self.ik_solver.rebuild_reduced()
+            self._reduced_rebuild_pending = False
 
     def _command_seed(self, measured_q=None):
         '''
@@ -415,21 +421,22 @@ class UpperController:
             raise ValueError('Planned motion requires an explicit planner YAML block')
         if local_frames is None and planning_budget is None:
             planning_budget = self.planner.planner_config.named_planning_budget
-        if deadline is None and planning_budget is not None:
+        if local_frames is None:
+            planning_config = self.planner.planner_config
+            overall_deadline = (deadline if deadline is not None else
+                                started + planning_config.request_planning_budget)
+            warmup_planner(self.planner, overall_deadline)
+            deadline = min(overall_deadline, time.perf_counter() + planning_budget)
+        elif deadline is None and planning_budget is not None:
             deadline = started + planning_budget
         self.check_state_fresh()
         if current_q is None:
             current_q = np.copy(self.robot_model.state['q'])
-        frozen = ~self.robot_model.reduced_mask
-        if not np.array_equal(
-            current_q[frozen], self.robot_model.reduced_reference_q[frozen]
-        ):
-            self.robot_model.rebuild_reduced_model(reference_q=current_q)
-            self.ik_solver.rebuild_reduced()
+        self._sync_reduced_model(current_q)
         if start is None:
             start, from_command = self._command_seed(current_q)
             if not from_command:
-                self._tau_bias[:] = 0.0
+                self._tau_bias[self.enabled_ids] = 0.0
             start = start[self.robot_model.reduced_mask]
         q_reduced = np.asarray(q_reduced, dtype=float)
         if local_frames is None:
@@ -478,6 +485,11 @@ class UpperController:
         started = time.perf_counter()
         self.last_plan_result = None
         self.last_planning_context = None
+        self.last_ik_result = None
+        self.last_plan_attempts = []
+        planning_config = self.planner.planner_config
+        deadline = started + planning_config.request_planning_budget
+        warmup_planner(self.planner, deadline)
         measured_q = np.copy(self.robot_model.state['q'])
         command_q, from_command = self._command_seed(measured_q)
         if start is None:
@@ -489,11 +501,9 @@ class UpperController:
         self.last_planning_start = start_q.copy()
         self.update_ik_solver(measured_q=measured_q, command_seed=command_q)
         if not from_command:
-            self._tau_bias[:] = 0.0
+            self._tau_bias[self.enabled_ids] = 0.0
         # Use the same active joints and start pose for IK and planning.
         active_mask = self._active_task_mask()
-        planning_config = self.planner.planner_config
-        deadline = started + planning_config.request_planning_budget
         targets = frame_target_snapshot(self.ik_solver.frame_tasks)
         self.last_planning_context = {
             'start_q': start_q.tolist(),
@@ -529,7 +539,7 @@ class UpperController:
                 goal, start=start_reduced, active_mask=mask,
                 current_q=measured_q, direct_only=direct_only,
                 timeout=timeout, local_frames=frames,
-                response_timeout=min(planning_config.worker_request_timeout, remaining),
+                response_timeout=planning_config.worker_request_timeout,
                 planning_budget=remaining,
                 deadline=deadline,
             )
@@ -959,11 +969,10 @@ class UpperController:
         return vel_scaled
 
     def _apply_joint_position(self, q):
-        # gravity compensation plus the held steady-state bias, which fades
-        # by one control step per call
+        # fade arm bias during motion, retaining bias for the unchanged torso hold
         tau = self.robot_model.dynamics.get_gravity_compensation(self.robot_model.state['q'])
         tau = tau + self._tau_bias
-        self._tau_bias *= self._tau_bias_decay
+        self._tau_bias[self.enabled_ids] *= self._tau_bias_decay
         dq = np.zeros(self.robot_model.model_body.nv)
         self._publish_position_command(q, dq, tau)
 
@@ -975,7 +984,10 @@ class UpperController:
         dq = np.asarray(dq).copy()
         q[torso_id] = self.low_cmd_handler.q_cmd[torso_id]
         dq[torso_id] = 0.0
-        self.low_cmd_handler.set_joint_commands(q, dq, tau)
+        ids = UPPER_BODY_INDEX
+        self.low_cmd_handler.set_joint_commands(
+            q[ids], dq[ids], np.asarray(tau)[ids], joint_ids=ids,
+        )
 
     def _apply_velocity_command(self, vel):
         self.ik_solver.integrate(vel)
