@@ -62,7 +62,7 @@ compares to the scheduled desired point at the same trajectory time and therefor
 includes phase/servo lag. A spatially accurate partial path is not task completion.
 Base-fixed execution RMS is a mechanism diagnostic, never a substitute for spatial
 task accuracy. The precise contract is in the
-[Straight-Line Trajectory Benchmark](../../../docs/straight_line_trajectory_benchmark.md).
+[Straight-Line Trajectory Benchmark](../../../../docs/straight_line_trajectory_benchmark.md).
 
 ## Evidence Status
 
@@ -78,7 +78,7 @@ evidence status. The final tables are derived from this inventory before pairing
 - Superseded scientific evidence: the pre-rebuild 20260910/11 overhang campaign,
     already under `runs/archive/traj_sweep_prerebuild_iter6b/`, and the archived
     pre-rebuild references listed in the historical closeout manifest. The
-    [approved numerical profile](../../../docs/archive.md#approved-numerical-archive-2026-09-24)
+    [approved numerical profile](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)
     retains their CSV and metadata, not raw telemetry or visual artifacts.
 - Historical negative/regression evidence: retained in the pre-rebuild archive and
     its manifests. It is not deleted merely because it does not favor 3C.

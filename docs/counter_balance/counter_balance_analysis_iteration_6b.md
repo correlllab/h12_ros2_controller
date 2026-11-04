@@ -19,7 +19,7 @@ banks, runtime thresholds, classifications, and recorded evidence are frozen.
 
 The canonical grid contains 24 roots, 480 first attempts, and one retained retry.
 The machine-readable 481-record source is
-[`canonical_inventory.csv`](../../../docs/data/iteration6b_spatial/canonical_inventory.csv).
+[`canonical_inventory.csv`](../../../../docs/data/iteration6b_spatial/canonical_inventory.csv).
 Every record has policy, bank, trajectory, controller, factor, attempt, path,
 current bank/geometry hash, recorded classification, metric recoverability,
 infrastructure/init flags and evidence status. Tables derive from this inventory
@@ -81,7 +81,7 @@ Endpoint, progress, completion and recorded outcome remain visible because a sma
 spatial error on a partial path is not successful manipulation. Base-fixed execution
 RMS is retained only as a mechanism diagnostic, not a spatial-task substitute.
 The detailed contract and test rationale are in the
-[straight-line benchmark specification](../../../docs/straight_line_trajectory_benchmark.md).
+[straight-line benchmark specification](../../../../docs/straight_line_trajectory_benchmark.md).
 
 ## 4. Final Spatial Results
 
@@ -90,16 +90,16 @@ All values below are mm. `U` is Uniform Spatial RMS; `S` is Segment Spatial RMS;
 positive gain favors 3C. Wins count strictly positive unrounded per-pair gain.
 Every row averages matching per-run values only; raw timestamps are never pooled.
 First attempts are primary. The separate latest-attempt sensitivity is in
-[`latest_table.csv`](../../../docs/data/iteration6b_spatial/latest_table.csv) and
+[`latest_table.csv`](../../../../docs/data/iteration6b_spatial/latest_table.csv) and
 does not create independent repetitions.
 
 `Completion` is `true / recovered-known` for Frame and 3C over the nominal ten
 trajectories. `Init` and `Infra` are selected-attempt counts `Frame / 3C`. A valid
 RMS pair can be infrastructure-marked; its original runtime classification remains
 unchanged. Full per-run endpoint error, progress, path length, Segment Max, outcome
-and coverage are in [`per_run.csv`](../../../docs/data/iteration6b_spatial/per_run.csv)
+and coverage are in [`per_run.csv`](../../../../docs/data/iteration6b_spatial/per_run.csv)
 and the paired audit is in
-[`per_trajectory_pairs.csv`](../../../docs/data/iteration6b_spatial/per_trajectory_pairs.csv).
+[`per_trajectory_pairs.csv`](../../../../docs/data/iteration6b_spatial/per_trajectory_pairs.csv).
 
 | Policy | Bank | Factor | Pairs | U F / 3C | U Gain (Wins) | S F / 3C | S Gain (Wins) | T F / 3C | T Gain | Completion F / 3C | Init F / 3C | Infra F / 3C |
 | --- | --- | ---: | ---: | --- | --- | --- | --- | --- | ---: | --- | --- | --- |
@@ -141,7 +141,7 @@ Uniform RMS at 1001 samples was recomputed at 2002 samples for all 481 recoverab
 curves. The maximum absolute change is `0.027246 mm`, mean absolute change is
 `0.004146 mm`, and no paired win/loss/tie changed in either primary or latest view.
 The resolution audit is in
-[`paired_uniform_resolution_table.csv`](../../../docs/data/iteration6b_spatial/paired_uniform_resolution_table.csv).
+[`paired_uniform_resolution_table.csv`](../../../../docs/data/iteration6b_spatial/paired_uniform_resolution_table.csv).
 
 ## 5. Ideal / Timed RMS: Secondary Result
 
@@ -308,7 +308,7 @@ are exported in full.
 
 ### Figure
 
-![Mean peak base tilt](../../../figures/iteration6b_base_motion/peak_base_tilt_2x2.png)
+![Mean peak base tilt](../../../../figures/iteration6b_base_motion/peak_base_tilt_2x2.png)
 
 Rows are policies, columns are trajectory groups, the x-axis runs from duration
 factor 1.0 to 0.3 so faster motion is to the right, and the y-axis is mean peak base
@@ -348,12 +348,12 @@ uv run python -m h12_zmp_benchmark.experiment.iteration6b_base_motion
 The reducer is offline: it reads recorded traces and the canonical inventory, and it
 writes only the exports below.
 
-- [Per-run metrics](../../../docs/data/iteration6b_base_motion/per_run.csv), 480 rows with both windows, flags and hash status.
-- [Matched pairs](../../../docs/data/iteration6b_base_motion/pairs.csv), 240 rows with per-metric gains and win flags.
-- [Cell summary](../../../docs/data/iteration6b_base_motion/cell_summary.csv), the 24 cells behind the table above.
-- [Move-only pairs](../../../docs/data/iteration6b_base_motion/pairs_move_only.csv) and [move-only cells](../../../docs/data/iteration6b_base_motion/cell_summary_move_only.csv), the window robustness check.
-- [Aggregate summary](../../../docs/data/iteration6b_base_motion/summary.json), the exact values quoted in this section.
-- [Rendered table](../../../docs/data/iteration6b_base_motion/tables.txt).
+- [Per-run metrics](../../../../docs/data/iteration6b_base_motion/per_run.csv), 480 rows with both windows, flags and hash status.
+- [Matched pairs](../../../../docs/data/iteration6b_base_motion/pairs.csv), 240 rows with per-metric gains and win flags.
+- [Cell summary](../../../../docs/data/iteration6b_base_motion/cell_summary.csv), the 24 cells behind the table above.
+- [Move-only pairs](../../../../docs/data/iteration6b_base_motion/pairs_move_only.csv) and [move-only cells](../../../../docs/data/iteration6b_base_motion/cell_summary_move_only.csv), the window robustness check.
+- [Aggregate summary](../../../../docs/data/iteration6b_base_motion/summary.json), the exact values quoted in this section.
+- [Rendered table](../../../../docs/data/iteration6b_base_motion/tables.txt).
 - Figure: `figures/iteration6b_base_motion/peak_base_tilt_2x2.png` and `peak_base_tilt_2x2_no_title.png`.
 
 ## 8. Paper-Facing Interpretation
@@ -368,7 +368,7 @@ cell, changes no metric definition and adds no run.
 stability/challenge target sweep. The directional trajectory evidence is carried by
 the real-robot runs instead, because the real directional batch gives more consistent
 results; that evidence lives in
-[the round 2 real run sweep](../../../docs/real_run_sweep_round2.md) and is not
+[the round 2 real run sweep](../../../../docs/real_run_sweep_round2.md) and is not
 restated here. The simulation trajectory-group analysis below is therefore **retained
 supporting evidence and a scope boundary, not a headline paper claim**. It is kept in
 full because it is finalized, because it bounds where counter-balancing helps, and
@@ -596,10 +596,10 @@ Regenerate with:
 uv run python -m h12_zmp_benchmark.experiment.iteration6b_base_motion_paper
 ```
 
-- [Paired statistics](../../../docs/data/iteration6b_base_motion/paired_statistics.csv), every metric in every stratum with cluster-bootstrap intervals.
-- [Rotation/translation tradeoff](../../../docs/data/iteration6b_base_motion/rotation_translation_tradeoff.csv).
-- [Preservation scale](../../../docs/data/iteration6b_base_motion/preservation_scale.csv).
-- [Paper summary](../../../docs/data/iteration6b_base_motion/paper_summary.json), the exact values quoted above.
+- [Paired statistics](../../../../docs/data/iteration6b_base_motion/paired_statistics.csv), every metric in every stratum with cluster-bootstrap intervals.
+- [Rotation/translation tradeoff](../../../../docs/data/iteration6b_base_motion/rotation_translation_tradeoff.csv).
+- [Preservation scale](../../../../docs/data/iteration6b_base_motion/preservation_scale.csv).
+- [Paper summary](../../../../docs/data/iteration6b_base_motion/paper_summary.json), the exact values quoted above.
 - Main figure: `figures/iteration6b_base_motion/paired_rms_orientation_drift.png` and its `_no_title` variant.
 - Appendix figure: `figures/iteration6b_base_motion/rotation_translation_tradeoff.png` and its `_no_title` variant.
 
@@ -692,7 +692,7 @@ campaign is under `runs/archive/traj_sweep_prerebuild_iter6b/`; it contains usef
 negative and regression evidence but no longer contributes to final aggregates.
 The pre-rebuild references are under
 `runs/archive/traj_sweep_prerebuild_iter6b/references/` with an explicit cleanup
-manifest. The [approved numerical profile](../../../docs/archive.md#approved-numerical-archive-2026-09-24)
+manifest. The [approved numerical profile](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)
 preserves their CSV and metadata while retiring raw telemetry and visual
 artifacts; it does not touch the 24 current trajectory roots.
 Old claims of general fast-speed spatial

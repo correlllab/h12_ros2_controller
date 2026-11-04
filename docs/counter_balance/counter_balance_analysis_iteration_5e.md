@@ -113,4 +113,4 @@ The first v2/v3 deployment configs were incompatible because they reused stand
 deployment gains/normalization/history. Corrected v2/v3 configs match the
 manipulation-training contract. The v2/v3 full repair artifacts are under
 `runs/archive/checkpoint_sweep/almi_manip_v23_full/` after the approved
-[numerical archive publication](../../../docs/archive.md#approved-numerical-archive-2026-09-24).
+[numerical archive publication](../../../../docs/archive.md#approved-numerical-archive-2026-09-24).

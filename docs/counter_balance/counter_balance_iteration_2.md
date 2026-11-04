@@ -617,7 +617,7 @@ Evidence:
 
 - `runs/archive/full_sweep/20260823_172208_fame_magpie_fast_full_reachability_momentum_wide`
     (approved numerical destination under the
-    [archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)).
+    [archive policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)).
 
 ## Final Fast Candidate
 

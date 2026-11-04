@@ -126,7 +126,7 @@ coverage rather than residual authority.
 ## Merged Full Artifacts
 
 The repaired complete result artifacts have approved numerical destinations
-under the [2026-09-24 archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24):
+under the [2026-09-24 archive policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24):
 
 - `runs/archive/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_2/`.
 - `runs/archive/checkpoint_sweep/almi_manip_v23_full/mjlab_almi_manip_3/`.

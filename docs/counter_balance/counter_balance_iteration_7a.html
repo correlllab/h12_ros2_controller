@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Historical iteration 7a bounded Robust-3C tuning: evidence, limits, results and reproduction. No candidate advances.">
+    <title>Iteration 7a: Bounded Robust-3C Tuning</title>
+    <style>
+        :root { color-scheme: light; --paper: #f5f2eb; --ink: #172d38; --teal: #16716c; --line: #cbd2ca; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--paper); color: var(--ink); font: 1rem/1.65 system-ui, sans-serif; }
+        main { max-width: 1080px; margin: auto; padding: 2rem clamp(1rem, 4vw, 3rem) 4rem; }
+        nav { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: .9rem; }
+        a { color: var(--teal); text-underline-offset: .18em; overflow-wrap: anywhere; }
+        a:hover { text-decoration-thickness: .15em; }
+        a:focus-visible, summary:focus-visible, .table-scroll:focus-visible { outline: 3px solid var(--teal); outline-offset: 4px; }
+        header { padding: 2.5rem 0 1rem; border-bottom: 2px solid var(--teal); }
+        .eyebrow { color: var(--teal); text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; font-weight: 750; }
+        h1, h2, h3 { font-family: Georgia, serif; line-height: 1.2; font-weight: 500; }
+        h1 { font-size: clamp(2.2rem, 6vw, 3.7rem); margin: .5rem 0 1rem; }
+        h2 { font-size: 1.9rem; margin-top: 0; }
+        h3 { font-size: 1.35rem; }
+        .lead { font-size: 1.2rem; max-width: 48rem; }
+        .callout { border-left: 4px solid var(--teal); padding: .8rem 1.2rem; background: #e6ece4; margin: 1.4rem 0; }
+        .callout p { margin: .4rem 0; }
+        .note { font-size: .9rem; }
+        section { padding-top: 2rem; }
+        p { margin: .8rem 0; }
+        li { margin: .5rem 0; }
+        code { font: .88em ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+        pre { padding: 1.2rem; background: #e9e7df; border: 1px solid var(--line); overflow-x: auto; line-height: 1.55; }
+        pre code { white-space: pre; overflow-wrap: normal; }
+        details { margin: 1.2rem 0; border: 1px solid var(--line); padding: 1rem 1.2rem; }
+        summary { cursor: pointer; color: var(--teal); font-weight: 700; }
+        details[open] > summary { margin-bottom: 1rem; }
+        .table-scroll { max-width: 100%; overflow-x: auto; margin: 1rem 0; }
+        table { border-collapse: collapse; width: 100%; font-size: .92rem; font-variant-numeric: tabular-nums; }
+        caption { text-align: left; font-weight: 700; margin-bottom: .7rem; }
+        th, td { padding: .7rem .8rem; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+        thead th { background: #e6ece4; }
+        th:first-child { text-align: left; min-width: 17rem; }
+        tbody th { font-weight: 500; }
+        td { white-space: nowrap; }
+        footer { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1rem; font-size: .9rem; }
+        @media (max-width: 600px) {
+            main { padding-top: 1rem; }
+            header { padding-top: 1.5rem; }
+            details { padding: .8rem; }
+            th, td { padding: .6rem; }
+        }
+        @media print {
+            body { background: white; font-size: 10pt; }
+            main { max-width: none; padding: 0; }
+            nav { display: none; }
+            header { padding-top: 0; }
+            h1 { font-size: 27pt; }
+            h2 { font-size: 19pt; }
+            h2, h3, summary { break-after: avoid; }
+            details { padding: .6rem; }
+            details > :not(summary) { display: block !important; }
+            .table-scroll { overflow: visible; }
+            table { font-size: 8pt; }
+            th:first-child { min-width: 0; }
+            th, td { padding: .4rem; }
+            tr { break-inside: avoid; }
+            pre { white-space: pre-wrap; overflow: visible; }
+            pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+            a { color: var(--ink); }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <nav aria-label="Related reports">
+        <a href="counter_balance_iteration_7.html">Iteration 7</a>
+        <a href="../../../../docs/iteration7_hardware_collection.html">Hardware collection plan</a>
+        <a href="counter_balance_analysis_iteration_7_overhang.html">Overhang exploration</a>
+    </nav>
+    <header>
+        <p class="eyebrow">Historical study / iteration 7a</p>
+        <h1>Bounded Robust-3C Tuning</h1>
+        <p class="lead"><strong>No useful tuning candidate advances.</strong> Lower posture weights improved a
+            same-state model residual, but worsened the target overhang motion drift in the usable ALMI
+            simulations. FAME supplied no valid candidate comparison.</p>
+        <div class="callout">
+            <p><strong>Decision:</strong> retain deployed <code>posture=0.02</code> and the four-pair
+                corrected-runtime hardware gate. No hardware work was part of this 7a analysis.</p>
+            <p><strong>Evidence boundary:</strong> historical hardware diagnoses, 7a simulation comparisons
+                and future hardware validation are separate. Neither a model residual nor these MuJoCo
+                results establishes a hardware gain.</p>
+        </div>
+        <p class="note"><strong>Archive notice:</strong> revision and configuration provenance below describe
+            the 7a snapshot at controller <code>e666aa5</code>, not the current checkout. The November 3
+            <a href="counter_balance_analysis_iteration_7_overhang.html">overhang report</a> states that the
+            old 7a temporary raw artifacts are no longer available here. Their tables remain historical
+            documented evidence; the reproduction paths below are retained as historical references.</p>
+    </header>
+
+    <section aria-labelledby="objective">
+        <h2 id="objective">Objective and baseline</h2>
+        <p>The prospective stabilization target is <strong>motion-window peak orientation drift under the
+            existing standing-pelvis reference, particularly on overhang trajectories</strong>. It does not
+            replace iteration 7's primary frozen <strong>Uniform Spatial RMS</strong>.</p>
+        <p>Retain directional stabilization. Evaluate executed-clock timed wrist error, frozen spatial
+            error, full-record peak and terminal drift, raw peak gyro, counter excursion/speed and active
+            constraints <strong>separately</strong>. Task-onset orientation and tilt-axis changes diagnose
+            preparation offsets. There is no composite score or hardware-derived significance threshold.</p>
+        <p>The historical hardware evidence contains <strong>40 matched Frame/Counter pairs</strong> from
+            four finetune panels, reduced at the recorded execution clock in benchmark-root
+            <code>docs/data/real_runs_pre_iteration7/</code>. Directional motion peak drift improved in
+            <strong>19/20</strong> pairs, but overhang effects varied by policy and side. Timed tracking
+            worsened from <strong>23.030 mm Frame to 24.200 mm Counter</strong>; Counter was lower in only
+            <strong>1/40</strong> pairs.</p>
+        <p>Those recordings used the old command scheduler: they are <strong>diagnostics, not the 7a control
+            baseline</strong>. Frame is a separate reference. The 7a baseline is unchanged
+            <code>counter_ddp_velocity_robust</code> on the corrected runtime. Baseline and candidate must
+            share the same code, config and scheduler.</p>
+        <details>
+            <summary>Historical provenance and runtime boundary</summary>
+            <p>At study start, benchmark HEAD was
+                <code>798b7916ffc9058659293e1a99875363c5ac9b32</code>, with pre-iteration-7 maintenance
+                changes still uncommitted. Controller submodule HEAD was
+                <code>e666aa5e2c83f2479685dde8cb3bde782edb934b</code>.</p>
+            <p>At that 7a snapshot, <code>real_benchmark_upper.yaml</code> had SHA256
+                <code>5b079d260b5393fb2d1ee6acb3a9565cd91cae70a62af646256a0a9aae1c5cab</code>, matching
+                saved hardware YAML provenance. The active 3C math files were unchanged across the rebased
+                gitlink. This is <strong>not a hash claim about today's expanded profile</strong>.</p>
+            <p>The 7a loader nevertheless dropped historical <code>frequency.check_hz</code> and supplied a
+                <code>max_state_lag_ms</code> default. Its resolved runtime and observation/safety path were
+                not byte-identical to the historical hardware path. New real runs advertised
+                <code>pipeline_revision=pre_iteration7_absolute_deadline_v1</code>.</p>
+        </details>
+    </section>
+
+    <section aria-labelledby="formulation">
+        <h2 id="formulation">What was tuned</h2>
+        <p>Only the motion-phase posture weight changed: unchanged <code>0.02</code> versus
+            <code>0.005</code> and <code>0.002</code>. CoM and momentum terms, gains, damping, fade, joints
+            and all authority limits stayed fixed.</p>
+        <details>
+            <summary>Exact four-variable formulation, bounds and command path</summary>
+            <p>At the 7a snapshot, real <code>counter</code> routed to <code>robust3c</code>: the frozen
+                nominal three-component least-squares planner, using SciPy BVLS with a TRF retry,
+                <strong>not a Crocoddyl horizon</strong>.</p>
+            <p><code>u</code> contains four counter-joint velocities (shoulder pitch/roll/yaw and elbow,
+                rad/s); the counter wrist is held. At captured task-start posture <code>q_ref</code>,
+                <code>Jc,Jm</code> are horizontal CoM Jacobians (m/rad), <code>Hc,Hm</code> are roll/pitch
+                angular momentum maps (kg m^2/rad), <code>e</code> is measured horizontal CoM offset (m),
+                and <code>omega_xy</code> is torso-rotation-transformed IMU gyro (rad/s).</p>
+            <p>Moving-arm <code>dq_m</code> is the <strong>requested trajectory velocity</strong>, not measured
+                or publisher-clipped velocity. Counter <code>q_c</code>, velocity and gyro come from the
+                controller observation, which can differ from the benchmark recorder's preceding
+                observation. With balance scale <code>s</code>:</p>
+            <pre><code>bC = s (-Jm dq_m - 2 e)                [m/s]
+bH = s (-Hm dq_m + 0.2 omega_xy)       [kg m^2/s; see note]
+p  = -(q_c - q_ref)                    [rad/s]
+min_{lower &lt;= u &lt;= upper}
+    || sqrt(s) (Jc u - bC) / 0.1 ||^2
+  + || sqrt(2 s) (Hc u - bH) ||^2
+  + || sqrt(0.02) (u - p) ||^2
+  + || sqrt(0.0001) u ||^2</code></pre>
+            <p>The deployed <code>0.1</code> horizontal-velocity scale and map units are unchanged.
+                Weights <code>1, 2, 0.02</code> are <strong>quadratic-cost coefficients</strong>: rows use
+                their square roots, not those coefficients directly. Gyro gain <code>0.2</code> implicitly
+                converts rad/s to momentum units; it is configured feedback, not measured inertia.</p>
+            <p><code>s=1</code> during motion and zero-duration reactive hold, then fades over
+                <strong>0.5 s</strong>. Posture and damping remain active at <code>s=0</code>, so endpoint
+                recording includes counter posture return, not sustained balancing. Both <code>q_ref</code>
+                and the horizontal CoM offset reference are captured after PREPARE; this controller does
+                not undo preparation offsets.</p>
+            <p>The box intersects reactive limits <code>[2.6, 3.2, 2.6, 1.5]</code> rad/s, controller
+                <code>dq_lim=1</code>, model/publisher caps, one-step joint-position room and
+                reference-relative excursions <code>[0.75, 0.58, 0.40, 0.58]</code> rad. Effective
+                free-motion caps are <code>[0.9, 0.9, 1, 1]</code> rad/s. Collision backtracking can
+                multiply <code>u</code> by <code>1, 0.5, 0.25, 0.125</code> or zero.</p>
+            <pre><code>q_counter_cmd = q_counter_measured + (1/30) u_applied
+dq_counter_cmd = u_applied</code></pre>
+            <p>Separate publisher clipping and gravity-torque feedforward follow. This is <strong>not
+                integration of a persistent velocity trajectory</strong>. Fixed one-step position
+                increments and sampled actuator response limit how modeled cancellation reaches the robot.
+                The moving arm receives saved position/velocity targets subject to publisher caps. The
+                logged <code>clipped</code> boolean does not count active optimizer constraints.</p>
+            <p>Source files:
+                <a href="../../h12_ros2_controller/core/controller/counter_balance/objective.py">objective</a>,
+                <a href="../../h12_ros2_controller/core/controller/counter_balance/frozen_3c_planner.py">nominal planner</a>,
+                <a href="../../h12_ros2_controller/core/controller/counter_balance/scipy_nominal_planner.py">robust solver</a>,
+                <a href="../../h12_ros2_controller/core/controller/counter_balance/counter_balance_controller.py">counter command</a>,
+                <a href="../../../../h12_zmp_benchmark/runtime/real_controller_adapter.py">real adapter</a>.
+                These links locate source files, not immutable historical snapshots.</p>
+        </details>
+    </section>
+
+    <section aria-labelledby="diagnosis">
+        <h2 id="diagnosis">Diagnosis and falsifier</h2>
+        <p>Historical same-state comparisons separate authority limits from posture competition.
+            Diagonal cancellation has a hard bounded floor; forward overhang is nearly feasible, but
+            posture regularization competes with balance. Neither finding predicts a hardware trajectory.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Historical balancing residual table">
+            <table>
+                <caption>Historical Counter states: median motion-only balancing-residual norms</caption>
+                <thead><tr><th scope="col">Case</th><th scope="col">Zero</th><th scope="col">Unbounded</th><th scope="col">Bounded</th><th scope="col">Requested</th><th scope="col">Measured</th><th scope="col">Bound-active</th></tr></thead>
+                <tbody>
+                    <tr><th scope="row">FAME <code>right_diagonal_outward_up</code></th><td>0.493</td><td>0</td><td>0.296</td><td>0.308</td><td>0.354</td><td>97%</td></tr>
+                    <tr><th scope="row">ALMI <code>right_diagonal_outward_up</code></th><td>0.483</td><td>0</td><td>0.299</td><td>0.311</td><td>0.345</td><td>94%</td></tr>
+                    <tr><th scope="row">FAME <code>left_overhang_sideways</code></th><td>0.439</td><td>0</td><td>0.147</td><td>0.169</td><td>0.223</td><td>90%</td></tr>
+                    <tr><th scope="row">ALMI <code>right_overhang_inner_forward</code></th><td>0.240</td><td>0</td><td>0.0045</td><td>0.0597</td><td>0.136</td><td>72%</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="note">Each old Counter state's recorded balance matrix/target and bounds are reused.
+            Columns compare zero counter velocity, unbounded balance-only, bounded balance-only,
+            regularized request and measured counter velocity. These are <strong>same-state model
+            comparisons</strong>, not trajectories the hardware would have followed.</p>
+        <details>
+            <summary>Mechanisms, offsets and measurement limits</summary>
+            <p>Unbounded diagonal cancellation needs roughly <strong>22 rad/s</strong> on a joint capped at
+                <strong>1 rad/s</strong>; weight-only tuning cannot remove that bounded floor. The
+                forward-overhang posture-competition pattern also occurs in a stable FAME inner-forward
+                case, so it cannot explain ALMI drift alone.</p>
+            <p>Across full directional banks, roughly <strong>90%</strong> of motion states bind a solver
+                limit. Overhang is roughly <strong>79-81%</strong>, with smaller bounded residuals. The four
+                sentinels have no requested-to-<em>local-buffer</em> velocity mismatch at the
+                <strong>95th percentile</strong>, but measured response is lower and delayed. DDS delivery
+                remains unverified.</p>
+            <p>FAME sideways grows from <strong>0.60 deg</strong> at task onset to <strong>3.06 deg</strong>
+                at fade end, then recovers to <strong>1.13 deg</strong>. ALMI inner-forward starts near
+                <strong>5.11 deg</strong> and ends near <strong>4.75 deg</strong>. This tuning cannot correct
+                a large pre-existing offset. Computation overhead and zero-balance-scale posture return
+                remain alternative explanations.</p>
+        </details>
+        <p><strong>Single primary hypothesis:</strong> reduce the existing motion-phase posture weight to
+            allow bounded forward-overhang balance action, without raising limits or replacing momentum/CoM
+            terms. At identical recorded ALMI inner-forward states, <code>0.02 -&gt; 0.002</code> lowers the
+            median modeled balance residual <code>0.0597 -&gt; 0.0210</code> and changes requested four-joint
+            velocity by a median <strong>0.318 rad/s</strong>. This is diagnostic sensitivity, not a
+            simulated benefit.</p>
+        <p><strong>Falsifier:</strong> the hypothesis fails if command differences do not reach measured
+            counter motion, or if they do but overhang orientation/gyro or tracking fails to improve without
+            directional/recovery regressions. It does not claim to fix the diagonal authority floor or
+            ALMI's initial lean.</p>
+    </section>
+
+    <section aria-labelledby="screen">
+        <h2 id="screen">Declared comparison</h2>
+        <p>Before simulation, the set was fixed: unchanged <code>posture=0.02</code>, then only
+            <code>0.005</code> and <code>0.002</code>. Keep <code>com=1</code>, <code>momentum=2</code>, gains,
+            damping, fade, selected joints and every bound fixed. Compare with unchanged Counter on
+            FAME/ALMI diagonal, FAME sideways and ALMI inner-forward, not historical Frame under a different
+            runtime. Seek lower overhang motion peak drift without sacrificing either directional case.</p>
+        <details>
+            <summary>Predeclared engineering screens and simulation alignment</summary>
+            <p>Reject a case exceeding any worsening threshold relative to its unchanged Counter simulation
+                cell. These provisional engineering screens are <strong>not inferential margins</strong>:</p>
+            <ul>
+                <li>Directional motion peak: over <strong>0.1 deg</strong>.</li>
+                <li>Corrected timed error: over <strong>1 mm</strong>.</li>
+                <li>Frozen Uniform Spatial RMS: over <strong>0.5 mm</strong>.</li>
+                <li>Full-record or terminal drift: over <strong>0.2 deg</strong>.</li>
+                <li>Peak gyro: over <strong>10%</strong>.</li>
+                <li>Peak counter excursion: over <strong>5 deg</strong>.</li>
+            </ul>
+            <p>Report raw changes even inside these filters, plus speed and active-bound differences.
+                Compare stability labels, stop/fade and counter return independently in each case. The
+                screens only prevent a visibly unbalanced simulation tradeoff; they make no single-trial
+                hardware precision claim.</p>
+            <p>Reversible configs
+                <a href="../../../../config/sweep_configs/iteration7a_fame.yaml"><code>iteration7a_fame.yaml</code></a>
+                and <a href="../../../../config/sweep_configs/iteration7a_almi.yaml"><code>iteration7a_almi.yaml</code></a>
+                select <code>real_benchmark_upper.yaml</code> via an optional <strong>simulation-only</strong>
+                controller-profile selector. Other sweeps retain default <code>sim_safety_split.yaml</code>.</p>
+            <p>Runs used <strong>30 Hz</strong> upper control, <strong>500 Hz</strong> buffered publication,
+                <code>dq_lim=1</code>, publisher velocity/torque ratios <code>0.10/0.60</code>, no
+                <code>kd</code> multiplier, measured-state-plus-<code>1/30</code> commands, saved-bank
+                <code>0.8x</code> motion and <strong>10 s</strong> endpoint recording.</p>
+            <p>Controller cells within a panel shared the MuJoCo scene, policy checkpoint,
+                standing/preparation procedure and constraints. Every sweep cell starts separate physics
+                and safety processes; physics time differs from host solve time. Simulated safety relay,
+                actuator transfer, sensing, contact and support response were <strong>not calibrated to
+                hardware</strong>. Simulated ALMI inner-forward preparation has a small orientation offset,
+                unlike the historical run's roughly <strong>5 deg</strong>.</p>
+        </details>
+        <h3>Coverage: 7/12 completed cells</h3>
+        <p>The planned four cases times three settings yielded three ALMI diagonal cells, three ALMI
+            inner-forward cells and only unchanged FAME diagonal. All six ALMI cells had accepted nonzero
+            counter commands and complete motion/hold coverage, with no solver failures or collision
+            rejections. All six stability labels were <strong>stable</strong>; moving-arm tracking labels
+            remained <strong>imprecise</strong>.</p>
+        <p>FAME sideways baseline and both candidates, plus both FAME diagonal candidates, failed
+            <strong>pre-motion standing readiness</strong>. Sideways fell to about <strong>0.05 m</strong>
+            base height in all three cells; a fresh-domain FAME diagonal <code>posture=0.005</code> retry
+            also failed standing. These are <strong>not candidate falls</strong>.</p>
+        <p>The lone completed FAME diagonal baseline is not an informative physical counter-control
+            comparison: all <strong>41</strong> accepted nominal solves returned
+            <code>counter_candidate_invalid</code> with <strong>zero applied counter velocity</strong>.</p>
+    </section>
+
+    <section aria-labelledby="results">
+        <h2 id="results">Completed ALMI comparisons</h2>
+        <p>Each motion window uses that run's standing pelvis orientation. Tracking uses the executed
+            trajectory clock; frozen spatial RMS is uniform in arc length. Gyro here is <strong>simulated
+            free-base angular speed, not real torso IMU</strong>. Full peak and terminal (last
+            <strong>1 s</strong>) include post-motion return.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Completed ALMI metric comparisons">
+            <table>
+                <caption>Unchanged Counter 0.02 versus lower posture weights 0.005 and 0.002</caption>
+                <thead><tr><th scope="col">Case and metric</th><th scope="col">0.02</th><th scope="col">0.005</th><th scope="col">0.002</th></tr></thead>
+                <tbody>
+                    <tr><th scope="row">ALMI diagonal: motion peak drift, deg</th><td>0.656</td><td>0.719</td><td>0.587</td></tr>
+                    <tr><th scope="row">ALMI diagonal: full peak / terminal drift, deg</th><td>1.709 / 1.688</td><td>1.790 / 1.774</td><td>1.954 / 1.938</td></tr>
+                    <tr><th scope="row">ALMI diagonal: timed / uniform frozen error, mm</th><td>20.285 / 4.608</td><td>20.224 / 4.396</td><td>20.217 / 4.630</td></tr>
+                    <tr><th scope="row">ALMI diagonal: peak gyro, rad/s; counter excursion, deg</th><td>0.0562; 32.95</td><td>0.0614; 36.43</td><td>0.0588; 37.83</td></tr>
+                    <tr><th scope="row">ALMI inner-forward: motion peak drift, deg</th><td>0.743</td><td>0.852</td><td>0.795</td></tr>
+                    <tr><th scope="row">ALMI inner-forward: full peak / terminal drift, deg</th><td>0.743 / 0.534</td><td>0.852 / 0.683</td><td>0.795 / 0.636</td></tr>
+                    <tr><th scope="row">ALMI inner-forward: timed / uniform frozen error, mm</th><td>18.844 / 3.614</td><td>18.821 / 3.608</td><td>18.901 / 3.660</td></tr>
+                    <tr><th scope="row">ALMI inner-forward: peak gyro, rad/s; counter excursion, deg</th><td>0.0359; 21.78</td><td>0.0373; 24.44</td><td>0.0376; 24.03</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p><strong>Both candidates worsened overhang motion peak drift</strong>: by <strong>0.109</strong>
+            and <strong>0.051 deg</strong>, with higher gyro and excursion. At <code>0.005</code>, directional
+            motion peak also worsened by <strong>0.063 deg</strong>. At <code>0.002</code>, directional motion
+            peak improved by <strong>0.068 deg</strong>, but full/terminal drift worsened by about
+            <strong>0.25 deg</strong>, beyond the predeclared <strong>0.2 deg</strong> screen.</p>
+        <details>
+            <summary>Rate caps, realized motion and reset sensitivity</summary>
+            <p>Directional requested rate-cap touches rose from <strong>49% to 56%/59%</strong>;
+                inner-forward rose from <strong>14% to 30%/27%</strong>. No authority limits increased.
+                These are <strong>rate-cap touches only</strong>, not all position/excursion-active bounds.</p>
+            <p>Saved requested and applied setpoint peaks stay within the same caps. Measured counter peaks
+                rise only modestly: inner-forward <strong>0.636 -&gt; 0.648 / 0.643 rad/s</strong>. The
+                simulated physics receiver sees a <strong>0.9 rad/s</strong> peak buffered inner-forward
+                command for all three settings; this does not establish real DDS receipt. Motion-to-fade
+                transition and post-motion posture return matter more than a lower fixed posture penalty
+                alone.</p>
+            <p><strong>Reset sensitivity, not actuator identification:</strong> one fresh-domain repeat of
+                unchanged ALMI inner-forward gave <strong>0.756 deg</strong> motion peak versus
+                <strong>0.743 deg</strong> initially (about <strong>0.012 deg</strong> difference), compared
+                with candidate increases of <strong>0.051</strong> and <strong>0.109 deg</strong>. A single
+                repeat cannot establish uncertainty. Unmodeled delay/actuation could reverse a ranking
+                elsewhere.</p>
+            <p>FAME pre-motion failures are the larger coverage limit. Do not tune MuJoCo friction or relax
+                safety/readiness gates simply to declare a winner.</p>
+        </details>
+    </section>
+
+    <section aria-labelledby="decision">
+        <h2 id="decision">Recommendation and hardware gate</h2>
+        <p><strong>No useful tuning candidate advances from 7a.</strong> Lower posture weight improves the
+            historical forward-overhang algebraic residual, but worsens target physical motion drift and
+            recovery in usable ALMI simulation. FAME has no valid candidate comparison. Preserve
+            <code>posture=0.02</code>.</p>
+        <p>Before any hardware-improvement claim, retain the four corrected-runtime
+            <strong>Frame/unchanged-Counter pairs</strong> from
+            <a href="counter_balance_iteration_7.html">iteration 7</a>: <strong>eight supervised trials</strong>.</p>
+        <ul>
+            <li>FAME <code>right_diagonal_outward_up</code>.</li>
+            <li>ALMI <code>right_diagonal_outward_up</code>.</li>
+            <li>FAME <code>left_overhang_sideways</code>.</li>
+            <li>ALMI <code>right_overhang_inner_forward</code>.</li>
+        </ul>
+        <p>This is not candidate validation and cannot be replaced by historical old-scheduler runs. Check
+            the external safety procedure, actual lower-policy checkpoint, state freshness, support setup,
+            command cadence and skipped slots explicitly. <strong>No candidate comparison is justified
+            now.</strong></p>
+        <p>Only after a future candidate passes a complete offline screen and the unchanged
+            corrected-runtime baseline is established should the smallest additional hardware test be a
+            <strong>matched unchanged-Counter/candidate pair</strong>: first on the same policy and target
+            that improved offline, then on the preserved directional sentinel for regression. Do not infer
+            candidate improvement from Frame or historical old-runtime trials.</p>
+        <p>If overhang regression persists after that gate, the specific 7b question is how to couple
+            feasible counter action to <em>measured</em> base response without motion-phase action or posture
+            return exciting the lower-body policy. Separating movement balancing from bounded return is a
+            formulation question, not a parameter adjustment established here.</p>
+    </section>
+
+    <section aria-labelledby="reproduction">
+        <h2 id="reproduction">Reproduction archive</h2>
+        <p>Commands are preserved from the 7a report. Run from the benchmark root, with an
+            <strong>isolated simulation DDS domain and no robot connected</strong>. The sweep increments
+            domains between cells. These commands do not imply that the historical temporary inputs still
+            exist or that today's checkout reproduces the old runtime.</p>
+        <details>
+            <summary>Sweep commands, reducer, test and historical artifact paths</summary>
+            <pre><code class="language-bash">UV_OFFLINE=1 uv run --no-sync python -m h12_zmp_benchmark.sweep.arm_reachability_sweep \
+  --config config/sweep_configs/iteration7a_almi.yaml \
+  --trajectory-bank overhang_traj --candidates right_overhang_inner_forward \
+  --controllers counter_ddp_velocity_robust posture_0005 posture_0002 \
+  --speed-profile 0.8x --base-domain-id 30 --output-dir /tmp/kilo/iteration7a_almi_inner
+
+UV_OFFLINE=1 uv run --no-sync python -m h12_zmp_benchmark.sweep.arm_reachability_sweep \
+  --config config/sweep_configs/iteration7a_almi.yaml \
+  --trajectory-bank directional_traj --candidates right_diagonal_outward_up \
+  --controllers counter_ddp_velocity_robust posture_0005 posture_0002 \
+  --speed-profile 0.8x --base-domain-id 31 --output-dir /tmp/kilo/iteration7a_almi_diagonal
+
+UV_OFFLINE=1 uv run --no-sync python -m h12_zmp_benchmark.sweep.arm_reachability_sweep \
+  --config config/sweep_configs/iteration7a_fame.yaml \
+  --trajectory-bank overhang_traj --candidates left_overhang_sideways \
+  --controllers counter_ddp_velocity_robust posture_0005 posture_0002 \
+  --speed-profile 0.8x --base-domain-id 32 --output-dir /tmp/kilo/iteration7a_fame_sideways</code></pre>
+            <p>The diagnostic reducer accepts completed <code>runs/*/*</code> paths:</p>
+            <pre><code class="language-bash">.venv/bin/python -m h12_zmp_benchmark.experiment.iteration7a_sim_summary \
+  /tmp/kilo/20261023_133725_iteration7a_almi_diagonal/runs/*/* \
+  /tmp/kilo/20261023_133558_iteration7a_almi_inner_pair_valid/runs/*/* \
+  /tmp/kilo/20261023_134249_iteration7a_almi_inner_posture002/runs/*/*
+.venv/bin/pytest -q tests/test_counter_ddp_velocity_robust_integration.py</code></pre>
+            <p><strong>Historical locations, no longer available here:</strong>
+                <code>/tmp/kilo/20261023_133725_iteration7a_almi_diagonal/</code>,
+                <code>/tmp/kilo/20261023_133558_iteration7a_almi_inner_pair_valid/</code> and
+                <code>/tmp/kilo/20261023_134249_iteration7a_almi_inner_posture002/</code>.
+                The <code>0.002</code> inner-forward cell was a separate run. Failed FAME runs and the
+                baseline reset repeat were under adjacent <code>/tmp/kilo/20261023_*iteration7a_*</code>
+                directories. The November 3 report records the loss of these old 7a temporary raw
+                artifacts; their absence must not be treated as new evidence.</p>
+        </details>
+    </section>
+    <footer>Historical iteration 7a evidence. Documentation cleanup only; no experiment selection,
+        controller code, defaults or submodule revision changed.</footer>
+</main>
+<script>
+    // expose archived details when printing, then restore the reader's view
+    const printOpened = [];
+    window.addEventListener('beforeprint', () => {
+        document.querySelectorAll('details:not([open])').forEach(detail => {
+            printOpened.push(detail);
+            detail.open = true;
+        });
+    });
+    window.addEventListener('afterprint', () => {
+        printOpened.splice(0).forEach(detail => { detail.open = false; });
+    });
+</script>
+</body>
+</html>

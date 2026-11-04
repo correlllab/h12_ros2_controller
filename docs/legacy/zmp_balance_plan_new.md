@@ -176,10 +176,11 @@ The one-step running cost is:
 \[
 \ell =
 \frac{w_b}{2}\|\hat e_{k+1}\|^2
+
 + \frac{w_v}{2}\|u-\dot q_{measured}\|^2
 + \frac{w_q}{2}\|q-q_{ref}\|^2
 + \frac{w_l}{2}\|q_{violation}\|^2.
-\]
+  \]
 
 The terminal model contains only weak posture and limit costs. The control
 measurement also includes pitch-rate damping:
@@ -335,16 +336,16 @@ and independent early stopping after the first failure. Lateral directions
 were extended to the historical 160 N ceiling. The merged artifact contains
 156 sweep, extension, and boundary-validation trials.
 
-| Direction | Fixed-arm bracket | Direct-ZMP bracket |
-| --- | ---: | ---: |
-| +X | 30-35 N | 30-35 N |
-| 45 degrees | 50-55 N | 50-55 N |
-| +Y | 110-115 N | 110-115 N |
-| 135 degrees | 30-35 N | 30-35 N |
-| -X | 25-30 N | 25-30 N |
-| 225 degrees | 45-50 N | 45-50 N |
-| -Y | 105-110 N | 105-110 N |
-| 315 degrees | 40-45 N | 40-45 N |
+| Direction   | Fixed-arm bracket | Direct-ZMP bracket |
+| ----------- | -----------------:| ------------------:|
+| +X          | 30-35 N           | 30-35 N            |
+| 45 degrees  | 50-55 N           | 50-55 N            |
+| +Y          | 110-115 N         | 110-115 N          |
+| 135 degrees | 30-35 N           | 30-35 N            |
+| -X          | 25-30 N           | 25-30 N            |
+| 225 degrees | 45-50 N           | 45-50 N            |
+| -Y          | 105-110 N         | 105-110 N          |
+| 315 degrees | 40-45 N           | 40-45 N            |
 
 The initial 225-degree sweep trial suggested a 5 N direct-controller gain:
 the direct controller passed 50 N once while fixed arms failed. Three paired
@@ -370,10 +371,10 @@ Artifacts:
 
 At 35 N, three paired validation runs give:
 
-| Variant | Passes | Falls | Mean impulse peak |
-| --- | ---: | ---: | ---: |
-| Upper fixed | 0 | 3 | 0.173 rad |
-| Direct ZMP | 2 | 1 | 0.121 rad |
+| Variant     | Passes | Falls | Mean impulse peak |
+| ----------- | ------:| -----:| -----------------:|
+| Upper fixed | 0      | 3     | 0.173 rad         |
+| Direct ZMP  | 2      | 1     | 0.121 rad         |
 
 Including the immediately preceding discovery run, direct control passes 3/4
 and fixed arms pass 0/4. At 37.5 N, direct control falls in 2/2 runs. The
@@ -436,12 +437,12 @@ The primary basis used 0.15 rad, 0.8 s closed bump profiles. Positive and
 negative profiles were differenced and divided by two to suppress standing
 offset and lower-policy phase variation.
 
-| Mode | Dominant arm momentum | Base-rate reaction | Interpretation |
-| --- | ---: | ---: | --- |
-| Shoulder pitch | `H_y = -0.108` | `omega_y = +0.0098` | Strong pitch authority. |
-| Elbow | `H_y = +0.0318` | `omega_y = -0.0003` | About 30% arm momentum and negligible measured base authority. |
-| Same-sign shoulder roll | `H_x = -0.121` | `omega_x = +0.0244` | Strongest roll authority. |
-| Opposed shoulder roll | `H_x = +0.0256` | `omega_x = +0.0080` | Mostly cancels and has strong coupling/noise. |
+| Mode                    | Dominant arm momentum | Base-rate reaction  | Interpretation                                                 |
+| ----------------------- | ---------------------:| -------------------:| -------------------------------------------------------------- |
+| Shoulder pitch          | `H_y = -0.108`        | `omega_y = +0.0098` | Strong pitch authority.                                        |
+| Elbow                   | `H_y = +0.0318`       | `omega_y = -0.0003` | About 30% arm momentum and negligible measured base authority. |
+| Same-sign shoulder roll | `H_x = -0.121`        | `omega_x = +0.0244` | Strongest roll authority.                                      |
+| Opposed shoulder roll   | `H_x = +0.0256`       | `omega_x = +0.0080` | Mostly cancels and has strong coupling/noise.                  |
 
 Units are kg m²/s for angular momentum and rad/s for base rate. Signs describe
 the positive profile command in the current MuJoCo joint coordinates.
@@ -507,20 +508,20 @@ Artifacts:
 At 20 N, baseline, predicted matching sign, opposite sign, and a weaker or
 canceling joint mode were tested in all four cardinal directions.
 
-| Direction | Baseline peak | Best tested profile | Profile peak | Opposite or weak profile |
-| --- | ---: | --- | ---: | ---: |
-| +X | 0.0897 | Elbow positive | 0.0888 | Shoulder pitch positive: 0.0931 |
-| -X | 0.1229 | Shoulder pitch negative | 0.1207 | Shoulder pitch positive: 0.1228 |
-| +Y | 0.0641 | Same-sign roll positive | 0.0565 | Same-sign roll negative: 0.0677 |
-| -Y | 0.0506 | Same-sign roll negative | 0.0487 | Same-sign roll positive: 0.0550 |
+| Direction | Baseline peak | Best tested profile     | Profile peak | Opposite or weak profile        |
+| --------- | -------------:| ----------------------- | ------------:| -------------------------------:|
+| +X        | 0.0897        | Elbow positive          | 0.0888       | Shoulder pitch positive: 0.0931 |
+| -X        | 0.1229        | Shoulder pitch negative | 0.1207       | Shoulder pitch positive: 0.1228 |
+| +Y        | 0.0641        | Same-sign roll positive | 0.0565       | Same-sign roll negative: 0.0677 |
+| -Y        | 0.0506        | Same-sign roll negative | 0.0487       | Same-sign roll positive: 0.0550 |
 
 The X differences at 20 N are too small to separate from run variation. The
 lateral sign effect is clearer. At 60 N:
 
 | Direction | Baseline | Roll positive | Roll negative |
-| --- | ---: | ---: | ---: |
-| +Y | 0.1054 | 0.0957 | 0.1062 |
-| -Y | 0.0682 | 0.0717 | 0.0675 |
+| --------- | --------:| -------------:| -------------:|
+| +Y        | 0.1054   | 0.0957        | 0.1062        |
+| -Y        | 0.0682   | 0.0717        | 0.0675        |
 
 Positive roll reduced +Y roll angle by about 10.5%. Negative roll provided only
 a small -Y improvement. These are single-trial system-identification results,
@@ -536,12 +537,12 @@ Artifacts:
 The one-way profile gives a substantially different result because it removes
 the explicit return half of the bump.
 
-| Direction and force | Baseline peak | Positive profile | Negative profile |
-| --- | ---: | ---: | ---: |
-| +X, 35 N shoulder pitch | 0.2122, fall | 0.0949, pass | 0.3730, fall |
-| -X, 25 N shoulder pitch | 0.1386 | 0.1406 | 0.1383 |
-| +Y, 60 N same roll | 0.1046 | 0.0904 | 0.1116 |
-| -Y, 60 N same roll | 0.0684 | 0.0596 | 0.0795 |
+| Direction and force     | Baseline peak | Positive profile | Negative profile |
+| ----------------------- | -------------:| ----------------:| ----------------:|
+| +X, 35 N shoulder pitch | 0.2122, fall  | 0.0949, pass     | 0.3730, fall     |
+| -X, 25 N shoulder pitch | 0.1386        | 0.1406           | 0.1383           |
+| +Y, 60 N same roll      | 0.1046        | 0.0904           | 0.1116           |
+| -Y, 60 N same roll      | 0.0684        | 0.0596           | 0.0795           |
 
 For +X, the positive shoulder-pitch hold profile changed failure to survival,
 matching the sign used by the accepted direct controller. The isolated
@@ -562,12 +563,12 @@ Artifact: `runs/arm_reaction_hold_directional_20260722`.
 
 The retained 30 N direct-controller logs show:
 
-| Direction | Crocoddyl solves | Maximum absolute ZMP residual | Main arm motion |
-| --- | ---: | ---: | --- |
-| +X | 6 | X: 0.0232 m | Shoulder pitch: about 0.15 rad. |
-| +Y | 19 | X: 0.0120 m, Y: 0.0115 m | Shoulder pitch: about 0.35 rad. |
-| -X | 32 | X: 0.0645 m | Shoulder pitch: about 0.86 rad. |
-| -Y | 19 | X: 0.0123 m, Y: 0.0116 m | Shoulder pitch: about 0.35 rad. |
+| Direction | Crocoddyl solves | Maximum absolute ZMP residual | Main arm motion                 |
+| --------- | ----------------:| -----------------------------:| ------------------------------- |
+| +X        | 6                | X: 0.0232 m                   | Shoulder pitch: about 0.15 rad. |
+| +Y        | 19               | X: 0.0120 m, Y: 0.0115 m      | Shoulder pitch: about 0.35 rad. |
+| -X        | 32               | X: 0.0645 m                   | Shoulder pitch: about 0.86 rad. |
+| -Y        | 19               | X: 0.0123 m, Y: 0.0116 m      | Shoulder pitch: about 0.35 rad. |
 
 The Y pushes do not produce a clean Y trigger. Instead, X residual noise reaches
 the 0.012 m threshold and starts pitch-oriented arm motion. The current

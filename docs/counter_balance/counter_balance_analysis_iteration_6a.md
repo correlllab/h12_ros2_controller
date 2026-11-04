@@ -28,7 +28,7 @@ and `runs/challenge_sweep/legacy/`. Under
 `runs/archive/key_findings_reports/iteration6a/`, `benchmark_results.md` indexes
 them and `reports/benchmark/` retains numerical reports. Publication is pending
 safety validation under the
-[2026-09-24 policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24).
+[2026-09-24 policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24).
 NPZ, JSONL, videos, HTML, images, and logs are retired; CSV and metadata remain
 as independent regular files without filesystem links. Historical CSV rows are
 frozen, not reclassifiable or replayable. Refresh repetitions and health checks live directly

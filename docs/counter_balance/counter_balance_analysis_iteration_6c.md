@@ -331,13 +331,13 @@ near-nominal boundary cells are the noisy ones, and both policies contribute
 exceptions (7 FAME, 6 ALMI).
 
 The audit consumes only existing artifacts. The changed-cell list is
-[`discovery_signed_transitions.csv`](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv),
+[`discovery_signed_transitions.csv`](../../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv),
 cross-checked against the 400 rows of
-[`discovery_pairs.csv`](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
+[`discovery_pairs.csv`](../../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
 The repetition outcomes come from the per-run rows and `summary.json` files of the
 canonical confirmation root
 `runs/challenge_sweep/iter6c_repetitions/confirmation`, which
-[`provenance.json`](../../../runs/key_findings_reports/iteration6c/reports/final/provenance.json)
+[`provenance.json`](../../../../runs/key_findings_reports/iteration6c/reports/final/provenance.json)
 records as the confirmation stage root. No simulation was run, no classification
 threshold was changed, and no physical label or runtime flag was rewritten for
 this audit.
@@ -424,9 +424,9 @@ motion-quality benefit, not evidence that its categorical stability regressions
 vanish. Historical ALMI mean/RMS tilt are slightly worse with 3C. No significance
 test or pooled-speed independence assumption is used for these new reductions.
 
-The [per-run](../../../runs/key_findings_reports/iteration6c/reports/base_motion_per_run.csv),
-[paired](../../../runs/key_findings_reports/iteration6c/reports/base_motion_pairs.csv),
-and [duration summary](../../../runs/key_findings_reports/iteration6c/reports/base_motion_by_duration.csv)
+The [per-run](../../../../runs/key_findings_reports/iteration6c/reports/base_motion_per_run.csv),
+[paired](../../../../runs/key_findings_reports/iteration6c/reports/base_motion_pairs.csv),
+and [duration summary](../../../../runs/key_findings_reports/iteration6c/reports/base_motion_by_duration.csv)
 exports retain both the full move/hold and common pre-fall windows, sample counts,
 censoring and unchanged physical outcomes. The methods metadata records targeted
 array reads and file-stat checks, not a new full-byte audit of every recording.
@@ -459,31 +459,31 @@ provenance: each per-root report describes only that root's physical recordings.
 
 | Root Under `runs/challenge_sweep/` | Own Fresh Runs | HTML Entry |
 | --- | ---: | --- |
-| `20260912_iter6c_initial_discovery` | 4 | [Open](../../../runs/challenge_sweep/20260912_iter6c_initial_discovery/plots/index.html) |
-| `20260912_iter6c_discovery_analysis_v2` | 256 | [Open](../../../runs/challenge_sweep/20260912_iter6c_discovery_analysis_v2/plots/index.html) |
-| `20260913_iter6c_speed_discovery_frame_vs_3c` | 380 | [Open](../../../runs/challenge_sweep/20260913_iter6c_speed_discovery_frame_vs_3c/plots/index.html) |
-| `iter6c_repetitions/confirmation` | 516 | [Open](../../../runs/challenge_sweep/iter6c_repetitions/confirmation/plots/index.html) |
-| `20260913_iter6c_headline_repetitions` | 16 | [Open](../../../runs/challenge_sweep/20260913_iter6c_headline_repetitions/plots/index.html) |
+| `20260912_iter6c_initial_discovery` | 4 | [Open](../../../../runs/challenge_sweep/20260912_iter6c_initial_discovery/plots/index.html) |
+| `20260912_iter6c_discovery_analysis_v2` | 256 | [Open](../../../../runs/challenge_sweep/20260912_iter6c_discovery_analysis_v2/plots/index.html) |
+| `20260913_iter6c_speed_discovery_frame_vs_3c` | 380 | [Open](../../../../runs/challenge_sweep/20260913_iter6c_speed_discovery_frame_vs_3c/plots/index.html) |
+| `iter6c_repetitions/confirmation` | 516 | [Open](../../../../runs/challenge_sweep/iter6c_repetitions/confirmation/plots/index.html) |
+| `20260913_iter6c_headline_repetitions` | 16 | [Open](../../../../runs/challenge_sweep/20260913_iter6c_headline_repetitions/plots/index.html) |
 
-The [central index](../../../runs/key_findings_reports/iteration6c/README.md)
+The [central index](../../../../runs/key_findings_reports/iteration6c/README.md)
 links the combined final reports and existing paired videos. Standard roots
 contain configs, runs, summaries, plots, results and paired-comparison CSVs.
 There is no compatibility-symlink tree. The relocation changed organization,
 not experiment outcomes. No new video rendering was needed for this report repair.
 
-The [combined discovery HTML report](../../../runs/key_findings_reports/iteration6c/discovery_overview/plots/index.html)
+The [combined discovery HTML report](../../../../runs/key_findings_reports/iteration6c/discovery_overview/plots/index.html)
 contains all 640 discovery runs exactly once and links the additional measured
 base-motion tables. Historical nominal rows in that supplemental tilt comparison
 are labeled separately and do not inflate the primary discovery report.
 
-- [Complete final exports](../../../runs/key_findings_reports/iteration6c/reports/final/).
-- [Run inventory](../../../runs/key_findings_reports/iteration6c/reports/final/run_inventory.csv).
-- [Discovery pairs](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
-- [All target envelopes](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_envelopes.csv).
-- [Confirmed boundaries](../../../runs/key_findings_reports/iteration6c/reports/final/confirmation_boundaries.csv).
-- [Changed discovery cells](../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv), the 39 cells audited against three repetitions.
-- [Headline cases](../../../runs/key_findings_reports/iteration6c/reports/final/headline_cells.csv).
-- [Preserved paired videos and plots](../../../runs/key_findings_reports/iteration6c/videos/README.md).
+- [Complete final exports](../../../../runs/key_findings_reports/iteration6c/reports/final).
+- [Run inventory](../../../../runs/key_findings_reports/iteration6c/reports/final/run_inventory.csv).
+- [Discovery pairs](../../../../runs/key_findings_reports/iteration6c/reports/final/discovery_pairs.csv).
+- [All target envelopes](../../../../runs/key_findings_reports/iteration6c/reports/final/discovery_envelopes.csv).
+- [Confirmed boundaries](../../../../runs/key_findings_reports/iteration6c/reports/final/confirmation_boundaries.csv).
+- [Changed discovery cells](../../../../runs/key_findings_reports/iteration6c/reports/final/discovery_signed_transitions.csv), the 39 cells audited against three repetitions.
+- [Headline cases](../../../../runs/key_findings_reports/iteration6c/reports/final/headline_cells.csv).
+- [Preserved paired videos and plots](../../../../runs/key_findings_reports/iteration6c/videos/README.md).
 
 The videos show FAME fast fall-to-stable, FAME drift-to-stable, and the same ALMI
 target's mixed benefit at T=0.8 versus repeatable regression at T=0.6. They use

@@ -302,7 +302,7 @@ outside the focused freeze gates and must not be represented as universal passes
 `provenance/dependencies.json` records Python `3.10.12`, NumPy `2.2.6`, SciPy
 `1.15.3`, Crocoddyl `3.2.1`, and Pinocchio `4.1.0` with the full package inventory.
 
-The [final artifact index](../../../runs/key_findings_reports/iteration6b_preparation/nominal_refactor/README.md)
+The [final artifact index](../../../../runs/key_findings_reports/iteration6b_preparation/nominal_refactor/README.md)
 lists all ten sweep directories and the exact offline finalization command from
 `provenance/rerun_commands.json`. `provenance/cleanup.json` records no temporary
 debug physics runs created, only the nominal-refactor validation cache removed,

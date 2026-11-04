@@ -154,7 +154,7 @@ Artifact:
 
 `runs/archive/full_sweep/20260901_053845_iter3c_boxqp_fame_full`
 (approved numerical destination; see the
-[archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)).
+[archive policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)).
 
 | Stable | Drift | Stumble | Fall | Survived |
 |---:|---:|---:|---:|---:|

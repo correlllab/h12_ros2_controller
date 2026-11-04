@@ -58,15 +58,15 @@ Controller documents:
 - [counter_balance_iteration_2.md](counter_balance_iteration_2.md): MAGPIE,
   confirmed-fall classification, moving-arm pass-through, and momentum-wide
   development.
-- [zmp_balance_plan_new.md](zmp_balance_plan_new.md): existing Crocoddyl
+- [zmp_balance_plan_new.md](../zmp_balance_plan_new.md): existing Crocoddyl
   controller, analytical derivative timing, reaction identification, and
   braking-payback evidence.
-- [legacy/zmp_balance_update_analysis.md](legacy/zmp_balance_update_analysis.md):
+- [legacy/zmp_balance_update_analysis.md](../legacy/zmp_balance_update_analysis.md):
   distinction between arm momentum and momentum rate, finite-stroke limits,
   braking, and lower-policy interaction.
 
 Decision-grade benchmark numerical destinations (full-sweep publication pending
-under the [2026-09-24 archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)):
+under the [2026-09-24 archive policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)):
 
 - FAME full panel:
   `runs/archive/full_sweep/20260823_172208_fame_magpie_fast_full_reachability_momentum_wide`.

@@ -60,7 +60,7 @@ Fine-tuning therefore adds 30 Frame-stable and 30 H2-stable cells while removing
 checkpoint, not counter balance.
 
 Dynamic numerical archive destinations (publication pending under the
-[2026-09-24 policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24)):
+[2026-09-24 policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24)):
 
 - `runs/archive/checkpoint_sweep/20260905_024720_almi_checkpoint_stand/`.
 - `runs/archive/checkpoint_sweep/20260905_032931_almi_checkpoint_manip/`.

@@ -29,7 +29,7 @@ The source review also includes the finalized analyses for
 [5D](counter_balance_analysis_iteration_5d.md), and
 [5E](counter_balance_analysis_iteration_5e.md), the
 [checkpoint protocol](counter_balance_almi_checkpoint_sweep.md), and
-[ALMI-Manip training notes](../../h12_mjlab/docs/almi_manip.md).
+[ALMI-Manip training notes](../../../h12_mjlab/docs/almi_manip.md).
 
 ## Finalized Benchmark Refresh
 
@@ -232,7 +232,7 @@ sweep retains its manifest, `configs/sweep.yaml`, classifications, CSV tables,
 and metadata. The 2026-09-24 profile retires NPZ, JSONL, videos, HTML, images,
 and logs; historical CSV rows are frozen and cannot be reclassified without
 raw telemetry. Publication is pending safety validation; see the
-[bounded archive policy](../../../docs/archive.md#approved-numerical-archive-2026-09-24).
+[bounded archive policy](../../../../docs/archive.md#approved-numerical-archive-2026-09-24).
 
 Broad refresh numerical destinations are `runs/archive/full_sweep/` and
 `runs/challenge_sweep/legacy/`,

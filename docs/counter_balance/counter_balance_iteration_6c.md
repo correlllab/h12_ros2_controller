@@ -232,7 +232,7 @@ with configs, runs, summaries, results and `plots/index.html`. Reports describe
 their own raw run set, not cumulative carried records. There are no compatibility
 symlinks or active continuation directories.
 
-The [central artifact index](../../../runs/key_findings_reports/iteration6c/README.md)
+The [central artifact index](../../../../runs/key_findings_reports/iteration6c/README.md)
 contains combined reports, preflight and existing video links. Health checks are
 recorded in the stage ledgers. Historical nominal roots remain separate; no
 recorded outcomes are changed by layout cleanup.
