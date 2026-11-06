@@ -67,11 +67,13 @@ class UpperController:
             controller_cfg.get('command_seed_max_gap', COMMAND_SEED_MAX_GAP)
         )
         self.plan_max_age = float(controller_cfg.get('plan_max_age', 30.0))
+        self.timeout = float(controller_cfg.get('timeout', 5.0))
         for name in ('threshold_linear', 'threshold_angular'):
             value = float(controller_cfg.get(name, 1e-3 if name == 'threshold_linear' else 1e-2))
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f'Controller {name} must be finite and positive')
-        for name in ('execution_start_tolerance', 'command_seed_max_gap', 'plan_max_age'):
+        for name in ('execution_start_tolerance', 'command_seed_max_gap', 'plan_max_age',
+                     'timeout'):
             value = getattr(self, name)
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f'Controller {name} must be finite and positive')
@@ -178,10 +180,12 @@ class UpperController:
             raise
 
     def _startup_routine(self, torso_init, torso_target):
+        # dt controls IK integration; wall pacing does not measure simulated progress
+        steps = max(50, int(np.ceil(self.timeout / self.dt)))
         for config_name in ('init_1', 'init_2', 'init_3', 'home'):
             self._move_to_reduced_configuration(
                 NAMED_CONFIGS[config_name],
-                steps=50,
+                steps=steps,
                 desc=f'Moving {config_name}',
             )
         self._move_torso_to_target(torso_init, torso_target)
@@ -195,8 +199,17 @@ class UpperController:
             self.goto_reduced_configuration(q_reduced)
             error = np.max(np.abs(self.robot_model.state_reduced['q'] - q_reduced))
             if error < threshold:
-                break
+                return
             time.sleep(self.dt)
+        command_error = np.max(np.abs(
+            self.low_cmd_handler.q_cmd[self.enabled_ids] - q_reduced
+        ))
+        print(
+            f'Warning: {desc} did not converge after {steps} control steps: '
+            f'measured error={error:.4f} rad, command error={command_error:.4f} rad '
+            f'(threshold={threshold:.4f} rad); continuing startup',
+            flush=True,
+        )
 
     def _load_planner_config(self):
         '''Load OMPL planner config from controller config'''
