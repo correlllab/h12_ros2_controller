@@ -1,0 +1,3521 @@
+{
+  "definition": "raw observed rows, no extrapolation; nonzero threshold 1e-6 rad/s; task residual uses weighted com+momentum blocks, pooled sum of squared residuals/target; balance_scale=0 has no task residual ratio; measured is simultaneous pre-command state NOT causal response; bounded alternatives are same-state algebra only",
+  "runs": {
+    "B1_counter": {
+      "target": "right_diagonal_outward_up",
+      "policy": "fame",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.3341842759291005,
+      "first_elapsed": 0.028506754897534847,
+      "sha256": "b375b7c2ea8c8208e985d0fa0efd8590716ea0af2a6f8121444961d804c86294",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          -9.369850158691406e-05,
+          0.004261016845703125,
+          0.0026102066040039062,
+          0.012553215026855469
+        ],
+        "counter_wrist_ref": [
+          -0.0023169517517089844,
+          0.0020585060119628906,
+          0.0010063424706459045
+        ],
+        "com_offset_ref": [
+          0.035195049776421856,
+          -0.015937618071294714
+        ],
+        "tilt_reference": [
+          -0.023598049701757412,
+          -0.09202850251876117
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 40,
+          "status": {
+            "solved": 40
+          },
+          "backend": {
+            "bvls": 40
+          },
+          "published": 40,
+          "accepted": 40,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 25,
+          "rate_bound_active": 15,
+          "excursion_bound_active": 10,
+          "requested_nonzero": 40,
+          "applied_nonzero": 40,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 12,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.45687204088324773,
+          "requested_peak_by_joint": [
+            0.9,
+            0.2712000199314809,
+            0.1495520557688578,
+            1.0
+          ],
+          "applied_rms": 0.45687203737485993,
+          "applied_peak_by_joint": [
+            0.8999999761581421,
+            0.271200031042099,
+            0.14955206215381622,
+            1.0
+          ],
+          "measured_rms": 0.41835389651409344,
+          "measured_peak_by_joint": [
+            0.8213955760002136,
+            0.22907447814941406,
+            0.1217055395245552,
+            1.0897400379180908
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.9057264328176402e-08,
+          "moving_q_buffer_error": 5.6833411754553254e-08,
+          "moving_dq_clip_peak": 0.16689651339609624,
+          "limit_violation_peak": -0.04420087718963622,
+          "excursion_peak_by_joint": [
+            0.5213063955307007,
+            0.06289327144622803,
+            0.06777620315551758,
+            0.592099666595459
+          ],
+          "excursion_mean_by_joint": [
+            -0.27536812126636506,
+            -0.030557595193386078,
+            0.028714489936828614,
+            0.3129526019096375
+          ],
+          "applied_mean_by_joint": [
+            -0.5201017756364308,
+            -0.07782482213533512,
+            0.06018777729841531,
+            0.422052951445221
+          ],
+          "measured_mean_by_joint": [
+            -0.404725495580351,
+            -0.04862378338584676,
+            0.05571028282865882,
+            0.44934048686409367
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.957594871520996,
+            0.33624863624572754,
+            0.25807613134384155,
+            4.571460247039795
+          ],
+          "com_error_rms": 0.0033263411737791578,
+          "task_residual_ratio_requested": 0.7164836450264936,
+          "full_cost_requested": 7.434129405856315,
+          "task_residual_ratio_applied": 0.7164836463987357,
+          "full_cost_applied": 7.434129417344944,
+          "task_residual_ratio_measured": 0.7293192428342975,
+          "full_cost_measured": 7.549881654423265,
+          "task_residual_ratio_task_only": 0.7004197581863981,
+          "full_cost_task_only": 8.298349869461427,
+          "task_residual_ratio_posture005": 0.706432960176468,
+          "full_cost_posture005": 7.612397824071859,
+          "com_residual_rms_requested": 0.011677593622577658,
+          "com_residual_rms_applied": 0.011677593559577744,
+          "com_residual_rms_measured": 0.010734501898179337,
+          "momentum_residual_rms_requested": 0.1780233952599171,
+          "momentum_residual_rms_applied": 0.17802339588085617,
+          "momentum_residual_rms_measured": 0.1847737422028269,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.7706407719604849
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.20903496571944744,
+          "requested_peak_by_joint": [
+            0.36147087066396333,
+            0.1760158198468505,
+            0.07967802557561299,
+            0.45529866486937953
+          ],
+          "applied_rms": 0.20903496549644235,
+          "applied_peak_by_joint": [
+            0.36147087812423706,
+            0.17601582407951355,
+            0.07967802882194519,
+            0.45529866218566895
+          ],
+          "measured_rms": 0.15549649024550477,
+          "measured_peak_by_joint": [
+            0.3479750454425812,
+            0.09817477315664291,
+            0.0359974130988121,
+            0.30979594588279724
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.7815500895644885e-08,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.04535136604309081,
+          "excursion_peak_by_joint": [
+            0.5198746919631958,
+            0.05426037311553955,
+            0.07013320922851562,
+            0.576171875
+          ],
+          "excursion_mean_by_joint": [
+            -0.489201283454895,
+            -0.04056646823883057,
+            0.06894496281941732,
+            0.5371706644694011
+          ],
+          "applied_mean_by_joint": [
+            0.19132233435908955,
+            0.05230409915869435,
+            -0.04402582977587978,
+            -0.3426892399787903
+          ],
+          "measured_mean_by_joint": [
+            0.1838413546482722,
+            0.05235987962223589,
+            -0.0010284975171089173,
+            -0.21089395582675935
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.965869903564453,
+            0.08127732574939728,
+            0.24918213486671448,
+            4.563851833343506
+          ],
+          "com_error_rms": 0.004974833838229431,
+          "task_residual_ratio_requested": 1.0286576014673343,
+          "full_cost_requested": 0.13806172762410587,
+          "task_residual_ratio_applied": 1.0286575993065215,
+          "full_cost_applied": 0.13806172762410596,
+          "task_residual_ratio_measured": 1.0153000389161868,
+          "full_cost_measured": 0.1588578955052621,
+          "task_residual_ratio_task_only": 0.6672404197915854,
+          "full_cost_task_only": 0.5543330810457421,
+          "task_residual_ratio_posture005": 0.7998053836858077,
+          "full_cost_posture005": 0.1709513996095174,
+          "com_residual_rms_requested": 0.005099924916795992,
+          "com_residual_rms_applied": 0.005099924895092347,
+          "com_residual_rms_measured": 0.005314815156628205,
+          "momentum_residual_rms_requested": 0.0387610961724239,
+          "momentum_residual_rms_applied": 0.03876109626029442,
+          "momentum_residual_rms_measured": 0.03658291568628645,
+          "measured_task_residual_ratio_measured_moving_rhs": 1.0145496127039682
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.1213306855438094,
+          "requested_peak_by_joint": [
+            0.4210009503720411,
+            0.03325749392533184,
+            0.06530700038321575,
+            0.47624644948475403
+          ],
+          "applied_rms": 0.12133068528208972,
+          "applied_peak_by_joint": [
+            0.42100095748901367,
+            0.03325749561190605,
+            0.06530699878931046,
+            0.4762464463710785
+          ],
+          "measured_rms": 0.06906895842665065,
+          "measured_peak_by_joint": [
+            0.43305984139442444,
+            0.023998277261853218,
+            0.0497107170522213,
+            0.36215582489967346
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.4901161193847656e-08,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.045581499576568596,
+          "excursion_peak_by_joint": [
+            0.42310595512390137,
+            0.033423781394958496,
+            0.06563353538513184,
+            0.47862768173217773
+          ],
+          "excursion_mean_by_joint": [
+            -0.061239991988335456,
+            -0.03051453016021035,
+            0.03553334482899913,
+            0.20915480260248784
+          ],
+          "applied_mean_by_joint": [
+            0.06093531550018937,
+            0.030362716641511533,
+            -0.0353565619529023,
+            -0.2081142307578267
+          ],
+          "measured_mean_by_joint": [
+            0.040089939225552984,
+            -0.0007590046437405102,
+            -0.0034762736852769253,
+            -0.04673790481711666
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.235658645629883,
+            0.7246999144554138,
+            0.35573771595954895,
+            4.5621819496154785
+          ],
+          "com_error_rms": 0.00803221911785491,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0016925183624839104,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.001692518362484116,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.17464887696840947,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.34019619085926617,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0017657241740100323,
+          "com_residual_rms_requested": 0.001251007243295382,
+          "com_residual_rms_applied": 0.0012510072508125462,
+          "com_residual_rms_measured": 0.0013762473565110994,
+          "momentum_residual_rms_requested": 0.022704003485404797,
+          "momentum_residual_rms_applied": 0.022704003462869896,
+          "momentum_residual_rms_measured": 0.015319598877532793,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.09487222754424815,
+          "requested_peak_by_joint": [
+            0.02214066424773107,
+            0.030306559890063832,
+            0.02718351373625039,
+            0.18447619765552126
+          ],
+          "applied_rms": 0.09487222762904113,
+          "applied_peak_by_joint": [
+            0.022140664979815483,
+            0.030306559056043625,
+            0.027183514088392258,
+            0.18447619676589966
+          ],
+          "measured_rms": 0.015488358551833703,
+          "measured_peak_by_joint": [
+            0.03708824887871742,
+            0.023998277261853218,
+            0.0497107170522213,
+            0.04581489413976669
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 7.450580596923828e-09,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.046783069610595696,
+          "excursion_peak_by_joint": [
+            0.022251367568969727,
+            0.03045809268951416,
+            0.02731943130493164,
+            0.18539857864379883
+          ],
+          "excursion_mean_by_joint": [
+            -0.021622912089029948,
+            -0.030437920490900675,
+            0.027092409133911134,
+            0.18502899010976157
+          ],
+          "applied_mean_by_joint": [
+            0.02151533532887697,
+            0.03028648824741443,
+            -0.02695762099077304,
+            -0.18410844802856446
+          ],
+          "measured_mean_by_joint": [
+            -0.008835729551113522,
+            -0.0013817189921004078,
+            -0.0020284257208307583,
+            -0.017253307128945985
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            6.4804277420043945,
+            0.7234724760055542,
+            0.35279226303100586,
+            4.535462856292725
+          ],
+          "com_error_rms": 0.008469760179942859,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.00021709783816808726,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.0002170978381681077,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.03755982698259203,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.04363666547178554,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.00022648788307155134,
+          "com_residual_rms_requested": 0.0003696167127402869,
+          "com_residual_rms_applied": 0.00036961671540397073,
+          "com_residual_rms_measured": 0.0002775933749252984,
+          "momentum_residual_rms_requested": 0.016030920031538897,
+          "momentum_residual_rms_applied": 0.01603092002691919,
+          "momentum_residual_rms_measured": 0.0033026841981448475,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 341,
+          "status": {
+            "solved": 341
+          },
+          "backend": {
+            "bvls": 341
+          },
+          "published": 341,
+          "accepted": 341,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 25,
+          "rate_bound_active": 15,
+          "excursion_bound_active": 10,
+          "requested_nonzero": 341,
+          "applied_nonzero": 341,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 12,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.19685922002731196,
+          "requested_peak_by_joint": [
+            0.9,
+            0.2712000199314809,
+            0.1495520557688578,
+            1.0
+          ],
+          "applied_rms": 0.1968592189264995,
+          "applied_peak_by_joint": [
+            0.8999999761581421,
+            0.271200031042099,
+            0.14955206215381622,
+            1.0
+          ],
+          "measured_rms": 0.15998401402462192,
+          "measured_peak_by_joint": [
+            0.8213955760002136,
+            0.22907447814941406,
+            0.1217055395245552,
+            1.0897400379180908
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.9057264328176402e-08,
+          "moving_q_buffer_error": 5.6833411754553254e-08,
+          "moving_dq_clip_peak": 0.16689651339609624,
+          "limit_violation_peak": -0.04420087718963622,
+          "excursion_peak_by_joint": [
+            0.5213063955307007,
+            0.06289327144622803,
+            0.07013320922851562,
+            0.592099666595459
+          ],
+          "excursion_mean_by_joint": [
+            -0.10518293786258641,
+            -0.030961749141167335,
+            0.03620319841893887,
+            0.23575934776462767
+          ],
+          "applied_mean_by_joint": [
+            -0.0014860286716033113,
+            0.018637259710965717,
+            -0.02453036091856787,
+            -0.14011404850032683
+          ],
+          "measured_mean_by_joint": [
+            -0.005764448343055143,
+            -0.004037033634047267,
+            0.003574104329620289,
+            0.0042321682095806225
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.965869903564453,
+            0.7246999144554138,
+            0.35573771595954895,
+            4.571460247039795
+          ],
+          "com_error_rms": 0.007516462474342123,
+          "task_residual_ratio_requested": 0.7192264174769843,
+          "full_cost_requested": 7.573883651842918,
+          "task_residual_ratio_applied": 0.7192264188117741,
+          "full_cost_applied": 7.573883663331547,
+          "task_residual_ratio_measured": 0.7317874685580619,
+          "full_cost_measured": 7.883388426896935,
+          "task_residual_ratio_task_only": 0.700185573000188,
+          "full_cost_task_only": 9.192879141366443,
+          "task_residual_ratio_posture005": 0.7071521104526044,
+          "full_cost_posture005": 7.78511494785538,
+          "com_residual_rms_requested": 0.004295664353806197,
+          "com_residual_rms_applied": 0.004295664334419366,
+          "com_residual_rms_measured": 0.004043237859037219,
+          "momentum_residual_rms_requested": 0.06493069701537964,
+          "momentum_residual_rms_applied": 0.06493069721077993,
+          "momentum_residual_rms_measured": 0.0652729313757541,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.7722884508189325
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 31,
+          "gain": 0.9072607672068226,
+          "rms_residual": 0.07124599623118276,
+          "cosine": 0.9872214224685528
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.8892628039413746,
+          "rms_residual": 0.10927851286855801,
+          "cosine": 0.9696691830701049
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          -9.369850158691406e-05,
+          0.004261016845703125,
+          0.0026102066040039062,
+          0.012553215026855469
+        ],
+        "last_counter_q": [
+          -0.021526813507080078,
+          -0.02614593505859375,
+          0.02931356430053711,
+          0.19696331024169922
+        ],
+        "last_excursion": [
+          -0.021433115005493164,
+          -0.030406951904296875,
+          0.026703357696533203,
+          0.18441009521484375
+        ],
+        "last_applied": [
+          0.02132648229598999,
+          0.030255673453211784,
+          -0.026570504531264305,
+          -0.18349263072013855
+        ],
+        "last_measured": [
+          -0.0010908307740464807,
+          0.009817477315664291,
+          -0.0497107170522213,
+          -0.009817477315664291
+        ],
+        "first_scale_below_one": 1.3422448406927288,
+        "last_scale_above_zero": 1.807407627813518
+      }
+    },
+    "B2_counter": {
+      "target": "right_diagonal_outward_up",
+      "policy": "almi_manip_finetune",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.3341842759291005,
+      "first_elapsed": 0.022182442247867584,
+      "sha256": "064b4511222e2378ac04b1462a33bb13a0a84af62fd44a24a1069dbe4b6ec0aa",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          -5.9604644775390625e-05,
+          0.003314971923828125,
+          0.002061128616333008,
+          0.01181173324584961
+        ],
+        "counter_wrist_ref": [
+          -0.0022687911987304688,
+          0.00191497802734375,
+          0.0008625760674476624
+        ],
+        "com_offset_ref": [
+          -0.024341254888985288,
+          -0.02251875896798447
+        ],
+        "tilt_reference": [
+          -0.0015790695441873174,
+          0.010114243040930473
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 40,
+          "status": {
+            "solved": 40
+          },
+          "backend": {
+            "bvls": 40
+          },
+          "published": 40,
+          "accepted": 40,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 27,
+          "rate_bound_active": 17,
+          "excursion_bound_active": 11,
+          "requested_nonzero": 40,
+          "applied_nonzero": 40,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 12,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.4639504056738151,
+          "requested_peak_by_joint": [
+            0.9,
+            0.2785045231095156,
+            0.14322842553494666,
+            1.0
+          ],
+          "applied_rms": 0.4639504008114799,
+          "applied_peak_by_joint": [
+            0.8999999761581421,
+            0.27850452065467834,
+            0.1432284265756607,
+            1.0
+          ],
+          "measured_rms": 0.4230108141119858,
+          "measured_peak_by_joint": [
+            0.8704829812049866,
+            0.2519819140434265,
+            0.13027635216712952,
+            1.0482884645462036
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.7815500895644885e-08,
+          "moving_q_buffer_error": 5.908330069637202e-08,
+          "moving_dq_clip_peak": 0.16661944836478204,
+          "limit_violation_peak": -0.12636524677276612,
+          "excursion_peak_by_joint": [
+            0.5965907573699951,
+            0.06694972515106201,
+            0.056955575942993164,
+            0.5912985801696777
+          ],
+          "excursion_mean_by_joint": [
+            -0.30375081300735474,
+            -0.032634137570858,
+            0.026694005727767943,
+            0.3096113443374634
+          ],
+          "applied_mean_by_joint": [
+            -0.5672712673142086,
+            -0.061372522087185646,
+            0.04495689441537252,
+            0.4248790591198485
+          ],
+          "measured_mean_by_joint": [
+            -0.4550400726846419,
+            -0.04851470096036792,
+            0.05605311514809728,
+            0.4400956938858144
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.111351013183594,
+            0.40322017669677734,
+            0.2448452115058899,
+            4.56544828414917
+          ],
+          "com_error_rms": 0.002880513047890439,
+          "task_residual_ratio_requested": 0.6906900881985191,
+          "full_cost_requested": 7.028688621413119,
+          "task_residual_ratio_applied": 0.6906900905852198,
+          "full_cost_applied": 7.028688641447708,
+          "task_residual_ratio_measured": 0.70582415453584,
+          "full_cost_measured": 7.151107187517874,
+          "task_residual_ratio_task_only": 0.6742533357476836,
+          "full_cost_task_only": 7.952295242684094,
+          "task_residual_ratio_posture005": 0.6801346771275576,
+          "full_cost_posture005": 7.193881568031719,
+          "com_residual_rms_requested": 0.010684965664444233,
+          "com_residual_rms_applied": 0.010684965596327547,
+          "com_residual_rms_measured": 0.010201862252048404,
+          "momentum_residual_rms_requested": 0.1722433399326709,
+          "momentum_residual_rms_applied": 0.17224334085366289,
+          "momentum_residual_rms_measured": 0.17815602608929512,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.7515262760305038
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.20618472898821857,
+          "requested_peak_by_joint": [
+            0.4448619395105746,
+            0.07493322683768211,
+            0.08333577880762905,
+            0.5022242205523461
+          ],
+          "applied_rms": 0.20618472946823682,
+          "applied_peak_by_joint": [
+            0.4448619484901428,
+            0.07493322342634201,
+            0.08333577960729599,
+            0.5022242069244385
+          ],
+          "measured_rms": 0.15193206836230416,
+          "measured_peak_by_joint": [
+            0.3643375039100647,
+            0.06326818466186523,
+            0.06685233861207962,
+            0.37197330594062805
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.831220626865749e-08,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.12895596265792847,
+          "excursion_peak_by_joint": [
+            0.5960197448730469,
+            0.06435900926589966,
+            0.054853200912475586,
+            0.5803647041320801
+          ],
+          "excursion_mean_by_joint": [
+            -0.5648026704788208,
+            -0.05773502588272095,
+            0.048633941014607746,
+            0.5614763259887695
+          ],
+          "applied_mean_by_joint": [
+            0.20614142380654812,
+            -0.024982136270652214,
+            -0.07197290410598119,
+            -0.29990069270133973
+          ],
+          "measured_mean_by_joint": [
+            0.19285888730858763,
+            -0.025670884735882284,
+            -0.03771157612403234,
+            -0.15802502340326707
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            9.994619369506836,
+            0.1647167056798935,
+            0.17850595712661743,
+            4.516661167144775
+          ],
+          "com_error_rms": 0.004748785909177495,
+          "task_residual_ratio_requested": 1.4003345416972475,
+          "full_cost_requested": 0.1596770582786478,
+          "task_residual_ratio_applied": 1.4003345415796709,
+          "full_cost_applied": 0.1596770582786479,
+          "task_residual_ratio_measured": 1.3145753746624107,
+          "full_cost_measured": 0.17931050654111658,
+          "task_residual_ratio_task_only": 0.6481057465854497,
+          "full_cost_task_only": 0.5806995151397505,
+          "task_residual_ratio_posture005": 0.8637076362705467,
+          "full_cost_posture005": 0.20371870366491282,
+          "com_residual_rms_requested": 0.006157305716152602,
+          "com_residual_rms_applied": 0.0061573057214260535,
+          "com_residual_rms_measured": 0.006161073646853774,
+          "momentum_residual_rms_requested": 0.035889659813687844,
+          "momentum_residual_rms_applied": 0.03588966004170357,
+          "momentum_residual_rms_measured": 0.027726460450451615,
+          "measured_task_residual_ratio_measured_moving_rhs": 1.3171083178478447
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.12546717459471093,
+          "requested_peak_by_joint": [
+            0.4923748139718278,
+            0.06386919401178312,
+            0.03842999092975066,
+            0.5032800323334499
+          ],
+          "applied_rms": 0.12546717434710333,
+          "applied_peak_by_joint": [
+            0.49237480759620667,
+            0.06386919319629669,
+            0.03842999041080475,
+            0.5032800436019897
+          ],
+          "measured_rms": 0.07483250037454521,
+          "measured_peak_by_joint": [
+            0.49523720145225525,
+            0.03381575644016266,
+            0.06856650114059448,
+            0.42760565876960754
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.384185791154403e-08,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.1291264319419861,
+          "excursion_peak_by_joint": [
+            0.494836688041687,
+            0.06418853998184204,
+            0.038622140884399414,
+            0.5057964324951172
+          ],
+          "excursion_mean_by_joint": [
+            -0.0862319702868695,
+            -0.05865219422987291,
+            0.027430454334179004,
+            0.19777479371824463
+          ],
+          "applied_mean_by_joint": [
+            0.08580295557247383,
+            0.05836039178490222,
+            -0.027293984387460706,
+            -0.1967908391481513
+          ],
+          "measured_mean_by_joint": [
+            0.04931241765632978,
+            -0.0005149026348424906,
+            -0.0026971088605118798,
+            -0.04838940737869955
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            8.866971015930176,
+            0.4776296615600586,
+            0.25376591086387634,
+            4.5183892250061035
+          ],
+          "com_error_rms": 0.003991773785635409,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0018098905922564407,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.0018098905922566552,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.1675461288440413,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.3637880090435448,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0018881730573194362,
+          "com_residual_rms_requested": 0.0017298057540048916,
+          "com_residual_rms_applied": 0.0017298057498867504,
+          "com_residual_rms_measured": 0.0014488958214724603,
+          "momentum_residual_rms_requested": 0.024488023730648983,
+          "momentum_residual_rms_applied": 0.024488023693546968,
+          "momentum_residual_rms_measured": 0.01671025609967085,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.08603057764609588,
+          "requested_peak_by_joint": [
+            0.039210248349317856,
+            0.05818777416475969,
+            0.026477272830792323,
+            0.15674752382496698
+          ],
+          "applied_rms": 0.08603057754403792,
+          "applied_peak_by_joint": [
+            0.0392102487385273,
+            0.05818777531385422,
+            0.026477273553609848,
+            0.15674751996994019
+          ],
+          "measured_rms": 0.013851047555632287,
+          "measured_peak_by_joint": [
+            0.04581489413976669,
+            0.020725784823298454,
+            0.04285406321287155,
+            0.030543262138962746
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 7.450580596923828e-09,
+          "moving_q_buffer_error": 4.01496562663084e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.13483625888824463,
+          "excursion_peak_by_joint": [
+            0.03940629959106445,
+            0.058478713035583496,
+            0.02660965919494629,
+            0.1575312614440918
+          ],
+          "excursion_mean_by_joint": [
+            -0.03221534887949626,
+            -0.058464507261912026,
+            0.026444677511850992,
+            0.15728840033213298
+          ],
+          "applied_mean_by_joint": [
+            0.03205507354189952,
+            0.05817363820970058,
+            -0.026313111931085587,
+            -0.15650587106744449
+          ],
+          "measured_mean_by_joint": [
+            -0.0027270770457107573,
+            -0.002890701590028281,
+            -0.0028283681720495226,
+            -0.006599526390588532
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.407703399658203,
+            0.3494790494441986,
+            0.20263342559337616,
+            4.510239124298096
+          ],
+          "com_error_rms": 0.0036207398340510587,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.00017851839819771678,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.0001785183981977446,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.034688676283264774,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.035882198037741085,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.00018623978220280848,
+          "com_residual_rms_requested": 0.0008470073627664672,
+          "com_residual_rms_applied": 0.0008470073514467606,
+          "com_residual_rms_measured": 0.00027742332500178433,
+          "momentum_residual_rms_requested": 0.012780075217984993,
+          "momentum_residual_rms_applied": 0.01278007521486286,
+          "momentum_residual_rms_measured": 0.0030076574800852896,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 341,
+          "status": {
+            "solved": 341
+          },
+          "backend": {
+            "bvls": 341
+          },
+          "published": 341,
+          "accepted": 341,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 27,
+          "rate_bound_active": 17,
+          "excursion_bound_active": 11,
+          "requested_nonzero": 341,
+          "applied_nonzero": 341,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 12,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.20080407791099136,
+          "requested_peak_by_joint": [
+            0.9,
+            0.2785045231095156,
+            0.14322842553494666,
+            1.0
+          ],
+          "applied_rms": 0.20080407648511453,
+          "applied_peak_by_joint": [
+            0.8999999761581421,
+            0.27850452065467834,
+            0.1432284265756607,
+            1.0
+          ],
+          "measured_rms": 0.16340716597620364,
+          "measured_peak_by_joint": [
+            0.8704829812049866,
+            0.2519819140434265,
+            0.13027635216712952,
+            1.0482884645462036
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.831220626865749e-08,
+          "moving_q_buffer_error": 5.908330069637202e-08,
+          "moving_dq_clip_peak": 0.16661944836478204,
+          "limit_violation_peak": -0.12636524677276612,
+          "excursion_peak_by_joint": [
+            0.5965907573699951,
+            0.06694972515106201,
+            0.056955575942993164,
+            0.5912985801696777
+          ],
+          "excursion_mean_by_joint": [
+            -0.1327988741334932,
+            -0.05555987812556829,
+            0.028276772093563135,
+            0.2268920518086453
+          ],
+          "applied_mean_by_joint": [
+            0.01448948961365804,
+            0.04064938159218424,
+            -0.02078415636301636,
+            -0.1284033079826904
+          ],
+          "measured_mean_by_joint": [
+            -0.0035348039532156765,
+            -0.0072519456393486895,
+            0.002654187184624658,
+            0.004088216698168616
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            10.111351013183594,
+            0.4776296615600586,
+            0.25376591086387634,
+            4.56544828414917
+          ],
+          "com_error_rms": 0.003915289417232756,
+          "task_residual_ratio_requested": 0.6945730900843723,
+          "full_cost_requested": 7.190175570284019,
+          "task_residual_ratio_applied": 0.6945730924482677,
+          "full_cost_applied": 7.190175590318608,
+          "task_residual_ratio_measured": 0.7089753991756611,
+          "full_cost_measured": 7.497963822903037,
+          "task_residual_ratio_task_only": 0.6741603839436426,
+          "full_cost_task_only": 8.896782766867393,
+          "task_residual_ratio_posture005": 0.6808895011945593,
+          "full_cost_posture005": 7.399488444753948,
+          "com_residual_rms_requested": 0.0041915999814637174,
+          "com_residual_rms_applied": 0.004191599960010904,
+          "com_residual_rms_measured": 0.0039546185577588955,
+          "momentum_residual_rms_requested": 0.06355858236720206,
+          "momentum_residual_rms_applied": 0.06355858265364865,
+          "momentum_residual_rms_measured": 0.0631753755729241,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.753752068491573
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 31,
+          "gain": 0.9029961127454689,
+          "rms_residual": 0.06597869830719495,
+          "cosine": 0.9889882533504132
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.8890357658733359,
+          "rms_residual": 0.10006641717414236,
+          "cosine": 0.9744845100153341
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          -5.9604644775390625e-05,
+          0.003314971923828125,
+          0.002061128616333008,
+          0.01181173324584961
+        ],
+        "last_counter_q": [
+          -0.028932571411132812,
+          -0.05514669418334961,
+          0.028376102447509766,
+          0.1688404083251953
+        ],
+        "last_excursion": [
+          -0.028872966766357422,
+          -0.058461666107177734,
+          0.026314973831176758,
+          0.1570286750793457
+        ],
+        "last_applied": [
+          0.02872931957244873,
+          0.05817081034183502,
+          -0.02618405409157276,
+          -0.15624743700027466
+        ],
+        "last_measured": [
+          0.006544984877109528,
+          0.0054541537538170815,
+          -0.02571243792772293,
+          -0.008726646192371845
+        ],
+        "first_scale_below_one": 1.352962198201567,
+        "last_scale_above_zero": 1.8200209331698716
+      }
+    },
+    "B3_counter": {
+      "target": "left_overhang_sideways",
+      "policy": "fame",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.2000000000000002,
+      "first_elapsed": 0.05815467704087496,
+      "sha256": "1ccbac83ad91d50493f059a4943b29f46c07eef285c9c643a48623c13cf12166",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          0.0022668838500976562,
+          -0.0019516944885253906,
+          0.0004032254219055176,
+          0.011445283889770508
+        ],
+        "counter_wrist_ref": [
+          -0.0010029971599578857,
+          0.0051746368408203125,
+          0.00032901763916015625
+        ],
+        "com_offset_ref": [
+          0.04527819345122068,
+          -0.0007807757225091602
+        ],
+        "tilt_reference": [
+          -0.027228277916471696,
+          -0.08840108994626308
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 35,
+          "status": {
+            "solved": 35
+          },
+          "backend": {
+            "bvls": 35
+          },
+          "published": 35,
+          "accepted": 35,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 21,
+          "rate_bound_active": 17,
+          "excursion_bound_active": 4,
+          "requested_nonzero": 35,
+          "applied_nonzero": 35,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.5112436792441034,
+          "requested_peak_by_joint": [
+            0.40215440386170376,
+            0.9,
+            0.6960830424941998,
+            1.0
+          ],
+          "applied_rms": 0.5112436768715731,
+          "applied_peak_by_joint": [
+            0.40215441584587097,
+            0.8999999761581421,
+            0.6960830688476562,
+            1.0
+          ],
+          "measured_rms": 0.4733905985704469,
+          "measured_peak_by_joint": [
+            0.3479750454425812,
+            0.8290314078330994,
+            0.6599525809288025,
+            1.0930124521255493
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.7815500895644885e-08,
+          "moving_q_buffer_error": 1.1295296475921646e-07,
+          "moving_dq_clip_peak": 4.914923068533028e-08,
+          "limit_violation_peak": -0.0005695931949717958,
+          "excursion_peak_by_joint": [
+            0.20593690872192383,
+            0.44704484939575195,
+            0.12520082294940948,
+            0.5987040996551514
+          ],
+          "excursion_mean_by_joint": [
+            0.08870690890720913,
+            -0.231084714617048,
+            0.006129651835986546,
+            0.2589827128819057
+          ],
+          "applied_mean_by_joint": [
+            0.22998067334826502,
+            -0.4724639522710017,
+            0.08372071721657579,
+            0.4852984320239297
+          ],
+          "measured_mean_by_joint": [
+            0.16798794536984393,
+            -0.37848712679530894,
+            0.12454615512064525,
+            0.5046183294483594
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.652157783508301,
+            6.353785991668701,
+            1.8117543458938599,
+            4.570462226867676
+          ],
+          "com_error_rms": 0.0022135535777356354,
+          "task_residual_ratio_requested": 0.4210223929143733,
+          "full_cost_requested": 2.7800099737691673,
+          "task_residual_ratio_applied": 0.42102239577898876,
+          "full_cost_applied": 2.7800099856499156,
+          "task_residual_ratio_measured": 0.4668068749533946,
+          "full_cost_measured": 3.0557373047374097,
+          "task_residual_ratio_task_only": 0.3887523187522729,
+          "full_cost_task_only": 3.191511896284998,
+          "task_residual_ratio_posture005": 0.3919598234987214,
+          "full_cost_posture005": 2.9084157029601605,
+          "com_residual_rms_requested": 0.005706258458864691,
+          "com_residual_rms_applied": 0.005706258480110851,
+          "com_residual_rms_measured": 0.005229565426077628,
+          "momentum_residual_rms_requested": 0.09755715443633814,
+          "momentum_residual_rms_applied": 0.09755715515152306,
+          "momentum_residual_rms_measured": 0.11105810073708194,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5084656739619443
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.1899022990246973,
+          "requested_peak_by_joint": [
+            0.24934639269727438,
+            0.2806121702441991,
+            0.10115282868760875,
+            0.4645904924313887
+          ],
+          "applied_rms": 0.1899022982135671,
+          "applied_peak_by_joint": [
+            0.24934639036655426,
+            0.28061217069625854,
+            0.10115282982587814,
+            0.46459048986434937
+          ],
+          "measured_rms": 0.15271603300885397,
+          "measured_peak_by_joint": [
+            0.1647154539823532,
+            0.2770710289478302,
+            0.10113558918237686,
+            0.30434179306030273
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.682209014961967e-08,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.24584603309631348,
+            0.4204726219177246,
+            0.12392859160900116,
+            0.5764615535736084
+          ],
+          "excursion_mean_by_joint": [
+            0.23500981330871581,
+            -0.3744640032450358,
+            0.11509708762168884,
+            0.5500179449717204
+          ],
+          "applied_mean_by_joint": [
+            0.08443765832732121,
+            0.17613311509291332,
+            -0.08999291608730951,
+            -0.2682018131017685
+          ],
+          "measured_mean_by_joint": [
+            0.07781259852151076,
+            0.2124938428401947,
+            -0.0565673644344012,
+            -0.16566083629926046
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            2.4404876232147217,
+            5.846480369567871,
+            1.643786907196045,
+            3.19158673286438
+          ],
+          "com_error_rms": 0.006776960335805667,
+          "task_residual_ratio_requested": 0.9211064799500622,
+          "full_cost_requested": 0.17600903265935752,
+          "task_residual_ratio_applied": 0.921106482101471,
+          "full_cost_applied": 0.17600903265935758,
+          "task_residual_ratio_measured": 0.9249496702002536,
+          "full_cost_measured": 0.18802085993154927,
+          "task_residual_ratio_task_only": 0.6733699716087519,
+          "full_cost_task_only": 0.5619099511769122,
+          "task_residual_ratio_posture005": 0.7435727799008329,
+          "full_cost_posture005": 0.20532376811724004,
+          "com_residual_rms_requested": 0.006763038247091442,
+          "com_residual_rms_applied": 0.006763038269088799,
+          "com_residual_rms_measured": 0.00686983644502971,
+          "momentum_residual_rms_requested": 0.03253367148144148,
+          "momentum_residual_rms_applied": 0.0325336712623653,
+          "momentum_residual_rms_measured": 0.02220335844550702,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.9081186947663568
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.1263136407174691,
+          "requested_peak_by_joint": [
+            0.23956037872466282,
+            0.319973864958654,
+            0.09779414134239084,
+            0.4972336897209509
+          ],
+          "applied_rms": 0.12631364057721509,
+          "applied_peak_by_joint": [
+            0.23956038057804108,
+            0.3199738562107086,
+            0.09779413789510727,
+            0.49723368883132935
+          ],
+          "measured_rms": 0.06413689399744504,
+          "measured_peak_by_joint": [
+            0.20616702735424042,
+            0.3294309079647064,
+            0.13370467722415924,
+            0.40797072649002075
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.3907750447822442e-08,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.24075818061828613,
+            0.32157373428344727,
+            0.09828311204910278,
+            0.49971985816955566
+          ],
+          "excursion_mean_by_joint": [
+            0.08068406498515522,
+            -0.09844332641654915,
+            0.0578114951511363,
+            0.19350800647602215
+          ],
+          "applied_mean_by_joint": [
+            -0.08028265159134265,
+            0.09795355864546516,
+            -0.05752387572522764,
+            -0.19254527954788475
+          ],
+          "measured_mean_by_joint": [
+            -0.014157916023558774,
+            0.026637630423586293,
+            -0.004974667529959779,
+            -0.044212974581079416
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.196718215942383,
+            4.602299213409424,
+            1.396567463874817,
+            4.459575176239014
+          ],
+          "com_error_rms": 0.012220618069798187,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.001834393876796438,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.0018343938767966957,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.21047293631660205,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.36871316923608427,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.00191373617250563,
+          "com_residual_rms_requested": 0.0024193705226171107,
+          "com_residual_rms_applied": 0.00241937052366486,
+          "com_residual_rms_measured": 0.0016142988291179851,
+          "momentum_residual_rms_requested": 0.03430083318370342,
+          "momentum_residual_rms_applied": 0.03430083313652208,
+          "momentum_residual_rms_measured": 0.016481060934029065,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.09996476415673476,
+          "requested_peak_by_joint": [
+            0.0667946848703261,
+            0.0823039913651955,
+            0.036937650756456365,
+            0.1658124117115837
+          ],
+          "applied_rms": 0.09996476367413024,
+          "applied_peak_by_joint": [
+            0.06679468601942062,
+            0.08230399340391159,
+            0.0369376502931118,
+            0.1658124178647995
+          ],
+          "measured_rms": 0.011867748652015687,
+          "measured_peak_by_joint": [
+            0.02508910931646824,
+            0.014180800877511501,
+            0.044568225741386414,
+            0.038179077208042145
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 6.953875223911221e-09,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.06712865829467773,
+            0.08271551132202148,
+            0.03712233901023865,
+            0.1666414737701416
+          ],
+          "excursion_mean_by_joint": [
+            0.06708366473515828,
+            -0.08223020235697429,
+            0.036864312986532845,
+            0.1665877381960551
+          ],
+          "applied_mean_by_joint": [
+            -0.06674991523226102,
+            0.08182109681268533,
+            -0.03668090843906005,
+            -0.16575894231597582
+          ],
+          "measured_mean_by_joint": [
+            0.005563237131961311,
+            0.0004545128225193669,
+            0.0067138032366832094,
+            -0.00836303611091959
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.196718215942383,
+            1.3662233352661133,
+            0.5564618110656738,
+            4.459222793579102
+          ],
+          "com_error_rms": 0.012433875832993874,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0002410300522386279,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.00024103005223865667,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.04718256078001753,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.04844704049996421,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0002514552275084649,
+          "com_residual_rms_requested": 0.0017257397661382828,
+          "com_residual_rms_applied": 0.0017257397647069798,
+          "com_residual_rms_measured": 0.00019780136241723636,
+          "momentum_residual_rms_requested": 0.02996329387438125,
+          "momentum_residual_rms_applied": 0.029963293779304907,
+          "momentum_residual_rms_measured": 0.0023910256649776053,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 336,
+          "status": {
+            "solved": 336
+          },
+          "backend": {
+            "bvls": 336
+          },
+          "published": 336,
+          "accepted": 336,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 21,
+          "rate_bound_active": 17,
+          "excursion_bound_active": 4,
+          "requested_nonzero": 336,
+          "applied_nonzero": 336,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.2059535429311639,
+          "requested_peak_by_joint": [
+            0.40215440386170376,
+            0.9,
+            0.6960830424941998,
+            1.0
+          ],
+          "applied_rms": 0.2059535422110777,
+          "applied_peak_by_joint": [
+            0.40215441584587097,
+            0.8999999761581421,
+            0.6960830688476562,
+            1.0
+          ],
+          "measured_rms": 0.16699157587356345,
+          "measured_peak_by_joint": [
+            0.3479750454425812,
+            0.8290314078330994,
+            0.6599525809288025,
+            1.0930124521255493
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.7815500895644885e-08,
+          "moving_q_buffer_error": 1.1295296475921646e-07,
+          "moving_dq_clip_peak": 4.914923068533028e-08,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.24584603309631348,
+            0.44704484939575195,
+            0.12520082294940948,
+            0.5987040996551514
+          ],
+          "excursion_mean_by_joint": [
+            0.08840932022957575,
+            -0.12458248933156331,
+            0.054985362326815015,
+            0.21624391064757392
+          ],
+          "applied_mean_by_joint": [
+            -0.04060996997924078,
+            0.04202522669497523,
+            -0.04426040802423986,
+            -0.1253140834118572
+          ],
+          "measured_mean_by_joint": [
+            0.008921437747111278,
+            -0.007265712780021464,
+            0.006213839431958539,
+            0.007535173380996899
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.652157783508301,
+            6.353785991668701,
+            1.8117543458938599,
+            4.570462226867676
+          ],
+          "com_error_rms": 0.011387734142384304,
+          "task_residual_ratio_requested": 0.43144955551107783,
+          "full_cost_requested": 2.957853400305324,
+          "task_residual_ratio_applied": 0.43144955833026993,
+          "full_cost_applied": 2.9578534121860725,
+          "task_residual_ratio_measured": 0.47576584849403564,
+          "full_cost_measured": 3.4542311009855577,
+          "task_residual_ratio_task_only": 0.39386789173840714,
+          "full_cost_task_only": 4.122135016697995,
+          "task_residual_ratio_posture005": 0.39864807074864095,
+          "full_cost_posture005": 3.1156532072499092,
+          "com_residual_rms_requested": 0.00322738835358182,
+          "com_residual_rms_applied": 0.003227388360221215,
+          "com_residual_rms_measured": 0.002678406244631616,
+          "momentum_residual_rms_requested": 0.045167612019753535,
+          "momentum_residual_rms_applied": 0.0451676121431193,
+          "momentum_residual_rms_measured": 0.039217276829685795,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5156653339233972
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 35,
+          "gain": 0.9189410228775603,
+          "rms_residual": 0.07055100416398376,
+          "cosine": 0.9901113431897559
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.8873991635710058,
+          "rms_residual": 0.14618097786063744,
+          "cosine": 0.956824423411383
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          0.0022668838500976562,
+          -0.0019516944885253906,
+          0.0004032254219055176,
+          0.011445283889770508
+        ],
+        "last_counter_q": [
+          0.06931042671203613,
+          -0.08379793167114258,
+          0.03705683350563049,
+          0.17788219451904297
+        ],
+        "last_excursion": [
+          0.06704354286193848,
+          -0.08184623718261719,
+          0.036653608083724976,
+          0.16643691062927246
+        ],
+        "last_applied": [
+          -0.06670999526977539,
+          0.08143904060125351,
+          -0.036471251398324966,
+          -0.16560886800289154
+        ],
+        "last_measured": [
+          0.010908307507634163,
+          -0.003272492438554764,
+          0.022284112870693207,
+          -0.008726646192371845
+        ],
+        "first_scale_below_one": 1.2115464098751545,
+        "last_scale_above_zero": 1.6788757289759815
+      }
+    },
+    "B4_counter": {
+      "target": "right_overhang_inner_forward",
+      "policy": "almi_manip_finetune",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.205969457085075,
+      "first_elapsed": 0.03274764120578766,
+      "sha256": "4816022fb65c3e808fe1fe9020ded40a7fc433ab69077774727d6711c76fe708",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          -0.0017981529235839844,
+          0.0027695894241333008,
+          0.0015387535095214844,
+          0.011879920959472656
+        ],
+        "counter_wrist_ref": [
+          -0.002196788787841797,
+          0.0018787384033203125,
+          0.0009224191308021545
+        ],
+        "com_offset_ref": [
+          -0.010202736807210767,
+          -0.0013185268579275849
+        ],
+        "tilt_reference": [
+          -0.021697814381850016,
+          -0.03535614307796829
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 36,
+          "status": {
+            "solved": 36
+          },
+          "backend": {
+            "bvls": 36
+          },
+          "published": 36,
+          "accepted": 36,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 36,
+          "applied_nonzero": 36,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.32256587216044,
+          "requested_peak_by_joint": [
+            0.8186798840286147,
+            0.33305454421542097,
+            0.07871217478679238,
+            0.5252698418271305
+          ],
+          "applied_rms": 0.32256587133584835,
+          "applied_peak_by_joint": [
+            0.8186798691749573,
+            0.3330545425415039,
+            0.07871217280626297,
+            0.5252698659896851
+          ],
+          "measured_rms": 0.24743183409386355,
+          "measured_peak_by_joint": [
+            0.7363107800483704,
+            0.2825251817703247,
+            0.053139034658670425,
+            0.4210606813430786
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.2914339701797228e-08,
+          "moving_q_buffer_error": 1.1677143474386753e-07,
+          "moving_dq_clip_peak": 5.8609006758914006e-08,
+          "limit_violation_peak": -0.0002690367683459982,
+          "excursion_peak_by_joint": [
+            0.39492344856262207,
+            0.09114402532577515,
+            0.01570868492126465,
+            0.15061140060424805
+          ],
+          "excursion_mean_by_joint": [
+            0.18912089533276027,
+            -0.04719832042853037,
+            -0.005836612648434109,
+            -0.08470475673675537
+          ],
+          "applied_mean_by_joint": [
+            0.4359685529747771,
+            -0.17269087717350987,
+            -0.02782677211992753,
+            -0.24244451749190274
+          ],
+          "measured_mean_by_joint": [
+            0.3298551214651929,
+            -0.07229784120702082,
+            -0.004713946953415871,
+            -0.14156559975041696
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.150378227233887,
+            1.0848976373672485,
+            0.4641144871711731,
+            4.569399356842041
+          ],
+          "com_error_rms": 0.0012063837553176922,
+          "task_residual_ratio_requested": 0.24958772010173397,
+          "full_cost_requested": 0.6734829498870052,
+          "task_residual_ratio_applied": 0.24958772152804468,
+          "full_cost_applied": 0.6734829498870066,
+          "task_residual_ratio_measured": 0.4620117441110607,
+          "full_cost_measured": 0.8961479855156865,
+          "task_residual_ratio_task_only": 0.04617404345546464,
+          "full_cost_task_only": 1.5660433534389546,
+          "task_residual_ratio_posture005": 0.12951227942918864,
+          "full_cost_posture005": 0.7673362606430112,
+          "com_residual_rms_requested": 0.002637562895466017,
+          "com_residual_rms_applied": 0.00263756291157623,
+          "com_residual_rms_measured": 0.0029682203862368218,
+          "momentum_residual_rms_requested": 0.02775486513315953,
+          "momentum_residual_rms_applied": 0.027754865286840003,
+          "momentum_residual_rms_measured": 0.05823202894500328,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.507274753357817
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.0760213235806123,
+          "requested_peak_by_joint": [
+            0.2986127996190258,
+            0.0557361149519787,
+            0.03801763933318099,
+            0.10452433291060426
+          ],
+          "applied_rms": 0.0760213237096731,
+          "applied_peak_by_joint": [
+            0.2986128032207489,
+            0.05573611333966255,
+            0.038017638027668,
+            0.10452432930469513
+          ],
+          "measured_rms": 0.07661520059364904,
+          "measured_peak_by_joint": [
+            0.21816617250442505,
+            0.06763151288032532,
+            0.030854925513267517,
+            0.13199053704738617
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.241763432835094e-08,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.39072203636169434,
+            0.0737844705581665,
+            0.012909889221191406,
+            0.14379358291625977
+          ],
+          "excursion_mean_by_joint": [
+            0.3722158590952555,
+            -0.0658804972966512,
+            -0.010522413253784179,
+            -0.1264846165974935
+          ],
+          "applied_mean_by_joint": [
+            -0.09011423824510227,
+            0.022266689315438272,
+            0.012267918640282005,
+            0.08447882334391275
+          ],
+          "measured_mean_by_joint": [
+            -0.10951941261688868,
+            0.019707676372490823,
+            0.011656305193901062,
+            0.0824668084581693
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            1.2878094911575317,
+            0.830220103263855,
+            0.3553530275821686,
+            4.412950038909912
+          ],
+          "com_error_rms": 0.002126490014330878,
+          "task_residual_ratio_requested": 1.2546837538228535,
+          "full_cost_requested": 0.045880273677385,
+          "task_residual_ratio_applied": 1.2546837540406999,
+          "full_cost_applied": 0.045880273677385,
+          "task_residual_ratio_measured": 1.515715941454342,
+          "full_cost_measured": 0.04974032650444435,
+          "task_residual_ratio_task_only": 0.48743664405834525,
+          "full_cost_task_only": 0.33420437724118784,
+          "task_residual_ratio_posture005": 0.8915852975867695,
+          "full_cost_posture005": 0.052897954566535385,
+          "com_residual_rms_requested": 0.0029795562150633026,
+          "com_residual_rms_applied": 0.0029795562246646375,
+          "com_residual_rms_measured": 0.0031980576154908573,
+          "momentum_residual_rms_requested": 0.020965294454657103,
+          "momentum_residual_rms_applied": 0.02096529453444159,
+          "momentum_residual_rms_measured": 0.02132595520522494,
+          "measured_task_residual_ratio_measured_moving_rhs": 1.4867659136517573
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.0649465108759334,
+          "requested_peak_by_joint": [
+            0.3314891264806339,
+            0.062393786302253375,
+            0.02112056485456021,
+            0.10700557955461946
+          ],
+          "applied_rms": 0.06494651091061845,
+          "applied_peak_by_joint": [
+            0.33148911595344543,
+            0.062393784523010254,
+            0.02112056501209736,
+            0.10700558125972748
+          ],
+          "measured_rms": 0.04279986135365105,
+          "measured_peak_by_joint": [
+            0.37742745876312256,
+            0.03163409233093262,
+            0.0719948261976242,
+            0.12653636932373047
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.2914339701797228e-08,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.3331465721130371,
+            0.06270575523376465,
+            0.021226167678833008,
+            0.10754060745239258
+          ],
+          "excursion_mean_by_joint": [
+            0.0631618758181592,
+            -0.059183175747211166,
+            0.010533117747807002,
+            -0.07799214583176833
+          ],
+          "applied_mean_by_joint": [
+            -0.06284763765606013,
+            0.05888873207141886,
+            -0.010480714161836354,
+            0.07760412522129245
+          ],
+          "measured_mean_by_joint": [
+            -0.03570373141991587,
+            -0.0006026267871859815,
+            0.0070244702608226895,
+            0.007708283381819907
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            4.67876672744751,
+            0.8746603727340698,
+            0.3727691173553467,
+            4.559197425842285
+          ],
+          "com_error_rms": 0.00614563237408535,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0004849575612404406,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.00048495756124050264,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.06226366407148931,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.09747646980932861,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0005059332343044738,
+          "com_residual_rms_requested": 0.0012786495515988937,
+          "com_residual_rms_applied": 0.0012786495529654674,
+          "com_residual_rms_measured": 0.0010987448514201406,
+          "momentum_residual_rms_requested": 0.019296087238369942,
+          "momentum_residual_rms_applied": 0.019296087247685015,
+          "momentum_residual_rms_measured": 0.01256160446966071,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.05227639205290661,
+          "requested_peak_by_joint": [
+            0.0345208751621531,
+            0.05856942181563495,
+            0.021053902545378575,
+            0.07673282528398048
+          ],
+          "applied_rms": 0.052276391989539414,
+          "applied_peak_by_joint": [
+            0.03452087566256523,
+            0.058569420129060745,
+            0.021053902804851532,
+            0.0767328217625618
+          ],
+          "measured_rms": 0.013190227349104381,
+          "measured_peak_by_joint": [
+            0.021816615015268326,
+            0.01854412443935871,
+            0.0634240210056305,
+            0.03272492438554764
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 3.725290298461914e-09,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.03469347953796387,
+            0.058862268924713135,
+            0.02115917205810547,
+            0.07711648941040039
+          ],
+          "excursion_mean_by_joint": [
+            0.034620185693105064,
+            -0.05880757669607798,
+            0.021066792805989585,
+            -0.07707246939341227
+          ],
+          "applied_mean_by_joint": [
+            -0.03444794571648042,
+            0.05851500164717436,
+            -0.02096198278789719,
+            0.07668902426958084
+          ],
+          "measured_mean_by_joint": [
+            -0.0018544123488633583,
+            -0.0037633662422498068,
+            0.0020855645338694255,
+            0.004726933563748995
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            4.676815032958984,
+            0.7480858564376831,
+            0.371043860912323,
+            4.559136390686035
+          ],
+          "com_error_rms": 0.0064561918363311216,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 6.591564652558906e-05,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 6.591564652559843e-05,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.013696943499160232,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.013249044951643392,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 6.876666929918722e-05,
+          "com_residual_rms_requested": 0.0007391165074876198,
+          "com_residual_rms_applied": 0.0007391165057981737,
+          "com_residual_rms_measured": 0.00019096828891318325,
+          "momentum_residual_rms_requested": 0.015393916555506537,
+          "momentum_residual_rms_applied": 0.015393916549892046,
+          "momentum_residual_rms_measured": 0.002815481435114358,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 337,
+          "status": {
+            "solved": 337
+          },
+          "backend": {
+            "bvls": 337
+          },
+          "published": 337,
+          "accepted": 337,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 337,
+          "applied_nonzero": 337,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.12227814555878612,
+          "requested_peak_by_joint": [
+            0.8186798840286147,
+            0.33305454421542097,
+            0.07871217478679238,
+            0.5252698418271305
+          ],
+          "applied_rms": 0.12227814534562155,
+          "applied_peak_by_joint": [
+            0.8186798691749573,
+            0.3330545425415039,
+            0.07871217280626297,
+            0.5252698659896851
+          ],
+          "measured_rms": 0.09141099075821094,
+          "measured_peak_by_joint": [
+            0.7363107800483704,
+            0.2825251817703247,
+            0.0719948261976242,
+            0.4210606813430786
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.2914339701797228e-08,
+          "moving_q_buffer_error": 1.1677143474386753e-07,
+          "moving_dq_clip_peak": 5.8609006758914006e-08,
+          "limit_violation_peak": -0.0002690367683459982,
+          "excursion_peak_by_joint": [
+            0.39492344856262207,
+            0.09114402532577515,
+            0.021226167678833008,
+            0.15061140060424805
+          ],
+          "excursion_mean_by_joint": [
+            0.09037355074896657,
+            -0.058200994832579386,
+            0.00784723270540775,
+            -0.08086763857380219
+          ],
+          "applied_mean_by_joint": [
+            -0.01077528200658088,
+            0.032520196243059386,
+            -0.011321155094950618,
+            0.043720948171334824
+          ],
+          "measured_mean_by_joint": [
+            6.150147595749587e-05,
+            -0.007357443320476492,
+            0.005976679472346688,
+            -0.004910357320302605
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.150378227233887,
+            1.0848976373672485,
+            0.4641144871711731,
+            4.569399356842041
+          ],
+          "com_error_rms": 0.005692959481721779,
+          "task_residual_ratio_requested": 0.2624752566606863,
+          "full_cost_requested": 0.7198481811256302,
+          "task_residual_ratio_applied": 0.2624752580155905,
+          "full_cost_applied": 0.7198481811256321,
+          "task_residual_ratio_measured": 0.47175282877905406,
+          "full_cost_measured": 1.0081519760916215,
+          "task_residual_ratio_task_only": 0.056211896338780945,
+          "full_cost_task_only": 1.997724200489472,
+          "task_residual_ratio_posture005": 0.1420206526054297,
+          "full_cost_posture005": 0.8207401484438512,
+          "com_residual_rms_requested": 0.0015892844767156633,
+          "com_residual_rms_applied": 0.0015892844813060582,
+          "com_residual_rms_measured": 0.0015559365210243616,
+          "momentum_residual_rms_requested": 0.020441279729126103,
+          "momentum_residual_rms_applied": 0.020441279762521497,
+          "momentum_residual_rms_measured": 0.022724377024808312,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5154600410604253
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 8,
+          "gain": 0.7422824020473148,
+          "rms_residual": 0.06741028038832984,
+          "cosine": 0.96643494389312
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.7415878915698507,
+          "rms_residual": 0.06767695202992279,
+          "cosine": 0.9661641966457101
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          -0.0017981529235839844,
+          0.0027695894241333008,
+          0.0015387535095214844,
+          0.011879920959472656
+        ],
+        "last_counter_q": [
+          0.032707929611206055,
+          -0.05596482753753662,
+          0.02265787124633789,
+          -0.06504058837890625
+        ],
+        "last_excursion": [
+          0.03450608253479004,
+          -0.05873441696166992,
+          0.021119117736816406,
+          -0.0769205093383789
+        ],
+        "last_applied": [
+          -0.03433440998196602,
+          0.05844220519065857,
+          -0.021014047786593437,
+          0.07653781771659851
+        ],
+        "last_measured": [
+          0.0,
+          -0.010908307507634163,
+          -0.011999137699604034,
+          0.0054541537538170815
+        ],
+        "first_scale_below_one": 1.228130937088281,
+        "last_scale_above_zero": 1.6953231138177216
+      }
+    },
+    "R3_counter": {
+      "target": "left_overhang_sideways",
+      "policy": "fame",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.2000000000000002,
+      "first_elapsed": 0.05484358686953783,
+      "sha256": "b5b244b3a90ac28cf586fc532b0f6be93b350a22b064bf28a723b8b92ded3a18",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          0.0020537376403808594,
+          -0.0017557144165039062,
+          0.0005907118320465088,
+          0.011163949966430664
+        ],
+        "counter_wrist_ref": [
+          -0.0011827349662780762,
+          0.005114555358886719,
+          0.0003414154052734375
+        ],
+        "com_offset_ref": [
+          0.046803162937251355,
+          0.000507055273204278
+        ],
+        "tilt_reference": [
+          -0.0292048375435992,
+          -0.08789729461918581
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 35,
+          "status": {
+            "solved": 35
+          },
+          "backend": {
+            "bvls": 35
+          },
+          "published": 35,
+          "accepted": 35,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 21,
+          "rate_bound_active": 16,
+          "excursion_bound_active": 5,
+          "requested_nonzero": 35,
+          "applied_nonzero": 35,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.5069664674285793,
+          "requested_peak_by_joint": [
+            0.37488499829576843,
+            0.9,
+            0.6701887066485885,
+            1.0
+          ],
+          "applied_rms": 0.5069664654413346,
+          "applied_peak_by_joint": [
+            0.3748849928379059,
+            0.8999999761581421,
+            0.6701887249946594,
+            1.0
+          ],
+          "measured_rms": 0.4695575798017366,
+          "measured_peak_by_joint": [
+            0.33161255717277527,
+            0.8737555146217346,
+            0.7028066515922546,
+            1.0646507740020752
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.7815500895644885e-08,
+          "moving_q_buffer_error": 1.1911639852257849e-07,
+          "moving_dq_clip_peak": 5.237352063147682e-08,
+          "limit_violation_peak": -0.0005630884797314661,
+          "excursion_peak_by_joint": [
+            0.20722389221191406,
+            0.4484848976135254,
+            0.13132092356681824,
+            0.5946393013000488
+          ],
+          "excursion_mean_by_joint": [
+            0.08835808890206473,
+            -0.23315751211983818,
+            0.007934880682400294,
+            0.26158668654305595
+          ],
+          "applied_mean_by_joint": [
+            0.23078655077676688,
+            -0.46371792920524185,
+            0.08559234886031065,
+            0.48070395000811134
+          ],
+          "measured_mean_by_joint": [
+            0.1663984490425459,
+            -0.37580679754859636,
+            0.1298845462501049,
+            0.49745001031884123
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.645139217376709,
+            6.401515007019043,
+            1.8259215354919434,
+            4.570201396942139
+          ],
+          "com_error_rms": 0.0023790357574016525,
+          "task_residual_ratio_requested": 0.4263254876749085,
+          "full_cost_requested": 2.811116501830875,
+          "task_residual_ratio_applied": 0.4263254898950377,
+          "full_cost_applied": 2.8111165118266936,
+          "task_residual_ratio_measured": 0.4703199600497078,
+          "full_cost_measured": 3.0763164321793735,
+          "task_residual_ratio_task_only": 0.3944678688032793,
+          "full_cost_task_only": 3.2126755302759324,
+          "task_residual_ratio_posture005": 0.3976595742368047,
+          "full_cost_posture005": 2.936914165407685,
+          "com_residual_rms_requested": 0.005953036068528443,
+          "com_residual_rms_applied": 0.005953036075717418,
+          "com_residual_rms_measured": 0.005469306985065927,
+          "momentum_residual_rms_requested": 0.09838916336005836,
+          "momentum_residual_rms_applied": 0.0983891639444662,
+          "momentum_residual_rms_measured": 0.1115450286279877,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5070500469792911
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.19455495312791743,
+          "requested_peak_by_joint": [
+            0.2659118270987535,
+            0.2741353069320415,
+            0.12002694216567257,
+            0.46877738162585947
+          ],
+          "applied_rms": 0.19455495353325356,
+          "applied_peak_by_joint": [
+            0.2659118175506592,
+            0.2741353213787079,
+            0.12002693861722946,
+            0.4687773883342743
+          ],
+          "measured_rms": 0.1538016445576645,
+          "measured_peak_by_joint": [
+            0.1788962483406067,
+            0.2814343571662903,
+            0.08056563884019852,
+            0.27925267815589905
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.9305617014682706e-08,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.2523655891418457,
+            0.41826534271240234,
+            0.13079863786697388,
+            0.577970027923584
+          ],
+          "excursion_mean_by_joint": [
+            0.24017996788024903,
+            -0.36805362701416017,
+            0.1275720844666163,
+            0.5530189514160156
+          ],
+          "applied_mean_by_joint": [
+            0.0912685981641213,
+            0.18321158786614736,
+            -0.09469937930504481,
+            -0.26547434528668723
+          ],
+          "measured_mean_by_joint": [
+            0.08915723814473799,
+            0.219256991147995,
+            -0.02651238093773524,
+            -0.15707963506380718
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            2.422816038131714,
+            5.8328986167907715,
+            1.6406075954437256,
+            3.159275770187378
+          ],
+          "com_error_rms": 0.007143416416983502,
+          "task_residual_ratio_requested": 0.8889705308510252,
+          "full_cost_requested": 0.18786758265414752,
+          "task_residual_ratio_applied": 0.8889705311156759,
+          "full_cost_applied": 0.18786758265414757,
+          "task_residual_ratio_measured": 0.8880699060348944,
+          "full_cost_measured": 0.20276623344483788,
+          "task_residual_ratio_task_only": 0.6677301437843612,
+          "full_cost_task_only": 0.548802663474994,
+          "task_residual_ratio_posture005": 0.7261377278538933,
+          "full_cost_posture005": 0.21855310386262297,
+          "com_residual_rms_requested": 0.0069995283418110565,
+          "com_residual_rms_applied": 0.0069995283502207895,
+          "com_residual_rms_measured": 0.007053312851777984,
+          "momentum_residual_rms_requested": 0.0334530658328014,
+          "momentum_residual_rms_applied": 0.03345306588871654,
+          "momentum_residual_rms_measured": 0.022300260054735378,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.8746173587190936
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.12703303495493193,
+          "requested_peak_by_joint": [
+            0.24518254977553638,
+            0.31445346661468054,
+            0.11751553905543995,
+            0.500947800441761
+          ],
+          "applied_rms": 0.12703303451940975,
+          "applied_peak_by_joint": [
+            0.24518254399299622,
+            0.31445345282554626,
+            0.11751554161310196,
+            0.5009477734565735
+          ],
+          "measured_rms": 0.06391900755832317,
+          "measured_peak_by_joint": [
+            0.20943951606750488,
+            0.3239767551422119,
+            0.11656305193901062,
+            0.3697916269302368
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.3907750447822442e-08,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.24640846252441406,
+            0.3160257339477539,
+            0.11810311675071716,
+            0.5034525394439697
+          ],
+          "excursion_mean_by_joint": [
+            0.08256273919885809,
+            -0.0989360225784195,
+            0.05881012819863699,
+            0.19383995349590594
+          ],
+          "applied_mean_by_joint": [
+            -0.08215197881722784,
+            0.09844380359237011,
+            -0.058517540577095704,
+            -0.19287557509187217
+          ],
+          "measured_mean_by_joint": [
+            -0.013089969728168074,
+            0.02555061408588858,
+            -0.007797641549389679,
+            -0.04263775386046488
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.211548328399658,
+            4.49965238571167,
+            1.3712821006774902,
+            4.457609176635742
+          ],
+          "com_error_rms": 0.012186203566704941,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0018553482295588554,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.00185534822955911,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.2171209186433043,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.3729249941413298,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0019355968554048283,
+          "com_residual_rms_requested": 0.0024435087523041925,
+          "com_residual_rms_applied": 0.0024435087424378105,
+          "com_residual_rms_measured": 0.0015838466763692827,
+          "momentum_residual_rms_requested": 0.034424845371786236,
+          "momentum_residual_rms_applied": 0.034424845293537065,
+          "momentum_residual_rms_measured": 0.016304131166013234,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.10042711521116773,
+          "requested_peak_by_joint": [
+            0.06855850789084364,
+            0.08344887500971702,
+            0.037017598080990914,
+            0.16551563395789604
+          ],
+          "applied_rms": 0.10042711482795597,
+          "applied_peak_by_joint": [
+            0.06855850666761398,
+            0.0834488719701767,
+            0.03701759874820709,
+            0.16551563143730164
+          ],
+          "measured_rms": 0.012321422804697295,
+          "measured_peak_by_joint": [
+            0.03381575644016266,
+            0.01745329238474369,
+            0.03942573815584183,
+            0.040360741317272186
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 6.953875223911221e-09,
+          "moving_q_buffer_error": 4.79450632528966e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.06890130043029785,
+            0.08386611938476562,
+            0.037202686071395874,
+            0.16634321212768555
+          ],
+          "excursion_mean_by_joint": [
+            0.06887722412745158,
+            -0.08377110958099365,
+            0.036653165519237516,
+            0.16625792185465496
+          ],
+          "applied_mean_by_joint": [
+            -0.06853455019493898,
+            0.0833543377617995,
+            -0.036470811689893405,
+            -0.16543076758583386
+          ],
+          "measured_mean_by_joint": [
+            0.0071085807033038385,
+            -0.0012362748753124227,
+            0.0014284687737623851,
+            -0.002327105723088607
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.21090030670166,
+            1.436169981956482,
+            0.5822698473930359,
+            4.457609176635742
+          ],
+          "com_error_rms": 0.012364660383623128,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.00024326480392764828,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.00024326480392768745,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.050250201092178794,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.04889622558945729,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.00025378663800756403,
+          "com_residual_rms_requested": 0.001763785932496834,
+          "com_residual_rms_applied": 0.0017637859155615714,
+          "com_residual_rms_measured": 0.00023229222485258085,
+          "momentum_residual_rms_requested": 0.030301425068965653,
+          "momentum_residual_rms_applied": 0.030301424915194115,
+          "momentum_residual_rms_measured": 0.0025368566319136166,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 336,
+          "status": {
+            "solved": 336
+          },
+          "backend": {
+            "bvls": 336
+          },
+          "published": 336,
+          "accepted": 336,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 21,
+          "rate_bound_active": 16,
+          "excursion_bound_active": 5,
+          "requested_nonzero": 336,
+          "applied_nonzero": 336,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.20542199248317658,
+          "requested_peak_by_joint": [
+            0.37488499829576843,
+            0.9,
+            0.6701887066485885,
+            1.0
+          ],
+          "applied_rms": 0.20542199176019368,
+          "applied_peak_by_joint": [
+            0.3748849928379059,
+            0.8999999761581421,
+            0.6701887249946594,
+            1.0
+          ],
+          "measured_rms": 0.16583364727517064,
+          "measured_peak_by_joint": [
+            0.33161255717277527,
+            0.8737555146217346,
+            0.7028066515922546,
+            1.0646507740020752
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 2.9305617014682706e-08,
+          "moving_q_buffer_error": 1.1911639852257849e-07,
+          "moving_dq_clip_peak": 5.237352063147682e-08,
+          "limit_violation_peak": -0.0005461532104321654,
+          "excursion_peak_by_joint": [
+            0.2523655891418457,
+            0.4484848976135254,
+            0.13132092356681824,
+            0.5946393013000488
+          ],
+          "excursion_mean_by_joint": [
+            0.09020290488288515,
+            -0.12493160650843665,
+            0.056580353439563795,
+            0.21693168154784612
+          ],
+          "applied_mean_by_joint": [
+            -0.04181222527404316,
+            0.0436695658429363,
+            -0.04512135441819694,
+            -0.1259520577538448
+          ],
+          "measured_mean_by_joint": [
+            0.010171348054774128,
+            -0.007609843507192896,
+            0.005708773576077961,
+            0.008512375687825539
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.645139217376709,
+            6.401515007019043,
+            1.8259215354919434,
+            4.570201396942139
+          ],
+          "com_error_rms": 0.011369803466192147,
+          "task_residual_ratio_requested": 0.43720287481690745,
+          "full_cost_requested": 3.0008394327145838,
+          "task_residual_ratio_applied": 0.43720287695669025,
+          "full_cost_applied": 3.0008394427104026,
+          "task_residual_ratio_measured": 0.47954164489225615,
+          "full_cost_measured": 3.496203584267516,
+          "task_residual_ratio_task_only": 0.4001065863285429,
+          "full_cost_task_only": 4.134403187892262,
+          "task_residual_ratio_posture005": 0.404760621428525,
+          "full_cost_posture005": 3.1574028661257127,
+          "com_residual_rms_requested": 0.003310734487608165,
+          "com_residual_rms_applied": 0.003310734483550093,
+          "com_residual_rms_measured": 0.0027335305523660115,
+          "momentum_residual_rms_requested": 0.045464912867731265,
+          "momentum_residual_rms_applied": 0.04546491295087586,
+          "momentum_residual_rms_measured": 0.039300644290912214,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5145971986164374
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 34,
+          "gain": 0.9196785569004295,
+          "rms_residual": 0.06886250615470545,
+          "cosine": 0.9904242417844358
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.8946092994766912,
+          "rms_residual": 0.1315205646373516,
+          "cosine": 0.9646113615465886
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          0.0020537376403808594,
+          -0.0017557144165039062,
+          0.0005907118320465088,
+          0.011163949966430664
+        ],
+        "last_counter_q": [
+          0.07089543342590332,
+          -0.08533191680908203,
+          0.03698986768722534,
+          0.17730259895324707
+        ],
+        "last_excursion": [
+          0.06884169578552246,
+          -0.08357620239257812,
+          0.03639915585517883,
+          0.1661386489868164
+        ],
+        "last_applied": [
+          -0.06849920004606247,
+          0.083160400390625,
+          -0.0362180657684803,
+          -0.16531208157539368
+        ],
+        "last_measured": [
+          0.004363323096185923,
+          0.0010908307740464807,
+          0.003428325057029724,
+          -0.013089969754219055
+        ],
+        "first_scale_below_one": 1.2123658489435911,
+        "last_scale_above_zero": 1.679177165031433
+      }
+    },
+    "R4_counter": {
+      "target": "right_overhang_inner_forward",
+      "policy": "almi_manip_finetune",
+      "variant": "counter_ddp_velocity_robust",
+      "duration": 1.205969457085075,
+      "first_elapsed": 0.01858745375648141,
+      "sha256": "5e30b84cc778bac172ef4878160720df173562c37576e7a4a00aae346e785dab",
+      "urdf_hash_matches": true,
+      "controller_yaml_hash_matches": true,
+      "current_resolved_config_matches": true,
+      "current_resolved_config_different_sections": [],
+      "first_references": {
+        "q_counter_ref": [
+          -0.0015766620635986328,
+          0.0028036832809448242,
+          0.0015120506286621094,
+          0.01144552230834961
+        ],
+        "counter_wrist_ref": [
+          -0.002376556396484375,
+          0.0016751289367675781,
+          0.0008506551384925842
+        ],
+        "com_offset_ref": [
+          -0.0108206149005615,
+          -0.001468206716082983
+        ],
+        "tilt_reference": [
+          -0.022243082331523386,
+          -0.027750650009282823
+        ],
+        "_reference_captured": true
+      },
+      "reference_changes": 0,
+      "transport_evidence": {
+        "dds_delivery_confirmed": 0,
+        "actuation_acknowledged": 0,
+        "last_published_available": 0
+      },
+      "verification": "independent full BVLS solve equals requested to <1e-9 on every row; logged task blocks reconstructed to <1e-14 when active",
+      "phases": {
+        "move": {
+          "n": 36,
+          "status": {
+            "solved": 36
+          },
+          "backend": {
+            "bvls": 36
+          },
+          "published": 36,
+          "accepted": 36,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 36,
+          "applied_nonzero": 36,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.32029926726729613,
+          "requested_peak_by_joint": [
+            0.811387608950462,
+            0.3221476945065972,
+            0.07467995109051083,
+            0.5252397591888166
+          ],
+          "applied_rms": 0.320299265377957,
+          "applied_peak_by_joint": [
+            0.8113875985145569,
+            0.3221476972103119,
+            0.07467994838953018,
+            0.5252397656440735
+          ],
+          "measured_rms": 0.2426806906325488,
+          "measured_peak_by_joint": [
+            0.7068583965301514,
+            0.30979594588279724,
+            0.06856650114059448,
+            0.39815327525138855
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.4776984850594505e-08,
+          "moving_q_buffer_error": 1.1577987413247115e-07,
+          "moving_dq_clip_peak": 5.6217504651456807e-08,
+          "limit_violation_peak": -0.00017078969341066674,
+          "excursion_peak_by_joint": [
+            0.39102888107299805,
+            0.09202182292938232,
+            0.013124227523803711,
+            0.15703725814819336
+          ],
+          "excursion_mean_by_joint": [
+            0.18042153120040894,
+            -0.045710745784971446,
+            -0.00487844811545478,
+            -0.0839055511686537
+          ],
+          "applied_mean_by_joint": [
+            0.4300671323144343,
+            -0.16617919486978078,
+            -0.022201316049581185,
+            -0.25342653945295346
+          ],
+          "measured_mean_by_joint": [
+            0.3238555469498452,
+            -0.07520672421863613,
+            0.0026188592116038003,
+            -0.14444418092413494
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.061307907104492,
+            1.0897293090820312,
+            0.4672582149505615,
+            4.568117618560791
+          ],
+          "com_error_rms": 0.0013486926950138126,
+          "task_residual_ratio_requested": 0.26068731077781115,
+          "full_cost_requested": 0.6770835083520036,
+          "task_residual_ratio_applied": 0.260687313993568,
+          "full_cost_applied": 0.6770835083520046,
+          "task_residual_ratio_measured": 0.46679746368140645,
+          "full_cost_measured": 0.889415274472764,
+          "task_residual_ratio_task_only": 0.0529687577750067,
+          "full_cost_task_only": 1.6307765233107046,
+          "task_residual_ratio_posture005": 0.14008044777459625,
+          "full_cost_posture005": 0.7783760602544498,
+          "com_residual_rms_requested": 0.0028688247584390766,
+          "com_residual_rms_applied": 0.0028688247800785463,
+          "com_residual_rms_measured": 0.0030435256394043893,
+          "momentum_residual_rms_requested": 0.028171356683358136,
+          "momentum_residual_rms_applied": 0.028171357100879795,
+          "momentum_residual_rms_measured": 0.05831793781538352,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5187786230029592
+        },
+        "fade": {
+          "n": 15,
+          "status": {
+            "solved": 15
+          },
+          "backend": {
+            "bvls": 15
+          },
+          "published": 15,
+          "accepted": 15,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 15,
+          "applied_nonzero": 15,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.06979655640745043,
+          "requested_peak_by_joint": [
+            0.2450551674305029,
+            0.045777603154220636,
+            0.0487719417143804,
+            0.11039791329451515
+          ],
+          "applied_rms": 0.06979655589586296,
+          "applied_peak_by_joint": [
+            0.2450551688671112,
+            0.04577760398387909,
+            0.0487719401717186,
+            0.11039791256189346
+          ],
+          "measured_rms": 0.07743301766850615,
+          "measured_peak_by_joint": [
+            0.2301653027534485,
+            0.1025380939245224,
+            0.05828152596950531,
+            0.11344640702009201
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.440445582083505e-08,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.38791823387145996,
+            0.07598316669464111,
+            0.0075664520263671875,
+            0.1523756980895996
+          ],
+          "excursion_mean_by_joint": [
+            0.37114612261454266,
+            -0.0666202187538147,
+            -0.002364190419514974,
+            -0.141738224029541
+          ],
+          "applied_mean_by_joint": [
+            -0.07570298730085294,
+            0.02437628582119942,
+            0.010695659646686787,
+            0.08719173793991407
+          ],
+          "measured_mean_by_joint": [
+            -0.10741047287980715,
+            0.032434034859761596,
+            0.012799080461263657,
+            0.07301294282078744
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            1.1692510843276978,
+            0.8231385350227356,
+            0.35510292649269104,
+            4.41792631149292
+          ],
+          "com_error_rms": 0.002336971218021001,
+          "task_residual_ratio_requested": 1.1654665261410433,
+          "full_cost_requested": 0.052355917698334614,
+          "task_residual_ratio_applied": 1.1654665248356824,
+          "full_cost_applied": 0.05235591769833464,
+          "task_residual_ratio_measured": 1.3909952862679267,
+          "full_cost_measured": 0.056916907226183165,
+          "task_residual_ratio_task_only": 0.5360980580776192,
+          "full_cost_task_only": 0.35773865655483217,
+          "task_residual_ratio_posture005": 0.8737416611898527,
+          "full_cost_posture005": 0.06044043781085444,
+          "com_residual_rms_requested": 0.003103547921821402,
+          "com_residual_rms_applied": 0.0031035479131855627,
+          "com_residual_rms_measured": 0.003416881002400302,
+          "momentum_residual_rms_requested": 0.018890007919887222,
+          "momentum_residual_rms_applied": 0.018890007773295102,
+          "momentum_residual_rms_measured": 0.02256438750818316,
+          "measured_task_residual_ratio_measured_moving_rhs": 1.3976029503696799
+        },
+        "postfade": {
+          "n": 286,
+          "status": {
+            "solved": 286
+          },
+          "backend": {
+            "bvls": 286
+          },
+          "published": 286,
+          "accepted": 286,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 286,
+          "applied_nonzero": 286,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.06548665064635237,
+          "requested_peak_by_joint": [
+            0.33321048489850547,
+            0.06288556910272855,
+            0.021320314549688087,
+            0.12120915882623019
+          ],
+          "applied_rms": 0.06548665062026778,
+          "applied_peak_by_joint": [
+            0.3332104980945587,
+            0.06288556754589081,
+            0.021320315077900887,
+            0.12120915949344635
+          ],
+          "measured_rms": 0.044025735970709474,
+          "measured_peak_by_joint": [
+            0.36106500029563904,
+            0.030543262138962746,
+            0.0634240210056305,
+            0.14508050680160522
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.09275182097468e-08,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.33487653732299805,
+            0.06319999694824219,
+            0.021426916122436523,
+            0.12181520462036133
+          ],
+          "excursion_mean_by_joint": [
+            0.06224078065031892,
+            -0.05913502207169166,
+            0.017164365394965752,
+            -0.07875768788210996
+          ],
+          "applied_mean_by_joint": [
+            -0.061931125038153644,
+            0.05884081793467065,
+            -0.017078970525080176,
+            0.07836585843583921
+          ],
+          "measured_mean_by_joint": [
+            -0.03840410979863556,
+            -0.001304420026286238,
+            0.0035002479472985635,
+            0.007605302951484268
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            4.591525554656982,
+            0.8233118057250977,
+            0.37276628613471985,
+            4.559131622314453
+          ],
+          "com_error_rms": 0.006428756731626378,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 0.0004930575844413409,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 0.0004930575844414037,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.06262292038290135,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.0991045744727095,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 0.0005143836045296346,
+          "com_residual_rms_requested": 0.001263563004133514,
+          "com_residual_rms_applied": 0.00126356300501467,
+          "com_residual_rms_measured": 0.0011259009965197933,
+          "momentum_residual_rms_requested": 0.019186708687220593,
+          "momentum_residual_rms_applied": 0.019186708681085792,
+          "momentum_residual_rms_measured": 0.013052885444939984,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "late_hold": {
+          "n": 60,
+          "status": {
+            "solved": 60
+          },
+          "backend": {
+            "bvls": 60
+          },
+          "published": 60,
+          "accepted": 60,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 60,
+          "applied_nonzero": 60,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.052298028558433234,
+          "requested_peak_by_joint": [
+            0.03458042049882423,
+            0.058450686990918196,
+            0.021253652240506453,
+            0.07677552711904344
+          ],
+          "applied_rms": 0.05229802876543211,
+          "applied_peak_by_joint": [
+            0.03458042070269585,
+            0.05845068767666817,
+            0.02125365287065506,
+            0.07677552849054337
+          ],
+          "measured_rms": 0.012890512171491527,
+          "measured_peak_by_joint": [
+            0.01854412443935871,
+            0.022907447069883347,
+            0.0634240210056305,
+            0.01745329238474369
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 3.4769376119556106e-09,
+          "moving_q_buffer_error": 5.203428954381195e-08,
+          "moving_dq_clip_peak": 0.0,
+          "limit_violation_peak": -0.08338380085582248,
+          "excursion_peak_by_joint": [
+            0.03475332260131836,
+            0.0587429404258728,
+            0.021359920501708984,
+            0.07715940475463867
+          ],
+          "excursion_mean_by_joint": [
+            0.03468451897303263,
+            -0.05870245397090912,
+            0.021245725949605308,
+            -0.07713385423024495
+          ],
+          "applied_mean_by_joint": [
+            -0.03451195874561866,
+            0.05841040207693974,
+            -0.021140025835484265,
+            0.0767501043776671
+          ],
+          "measured_mean_by_joint": [
+            -0.0031634092796593905,
+            -0.0030179651958557466,
+            -0.004228267632424831,
+            0.00356338059840103
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            4.591525554656982,
+            0.7534795999526978,
+            0.37272754311561584,
+            4.559061527252197
+          ],
+          "com_error_rms": 0.006803260933794642,
+          "task_residual_ratio_requested": null,
+          "full_cost_requested": 6.59702210413006e-05,
+          "task_residual_ratio_applied": null,
+          "full_cost_applied": 6.59702210413086e-05,
+          "task_residual_ratio_measured": null,
+          "full_cost_measured": 0.01334802311000564,
+          "task_residual_ratio_task_only": null,
+          "full_cost_task_only": 0.013260014429301421,
+          "task_residual_ratio_posture005": null,
+          "full_cost_posture005": 6.882360430433268e-05,
+          "com_residual_rms_requested": 0.000737662908271871,
+          "com_residual_rms_applied": 0.0007376629062097516,
+          "com_residual_rms_measured": 0.0002089332649608461,
+          "momentum_residual_rms_requested": 0.01537428300237167,
+          "momentum_residual_rms_applied": 0.01537428306998751,
+          "momentum_residual_rms_measured": 0.0028413480998874686,
+          "measured_task_residual_ratio_measured_moving_rhs": null
+        },
+        "all": {
+          "n": 337,
+          "status": {
+            "solved": 337
+          },
+          "backend": {
+            "bvls": 337
+          },
+          "published": 337,
+          "accepted": 337,
+          "retry": 0,
+          "collision_flag": 0,
+          "clipped": 0,
+          "bound_active": 0,
+          "rate_bound_active": 0,
+          "excursion_bound_active": 0,
+          "requested_nonzero": 337,
+          "applied_nonzero": 337,
+          "lower_limit_invalid": 0,
+          "all_scales_limit_invalid": 0,
+          "moving_dq_clipped": 0,
+          "limit_causes": {},
+          "remaining_invalid_not_proven_limit": 0,
+          "requested_rms": 0.12171966545990044,
+          "requested_peak_by_joint": [
+            0.811387608950462,
+            0.3221476945065972,
+            0.07467995109051083,
+            0.5252397591888166
+          ],
+          "applied_rms": 0.12171966490383138,
+          "applied_peak_by_joint": [
+            0.8113875985145569,
+            0.3221476972103119,
+            0.07467994838953018,
+            0.5252397656440735
+          ],
+          "measured_rms": 0.09057126691340667,
+          "measured_peak_by_joint": [
+            0.7068583965301514,
+            0.30979594588279724,
+            0.06856650114059448,
+            0.39815327525138855
+          ],
+          "buffer_dq_error": 0.0,
+          "buffer_q_law_error": 1.4776984850594505e-08,
+          "moving_q_buffer_error": 1.1577987413247115e-07,
+          "moving_dq_clip_peak": 5.6217504651456807e-08,
+          "limit_violation_peak": -0.00017078969341066674,
+          "excursion_peak_by_joint": [
+            0.39102888107299805,
+            0.09202182292938232,
+            0.021426916122436523,
+            0.15703725814819336
+          ],
+          "excursion_mean_by_joint": [
+            0.08861492649383998,
+            -0.05803414374501486,
+            0.013940419924365307,
+            -0.08211089595489049
+          ],
+          "applied_mean_by_joint": [
+            -0.009986438596751043,
+            0.03326904214042044,
+            -0.016389905202544665,
+            0.04331500344641662
+          ],
+          "measured_mean_by_joint": [
+            -0.0027772486807491068,
+            -0.007697316547455017,
+            0.003819988283276204,
+            -0.005726052601876992
+          ],
+          "counter_feedforward_tau_cap_hits": 0,
+          "counter_feedforward_tau_peak": [
+            5.061307907104492,
+            1.0897293090820312,
+            0.4672582149505615,
+            4.568117618560791
+          ],
+          "com_error_rms": 0.005959177063482472,
+          "task_residual_ratio_requested": 0.2761115179821988,
+          "full_cost_requested": 0.7299324836347795,
+          "task_residual_ratio_applied": 0.27611152096347963,
+          "full_cost_applied": 0.7299324836347806,
+          "task_residual_ratio_measured": 0.47845269417149416,
+          "full_cost_measured": 1.008955102081848,
+          "task_residual_ratio_task_only": 0.0680575219762099,
+          "full_cost_task_only": 2.0876197543382458,
+          "task_residual_ratio_posture005": 0.15618968108818854,
+          "full_cost_posture005": 0.839330881669832,
+          "com_residual_rms_requested": 0.0016318336361911996,
+          "com_residual_rms_applied": 0.0016318336401031299,
+          "com_residual_rms_measured": 0.001607793195767321,
+          "momentum_residual_rms_requested": 0.020324381153500385,
+          "momentum_residual_rms_applied": 0.020324381204342903,
+          "momentum_residual_rms_measured": 0.023034014145847992,
+          "measured_task_residual_ratio_measured_moving_rhs": 0.5294480571862689
+        }
+      },
+      "descriptive_counter_alignment": {
+        "best": {
+          "lag_ms": 7,
+          "gain": 0.7358836921989605,
+          "rms_residual": 0.06414267260244305,
+          "cosine": 0.9694465881541546
+        },
+        "zero": {
+          "lag_ms": 0,
+          "gain": 0.7354462687507188,
+          "rms_residual": 0.06436442699390131,
+          "cosine": 0.969231605488462
+        }
+      },
+      "reference_and_return": {
+        "q_ref": [
+          -0.0015766620635986328,
+          0.0028036832809448242,
+          0.0015120506286621094,
+          0.01144552230834961
+        ],
+        "last_counter_q": [
+          0.03304028511047363,
+          -0.05580294132232666,
+          0.02289891242980957,
+          -0.06567955017089844
+        ],
+        "last_excursion": [
+          0.034616947174072266,
+          -0.058606624603271484,
+          0.02138686180114746,
+          -0.07712507247924805
+        ],
+        "last_applied": [
+          -0.03444472327828407,
+          0.05831504985690117,
+          -0.021280460059642792,
+          0.07674136757850647
+        ],
+        "last_measured": [
+          -0.010908307507634163,
+          -0.019634954631328583,
+          0.005142487585544586,
+          -0.009817477315664291
+        ],
+        "first_scale_below_one": 1.2096711131744087,
+        "last_scale_above_zero": 1.6757769477553666
+      }
+    }
+  }
+}

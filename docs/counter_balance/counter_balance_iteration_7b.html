@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iteration 7b | Evidence-Based Controller Plan</title>
+    <link rel="stylesheet" href="counter_balance_reports.css">
+</head>
+<body><main>
+<nav aria-label="Related documents"><a href="counter_balance_analysis_iteration_7_hardware.html">New hardware results</a><a href="counter_balance_iteration_7a.html">7a findings</a><a href="../../../../docs/iteration7_hardware_collection.html">Baseline commands</a></nav>
+<header><p class="eyebrow">Plan only / not implemented or hardware validated</p><h1>Iteration 7b: controlled recovery, with a movement-regression gate.</h1><p class="lead">The new hardware data confirms active counter motion, near-matched cadence and repeatable return offsets. It also shows harmful movement-phase behavior in ALMI diagonal and FAME sideways. A reliable controller must solve both; a return-only improvement cannot qualify it for deployment.</p></header>
+<div class="callout warning"><strong>Recommendation:</strong> begin one narrow offline recovery experiment. Do not deploy a stronger full-motion controller, lower the posture weight, extend hold globally or raise authority limits. Confirm the unexpected ALMI diagonal regression separately. Extraction contact remains outside the validated operating envelope.</div>
+
+<section id="evidence"><h2>Why this plan</h2>
+<div class="scroll"><table><thead><tr><th>Evidence from the new campaign</th><th>Design implication</th></tr></thead><tbody>
+<tr><td>All 2,028 Counter rows solve and apply nonzero actions; no invalid candidates or collision backtracking.</td><td>Do not spend 7b fixing hypothetical no-actuation or collision failures that are absent here.</td></tr>
+<tr><td>Frame/Counter move intervals are 33.069/33.171 ms, but Counter timed tracking remains worse in 6/6 pairs.</td><td>The old solve-added cadence cannot explain away the remaining penalty. Preserve corrected scheduling and diagnose the physical/control response.</td></tr>
+<tr><td>Late elbow offset and return-command mismatch repeat across all six Counter trials.</td><td>A measured-recentered velocity step is not a persistent position hold. Test recovery command semantics in isolation.</td></tr>
+<tr><td>B2 onset-relative roll/pitch grows before fade; FAME sideways worsens in both orders.</td><td>Improving return or delivering more nominal counter velocity is not sufficient. Movement regression is a separate required gate.</td></tr>
+<tr><td>ALMI inner-forward suppresses added task motion while retaining prepared standing-relative lean.</td><td>Preserve useful local stabilization. Do not force upright or redefine the metric simply to lower standing drift.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="hypothesis"><h2>One first candidate: postfade position-reference recovery</h2>
+<p><strong>Hypothesis:</strong> after movement and the existing fade have finished, a bounded persistent recovery reference can reduce the counter-arm return plateau without worsening base recovery or moving-arm endpoint error.</p>
+<p>Keep every moving/fading command identical to unchanged Counter until <strong>T+0.5 s</strong>. The experiment changes only the posture-only recovery phase. It is not a fix for B2's movement-phase instability, and no benefit can be credited before the intervention starts.</p>
+<div class="scroll"><table><thead><tr><th>Keep fixed</th><th>Change in an explicit opt-in candidate</th></tr></thead><tbody>
+<tr><td>3C objective, weights/gains, selected joints, moving-arm reference, policy, payload, velocity/excursion/position limits, collision checks, duration and 0.5 s fade.</td><td>After fade, retain a stateful counter position reference and move it toward the captured counter posture under bounded steps, rather than recentering every command on the latest measured position.</td></tr>
+</tbody></table></div>
+<pre>Before T + 0.5 s:
+    unchanged Counter path
+At the recovery transition:
+    reference := last accepted local counter position command
+Each eligible recovery update:
+    propose one bounded step toward captured counter posture
+    derive a consistent velocity command from accepted reference motion
+    validate the new proposal against limits, collision and lead/effort guards
+    commit reference only if the command is accepted
+On stale state, rejection, STOP or missed update:
+    do not integrate missed time or accumulate an unissued reference</pre>
+<p>Initialize from the last accepted command, not a jump to measured position or the final target. Revalidate the <em>new stateful proposal</em>; reusing limits derived only for the old measured-centered candidate is incorrect. Preserve moving-arm endpoint and torso ownership.</p>
+<h3>Failure outputs must be defined before hardware</h3>
+<ul><li><strong>Rejected proposal with fresh, valid state:</strong> discard the proposed reference increment; propose a measured-position/zero-velocity counter fallback and validate it before publication. Invalidate the recovery state and require explicit re-arming from the resulting accepted buffer. Do not resume an accumulated target on the next tick. If that hold itself is invalid, request the verified external stop path rather than publishing an unchecked pose. This requires an explicit candidate fallback contract; do not assume the current fallback already proves all these conditions.</li>
+<li><strong>Stale/invalid state or operator STOP:</strong> invalidate recovery and latch the supervisor's stop path. Do not construct a new hold from untrusted measurements, retain nonzero recovery velocity, or silently re-arm. Specify the actual publisher-buffer and relay outputs and verify them against the approved safety contract; “freeze integration” alone is insufficient.</li>
+<li><strong>Missed deadline with fresh state:</strong> skip elapsed updates and issue at most one validated nominal step. For a longer foreground stall, an independent freshness/command-lease mechanism must stop or safely hold the last intent even while the asynchronous publisher continues its heartbeat. A continuously republished buffer is not proof of a fresh control decision. Until this behavior is verified, candidate hardware is blocked.</li></ul>
+<div class="callout warning"><strong>Same gains do not mean same torque authority.</strong> Persistent position error can increase motor PD effort even if joint velocity/excursion limits are unchanged. Bound reference-to-measurement lead, per-step motion, acceleration and estimated total PD-plus-feedforward effort. Feedforward clipping alone is not a total torque limit. Choose and document these commissioning bounds before tests; this report does not invent safe numerical values from 12 trials.</div>
+<p><strong>Falsifier:</strong> reject the mechanism if verified execution fails to reduce the return plateau. Reject its usefulness if joint return improves but terminal body drift, gyro, endpoint tracking or safety margins worsen. Do not select a candidate solely because the elbow reaches its starting angle.</p>
+</section>
+
+<section id="execution"><h2>Implementation and verification order</h2>
+<ol>
+<li><strong>Freeze the baseline.</strong> Current campaign code/config and raw identities remain the control. Keep an opt-in candidate config; no default behavior changes. Reproduce all six current pairs and quality flags from the retained analysis.</li>
+<li><strong>Add only missing phase-quality diagnostics.</strong> Separate onset-only warnings from operator aborts; check continuity for each reported hold/terminal window. Mark START bookkeeping and whole-loop stalls separately. Do not bypass runtime freshness or external safety checks.</li>
+<li><strong>Implement and unit-test the recovery seam offline.</strong> Assert identical pre-transition commands; no position/velocity discontinuity at transition; no windup or large step after reject, skipped tick or stale observation; correct arm ownership; limits and collision validation of the proposed reference.</li>
+<li><strong>Test actuator behavior without assuming nominal velocity delivery.</strong> In the existing simulation path, compare unchanged Counter and the recovery candidate at identical initial states, including bounded delay/load sensitivity. Keep physical parameters frozen rather than fitting them to make the candidate win. Record command, local buffer, physics-received command, measured motion and total effort estimates separately.</li>
+<li><strong>Run a small sentinel comparison.</strong> Cover both policies' diagonal, FAME sideways and ALMI inner-forward. Include full motion, fade and return, and a matched reset repeat where pre-transition traces differ. Any difference before the recovery transition is initial-state/execution variability, not treatment benefit.</li>
+<li><strong>Stop or proceed on the declared gates.</strong> No candidate advances if it reduces posture offset but worsens recovery, endpoint tracking, effort or constraints. If the same-state/physical response mismatch persists, investigate the actuator/load/interface model rather than increasing gains.</li>
+</ol>
+<p>7a's lower posture weights and the earlier exploratory 2 s hold did not establish a useful transferable improvement. They are not extra sweep dimensions here. No MPC, whole-body redesign or broad randomization campaign is required for this first test.</p>
+</section>
+
+<section id="movement"><h2>The movement problem must not be deferred as “solved”</h2>
+<p>Recovery-only 7b can isolate a real mechanism, but <strong>robust full-trajectory operation remains blocked by the B2 and sideways movement regressions</strong>. First reproduce B2 with matched preparation and actual checkpoint/support identity. Its current Counter onset-relative motion reaches about 3.59° before movement ends, despite nominal residual and actuator realization similar to the better FAME diagonal case.</p>
+<p>If that regression repeats, the next narrowly scoped movement experiment should distinguish the allocator's desired action from actual whole-body response. Use fixed-state objective-term decomposition and matched low-amplitude/offline ablations to separate moving-arm feedforward, CoM feedback, gyro feedback and lower-policy interaction. Declare the intervention and falsifier before comparing results; do not tune all weights together or assume publisher-clipped velocity equals measured velocity.</p>
+<p>A better delivered action that worsens the base falsifies the idea that stronger realization alone is sufficient. At that point the objective must become responsive to measured base/lower-policy dynamics, or the controller needs an explicitly narrower policy/task operating envelope. No general-use or extraction claim should be made from a successful recovery-only patch.</p>
+</section>
+
+<section id="selection"><h2>Selection checks: no hidden composite score</h2>
+<div class="scroll"><table><thead><tr><th>Measure</th><th>Required interpretation</th></tr></thead><tbody>
+<tr><td>Recovery target error and measured joint motion</td><td>Show repeatable plateau reduction and accepted/delivered reference behavior, not just smaller requested cost.</td></tr>
+<tr><td>Task-onset and standing-relative orientation, tilt, gyro</td><td>Report both reference questions. Lower gyro peak does not compensate for larger angle drift; holding a prepared lean is not returning upright.</td></tr>
+<tr><td>Corrected timed/spatial tracking and moving-arm endpoint</td><td>No material regression during unchanged motion or recovery; frozen/body FK is not world tracking.</td></tr>
+<tr><td>Physical excursion/speed, reference lead and effort</td><td>Report measured bounds, not only solver feasibility. No new rejected candidates, oscillation or unacceptable effort.</td></tr>
+<tr><td>Timing and data continuity</td><td>Retain source/command timing, no catch-up commands, no hidden late-hold gaps. Exclude no failed attempt silently.</td></tr>
+</tbody></table></div>
+<p>Set numerical engineering margins from the task clearance/effort budget and repeated unchanged-baseline behavior <em>before</em> candidate trials. The current one/two-pair cells do not justify statistical non-inferiority limits. Show every case and repeat, including failures; a pooled mean cannot hide a policy-specific regression.</p>
+</section>
+
+<section id="hardware"><h2>Smallest justified next hardware work</h2>
+<p><strong>No rerun of the entire panel just for 52–54 ms onset warnings.</strong> Their observed motion is usable and common-window conclusions agree. R4 also gives a clean inner-forward repeat, so B4's late gap does not require discarding that case's movement evidence.</p>
+<ol>
+<li><strong>Before a new candidate:</strong> after approved safety checks, repeat B2 ALMI right diagonal with unchanged Frame/Counter in two additional matched pairs, reversing order in one pair (four trials). Record the actual checkpoint, initial stance/lean, payload, preparation and command/source timing. Stop if the response is unacceptable; do not collect a quota at the expense of safety.</li>
+<li><strong>Before recovery-candidate hardware:</strong> pass offline continuity, constraints, effort and full-trajectory tests. Commission the recovery transition at conservative conditions under supervision. No numeric contact-force or safe-motion limit is inferred here.</li>
+<li><strong>First candidate comparison:</strong> one matched unchanged-Counter/recovery-candidate pair on ALMI inner-forward, after its full motion/fade path has been cleared for the supervised test. Passing recovery/endpoint/effort checks is not permission to run FAME sideways automatically: that case needs independent movement/fade safety clearance because its early regression is repeatable. Only then test the same comparison there. This is at most four initial comparative trials, staged rather than run automatically.</li>
+<li><strong>For any improvement claim:</strong> add matched repeats and the directional guard cases. Candidate testing is not against historical Frame alone, and no historical faulty runtime should be executed.</li>
+</ol>
+<p>The existing <a href="../../../../docs/iteration7_hardware_collection.html">hardware page</a> contains unchanged baseline commands only. It is not a candidate launch procedure. This plan does not authorize contact extraction; actual fixture-relative tool motion, retained grasp, clearance, loads and outcome measurements remain necessary later.</p>
+<p><strong>Keep two decisions separate:</strong> “recovery does not worsen unchanged Counter” can pass while “the full trajectory improves over Frame” still fails. Neither a successful ALMI recovery test nor a better terminal angle clears the known ALMI diagonal or FAME sideways movement problem.</p>
+</section>
+<section id="gates"><h2>Non-negotiable gates</h2><ol><li>Reproduce actual command generation and realized counter motion before changing the objective.</li><li>Keep current Counter as the comparison baseline; use Frame as a separate reference.</li><li>Do not trade safety freshness, collision checks or authority limits for a better benchmark score.</li><li>Declare balance, tracking, recovery and counter-motion guardrails before comparing candidates.</li><li>Require supervised hardware validation on the unchanged runtime before any extraction-contact claim.</li></ol></section>
+<section id="completion"><h2>What counts as a completed 7b</h2><p>A reproducible recovery candidate with tested command continuity, bounded effort, and a clear unchanged-Counter comparison, or a documented negative result with a specific falsified mechanism. The movement-regression finding must stay visible. Completion of this experiment is <strong>not</strong> certification of a robust controller or extraction success.</p><p>No implementation or hardware experiment was performed while writing this plan.</p></section>
+<footer>This plan is not authorization to operate hardware or evidence of a safe controller. Numerical thresholds and commissioning limits require the actual rig and approved safety procedure.</footer>
+</main></body></html>
