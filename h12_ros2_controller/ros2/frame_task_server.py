@@ -27,6 +27,7 @@ from h12_ros2_controller.utility.named_config import NAMED_CONFIGS
 from h12_ros2_controller.utility.controller_config import (
     init_channel_factory,
     load_controller_config,
+    maybe_start_controller_logging,
 )
 from h12_ros2_controller.utility.path_definition_ros import (
     URDF_MAGPIE_PIN_PATH,
@@ -42,6 +43,18 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 # same control period) so the arm stays smooth instead of stepping.
 SLOW_MODE_SCALE = 0.25
 
+
+def controller_class(upper_controller):
+    if upper_controller == 'frame':
+        return FrameController
+    if upper_controller == 'counter':
+        from h12_ros2_controller.core.controller.counter_frame_controller import (
+            CounterFrameController,
+        )
+        return CounterFrameController
+    raise ValueError('upper_controller must be frame or counter')
+
+
 class FrameTaskServer(Node):
     def __init__(self,
                  timeout=None,
@@ -51,6 +64,8 @@ class FrameTaskServer(Node):
                  threshold_angular=None,
                  config_name='safety_split.yaml'):
         super().__init__('frame_task_server')
+        selected = self.declare_parameter('upper_controller', 'frame').value
+        controller_type = controller_class(selected)
         self.config_name = config_name
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         controller_cfg = config['controller']
@@ -76,7 +91,8 @@ class FrameTaskServer(Node):
         self.frame_targets = []
         self._frame_publish_snapshot = ((), ())
 
-        self.controller = FrameController(
+        self.get_logger().info(f'Upper controller: {selected} ({controller_type.__name__})')
+        self.controller = controller_type(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
             SRDF_MAGPIE_SPHERE_PATH,
@@ -85,6 +101,8 @@ class FrameTaskServer(Node):
             visualize=False,
             config=config,
         )
+        if selected == 'counter':
+            maybe_start_controller_logging(self.controller)
 
         # publisher publishing frame names and target poses
         self.frame_names_publisher = self.create_publisher(StringArray, 'frame_names', 10)
@@ -220,6 +238,10 @@ class FrameTaskServer(Node):
                 for name, target in zip(goal.frame_names, goal.frame_targets)
             ]
 
+            prepare = getattr(self.controller, 'prepare_frame_goal', None)
+            if prepare is not None:
+                self.get_logger().info(f'Upper controller goal: {prepare(goal.frame_names)}')
+
             # clear existing frame tasks
             self.controller.clear_frame_tasks()
             self.frame_names = goal.frame_names
@@ -258,6 +280,9 @@ class FrameTaskServer(Node):
                     return self._direct_frame_task_callback(goal_handle, timeout)
             finally:
                 self.controller.speed_scale = 1.0
+                finish = getattr(self.controller, 'finish_goal', None)
+                if finish is not None:
+                    finish()
 
     def _resolve_target(self, frame_name, target, relative, measured_q=None):
         '''
@@ -522,6 +547,10 @@ class FrameTaskServer(Node):
             self.get_logger().info(f'Going to named config: {config_name}')
             q_reduced = NAMED_CONFIGS[config_name]
 
+            prepare = getattr(self.controller, 'prepare_named_goal', None)
+            if prepare is not None:
+                self.get_logger().info(f'Upper controller goal: {prepare()}')
+
             # update ik solver with current state
             self.controller.update_ik_solver()
 
@@ -551,6 +580,9 @@ class FrameTaskServer(Node):
                     )
             finally:
                 self.controller.speed_scale = 1.0
+                finish = getattr(self.controller, 'finish_goal', None)
+                if finish is not None:
+                    finish()
 
     def _direct_named_config_callback(self, goal_handle, q_reduced, timeout):
         # main loop
