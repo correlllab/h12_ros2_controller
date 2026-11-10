@@ -8,6 +8,7 @@ from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.core.planner import PlannerClient
+from h12_ros2_controller.core.controller.planned_reference import ValidatedPlan
 from h12_ros2_controller.core.planner.kinematic_pipeline import (
     frame_target_snapshot, frame_targets_close, plan_frame_tasks,
     planner_config_from_controller, warmup_planner,
@@ -634,59 +635,62 @@ class UpperController:
             self.robot_model.init_visualizer()
         self.robot_model.visualizer.play_reduced_path(path, delay=delay)
 
-    def execute_path(self, path, validate=True, cancel_check=None):
-        '''Execute reduced joint waypoints as direct position commands'''
+    def revalidate_plan(self, reference):
+        '''Recheck saved waypoints without changing their original creation time
+
+        The returned execution check is fresh; the immutable reference remains
+        the same plan. Preparation may have replaced ``last_plan_result``
+        '''
+        reference.check(self, reference.path)
+        path = self._as_reduced_path(reference.path)
+        self._validate_execution_path(path, reference.dt)
+        measured = np.asarray(self.robot_model.state['q'], dtype=float).copy()
+        self._sync_reduced_model(measured)
+        for waypoint in path:
+            measured[self.robot_model.reduced_mask] = waypoint
+            self._validate_waypoint(measured, waypoint)
+        return ValidatedPlan(reference, time.monotonic())
+
+    def _validate_waypoint(self, q, q_reduced):
+        if not self.robot_model.check_within_limits_reduced(q_reduced):
+            raise ValueError('Path waypoint is outside joint limits')
+        if not self.robot_model.check_collision_free(
+                q, min_distance=self.planner.planner_config.self_collision_clearance):
+            raise ValueError('Path waypoint violates current self-collision clearance')
+
+    def execute_path(self, path, validate=True, cancel_check=None, validation=None):
+        '''Execute reduced joint waypoints as direct position commands
+
+        Ordinary calls use the latest plan's provenance and age limit. Replays
+        supply the result of ``revalidate_plan`` and still undergo start,
+        timing, limit, freshness and collision checks. Playback uses the
+        existing wall-clock controller period; cancellation is cooperative
+        '''
         path = self._as_reduced_path(path)
         if not len(path):
             raise ValueError('Cannot execute an empty path')
         if validate:
             self.check_state_fresh()
-            result = getattr(self, 'last_plan_result', None)
-            if result is None or not result.success or not np.array_equal(path, result.path):
-                raise ValueError('Path does not match the most recent validated plan')
-            context = result.metadata.get('execution_context')
-            if context is None:
-                raise ValueError('Path is missing its execution context')
-            if time.monotonic() - context['planned_at'] > getattr(
+            if validation is not None:
+                if not isinstance(validation, ValidatedPlan):
+                    raise ValueError('Invalid saved-plan validation')
+                validation.reference.check(self, path)
+                checked_at = validation.validated_at
+                period = validation.reference.dt
+            else:
+                result = getattr(self, 'last_plan_result', None)
+                if result is None or not result.success or not np.array_equal(path, result.path):
+                    raise ValueError('Path does not match the most recent validated plan')
+                context = result.metadata.get('execution_context')
+                if context is None:
+                    raise ValueError('Path is missing its execution context')
+                checked_at = context['planned_at']
+                period = context['dt']
+            if time.monotonic() - checked_at > getattr(
                 self, 'plan_max_age', 30.0,
             ):
                 raise ValueError('Path is too old to execute')
-            if not np.isclose(context['dt'], self.dt, rtol=0.0, atol=1e-9):
-                raise ValueError('Path period differs from controller period')
-            measured = np.asarray(self.robot_model.state['q'], dtype=float)
-            seed, _ = self._command_seed(measured)
-            reduced_mask = self.robot_model.reduced_mask
-            config = self.planner.planner_config
-            motor_speed = np.minimum(
-                np.broadcast_to(config.joint_velocity_limit, (path.shape[1],)),
-                self.robot_model.model_body_reduced.velocityLimit,
-            )
-            # the first waypoint is another dt-sized step from the last command
-            start_allowance = np.minimum.reduce((
-                np.full(path.shape[1], getattr(
-                    self, 'execution_start_tolerance', 0.01,
-                )),
-                motor_speed * self.dt,
-                np.broadcast_to(config.joint_acceleration_limit, (path.shape[1],)) *
-                self.dt ** 2,
-            ))
-            if np.any(np.abs(path[0] - seed[reduced_mask]) > start_allowance):
-                raise ValueError('Robot command state drifted from planned start')
-            clip_limits = getattr(self.low_cmd_handler, '_q_clip_limits', None)
-            if clip_limits is not None:
-                limits = np.asarray(clip_limits)[reduced_mask]
-                if (np.any(path < limits[:, 0] - 1e-9) or
-                        np.any(path > limits[:, 1] + 1e-9)):
-                    waypoint, joint = np.argwhere(
-                        (path < limits[:, 0] - 1e-9) | (path > limits[:, 1] + 1e-9)
-                    )[0]
-                    name = BODY_JOINTS[np.flatnonzero(reduced_mask)[joint]]
-                    raise ValueError(
-                        f'Path would be clipped by command position limits: '
-                        f'waypoint {waypoint}, {name}={path[waypoint, joint]:.6f}, '
-                        f'limits=[{limits[joint, 0]:.6f}, {limits[joint, 1]:.6f}]'
-                    )
-            self._validate_path_timing(path)
+            self._validate_execution_path(path, period)
 
         # planner returns waypoints time-parameterized at the control period
         step_period = self.dt
@@ -699,21 +703,59 @@ class UpperController:
             q[self.robot_model.reduced_mask] = q_reduced
             if validate:
                 # measured frozen joints are included in each full-body clearance check
-                if not self.robot_model.check_within_limits_reduced(q_reduced):
-                    raise ValueError('Path waypoint is outside joint limits')
-                if not self.robot_model.check_collision_free(
-                    q,
-                    min_distance=self.planner.planner_config.self_collision_clearance,
-                ):
-                    raise ValueError('Path waypoint violates current self-collision clearance')
+                self._validate_waypoint(q, q_reduced)
 
             self._apply_joint_position(q)
             self.update_robot_model()
+            step_event = getattr(self, '_path_step_event', None)
+            if step_event is not None:
+                elapsed = time.monotonic() - step_start_time
+                step_event({'type': 'step', 'phase': 'playback',
+                            'work_elapsed': elapsed,
+                            'overrun': max(0.0, elapsed - step_period)})
             # subtract validation and FK work from the next control-period wait
             time.sleep(max(
                 0.0,
                 step_period - (time.monotonic() - step_start_time)
             ))
+
+    def _validate_execution_path(self, path, period):
+        '''Check command start, period, clipping and configured playback rates'''
+        self.check_state_fresh()
+        if not np.isclose(period, self.dt, rtol=0.0, atol=1e-9):
+            raise ValueError('Path period differs from controller period')
+        measured = np.asarray(self.robot_model.state['q'], dtype=float)
+        if not np.isfinite(measured).all():
+            raise ValueError('Measured motor positions must be finite')
+        seed, _ = self._command_seed(measured)
+        reduced_mask = self.robot_model.reduced_mask
+        config = self.planner.planner_config
+        motor_speed = np.minimum(
+            np.broadcast_to(config.joint_velocity_limit, (path.shape[1],)),
+            self.robot_model.model_body_reduced.velocityLimit,
+        )
+        # the first waypoint is another dt-sized step from the last command
+        start_allowance = np.minimum.reduce((
+            np.full(path.shape[1], getattr(self, 'execution_start_tolerance', 0.01)),
+            motor_speed * self.dt,
+            np.broadcast_to(config.joint_acceleration_limit, (path.shape[1],)) *
+            self.dt ** 2,
+        ))
+        if np.any(np.abs(path[0] - seed[reduced_mask]) > start_allowance):
+            raise ValueError('Robot command state drifted from planned start')
+        clip_limits = getattr(self.low_cmd_handler, '_q_clip_limits', None)
+        if clip_limits is not None:
+            limits = np.asarray(clip_limits)[reduced_mask]
+            bad = (path < limits[:, 0] - 1e-9) | (path > limits[:, 1] + 1e-9)
+            if np.any(bad):
+                waypoint, joint = np.argwhere(bad)[0]
+                name = BODY_JOINTS[np.flatnonzero(reduced_mask)[joint]]
+                raise ValueError(
+                    f'Path would be clipped by command position limits: '
+                    f'waypoint {waypoint}, {name}={path[waypoint, joint]:.6f}, '
+                    f'limits=[{limits[joint, 0]:.6f}, {limits[joint, 1]:.6f}]'
+                )
+        self._validate_path_timing(path)
 
     def _validate_path_timing(self, path):
         '''Reject positions whose playback would exceed planned joint rates'''

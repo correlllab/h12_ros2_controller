@@ -266,7 +266,7 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                            if isinstance(node, ast.Call) and
                            isinstance(node.func, ast.Name) and
                            node.func.id == 'ActionServer']
-                self.assertEqual(len(servers), 2)
+                self.assertEqual(len(servers), 3 if filename == 'frame_task_server.py' else 2)
                 for server in servers:
                     self.assertIn('callback_group',
                                   [keyword.arg for keyword in server.keywords])

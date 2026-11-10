@@ -307,6 +307,7 @@ def test_action_hooks_keep_lock_slow_mode_timeout_and_final_hold(planned):
 
     server = SimpleNamespace(
         controller=controller, _controller_lock=lock, timeout=5.0,
+        _comparison_active=False,
         get_logger=lambda: SimpleNamespace(info=Mock()),
         _resolve_target=lambda name, target, relative, measured_q: target,
         _plan_frame_task_callback=execute, _direct_frame_task_callback=execute,

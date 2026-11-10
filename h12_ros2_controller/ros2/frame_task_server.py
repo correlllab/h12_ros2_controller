@@ -1,7 +1,8 @@
 import rclpy
 import argparse
 from rclpy.node import Node
-from rclpy.action import ActionServer, CancelResponse
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 
@@ -9,6 +10,8 @@ import time
 import json
 import threading
 import sys
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -44,6 +47,15 @@ from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
 SLOW_MODE_SCALE = 0.25
 
 
+def comparison_order(value):
+    if not isinstance(value, str) or not value:
+        raise ValueError('comparison_order must be a nonempty CSV string of frame/counter')
+    order = tuple(mode.strip() for mode in value.split(','))
+    if any(mode not in ('frame', 'counter') for mode in order):
+        raise ValueError('comparison_order must contain only frame or counter')
+    return order
+
+
 def controller_class(upper_controller):
     if upper_controller == 'frame':
         return FrameController
@@ -66,6 +78,12 @@ class FrameTaskServer(Node):
         super().__init__('frame_task_server')
         selected = self.declare_parameter('upper_controller', 'frame').value
         controller_type = controller_class(selected)
+        self._comparison_active = False
+        self._comparison_state_lock = threading.Lock()
+        comparison_order(self.declare_parameter('comparison_order', 'frame,counter').value)
+        prepare = self.declare_parameter('comparison_prepare_config', 'prep').value
+        self._validate_comparison_prepare(prepare)
+        self._upper_controller = selected
         self.config_name = config_name
         config = load_controller_config(config_name, config_dir=CONFIG_DIR)
         controller_cfg = config['controller']
@@ -119,12 +137,14 @@ class FrameTaskServer(Node):
 
         # create the action server
         self._controller_lock = threading.Lock()
+        self.add_on_set_parameters_callback(self._comparison_parameters_callback)
         self._action_callback_group = ReentrantCallbackGroup()
         self.action_server = ActionServer(
             self,
             FrameTask,
             'frame_task',
             execute_callback=self.frame_task_callback,
+            goal_callback=self.normal_goal_callback,
             cancel_callback=self.cancel_callback,
             callback_group=self._action_callback_group,
         )
@@ -133,10 +153,196 @@ class FrameTaskServer(Node):
             NamedConfig,
             'named_config',
             execute_callback=self.named_config_callback,
+            goal_callback=self.normal_goal_callback,
             cancel_callback=self.cancel_callback,
             callback_group=self._action_callback_group,
         )
+        if selected == 'counter':
+            from h12_ros2_controller.core.controller.planned_comparison import PlannedComparison
+            self._planned_comparison = PlannedComparison(self.controller)
+            self.compare_action_server = ActionServer(
+                self, FrameTask, 'compare_frame_task',
+                execute_callback=self.compare_frame_task_callback,
+                goal_callback=self.comparison_goal_callback,
+                cancel_callback=self.cancel_callback,
+                callback_group=self._action_callback_group,
+            )
         self.get_logger().info('Frame Task Server initialized')
+
+    def _validate_comparison_prepare(self, value):
+        if not isinstance(value, str) or value not in NAMED_CONFIGS:
+            raise ValueError('comparison_prepare_config must name an existing named configuration')
+
+    def _comparison_parameters_callback(self, parameters):
+        with self._comparison_state_lock:
+            try:
+                for parameter in parameters:
+                    if parameter.name == 'upper_controller':
+                        if parameter.value != self._upper_controller:
+                            raise ValueError('upper_controller is startup-only')
+                    elif parameter.name in ('comparison_order', 'comparison_prepare_config'):
+                        if self._comparison_active:
+                            raise ValueError('comparison parameters are idle-only; retry after the batch')
+                        if parameter.name == 'comparison_order':
+                            comparison_order(parameter.value)
+                        else:
+                            self._validate_comparison_prepare(parameter.value)
+            except ValueError as err:
+                return SetParametersResult(successful=False, reason=str(err))
+        return SetParametersResult(successful=True)
+
+    def normal_goal_callback(self, request):
+        with self._comparison_state_lock:
+            if self._comparison_active:
+                self.get_logger().warn('Rejecting normal goal: comparison batch active')
+                return GoalResponse.REJECT
+        return GoalResponse.ACCEPT
+
+    def comparison_goal_callback(self, request):
+        with self._comparison_state_lock:
+            if self._comparison_active or self._controller_lock.locked():
+                self.get_logger().warn('Rejecting comparison: controller busy')
+                return GoalResponse.REJECT
+            # reserve admission before the executor schedules this batch
+            self._comparison_active = True
+        return GoalResponse.ACCEPT
+
+    def _comparison_target(self, goal):
+        if not goal.plan:
+            raise ValueError('comparison requires plan=true')
+        if len(goal.frame_names) != 1 or len(goal.frame_targets) != 1:
+            raise ValueError('comparison requires exactly one arm frame and pose')
+        frame = goal.frame_names[0]
+        frames = {item.name for item in self.controller.robot_model.model_body.frames}
+        if frame not in frames:
+            raise ValueError(f'unknown comparison frame: {frame}')
+        self.controller._arm_for_frame(frame)
+        pose = goal.frame_targets[0]
+        p, q = pose.position, pose.orientation
+        values = np.array([p.x, p.y, p.z, q.x, q.y, q.z, q.w], dtype=float)
+        if not np.isfinite(values).all() or np.linalg.norm(values[3:]) < 1e-8:
+            raise ValueError('comparison pose must be finite with a nonzero quaternion')
+        normalized = Pose()
+        normalized.position.x, normalized.position.y, normalized.position.z = values[:3].tolist()
+        quaternion = (values[3:] / np.linalg.norm(values[3:])).tolist()
+        (normalized.orientation.x, normalized.orientation.y,
+         normalized.orientation.z, normalized.orientation.w) = quaternion
+        return frame, pose_to_matrix(normalized)
+
+    def _write_comparison_summary(self, summary):
+        directory = Path(os.environ.get('ROS_LOG_DIR') or
+                         str(Path(os.environ.get('ROS_HOME') or '~/.ros').expanduser() / 'log'))
+        directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode='w', prefix='planned-comparison-',
+                                         suffix='.json', dir=directory, delete=False) as stream:
+            json.dump(summary, stream, indent=2, allow_nan=False)
+            stream.write('\n')
+        self.get_logger().info(f'Comparison summary: {stream.name}')
+
+    def compare_frame_task_callback(self, goal_handle):
+        started = time.monotonic()
+        result = FrameTask.Result()
+        result.success = False
+        summary = {'success': False, 'cancelled': False, 'reason': '', 'trials': [],
+                   'config': self.config_name}
+        step_timing = {}
+        outer_phase = None
+        acquired = self._controller_lock.acquire(blocking=False)
+        try:
+            if not acquired:
+                raise RuntimeError('comparison controller busy at execution; not queued')
+            with self._comparison_state_lock:
+                self._comparison_active = True
+                order = comparison_order(self.get_parameter('comparison_order').value)
+                preparation = self.get_parameter('comparison_prepare_config').value
+                self._validate_comparison_prepare(preparation)
+            summary.update(order=list(order), preparation=preparation)
+            goal = goal_handle.request
+            frame, target = self._comparison_target(goal)
+            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+            if duration < 0 or not 0 <= goal.duration.nanosec < 1000000000:
+                raise ValueError('comparison duration must be a nonnegative wall budget')
+            budget = duration if duration > 0 else 300.0
+            absolute_target = None
+            trial_target_active = False
+
+            def event(record):
+                nonlocal absolute_target, trial_target_active, outer_phase
+                phase = record.get('phase')
+                if record['type'] == 'phase':
+                    outer_phase = phase
+                elif record['type'] == 'step':
+                    key = (record.get('index'), record.get('condition'), outer_phase)
+                    timing = step_timing.setdefault(key, dict(
+                        index=key[0], condition=key[1], phase=outer_phase, step_count=0,
+                        work_elapsed_sum=0.0, work_elapsed_max=0.0,
+                        overrun_count=0, overrun_max=0.0))
+                    work, overrun = float(record['work_elapsed']), float(record['overrun'])
+                    timing['step_count'] += 1
+                    timing['work_elapsed_sum'] += work
+                    timing['work_elapsed_max'] = max(timing['work_elapsed_max'], work)
+                    timing['overrun_count'] += int(overrun > 0.0)
+                    timing['overrun_max'] = max(timing['overrun_max'], overrun)
+                if record['type'] == 'reference':
+                    absolute_target = matrix_to_pose(np.asarray(record['target'], dtype=float))
+                if record['type'] == 'phase' and phase == 'preparation':
+                    trial_target_active = False
+                    self.frame_names, self.frame_targets = [], []
+                    self._frame_publish_snapshot = ((), ())
+                elif record['type'] == 'phase' and phase == 'revalidation':
+                    trial_target_active = True
+                if trial_target_active and absolute_target is not None:
+                    self.frame_names, self.frame_targets = [frame], [absolute_target]
+                    self._frame_publish_snapshot = ((frame,), (absolute_target,))
+                    if record['type'] == 'step':
+                        self._publish_frame_task_feedback(goal_handle, *self._frame_task_errors())
+                if record['type'] in ('phase', 'reference', 'trial'):
+                    self.get_logger().info(f'Comparison: {json.dumps(record, allow_nan=False)}')
+
+            def feedback(phase, progress):
+                if phase in ('playback', 'hold', 'complete') and self.frame_names:
+                    self._publish_frame_task_feedback(goal_handle, *self._frame_task_errors())
+
+            self._planned_comparison.preparation = preparation
+            remaining = budget - (time.monotonic() - started)
+            if remaining <= 0:
+                raise TimeoutError('comparison overall wall budget exceeded before preparation')
+            core_summary = self._planned_comparison.run(
+                frame, target, order, relative=goal.relative, slow_mode=goal.slow_mode,
+                timeout=remaining, cancel_check=lambda: goal_handle.is_cancel_requested,
+                feedback=feedback, event=event,
+            )
+            summary.update(core_summary)
+        except Exception as err:
+            summary.update(success=False,
+                           cancelled=isinstance(err, PathExecutionCancelled), reason=str(err))
+        finally:
+            if acquired:
+                self._controller_lock.release()
+            with self._comparison_state_lock:
+                self._comparison_active = False
+        summary['elapsed'] = time.monotonic() - started
+        summary['step_timing'] = list(step_timing.values())
+        summary['step_timing_scope'] = (
+            'Supplied work_elapsed excludes observer callback overhead; '
+            'not a hard-real-time guarantee. Timing values are seconds.')
+        if summary.get('cancelled') or goal_handle.is_cancel_requested:
+            summary.update(success=False, cancelled=True,
+                           reason=summary.get('reason') or 'Cancellation requested before result')
+        try:
+            self._write_comparison_summary(summary)
+        except Exception as err:
+            self.get_logger().error(f'Cannot write comparison summary: {err}; {summary}')
+        if summary.get('cancelled'):
+            self.get_logger().info(f'Comparison canceled: {summary.get("reason", "")}')
+            goal_handle.canceled()
+        elif summary.get('success'):
+            result.success = True
+            goal_handle.succeed()
+        else:
+            self.get_logger().error(f'Comparison aborted: {summary.get("reason", "unknown failure")}')
+            goal_handle.abort()
+        return result
 
     def _stamp_pose(self, pose):
         """Convert Pose to PoseStamped with current timestamp."""
@@ -195,6 +401,11 @@ class FrameTaskServer(Node):
         return result
 
     def frame_task_callback(self, goal_handle):
+        if self.normal_goal_callback(goal_handle.request) == GoalResponse.REJECT:
+            goal_handle.abort()
+            result = FrameTask.Result()
+            result.success = False
+            return result
         try:
             return self._frame_task_callback(goal_handle)
         except StaleStateError as err:
@@ -208,6 +419,12 @@ class FrameTaskServer(Node):
 
     def _frame_task_callback(self, goal_handle):
         with self._controller_lock:
+            if self._comparison_active:
+                self.get_logger().warn('Aborting previously accepted frame goal: comparison active')
+                goal_handle.abort()
+                result = FrameTask.Result()
+                result.success = False
+                return result
             self.get_logger().info('Received goal')
             goal = goal_handle.request
             if not goal.frame_names or len(goal.frame_names) != len(goal.frame_targets):
@@ -525,6 +742,11 @@ class FrameTaskServer(Node):
         goal_handle.publish_feedback(feedback_msg)
 
     def named_config_callback(self, goal_handle):
+        if self.normal_goal_callback(goal_handle.request) == GoalResponse.REJECT:
+            goal_handle.abort()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
         try:
             return self._named_config_callback(goal_handle)
         except StaleStateError as err:
@@ -532,6 +754,12 @@ class FrameTaskServer(Node):
 
     def _named_config_callback(self, goal_handle):
         with self._controller_lock:
+            if self._comparison_active:
+                self.get_logger().warn('Aborting previously accepted named goal: comparison active')
+                goal_handle.abort()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
             self.get_logger().info('Received named config goal')
             goal = goal_handle.request
 

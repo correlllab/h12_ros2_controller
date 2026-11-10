@@ -163,6 +163,7 @@ def load_server_methods():
         'matrix_to_pose': lambda value: value.copy(),
         'pose_to_matrix': lambda value: value,
         'np': np,
+        'GoalResponse': SimpleNamespace(ACCEPT=1, REJECT=2),
     }
     for node in server.body:
         if isinstance(node, ast.FunctionDef) and node.name in {
@@ -185,6 +186,7 @@ def test_invalid_frame_goal_aborts_before_mutating_tasks(names, targets):
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
         frame_names=['previous'], frame_targets=['previous target'],
+        _comparison_active=False, normal_goal_callback=lambda request: 1,
     )
     server._frame_task_callback = lambda goal: methods['_frame_task_callback'](server, goal)
     goal = SimpleNamespace(
@@ -213,6 +215,7 @@ def test_nonfinite_frame_target_is_rejected_before_task_mutation():
     server = SimpleNamespace(
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
+        _comparison_active=False, normal_goal_callback=lambda request: 1,
     )
     server._frame_task_callback = lambda goal: methods['_frame_task_callback'](server, goal)
     invalid = SimpleNamespace(
@@ -257,6 +260,7 @@ def test_ros_frame_goal_installs_two_tasks_before_one_planned_motion():
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
         timeout=1.0, frame_names=[], frame_targets=[],
+        _comparison_active=False,
         _resolve_target=lambda name, target, relative, measured_q: target,
         _plan_frame_task_callback=Mock(return_value='one plan'),
     )
