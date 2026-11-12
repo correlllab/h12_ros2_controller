@@ -1,0 +1,2407 @@
+schema_version: 1
+description: "Tilted forward, pitch 60\xB0: 25 targets per arm, 50 total"
+role: policy_fine_tuning
+generated_model: magpie
+reference_frame: pelvis
+position_units: meters
+joint_units: radians
+orientation_convention: R = Rz(yaw) Ry(pitch) Rx(roll); grasp-local to pelvis; degrees
+joint_names_order14:
+- left_shoulder_pitch_joint
+- left_shoulder_roll_joint
+- left_shoulder_yaw_joint
+- left_elbow_joint
+- left_wrist_roll_joint
+- left_wrist_pitch_joint
+- left_wrist_yaw_joint
+- right_shoulder_pitch_joint
+- right_shoulder_roll_joint
+- right_shoulder_yaw_joint
+- right_elbow_joint
+- right_wrist_roll_joint
+- right_wrist_pitch_joint
+- right_wrist_yaw_joint
+software_joint_bounds_rad:
+    left:
+    -   - -3.139
+        - 1.569
+    -   - -0.379
+        - 3.399
+    -   - -2.659
+        - 3.009
+    -   - -0.949
+        - 3.179
+    -   - -3.009
+        - 2.749
+    -   - -0.4615
+        - 0.4615
+    -   - -1.269
+        - 1.269
+    right:
+    -   - -3.139
+        - 1.569
+    -   - -3.399
+        - 0.379
+    -   - -3.009
+        - 2.659
+    -   - -0.949
+        - 3.179
+    -   - -2.749
+        - 3.009
+    -   - -0.4615
+        - 0.4615
+    -   - -1.269
+        - 1.269
+joint_limit_policy: Intersection of analyzed software clips and current URDF limits, with 0.05 rad clearance;
+    filter incompatible source witnesses
+authoritative_representation: target_position and target_rpy_degrees for the named grasp frame; arm_configuration
+    is a verified IK witness
+non_arm_configuration: All other joints, including torso and opposite arm, locked at zero
+training_requirement: Use all seven joints per active arm and a grasp-frame pose objective. The current
+    mjlab ALMI manipulation parser uses only four proximal joints and does not enforce these Cartesian
+    poses or wrist orientations.
+screening:
+    position_tolerance_m: 0.001
+    angular_tolerance_rad: 0.005
+    joint_limit_clearance_rad: 0.05
+    minimum_translational_jacobian_singular_value: 0.06
+    collision_model: Full-body sphere URDF with SRDF exclusions, single active arm
+    scope: Static endpoints only; transitions and simultaneous arm pairs not checked
+    camera: Head color optical frustum and minimum depth; no occlusion test
+selection:
+    method: 8 nearest feasible corners + 6 nearest grid face centers + nearest grid center + 10 greedy
+        farthest points in box-normalized coordinates
+    grid_step_m: 0.025
+    targets_per_arm: 25
+    coverage_scope: Published camera-visible working boxes, not the full reachable cloud
+    tie_break: Lexicographic x, y, z; nearest anchors can differ from ideal by half a grid cell
+source_sha256:
+    submodules/CL_Assets/ros_assets/h1_2_magpie.urdf: 551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f
+    submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf: 7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b
+    submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf: 9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5
+    config/safety_split.yaml: 8b7b9eb8d4e2ac194fd7089e5ba2c9a8d70b3c0a36cfaeec47b1757b4d907d0d
+    docs/workspace_analysis/scripts/config.py: a5acda58c525ad46e9ede46f8529cfdc278c4c33114fbacef399299203e686c7
+workspaces:
+    left:
+        frame: left_grasp_frame
+        bounds_m:
+            x:
+            - 0.4
+            - 0.625
+            y:
+            - 0.175
+            - 0.375
+            z:
+            - 0.075
+            - 0.325
+        rpy_degrees:
+        - -90
+        - 60
+        - 0
+        source_grid_points: 990
+        compatible_grid_points: 989
+        source_sweep_sha256: aea3c9c542f69d930a232779d4c24497108c79d4e80e836d61af72efb30a73b0
+        source_sweep: docs/workspace_analysis/data/fine/left_p60_y0_r-90.npy
+        normalized_grid_cover_radius: 0.4444444444444444
+        effective_joint_bounds_rad:
+        -   - -3.139
+            - 1.569
+        -   - -0.19
+            - 3.399
+        -   - -2.659
+            - 3.009
+        -   - -0.949
+            - 3.179
+        -   - -3.009
+            - 2.749
+        -   - -0.4615
+            - 0.4615
+        -   - -1.269
+            - 1.269
+    right:
+        frame: right_grasp_frame
+        bounds_m:
+            x:
+            - 0.45
+            - 0.625
+            y:
+            - -0.35
+            - -0.175
+            z:
+            - 0.05
+            - 0.25
+        rpy_degrees:
+        - 90
+        - 60
+        - 0
+        source_grid_points: 576
+        compatible_grid_points: 572
+        source_sweep_sha256: 115f61d82e574c2b39394fcc61c9d3d99d10b680111a17c0889b67f3acef1901
+        source_sweep: docs/workspace_analysis/data/fine/right_p60_y0_r90.npy
+        normalized_grid_cover_radius: 0.42857142857142866
+        effective_joint_bounds_rad:
+        -   - -3.139
+            - 1.569
+        -   - -3.399
+            - 0.19
+        -   - -3.009
+            - 2.659
+        -   - -0.949
+            - 3.179
+        -   - -2.749
+            - 3.009
+        -   - -0.4615
+            - 0.4615
+        -   - -1.269
+            - 1.269
+candidates:
+-   id: left_pitch_60_corner_01
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 1
+    kind: corner_01
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.175
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.3967858708504537
+    - 3.3018727982156935
+    - 0.4958518900197135
+    - -0.39067321991160997
+    - 1.5293419759894242
+    - -0.24003475719471282
+    - -0.7188034689096415
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.1567916752798794e-05
+    angular_error: 3.5454903042709656e-06
+    metrics:
+        joint_limit_clearance_rad: 0.09712720178430656
+        minimum_translational_jacobian_singular_value: 0.21161723840284924
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 468.1072502257213
+        - 642.2700195356344
+        head_optical_depth_m: 0.6660275652178014
+-   id: left_pitch_60_corner_02
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 2
+    kind: corner_02
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.175
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.5676646746835258
+    - 3.087256589909117
+    - 0.44146218892856537
+    - -0.531208148676441
+    - 1.4977507201696034
+    - -0.30655159771608725
+    - -0.02016893487528622
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 2.390979402757081e-05
+    angular_error: 4.353543795076691e-05
+    metrics:
+        joint_limit_clearance_rad: 0.15494840228391277
+        minimum_translational_jacobian_singular_value: 0.23157100448403278
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 392.62540088082517
+        - 421.59225934380845
+        head_optical_depth_m: 0.484677865863576
+-   id: left_pitch_60_corner_03
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 3
+    kind: corner_03
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.375
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.4876170753318692
+    - 2.795498960401008
+    - 0.2599788430370297
+    - -0.21167959378771703
+    - 2.1321441118044713
+    - -0.07092109055898238
+    - -0.4737742062632123
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.0200360694829228e-05
+    angular_error: 3.192491691430933e-06
+    metrics:
+        joint_limit_clearance_rad: 0.0813829246681308
+        minimum_translational_jacobian_singular_value: 0.1916788764707554
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 197.07039225498323
+        - 643.5901082934854
+        head_optical_depth_m: 0.6691001608614701
+-   id: left_pitch_60_corner_04
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 4
+    kind: corner_04
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.375
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.538970541614161
+    - 2.5432511239520212
+    - 0.10980312745374643
+    - -0.3549813845386413
+    - 2.1817951347895588
+    - -0.16305294913308044
+    - 0.29942864594143054
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 5.512673857362501e-06
+    angular_error: 2.5492172563863986e-06
+    metrics:
+        joint_limit_clearance_rad: 0.2984470508669196
+        minimum_translational_jacobian_singular_value: 0.16655640490424653
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 21.29027285974223
+        - 424.7933329420265
+        head_optical_depth_m: 0.48775046150724477
+-   id: left_pitch_60_corner_05
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 5
+    kind: corner_05
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.175
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.1080423643685717
+    - -0.08898879106596201
+    - 0.874932411269405
+    - 0.8710213057497025
+    - -0.9291790562155614
+    - 0.20286368895877654
+    - 1.0736817461044759
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 9.160396193888929e-06
+    angular_error: 1.44473609272296e-06
+    metrics:
+        joint_limit_clearance_rad: 0.10101120893403799
+        minimum_translational_jacobian_singular_value: 0.11966777606161973
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 502.9054252577238
+        - 409.898965244949
+        head_optical_depth_m: 0.82086297309524
+-   id: left_pitch_60_corner_06
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 6
+    kind: corner_06
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.175
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.9487696981345182
+    - 0.4776726107025335
+    - 0.8894154656960773
+    - 2.328132651475452
+    - -0.9980521326031282
+    - -0.3338863332326315
+    - 0.8454525877396237
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5097512119083207e-05
+    angular_error: 2.11925566718967e-06
+    metrics:
+        joint_limit_clearance_rad: 0.12761366676736852
+        minimum_translational_jacobian_singular_value: 0.22194313604427923
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 455.5667001446452
+        - 176.75595975989162
+        head_optical_depth_m: 0.6395132737410146
+-   id: left_pitch_60_corner_07
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 7
+    kind: corner_07
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.375
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.210358005486667
+    - 0.5107599933602953
+    - 0.9067625973060794
+    - 1.6202855880067393
+    - -0.9102412950435703
+    - 0.30244847089657906
+    - 0.720153661805691
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.343600244652251e-05
+    angular_error: 1.0877032660241618e-06
+    metrics:
+        joint_limit_clearance_rad: 0.15905152910342096
+        minimum_translational_jacobian_singular_value: 0.1312500306944334
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 282.6725176453567
+        - 411.8375317420872
+        head_optical_depth_m: 0.8239355687389087
+-   id: left_pitch_60_corner_08
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 8
+    kind: corner_08
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.375
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.7899657337193513
+    - 0.7613056860138246
+    - 0.809438600071939
+    - 2.0265632594199654
+    - -0.9238584365514522
+    - 0.16986445003697656
+    - 0.9966634655283945
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.2524158094106507e-05
+    angular_error: 1.2074940511736763e-06
+    metrics:
+        joint_limit_clearance_rad: 0.27233653447160544
+        minimum_translational_jacobian_singular_value: 0.20737118753674358
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 173.40631992701327
+        - 180.35642497799302
+        head_optical_depth_m: 0.6425858693846834
+-   id: left_pitch_60_face_x_min
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 9
+    kind: face_x_min
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.275
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.036926598441242
+    - 2.8401893572404
+    - 0.39617307087517034
+    - -0.5632509784735491
+    - 1.8597761564799777
+    - -0.33792096145205563
+    - -0.35506705371753927
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.0482188568270349e-05
+    angular_error: 3.0078597748797267e-06
+    metrics:
+        joint_limit_clearance_rad: 0.12357903854794439
+        minimum_translational_jacobian_singular_value: 0.20650413121015063
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 279.21893560065513
+        - 550.3334842610058
+        head_optical_depth_m: 0.576889013362523
+-   id: left_pitch_60_face_x_max
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 10
+    kind: face_x_max
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.275
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.6838026259061822
+    - 0.6075704379132675
+    - 0.8208471199971451
+    - 2.3514872974095247
+    - -0.9649827076889751
+    - -0.1370714109552732
+    - 0.5963379195492388
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4215878864537488e-05
+    angular_error: 1.7918987349237633e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3244285890447268
+        minimum_translational_jacobian_singular_value: 0.19713735245912128
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 358.22563672366385
+        - 309.10911286564783
+        head_optical_depth_m: 0.7317244212399617
+-   id: left_pitch_60_face_y_min
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 11
+    kind: face_y_min
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.175
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.0706600086259717
+    - 3.3103674007519217
+    - 0.3354677227110877
+    - 0.03193819749845295
+    - 1.5401617773296752
+    - -0.10718691019967869
+    - 0.011857272229144978
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 6.32738080404393e-06
+    angular_error: 1.901046526964572e-06
+    metrics:
+        joint_limit_clearance_rad: 0.08863259924807831
+        minimum_translational_jacobian_singular_value: 0.22545781441031768
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 464.44364762524344
+        - 401.18323328429364
+        head_optical_depth_m: 0.6613723865837101
+-   id: left_pitch_60_face_y_max
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 12
+    kind: face_y_max
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.375
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.83723674546194
+    - 0.9343349765931486
+    - 0.5427295295174862
+    - 2.8573318815497766
+    - -0.9490595969584746
+    - -0.036601039945127554
+    - 0.2895879291225934
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.402021849975488e-05
+    angular_error: 2.1100661352967203e-06
+    metrics:
+        joint_limit_clearance_rad: 0.32166811845022325
+        minimum_translational_jacobian_singular_value: 0.2094949431884035
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 191.52481559444965
+        - 403.6274293469493
+        head_optical_depth_m: 0.6644449822273789
+-   id: left_pitch_60_face_z_min
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 13
+    kind: face_z_min
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.275
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.5363064378163667
+    - 0.6680644339031591
+    - 0.7438277203573429
+    - 2.854312591501002
+    - -1.035506487976802
+    - -0.28469109123718467
+    - 0.014960756737183657
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4911228659163134e-05
+    angular_error: 2.3113619505358054e-06
+    metrics:
+        joint_limit_clearance_rad: 0.17680890876281535
+        minimum_translational_jacobian_singular_value: 0.1940529323866601
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 368.8399307847804
+        - 502.2355181203045
+        head_optical_depth_m: 0.7535835340826572
+-   id: left_pitch_60_face_z_max
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 14
+    kind: face_z_max
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.275
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -2.182907195494909
+    - 0.831111671300008
+    - 0.627728359915672
+    - 2.9810067458461225
+    - -1.0857088344936028
+    - -0.28971405653401927
+    - 0.5135436168612714
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4994257266304359e-05
+    angular_error: 2.4313386510869857e-06
+    metrics:
+        joint_limit_clearance_rad: 0.17178594346598075
+        minimum_translational_jacobian_singular_value: 0.2357463394344119
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 273.44801776701894
+        - 270.9439856176371
+        head_optical_depth_m: 0.5722338347284319
+-   id: left_pitch_60_center
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 15
+    kind: center
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.275
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.8836180332173507
+    - 0.7694155316196782
+    - 0.6584034060718462
+    - 3.0214514884846277
+    - -1.0940911695542272
+    - -0.299421180923145
+    - 0.18562064451004742
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5029308064417618e-05
+    angular_error: 2.5314845844894324e-06
+    metrics:
+        joint_limit_clearance_rad: 0.15754851151537208
+        minimum_translational_jacobian_singular_value: 0.21996337923805895
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 327.66798548345696
+        - 402.4081635406138
+        head_optical_depth_m: 0.6629086844055445
+-   id: left_pitch_60_coverage_01
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 16
+    kind: coverage_01
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.175
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.012692410004821
+    - 3.13879998651364
+    - 0.5605417392627672
+    - -0.5766202411316568
+    - 1.4873095793770361
+    - -0.3481925091646745
+    - -0.4932642772266781
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.1260690559509112e-05
+    angular_error: 3.135912193051459e-06
+    metrics:
+        joint_limit_clearance_rad: 0.11330749083532554
+        minimum_translational_jacobian_singular_value: 0.22780847956462763
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 436.3142468525296
+        - 549.3204053560831
+        head_optical_depth_m: 0.5753527155406887
+-   id: left_pitch_60_coverage_02
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 17
+    kind: coverage_02
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.275
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.452614446863158
+    - 3.0180539385881313
+    - 0.38827230386044104
+    - -0.3734008581039797
+    - 1.8547661534586002
+    - -0.2220184398669337
+    - -0.6288640079674156
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.1110636335783884e-05
+    angular_error: 3.4217602289021114e-06
+    metrics:
+        joint_limit_clearance_rad: 0.11638555313684185
+        minimum_translational_jacobian_singular_value: 0.20502767534900485
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 332.2769459595055
+        - 642.9315829074201
+        head_optical_depth_m: 0.6675638630396357
+-   id: left_pitch_60_coverage_03
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 18
+    kind: coverage_03
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.275
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.5847211944654471
+    - 2.7590651916552815
+    - 0.33044149704766806
+    - -0.5189144584674259
+    - 1.8683947545143316
+    - -0.3457800781810839
+    - 0.11326013576526478
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 6.329375927973454e-06
+    angular_error: 2.3815051727180215e-06
+    metrics:
+        joint_limit_clearance_rad: 0.1157199218189161
+        minimum_translational_jacobian_singular_value: 0.1996931924212919
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 206.3711804224077
+        - 423.1978533818502
+        head_optical_depth_m: 0.48621416368541037
+-   id: left_pitch_60_coverage_04
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 19
+    kind: coverage_04
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.4
+    - 0.375
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 1.0206172740734252
+    - 2.6026498311802255
+    - 0.20893278774098253
+    - -0.3963816404138962
+    - 2.1943528901160008
+    - -0.18047638238292793
+    - -0.14919184172938857
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 9.374748760869058e-06
+    angular_error: 2.836056935949921e-06
+    metrics:
+        joint_limit_clearance_rad: 0.28102361761707206
+        minimum_translational_jacobian_singular_value: 0.1732622821356298
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 122.95811474824984
+        - 551.341181690101
+        head_optical_depth_m: 0.5784253111843574
+-   id: left_pitch_60_coverage_05
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 20
+    kind: coverage_05
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.175
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.6177788341179984
+    - 0.4131143762155618
+    - 0.7040735479958553
+    - 2.869429432735172
+    - -1.3069832524074
+    - -0.3798745684175792
+    - -0.08570238288191709
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.7639870637085455e-05
+    angular_error: 6.228581033452944e-06
+    metrics:
+        joint_limit_clearance_rad: 0.0816254315824208
+        minimum_translational_jacobian_singular_value: 0.19753881918315885
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 489.20856469831926
+        - 501.3622079504723
+        head_optical_depth_m: 0.7520472362608228
+-   id: left_pitch_60_coverage_06
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 21
+    kind: coverage_06
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.175
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.7893985385449563
+    - 3.244229448930468
+    - 0.30346197402597497
+    - 0.07322019754486467
+    - 1.5525021866354738
+    - -0.1202183768063277
+    - 0.3406268114751076
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 5.009082861423586e-06
+    angular_error: 2.0311271528401666e-06
+    metrics:
+        joint_limit_clearance_rad: 0.15477055106953186
+        minimum_translational_jacobian_singular_value: 0.2468762191712782
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 431.80922004038564
+        - 269.1705362652894
+        head_optical_depth_m: 0.5706975369065975
+-   id: left_pitch_60_coverage_07
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 22
+    kind: coverage_07
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.375
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.477671858633838
+    - 0.8217914266553701
+    - 0.6493285403540993
+    - 2.6836749493917873
+    - -0.923287596726151
+    - -0.01698046425639656
+    - 0.11171101830830621
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.3605785303306927e-05
+    angular_error: 1.971018051658882e-06
+    metrics:
+        joint_limit_clearance_rad: 0.4445195357436035
+        minimum_translational_jacobian_singular_value: 0.1884897152813671
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 248.96107892247483
+        - 503.1052747759658
+        head_optical_depth_m: 0.7551198319044916
+-   id: left_pitch_60_coverage_08
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 23
+    kind: coverage_08
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - 0.375
+    - 0.325
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -2.1409744573143548
+    - 0.9908454641681377
+    - 0.5071175944593935
+    - 2.8146122161011777
+    - -0.9563174800415623
+    - -0.02056667064335653
+    - 0.6115716997809367
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4443568932520573e-05
+    angular_error: 2.0343385720759885e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3643877838988221
+        minimum_translational_jacobian_singular_value: 0.22199055677314242
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 115.93485534903584
+        - 272.7079379738094
+        head_optical_depth_m: 0.5737701325502663
+-   id: left_pitch_60_coverage_09
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 24
+    kind: coverage_09
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.175
+    - 0.2
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.7222652778546497
+    - 0.43204120232819376
+    - 0.9093868976064392
+    - 2.381366091234203
+    - -1.003623218314288
+    - -0.3554851537518386
+    - 0.5735939587333322
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5382438528336453e-05
+    angular_error: 2.0766975432145797e-06
+    metrics:
+        joint_limit_clearance_rad: 0.10601484624816143
+        minimum_translational_jacobian_singular_value: 0.19716908151493998
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 482.1753270125793
+        - 307.8033258434092
+        head_optical_depth_m: 0.7301881234181273
+-   id: left_pitch_60_coverage_10
+    direction_id: left_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: left
+    rank: 25
+    kind: coverage_10
+    frame: left_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - 0.275
+    - 0.075
+    target_rpy_degrees:
+    - -90
+    - 60
+    - 0
+    arm_configuration:
+    - -1.0861432392751933
+    - 0.10366704848514227
+    - 0.9499046050556001
+    - 0.9105885303823481
+    - -0.9481592703690856
+    - 0.38707886729688473
+    - 1.0621679797246342
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.1793967085549927e-05
+    angular_error: 1.4617938434950392e-06
+    metrics:
+        joint_limit_clearance_rad: 0.07442113270311529
+        minimum_translational_jacobian_singular_value: 0.11505261345254669
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 392.58326641979585
+        - 410.87005918060913
+        head_optical_depth_m: 0.8223992709170744
+-   id: right_pitch_60_corner_01
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 1
+    kind: corner_01
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.35
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.484080007606863
+    - -0.8421740120645722
+    - -0.562981276964372
+    - 3.0589927253016773
+    - 0.9631055574721302
+    - -0.16124370085990547
+    - 0.22930020781048904
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4608073346777338e-05
+    angular_error: 2.573658000364041e-06
+    metrics:
+        joint_limit_clearance_rad: 0.12000727469832251
+        minimum_translational_jacobian_singular_value: 0.19542647564761353
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1152.2010786096766
+        - 594.4018621940678
+        head_optical_depth_m: 0.7105048400058019
+-   id: right_pitch_60_corner_02
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 2
+    kind: corner_02
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.35
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.9081794495635922
+    - -2.7378467780645077
+    - -0.2117772176053324
+    - -0.23647328456907935
+    - -2.0539043380949833
+    - -0.09193213718083183
+    - -0.048247967776273055
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 6.910189223888019e-06
+    angular_error: 2.370469015416657e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3695678628191682
+        minimum_translational_jacobian_singular_value: 0.19744089534796014
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1275.9675424174275
+        - 430.7890253683388
+        head_optical_depth_m: 0.5654250805224217
+-   id: right_pitch_60_corner_03
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 3
+    kind: corner_03
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.175
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.4523479868477247
+    - -3.3484444230582975
+    - -0.45212556625838013
+    - -0.11570784099660714
+    - -1.5711200491739705
+    - -0.1934326458103782
+    - 0.5085333027960015
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.07311124661809e-05
+    angular_error: 2.1771943729346145e-06
+    metrics:
+        joint_limit_clearance_rad: 0.05055557694170254
+        minimum_translational_jacobian_singular_value: 0.19981134601230516
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 927.1272569847101
+        - 595.6659754829868
+        head_optical_depth_m: 0.7131933611940121
+-   id: right_pitch_60_corner_04
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 4
+    kind: corner_04
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.175
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.8704624732742634
+    - -3.149051277317261
+    - -0.47899154802132177
+    - -0.3591224327164066
+    - -1.54981230843361
+    - -0.2897714790998054
+    - 0.14030660017830132
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 7.578148145679508e-06
+    angular_error: 2.2128287895063008e-06
+    metrics:
+        joint_limit_clearance_rad: 0.17172852090019464
+        minimum_translational_jacobian_singular_value: 0.23466281639807912
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 992.8306774709004
+        - 433.15023231688605
+        head_optical_depth_m: 0.5681136017106319
+-   id: right_pitch_60_corner_05
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 5
+    kind: corner_05
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.35
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.1667470860822247
+    - -0.4354840932781181
+    - -0.9137563285922954
+    - 1.5651838282045523
+    - 0.9078090208470092
+    - 0.27388828256067105
+    - -0.7030347699298324
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 2.016239109589348e-05
+    angular_error: 1.8870304738301213e-06
+    metrics:
+        joint_limit_clearance_rad: 0.18761171743932897
+        minimum_translational_jacobian_singular_value: 0.12086303580387983
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1079.7922055458425
+        - 422.796540876891
+        head_optical_depth_m: 0.8309323794660319
+-   id: right_pitch_60_corner_06
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 6
+    kind: corner_06
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.35
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.7133667827128005
+    - -0.7309546567498574
+    - -0.7852182515139373
+    - 2.2071954244444854
+    - 0.9337078793054456
+    - 0.06359880094087732
+    - -0.762575529217241
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.3235557365954801e-05
+    angular_error: 1.4741993129182907e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3979011990591227
+        minimum_translational_jacobian_singular_value: 0.20137233372414634
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1166.5099626018896
+        - 251.61215408775317
+        head_optical_depth_m: 0.6858526199826518
+-   id: right_pitch_60_corner_07
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 7
+    kind: corner_07
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.175
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.0935091139982298
+    - 0.0663189948791231
+    - -0.880221876214605
+    - 0.9793316349785196
+    - 0.9184956995912188
+    - 0.1636049707718458
+    - -0.9768446632791008
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 8.00426730017521e-06
+    angular_error: 1.3174699183618254e-06
+    metrics:
+        joint_limit_clearance_rad: 0.1236810051208769
+        minimum_translational_jacobian_singular_value: 0.11081844077027478
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 887.4667942633068
+        - 424.431482787243
+        head_optical_depth_m: 0.8336209006542421
+-   id: right_pitch_60_corner_08
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 8
+    kind: corner_08
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.175
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.8217170430743759
+    - -0.4598372732138538
+    - -0.9005326368447439
+    - 2.3929987378096484
+    - 1.0089871185713573
+    - -0.35803647934922167
+    - -0.6645041616658097
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.522542512013044e-05
+    angular_error: 2.1167256403068744e-06
+    metrics:
+        joint_limit_clearance_rad: 0.10346352065077835
+        minimum_translational_jacobian_singular_value: 0.20906520348809146
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 933.3218268482979
+        - 254.26000545027034
+        head_optical_depth_m: 0.688541141170862
+-   id: right_pitch_60_face_x_min
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 9
+    kind: face_x_min
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.25
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.196293719098968
+    - -3.0516540952457363
+    - -0.38214390388777486
+    - -0.3056341706646572
+    - -1.770343639724028
+    - -0.19556760611572685
+    - 0.34441408088372927
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 8.927830224903788e-06
+    angular_error: 2.6979526392859012e-06
+    metrics:
+        joint_limit_clearance_rad: 0.26593239388427314
+        minimum_translational_jacobian_singular_value: 0.21569867684443841
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1063.4818737720543
+        - 522.8770221815971
+        head_optical_depth_m: 0.6395012580859462
+-   id: right_pitch_60_face_x_max
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 10
+    kind: face_x_max
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.25
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.5873042245921851
+    - -0.5277551151573776
+    - -0.8529599346432207
+    - 2.3198746208624637
+    - 0.9650280747774891
+    - -0.18077480684547345
+    - -0.5170258908076736
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4644325361810033e-05
+    angular_error: 1.8111828622126205e-06
+    metrics:
+        joint_limit_clearance_rad: 0.2807251931545266
+        minimum_translational_jacobian_singular_value: 0.1837188449501764
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 998.3670343190647
+        - 346.57253429964504
+        head_optical_depth_m: 0.7599287975461761
+-   id: right_pitch_60_face_y_min
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 11
+    kind: face_y_min
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - -0.35
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.7145888784118553
+    - -0.8596754192706001
+    - -0.5999495658299024
+    - 2.870480981997994
+    - 0.9707718891489796
+    - -0.10475153408366747
+    - -0.17032902310977924
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4109757762490549e-05
+    angular_error: 2.192693011956062e-06
+    metrics:
+        joint_limit_clearance_rad: 0.30851901800200565
+        minimum_translational_jacobian_singular_value: 0.20544624595825467
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1165.5491601690446
+        - 438.7028265396161
+        head_optical_depth_m: 0.6895767628899246
+-   id: right_pitch_60_face_y_max
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 12
+    kind: face_y_max
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - -0.175
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.2168317721079334
+    - -3.3046989164474128
+    - -0.41632189322547025
+    - 0.07561784398728785
+    - -1.5898037646887087
+    - -0.1701516080992792
+    - 0.07906066159634635
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 3.4945765418030286e-05
+    angular_error: 6.930301863168667e-05
+    metrics:
+        joint_limit_clearance_rad: 0.09430108355258726
+        minimum_translational_jacobian_singular_value: 0.21412386471258427
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 933.6192257142297
+        - 440.6098373231383
+        head_optical_depth_m: 0.6922652840781348
+-   id: right_pitch_60_face_z_min
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 13
+    kind: face_z_min
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - -0.25
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.47326658949334
+    - -0.5980415662802901
+    - -0.7948282380686981
+    - 2.8134251877475736
+    - 1.044994652158338
+    - -0.3355498632536997
+    - 0.01460712260856771
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5236879483366184e-05
+    angular_error: 2.283048731215117e-06
+    metrics:
+        joint_limit_clearance_rad: 0.12595013674630035
+        minimum_translational_jacobian_singular_value: 0.18694093412698942
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 998.3194227199738
+        - 515.0518623219009
+        head_optical_depth_m: 0.7636529404534492
+-   id: right_pitch_60_face_z_max
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 14
+    kind: face_z_max
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - -0.25
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -2.0153449316387273
+    - -0.7532396118581481
+    - -0.6794920929503929
+    - 3.048194117790261
+    - 1.138599992902757
+    - -0.3590117105802912
+    - -0.27983972573695653
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.530017468647784e-05
+    angular_error: 2.627194666325411e-06
+    metrics:
+        joint_limit_clearance_rad: 0.10248828941970883
+        minimum_translational_jacobian_singular_value: 0.2295524671332999
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1075.360507922464
+        - 346.88601948659175
+        head_optical_depth_m: 0.618573180970069
+-   id: right_pitch_60_center
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 15
+    kind: center
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.525
+    - -0.25
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.7522111970034735
+    - -0.6877396487993794
+    - -0.7257366599435242
+    - 2.9981769595514325
+    - 1.1164246609672657
+    - -0.3586823501158003
+    - -0.07618656030304394
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5344203324070377e-05
+    angular_error: 2.586048846537642e-06
+    metrics:
+        joint_limit_clearance_rad: 0.10281764988419972
+        minimum_translational_jacobian_singular_value: 0.21331730957904085
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1032.7968127797212
+        - 439.7943637687557
+        head_optical_depth_m: 0.691113060711759
+-   id: right_pitch_60_coverage_01
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 16
+    kind: coverage_01
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.35
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.4970777034656224
+    - -0.6560494218916442
+    - -0.8137393021940288
+    - 2.124599861402672
+    - 0.9239860643726217
+    - 0.08575303637211011
+    - -0.6108840332057567
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.3356476547865441e-05
+    angular_error: 1.42449650853025e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3757469636278899
+        minimum_translational_jacobian_singular_value: 0.1760557183553215
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1119.0038280879476
+        - 345.3911998284704
+        head_optical_depth_m: 0.7583924997243419
+-   id: right_pitch_60_coverage_02
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 17
+    kind: coverage_02
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.575
+    - -0.3
+    - 0.1
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.5300338821134583
+    - -0.6624694277137666
+    - -0.7694234284910921
+    - 2.5692321479706752
+    - 0.9710438188527475
+    - -0.15289426779300655
+    - -0.2657602466330935
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4188082911569173e-05
+    angular_error: 1.9088670887516093e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3086057322069935
+        minimum_translational_jacobian_singular_value: 0.18685269156815812
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1058.4530727732024
+        - 430.51471872765273
+        head_optical_depth_m: 0.7610227200888955
+-   id: right_pitch_60_coverage_03
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 18
+    kind: coverage_03
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.575
+    - -0.3
+    - 0.2
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.7805880518808184
+    - -0.7483945660731658
+    - -0.7196907378591252
+    - 2.698657907278344
+    - 0.9998228529549491
+    - -0.17928406131923563
+    - -0.399038823069902
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4207241484944046e-05
+    angular_error: 2.0513391965977033e-06
+    metrics:
+        joint_limit_clearance_rad: 0.2822159386807644
+        minimum_translational_jacobian_singular_value: 0.21167623120162882
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1099.3979746078203
+        - 346.06271645656415
+        head_optical_depth_m: 0.6884828403472054
+-   id: right_pitch_60_coverage_04
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 19
+    kind: coverage_04
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.25
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.0698767649039032
+    - -0.07146555753994863
+    - -0.9266363096104493
+    - 0.9867805423620557
+    - 0.9321674721791738
+    - 0.307560896069507
+    - -0.9768953608562102
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.0207890362548155e-05
+    angular_error: 1.3382110886214854e-06
+    metrics:
+        joint_limit_clearance_rad: 0.15393910393049304
+        minimum_translational_jacobian_singular_value: 0.10850130067891564
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 969.7398571538429
+        - 423.73208649989976
+        head_optical_depth_m: 0.8324686772878663
+-   id: right_pitch_60_coverage_05
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 20
+    kind: coverage_05
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.25
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.798404170597632
+    - -0.5963411274511186
+    - -0.8299345956263876
+    - 2.387917109440563
+    - 0.9812831443675314
+    - -0.19916406854445692
+    - -0.674311960025956
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.4404669297179183e-05
+    angular_error: 1.8997494377326342e-06
+    metrics:
+        joint_limit_clearance_rad: 0.2623359314555431
+        minimum_translational_jacobian_singular_value: 0.20946625612360797
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1033.0362407783925
+        - 253.12774824544238
+        head_optical_depth_m: 0.6873889178044861
+-   id: right_pitch_60_coverage_06
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 21
+    kind: coverage_06
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.625
+    - -0.175
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - -1.6133643577924168
+    - -0.3916865839292621
+    - -0.9179575762715011
+    - 2.324944279586647
+    - 0.9883742587294129
+    - -0.33728045367564313
+    - -0.5087593273253562
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 1.5622085617369037e-05
+    angular_error: 2.002628875103621e-06
+    metrics:
+        joint_limit_clearance_rad: 0.12421954632435689
+        minimum_translational_jacobian_singular_value: 0.1822048141942222
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 908.2090513929354
+        - 347.45540535212234
+        head_optical_depth_m: 0.761081020912552
+-   id: right_pitch_60_coverage_07
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 22
+    kind: coverage_07
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.35
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.2347521503778696
+    - -2.831749040200826
+    - -0.24973356145957382
+    - -0.1808704332829679
+    - -2.035989875282322
+    - -0.05694310056718615
+    - 0.2229477941468447
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 8.40187610052719e-06
+    angular_error: 2.6341588148174846e-06
+    metrics:
+        joint_limit_clearance_rad: 0.3342478496221304
+        minimum_translational_jacobian_singular_value: 0.19999743456077962
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1207.0478704581674
+        - 521.897252067525
+        head_optical_depth_m: 0.6379649602641118
+-   id: right_pitch_60_coverage_08
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 23
+    kind: coverage_08
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.25
+    - 0.05
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.483947044620452
+    - -3.192152180179787
+    - -0.33937920344826106
+    - -0.11348033612594718
+    - -1.7435629933195225
+    - -0.09295321182119703
+    - 0.48335787903568844
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 9.029048491353498e-06
+    angular_error: 2.855134122617667e-06
+    metrics:
+        joint_limit_clearance_rad: 0.08505295537954805
+        minimum_translational_jacobian_singular_value: 0.19814540761136332
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1023.3793439945554
+        - 595.1253815507521
+        head_optical_depth_m: 0.7120411378276362
+-   id: right_pitch_60_coverage_09
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 24
+    kind: coverage_09
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.25
+    - 0.25
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.8916130757699177
+    - -2.9551316540607857
+    - -0.3716151893761397
+    - -0.36098252830297156
+    - -1.7784923571427038
+    - -0.24259556041755062
+    - 0.08247142976795675
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 7.395264055440234e-06
+    angular_error: 2.3109142581865146e-06
+    metrics:
+        joint_limit_clearance_rad: 0.2189044395824494
+        minimum_translational_jacobian_singular_value: 0.22158876342678918
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 1113.8462407699042
+        - 432.1410285560196
+        head_optical_depth_m: 0.5669613783442561
+-   id: right_pitch_60_coverage_10
+    direction_id: right_pitch_60
+    group: arm_pitch_60_targets
+    family: pitch_60
+    arm: right
+    rank: 25
+    kind: coverage_10
+    frame: right_grasp_frame
+    reference_frame: pelvis
+    target_position:
+    - 0.45
+    - -0.175
+    - 0.15
+    target_rpy_degrees:
+    - 90
+    - 60
+    - 0
+    arm_configuration:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.158872594522173
+    - -3.249738750157057
+    - -0.46679219073256345
+    - -0.30552730811247447
+    - -1.5458091103043536
+    - -0.2301852221945928
+    - 0.3909337680927986
+    success: true
+    collision_free: true
+    within_limits: true
+    position_error: 9.055882706189488e-06
+    angular_error: 2.663740000890452e-06
+    metrics:
+        joint_limit_clearance_rad: 0.14926124984294287
+        minimum_translational_jacobian_singular_value: 0.222639502496371
+        head_color_in_view: true
+        head_color_pixel_uv:
+        - 956.2592354549587
+        - 523.6087660415639
+        head_optical_depth_m: 0.6406534814523219
