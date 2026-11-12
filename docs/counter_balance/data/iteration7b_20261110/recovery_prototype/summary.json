@@ -1,0 +1,1116 @@
+{
+  "decision": "No physical whole-body candidate selected or hardware approval; offline command semantics and ideal-PD stiffness mechanism only",
+  "full_simulation_cells_used": 1,
+  "full_simulation_candidate_cells": 0,
+  "recorded_state_runs": 3,
+  "synthetic_actuator_cells": 8,
+  "commands": [
+    ".venv/bin/python -m h12_zmp_benchmark.sweep.arm_reachability_sweep --config config/sweep_configs/iteration7a_fame.yaml --trajectory-bank overhang_traj --trial left_overhang_sideways fast counter_ddp_velocity_robust --speed-profile 0.8x --base-domain-id 91 --output-dir /tmp/kilo/iter7b_recovery_baseline",
+    ".venv/bin/python /tmp/kilo/iter7b_recovery_fixture.py",
+    ".venv/bin/python -m pytest -q /tmp/kilo/test_iter7b_recovery_fixture.py --junitxml=/tmp/kilo/iter7b_recovery_fixture_tests.xml",
+    ".venv/bin/python /tmp/kilo/iter7b_recovery_actuator.py",
+    ".venv/bin/python /tmp/kilo/summarize_iter7b_recovery.py"
+  ],
+  "command_cwd": "/home/tonyzyt2000/Programming/h12_zmp_benchmark",
+  "parameters": {
+    "phase": "strictly after T+0.5 s; baseline during movement and fade",
+    "desired_speed_rad_s": 0.2,
+    "acceleration_rad_s2": 1.0,
+    "lead_rad": 0.04,
+    "estimated_total_effort_nm": [
+      24.0,
+      24.0,
+      10.8,
+      10.8
+    ],
+    "dt_s": 0.03333333333333333,
+    "scope": "engineering fixture limits, not commissioned hardware safety limits"
+  },
+  "predeclaration_board_ids": [
+    "board_28dfdf2c-d2e8-4c6d-b509-88d9a3223832",
+    "board_7a5105f3-179a-4a62-aa14-2b2ec8cdae02"
+  ],
+  "production_config_diff_by_this_worker": {},
+  "baseline_generated_config_diff": {
+    "arm_target": [
+      {
+        "path": "network.domain_id",
+        "source": 0,
+        "snapshot": 91
+      },
+      {
+        "path": "network.interface",
+        "source": "eno1",
+        "snapshot": ""
+      },
+      {
+        "path": "reactive_counter_balance.support_geometry",
+        "source": null,
+        "snapshot": {
+          "front": 0.174,
+          "rear": 0.086,
+          "half_width": 0.043,
+          "max_yaw_divergence": 0.349
+        }
+      }
+    ],
+    "lower_body": [
+      {
+        "path": "arm_waist_target",
+        "source": [
+          0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "snapshot": [
+          0,
+          -1.5237891502456324,
+          0.08864987996919449,
+          0.10266028913804398,
+          2.6869707998946355,
+          -0.19468583031915077,
+          0.2095620808628344,
+          -0.07735751757544118,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "path": "network.domain_id",
+        "source": 1,
+        "snapshot": 91
+      }
+    ],
+    "safety": [
+      {
+        "path": "network.domain_id",
+        "source": 1,
+        "snapshot": 91
+      }
+    ]
+  },
+  "baseline_provenance": {
+    "configs": {
+      "arm_target": {
+        "overlays": {
+          "network": {
+            "domain_id": 91,
+            "interface": ""
+          },
+          "reactive_counter_balance": {
+            "damping": 0.0001,
+            "gains": {
+              "com": 2.0,
+              "gyro": 0.2,
+              "posture": 1.0
+            },
+            "max_excursion": [
+              0.75,
+              0.58,
+              0.4,
+              0.58
+            ],
+            "max_velocity": [
+              2.6,
+              3.2,
+              2.6,
+              1.5
+            ],
+            "support_geometry": {
+              "front": 0.174,
+              "half_width": 0.043,
+              "max_yaw_divergence": 0.349,
+              "rear": 0.086
+            },
+            "weights": {
+              "com": 1.0,
+              "momentum": 2.0,
+              "posture": 0.02
+            }
+          }
+        },
+        "snapshot": "/tmp/kilo/20261110_195449_iter7b_recovery_baseline/runs/counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261110_195450_counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/arm_target.yaml",
+        "snapshot_sha256": "c4c805075c2db98bcdc09f0fe1921965d9246a3453de957c8ffa76d2d73175c9",
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+        "source_sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+      },
+      "lower_body": {
+        "overlays": {
+          "arm_waist_target": [
+            0,
+            -1.5237891502456324,
+            0.08864987996919449,
+            0.10266028913804398,
+            2.6869707998946355,
+            -0.19468583031915077,
+            0.2095620808628344,
+            -0.07735751757544118,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "network": {
+            "domain_id": 91,
+            "interface": ""
+          }
+        },
+        "snapshot": "/tmp/kilo/20261110_195449_iter7b_recovery_baseline/runs/counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261110_195450_counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+        "snapshot_sha256": "d2d26c9ae36f03eb6d6c58cb9bff4724cd021262b43ab7749695abe1eb884eca",
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_adaptive_policy/h12_adaptive_policy/deploy_real/h12_fame_finetune.yaml",
+        "source_sha256": "22d98c7440a8dee512ad5b48c4f8b9f757617f6759c96c058f01ae2b5da5f7e0"
+      },
+      "safety": {
+        "overlays": {
+          "network": {
+            "domain_id": 91,
+            "interface": ""
+          }
+        },
+        "snapshot": "/tmp/kilo/20261110_195449_iter7b_recovery_baseline/runs/counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261110_195450_counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/safety.yaml",
+        "snapshot_sha256": "d7c68dc2043d901477f03ffff90e4ae852b2fb2a8661f368b53b4db6c7a953a7",
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_safety_layer/config/sim_safety_split.yaml",
+        "source_sha256": "905007b55ff8fdfe67de03efe242244bb75d7609f64fad03878c18ad7e789588"
+      }
+    },
+    "network": {
+      "domain_id": 91,
+      "interface": ""
+    },
+    "repositories": {
+      "benchmark": {
+        "dirty": false,
+        "head": "d46d79f6141c369a4c02c10521551ec690d4a7a0"
+      },
+      "h12_ros2_controller": {
+        "dirty": false,
+        "head": "ac5d70ae05187743156be15f3909882706d97470"
+      }
+    },
+    "schema_version": 1,
+    "variant": "counter_ddp_velocity_robust"
+  },
+  "simulation_fame_checkpoints": {
+    "policy_path": {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_adaptive_policy/h12_adaptive_policy/fame_policy_finetuned/policy_4599.pt",
+      "sha256": "dc0c7e5d6be5bafd64ae51e991722fa79f2ca7ab2a0e65ce28fec5bb403acadc"
+    },
+    "encoder_path": {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_adaptive_policy/h12_adaptive_policy/fame_policy_finetuned/encoder_4599.pt",
+      "sha256": "7ebb98fcfe6c990fe1d290eed53debfac3cfda646ce2f199407f8185b033a9d5"
+    }
+  },
+  "fame_intentional_zero_force_inputs_unchanged": true,
+  "physical_parameters_fitted": false,
+  "baseline_failure": {
+    "artifact_root": "/tmp/kilo/20261110_195449_iter7b_recovery_baseline/runs/counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261110_195450_counter_ddp_velocity_robust_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+    "status": {
+      "error": "saved start pose failed standing readiness",
+      "initialization_failure_diagnostic": {
+        "fall_confirmed": false,
+        "max_base_tilt": 2.7915537113454034,
+        "min_base_height": 0.032980815818697454,
+        "reason": "saved start pose failed standing readiness before release"
+      },
+      "passed": false,
+      "schema_version": 1,
+      "status": "initialization_failed",
+      "window_complete": false
+    },
+    "last_base_height_m": 0.04962561434962435,
+    "last_base_tilt_rad": 2.3299798906735103,
+    "minimum_height_m": 0.032980815818697454,
+    "maximum_tilt_rad": 2.7915537113454034,
+    "caveat": "fell:false and outer window_complete:true do not negate failed standing readiness before task release"
+  },
+  "recorded_state_fixture": {
+    "F02_counter": {
+      "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+      "source_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+      "status_counts": {
+        "baseline": 51,
+        "accepted": 6,
+        "validated_hold:lead": 1,
+        "validated_hold:latched": 279
+      },
+      "baseline_q_reproduction_max_error_rad": 0.0,
+      "pretransition_max_change_rad": 0.0,
+      "moving_arm_max_change_rad": 0.0,
+      "accepted_peak_lead_rad": 0.03406297415494919,
+      "accepted_peak_effort_nm": [
+        5.7047929763793945,
+        7.809498488903046,
+        8.852972403168678,
+        7.306567549705505
+      ],
+      "stop_requests": 0,
+      "physical_recovery_result": null,
+      "accepted_peak_command_change_rad": 0.031260669231414795,
+      "lead_rejection_elapsed": 1.9062700560316443,
+      "replayed_rows": 337
+    },
+    "F03_counter": {
+      "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+      "source_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+      "status_counts": {
+        "baseline": 52,
+        "accepted": 8,
+        "validated_hold:lead": 1,
+        "validated_hold:latched": 277
+      },
+      "baseline_q_reproduction_max_error_rad": 0.0,
+      "pretransition_max_change_rad": 0.0,
+      "moving_arm_max_change_rad": 0.0,
+      "accepted_peak_lead_rad": 0.03754065791144967,
+      "accepted_peak_effort_nm": [
+        13.755618035793304,
+        8.558768689632416,
+        8.491658865474164,
+        8.323619484901428
+      ],
+      "stop_requests": 0,
+      "physical_recovery_result": null,
+      "accepted_peak_command_change_rad": 0.0364701934158802,
+      "lead_rejection_elapsed": 2.0038680620491505,
+      "replayed_rows": 338
+    },
+    "F03r_counter": {
+      "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03r_counter/right_overhang_sideways/arm_target.jsonl",
+      "source_sha256": "fbb407d475f3bdaf79ee26b7747a2742fafeeaec6325bf478874d44a2a5da5fb",
+      "status_counts": {
+        "baseline": 52,
+        "accepted": 8,
+        "validated_hold:lead": 1,
+        "validated_hold:latched": 277
+      },
+      "baseline_q_reproduction_max_error_rad": 0.0,
+      "pretransition_max_change_rad": 0.0,
+      "moving_arm_max_change_rad": 0.0,
+      "accepted_peak_lead_rad": 0.038566240575164557,
+      "accepted_peak_effort_nm": [
+        14.898987352848053,
+        8.84899526834488,
+        8.995442078448832,
+        7.942342638969421
+      ],
+      "stop_requests": 0,
+      "physical_recovery_result": null,
+      "accepted_peak_command_change_rad": 0.037462469190359116,
+      "lead_rejection_elapsed": 2.003783004824072,
+      "replayed_rows": 338
+    }
+  },
+  "actuator_equation": "Mcc*qdd + damping*dq = kp*(buffer_q-q) + kd*(buffer_dq-dq) + sign*[1,1,1,1]",
+  "actuator_assumptions": [
+    "Mcc frozen at T+8 recorded state, plus unchanged XML armature; not fitted",
+    "Gravity exactly compensated; zero FF residual except arbitrary predeclared +/-1 Nm disturbance",
+    "XML frictionloss omitted; no Coulomb friction, Coriolis, gravity gradient or coupling to prescribed rest",
+    "Actual float32 buffer drives plant, 30 Hz references, 1 ms semi-implicit integration",
+    "Plant assumes ideal immediate PD realization; no claim about real motor/relay authority or latency"
+  ],
+  "actuator_conditions": {
+    "F02_counter_sign-1": {
+      "baseline": {
+        "candidate": false,
+        "load_sign": -1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+        "anchor_elapsed": 9.206084586214274,
+        "inertia_matrix_kg_m2": [
+          [
+            0.6044892235358126,
+            -0.03618762250824465,
+            -0.015587959163226245,
+            0.14982502509407683
+          ],
+          [
+            -0.03618762250824465,
+            0.48908172291081164,
+            0.1788229344927828,
+            -0.005993077306576252
+          ],
+          [
+            -0.015587959163226245,
+            0.1788229344927828,
+            0.21838493589486685,
+            -5.109389670421554e-05
+          ],
+          [
+            0.14982502509407683,
+            -0.005993077306576252,
+            -5.109389670421554e-05,
+            0.21577329891358546
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12935755154850384,
+          0.164678374034507,
+          0.5619210486703206,
+          0.6717722070017449
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.05919498626812425,
+        "terminal_rms_fourjoint_error_rad": 0.11154495337659037,
+        "peak_abs_lead_rad": [
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676
+        ],
+        "peak_abs_effort_nm": [
+          1.9900501370430006,
+          1.8573800921440136,
+          1.6915425360202798,
+          1.6915425360202798
+        ],
+        "peak_measured_speed_rad_s": [
+          0.03717557474604476,
+          0.03331254022107211,
+          0.02772712110190891,
+          0.027576193341098402
+        ],
+        "control_status": {
+          "baseline": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      },
+      "candidate": {
+        "candidate": true,
+        "load_sign": -1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+        "anchor_elapsed": 9.206084586214274,
+        "inertia_matrix_kg_m2": [
+          [
+            0.6044892235358126,
+            -0.03618762250824465,
+            -0.015587959163226245,
+            0.14982502509407683
+          ],
+          [
+            -0.03618762250824465,
+            0.48908172291081164,
+            0.1788229344927828,
+            -0.005993077306576252
+          ],
+          [
+            -0.015587959163226245,
+            0.1788229344927828,
+            0.21838493589486685,
+            -5.109389670421554e-05
+          ],
+          [
+            0.14982502509407683,
+            -0.005993077306576252,
+            -5.109389670421554e-05,
+            0.21577329891358546
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12935755154850384,
+          0.164678374034507,
+          0.5619210486703206,
+          0.6717722070017449
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.006666666666666722,
+        "terminal_rms_fourjoint_error_rad": 0.01145643923738962,
+        "peak_abs_lead_rad": [
+          0.01655300859774536,
+          0.0183932398387013,
+          0.02290122967533381,
+          0.022868714177992324
+        ],
+        "peak_abs_effort_nm": [
+          4.456770403005221,
+          4.028791619434694,
+          3.560265854639963,
+          3.5599821447167885
+        ],
+        "peak_measured_speed_rad_s": [
+          0.20938545962755475,
+          0.20374393669135457,
+          0.20164386090058956,
+          0.2016023372024542
+        ],
+        "control_status": {
+          "accepted": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      }
+    },
+    "F02_counter_sign+1": {
+      "baseline": {
+        "candidate": false,
+        "load_sign": 1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+        "anchor_elapsed": 9.206084586214274,
+        "inertia_matrix_kg_m2": [
+          [
+            0.6044892235358126,
+            -0.03618762250824465,
+            -0.015587959163226245,
+            0.14982502509407683
+          ],
+          [
+            -0.03618762250824465,
+            0.48908172291081164,
+            0.1788229344927828,
+            -0.005993077306576252
+          ],
+          [
+            -0.015587959163226245,
+            0.1788229344927828,
+            0.21838493589486685,
+            -5.109389670421554e-05
+          ],
+          [
+            0.14982502509407683,
+            -0.005993077306576252,
+            -5.109389670421554e-05,
+            0.21577329891358546
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12935755154850384,
+          0.164678374034507,
+          0.5619210486703206,
+          0.6717722070017449
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.05919498287425614,
+        "terminal_rms_fourjoint_error_rad": 0.11154495160276495,
+        "peak_abs_lead_rad": [
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676
+        ],
+        "peak_abs_effort_nm": [
+          1.9900501370430006,
+          1.8573800921440136,
+          1.6915425360202798,
+          1.6915425360202798
+        ],
+        "peak_measured_speed_rad_s": [
+          0.03717557474604476,
+          0.03331254022107211,
+          0.02772712110190891,
+          0.027576193341098402
+        ],
+        "control_status": {
+          "baseline": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      },
+      "candidate": {
+        "candidate": true,
+        "load_sign": 1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+        "anchor_elapsed": 9.206084586214274,
+        "inertia_matrix_kg_m2": [
+          [
+            0.6044892235358126,
+            -0.03618762250824465,
+            -0.015587959163226245,
+            0.14982502509407683
+          ],
+          [
+            -0.03618762250824465,
+            0.48908172291081164,
+            0.1788229344927828,
+            -0.005993077306576252
+          ],
+          [
+            -0.015587959163226245,
+            0.1788229344927828,
+            0.21838493589486685,
+            -5.109389670421554e-05
+          ],
+          [
+            0.14982502509407683,
+            -0.005993077306576252,
+            -5.109389670421554e-05,
+            0.21577329891358546
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12935755154850384,
+          0.164678374034507,
+          0.5619210486703206,
+          0.6717722070017449
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.00666666666666689,
+        "terminal_rms_fourjoint_error_rad": 0.011456439237389746,
+        "peak_abs_lead_rad": [
+          0.01655300859774536,
+          0.01839323797551458,
+          0.022901229712302403,
+          0.022868714880510663
+        ],
+        "peak_abs_effort_nm": [
+          4.456770403005221,
+          4.028791619434694,
+          3.5602658610997047,
+          3.5599822168030535
+        ],
+        "peak_measured_speed_rad_s": [
+          0.20938545962755473,
+          0.20374393279241268,
+          0.20164386132139533,
+          0.20160234175857256
+        ],
+        "control_status": {
+          "accepted": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      }
+    },
+    "F03_counter_sign-1": {
+      "baseline": {
+        "candidate": false,
+        "load_sign": -1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+        "anchor_elapsed": 9.205879272893071,
+        "inertia_matrix_kg_m2": [
+          [
+            0.60656340349703,
+            0.03693320037899267,
+            0.01929398031557393,
+            0.15108790521888193
+          ],
+          [
+            0.03693320037899267,
+            0.49262595355761285,
+            0.17960080755326074,
+            0.0036152214689827945
+          ],
+          [
+            0.01929398031557393,
+            0.17960080755326074,
+            0.21787463530728526,
+            -4.8154406351655354e-05
+          ],
+          [
+            0.15108790521888193,
+            0.0036152214689827945,
+            -4.8154406351655354e-05,
+            0.215767871057459
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12903474491360975,
+          0.1640051216726869,
+          0.5642108432408619,
+          0.6755811535922286
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.059194883282470606,
+        "terminal_rms_fourjoint_error_rad": 0.11154380667159675,
+        "peak_abs_lead_rad": [
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676
+        ],
+        "peak_abs_effort_nm": [
+          1.9900501370430006,
+          1.8573800921440136,
+          1.6915425360202798,
+          1.6915425360202798
+        ],
+        "peak_measured_speed_rad_s": [
+          0.03701672279069165,
+          0.032900615799239134,
+          0.027445428571329686,
+          0.02742478064706553
+        ],
+        "control_status": {
+          "baseline": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      },
+      "candidate": {
+        "candidate": true,
+        "load_sign": -1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+        "anchor_elapsed": 9.205879272893071,
+        "inertia_matrix_kg_m2": [
+          [
+            0.60656340349703,
+            0.03693320037899267,
+            0.01929398031557393,
+            0.15108790521888193
+          ],
+          [
+            0.03693320037899267,
+            0.49262595355761285,
+            0.17960080755326074,
+            0.0036152214689827945
+          ],
+          [
+            0.01929398031557393,
+            0.17960080755326074,
+            0.21787463530728526,
+            -4.8154406351655354e-05
+          ],
+          [
+            0.15108790521888193,
+            0.0036152214689827945,
+            -4.8154406351655354e-05,
+            0.215767871057459
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12903474491360975,
+          0.1640051216726869,
+          0.5642108432408619,
+          0.6755811535922286
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.006666666666666722,
+        "terminal_rms_fourjoint_error_rad": 0.01145643923738965,
+        "peak_abs_lead_rad": [
+          0.01703662700650581,
+          0.01860001563310787,
+          0.022912874601196506,
+          0.022873087828372968
+        ],
+        "peak_abs_effort_nm": [
+          4.580687441528534,
+          4.131729588738117,
+          3.5583521335760957,
+          3.5642345730409835
+        ],
+        "peak_measured_speed_rad_s": [
+          0.2117262911987958,
+          0.20419550089449773,
+          0.2016718165837791,
+          0.20188881413347634
+        ],
+        "control_status": {
+          "accepted": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      }
+    },
+    "F03_counter_sign+1": {
+      "baseline": {
+        "candidate": false,
+        "load_sign": 1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+        "anchor_elapsed": 9.205879272893071,
+        "inertia_matrix_kg_m2": [
+          [
+            0.60656340349703,
+            0.03693320037899267,
+            0.01929398031557393,
+            0.15108790521888193
+          ],
+          [
+            0.03693320037899267,
+            0.49262595355761285,
+            0.17960080755326074,
+            0.0036152214689827945
+          ],
+          [
+            0.01929398031557393,
+            0.17960080755326074,
+            0.21787463530728526,
+            -4.8154406351655354e-05
+          ],
+          [
+            0.15108790521888193,
+            0.0036152214689827945,
+            -4.8154406351655354e-05,
+            0.215767871057459
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12903474491360975,
+          0.1640051216726869,
+          0.5642108432408619,
+          0.6755811535922286
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.05919488523253395,
+        "terminal_rms_fourjoint_error_rad": 0.1115438077030599,
+        "peak_abs_lead_rad": [
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676,
+          0.003316751122474676
+        ],
+        "peak_abs_effort_nm": [
+          1.9900501370430006,
+          1.8573800921440136,
+          1.6915425360202798,
+          1.6915425360202798
+        ],
+        "peak_measured_speed_rad_s": [
+          0.03701672279069165,
+          0.032900615799239134,
+          0.027445428571329686,
+          0.02742478064706553
+        ],
+        "control_status": {
+          "baseline": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      },
+      "candidate": {
+        "candidate": true,
+        "load_sign": 1,
+        "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+        "source_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+        "anchor_elapsed": 9.205879272893071,
+        "inertia_matrix_kg_m2": [
+          [
+            0.60656340349703,
+            0.03693320037899267,
+            0.01929398031557393,
+            0.15108790521888193
+          ],
+          [
+            0.03693320037899267,
+            0.49262595355761285,
+            0.17960080755326074,
+            0.0036152214689827945
+          ],
+          [
+            0.01929398031557393,
+            0.17960080755326074,
+            0.21787463530728526,
+            -4.8154406351655354e-05
+          ],
+          [
+            0.15108790521888193,
+            0.0036152214689827945,
+            -4.8154406351655354e-05,
+            0.215767871057459
+          ]
+        ],
+        "inertia_eigenvalues": [
+          0.12903474491360975,
+          0.1640051216726869,
+          0.5642108432408619,
+          0.6755811535922286
+        ],
+        "xml": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+        "xml_sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755",
+        "xml_damping": 10.0,
+        "xml_armature": 0.1,
+        "xml_frictionloss_omitted": 0.2,
+        "terminal_mean_abs_elbow_error_rad": 0.00666666666666689,
+        "terminal_rms_fourjoint_error_rad": 0.011456439237389761,
+        "peak_abs_lead_rad": [
+          0.01703662700650581,
+          0.01860001563310787,
+          0.022912874602683278,
+          0.022873089188081785
+        ],
+        "peak_abs_effort_nm": [
+          4.580687441528534,
+          4.131729588738117,
+          3.558352133386481,
+          3.5642346931378066
+        ],
+        "peak_measured_speed_rad_s": [
+          0.21172629119879577,
+          0.20419550086570332,
+          0.2016718166359027,
+          0.20188882281237747
+        ],
+        "control_status": {
+          "accepted": 301
+        },
+        "buffer_to_plant_position_error_rad": 0.0,
+        "stop_requests": 0
+      }
+    }
+  },
+  "actuator_comparisons": [
+    {
+      "condition": "F02_counter_sign-1",
+      "baseline_elbow_rad": 0.05919498626812425,
+      "candidate_elbow_rad": 0.006666666666666722,
+      "reduction_rad": 0.05252831960145753,
+      "reduction_fraction": 0.8873778492578748,
+      "mechanism_threshold_met": true,
+      "candidate_only_accepted": true
+    },
+    {
+      "condition": "F02_counter_sign+1",
+      "baseline_elbow_rad": 0.05919498287425614,
+      "candidate_elbow_rad": 0.00666666666666689,
+      "reduction_rad": 0.05252831620758925,
+      "reduction_fraction": 0.887377842800826,
+      "mechanism_threshold_met": true,
+      "candidate_only_accepted": true
+    },
+    {
+      "condition": "F03_counter_sign-1",
+      "baseline_elbow_rad": 0.059194883282470606,
+      "candidate_elbow_rad": 0.006666666666666722,
+      "reduction_rad": 0.05252821661580388,
+      "reduction_fraction": 0.8873776533209092,
+      "mechanism_threshold_met": true,
+      "candidate_only_accepted": true
+    },
+    {
+      "condition": "F03_counter_sign+1",
+      "baseline_elbow_rad": 0.05919488523253395,
+      "candidate_elbow_rad": 0.00666666666666689,
+      "reduction_rad": 0.05252821856586706,
+      "reduction_fraction": 0.8873776570310362,
+      "mechanism_threshold_met": true,
+      "candidate_only_accepted": true
+    }
+  ],
+  "analytical_equilibrium_abs_elbow_rad": {
+    "baseline": 0.059117647058823525,
+    "persistent": 0.006666666666666667
+  },
+  "fault_tests": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "26",
+    "time": "19.402",
+    "timestamp": "2026-11-10T20:04:39.586044-07:00",
+    "hostname": "zyt-desktop"
+  },
+  "development_failures": [
+    "Initial fixture indexed resolved 27-joint gains as raw 15-joint gains; rejected output retained at iter7b_recovery_fixture_invalid_gain_index_results.json. Fixed to motor indices; no candidate parameters changed.",
+    "Initial memory buffers used float64 unlike deployed float32. Replaced with actual publisher dtypes and seed/commit from emitted buffer; prior output retained at iter7b_recovery_fixture_pre_float32_results.json. Quantization tolerances explicit, no candidate parameters changed.",
+    "First invocation stopped before any plant cell: XML joint default is nested under class h1_2, not default/joint. Corrected selector, no physical values changed.",
+    "First packaging invocation expected force_onset_step in final status; shutdown status omits it. Replaced with explicit initialization_failed termination and null release time checks."
+  ],
+  "scope_limits": [
+    "Recorded observations are frozen: reference-lead rejection is not a physical failure/success forecast",
+    "Synthetic actuator reduction follows ideal PD stiffness algebra; does not establish real friction, load, relay, actuator or base behavior",
+    "Full movement/fade/whole-body balance/endpoint/effort nonregression gates remain untested in a valid physical simulation",
+    "Real supervisor command lease, relay STOP outputs, transport delivery, state freshness and hardware safety unverified",
+    "No ALMI checkpoint run, no FAME input/policy swap, no reward tuning, no MPC or momentum-rate controller rewrite",
+    "Existing movement regressions cannot be fixed by postfade-only intervention",
+    "Current recorder provenance differs for F02 onward; source records and supplied hashes retained, no historical data rewritten"
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/kilo/iter7b_recovery_fixture.py",
+      "sha256": "da8ae2da5e742ca60d69fb8886060f9b2b319fa0a8d6bde525fbbe2e816da817"
+    },
+    {
+      "path": "/tmp/kilo/test_iter7b_recovery_fixture.py",
+      "sha256": "06ae2a2d36c117ddb102bad6652ae651b688941716e6f49a6d09613a2403d50e"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_actuator.py",
+      "sha256": "53d922708649a0e9eeb869aa1027be22f708ae16419ec35d13618489e2ca3480"
+    },
+    {
+      "path": "/tmp/kilo/summarize_iter7b_recovery.py",
+      "sha256": "961b1f523a216b53677eae12b6a0874db693288c783cecf0bed656308ac375d6"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_fixture_results.json",
+      "sha256": "739fe13819801d6e606a1cb03bc201b2f611d3425c1537d85c2146c1d1265cce"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_actuator_results.json",
+      "sha256": "df6f9838e19ae80d3019349e6aebbdb812caea271cc54a423cbab257db479bea"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_fixture_tests.xml",
+      "sha256": "3bd419f788d27e98f955711f9fcf4bc8ee6d1bf98a0bdf149040c48365809e69"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_fixture_invalid_gain_index_results.json",
+      "sha256": "f94bb90498f4dba0bfe20cdfc4ee2a6ab23e9b667ae462391e2391c9b9cf82d9"
+    },
+    {
+      "path": "/tmp/kilo/iter7b_recovery_fixture_pre_float32_results.json",
+      "sha256": "158a6d5699579d720a8a62fe8990449367d07e433cf8feac34799975313830b6"
+    }
+  ],
+  "archive": {
+    "purpose": "Generic command and ideal-PD stiffness mechanism reproducibility, not a deployable controller",
+    "readiness": false,
+    "original_summary_sha256": "a3ae2781b9483fe40e7ab255c035e58c8271d68ef0f6c012ec7313adb45af7a5",
+    "original_scripts_sha256": {
+      "iter7b_recovery_fixture.py": "da8ae2da5e742ca60d69fb8886060f9b2b319fa0a8d6bde525fbbe2e816da817",
+      "test_iter7b_recovery_fixture.py": "06ae2a2d36c117ddb102bad6652ae651b688941716e6f49a6d09613a2403d50e",
+      "iter7b_recovery_actuator.py": "53d922708649a0e9eeb869aa1027be22f708ae16419ec35d13618489e2ca3480",
+      "summarize_iter7b_recovery.py": "961b1f523a216b53677eae12b6a0874db693288c783cecf0bed656308ac375d6"
+    },
+    "portable_scripts_sha256": {
+      "iter7b_recovery_fixture.py": "391806a88b20861e595d829ff26fd2791ac544230358d580bb6353e80e3469ce",
+      "test_iter7b_recovery_fixture.py": "2d9ea524888cdfa2c73ea872f348314995755ba6f62c8bc816af3cd2b7814d6e",
+      "iter7b_recovery_actuator.py": "9dab71d605a73ec8d11220fee0e734afcd324ddefc28a15baf95018cb532e9d3",
+      "summarize_iter7b_recovery.py": "f3a9e9643c3a6c65c41262af880196802a0d7c0e076ee388aabc3add27b27fe1"
+    },
+    "numerical_definitions_ast_identical": {
+      "iter7b_recovery_fixture.py": [
+        "arrays",
+        "sample",
+        "Harness",
+        "Recovery",
+        "make_model",
+        "replay"
+      ],
+      "test_iter7b_recovery_fixture.py": [
+        "fixture_data",
+        "seam",
+        "test_actual_seed_step_velocity_and_ownership",
+        "test_skipped_updates_never_accumulate",
+        "test_stale_and_stop_latch_no_untrusted_hold",
+        "test_collision_checks_actual_proposal_and_validated_fallback",
+        "test_invalid_fallback_stops_without_writing",
+        "test_new_target_cannot_reuse_old_reference",
+        "test_new_moving_target_is_checked_not_only_counter",
+        "test_guard_rejection_does_not_commit",
+        "test_publication_failure_never_commits",
+        "test_guard_fixture_uses_real_limit_and_collision_checks"
+      ],
+      "iter7b_recovery_actuator.py": [
+        "run_cell"
+      ]
+    },
+    "original_artifact_hash_semantics": "Existing artifacts field describes original /tmp files, not retained portable copies",
+    "root": "Run from benchmark repository root cwd; local raw records and submodule assets required",
+    "output_root": "/tmp/kilo/iteration7b_recovery_reproduction",
+    "reproduction_commands": [
+      ".venv/bin/python -B submodules/h12_ros2_controller/docs/counter_balance/data/iteration7b_20261110/recovery_prototype/iter7b_recovery_fixture.py",
+      ".venv/bin/python -B submodules/h12_ros2_controller/docs/counter_balance/data/iteration7b_20261110/recovery_prototype/iter7b_recovery_actuator.py",
+      ".venv/bin/python -B -m pytest -q -p no:cacheprovider submodules/h12_ros2_controller/docs/counter_balance/data/iteration7b_20261110/recovery_prototype/test_iter7b_recovery_fixture.py --junitxml=/tmp/kilo/iteration7b_recovery_reproduction/tests.xml",
+      ".venv/bin/python -B submodules/h12_ros2_controller/docs/counter_balance/data/iteration7b_20261110/recovery_prototype/summarize_iter7b_recovery.py"
+    ],
+    "no_additional_full_simulations": true,
+    "failed_full_simulation_raw_directory_copied": false,
+    "fixture_rows_retained": false,
+    "fallback_audit": {
+      "F02_counter": {
+        "accepted_to_fallback_max_position_jump_rad": 0.033821918070316315,
+        "jump_over_nominal_dt_rad_s": 1.0146575421094894,
+        "accepted_to_fallback_max_dq_change_rad_s": 0.2548643946647644,
+        "normal_dq_slew_allowance_rad_s": 0.03333333333333333
+      },
+      "F03_counter": {
+        "accepted_to_fallback_max_position_jump_rad": 0.03731296816840768,
+        "jump_over_nominal_dt_rad_s": 1.1193890450522304,
+        "accepted_to_fallback_max_dq_change_rad_s": 0.25302696228027344,
+        "normal_dq_slew_allowance_rad_s": 0.03333333333333333
+      },
+      "F03r_counter": {
+        "accepted_to_fallback_max_position_jump_rad": 0.03841913631185889,
+        "jump_over_nominal_dt_rad_s": 1.1525740893557668,
+        "accepted_to_fallback_max_dq_change_rad_s": 0.2535476088523865,
+        "normal_dq_slew_allowance_rad_s": 0.03333333333333333
+      }
+    },
+    "known_limitations": [
+      "Fallback validates endpoint collision, lead and estimated effort, not inter-command position jump or dq slew",
+      "Accepted-to-hold position jumps exceed normal per-step rates; this is not a smooth or fully guarded hardware fallback",
+      "Fallback ignores the write return value and can report validated_hold after publication failure",
+      "Normal accepted-update acceleration assertions do not cover fallback, STOP, rearm or transport behavior",
+      "In-memory stop callback does not establish real supervisor, DDS, relay or motor safety",
+      "Command_change_rad measures deviation from same-state baseline, not successive-command jump",
+      "Jump divided by nominal dt is a target-change rate, not measured physical joint velocity; actual timestamps differ",
+      "Desired recovery speed 0.20 rad/s is not a hard cap during inherited-velocity deceleration",
+      "Finite dq, desired velocity, feedforward torque and estimated effort are not explicitly checked; NaN can bypass comparison guards",
+      "Ordinary writer exceptions propagate without the fixture stop callback",
+      "Rearm clears software latches but does not verify or restore actuator mode after STOP",
+      "buffer_to_plant_position_error_rad compares the buffer to itself, not independent transport or plant realization",
+      "terminal_rms_fourjoint_error_rad is RMS vector norm, not per-joint RMS",
+      "The 26 testcases cover 13 parameterized cases per side, not 26 independent safety requirements"
+    ],
+    "reproduction_validation": {
+      "all_compact_values_exact": true,
+      "full_original_results_exact_when_requested": true,
+      "fixture_output_byte_identical_to_original": true,
+      "actuator_output_byte_identical_to_original": true,
+      "original_test_count": 26,
+      "rerun_tests": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "26",
+        "time": "18.360",
+        "timestamp": "2026-11-10T20:24:37.122605-07:00",
+        "hostname": "zyt-desktop"
+      },
+      "source_hashes_checked": true,
+      "fallback_audit_exact": true,
+      "readiness": false,
+      "portable_script_hashes": {
+        "iter7b_recovery_actuator.py": "9dab71d605a73ec8d11220fee0e734afcd324ddefc28a15baf95018cb532e9d3",
+        "iter7b_recovery_fixture.py": "391806a88b20861e595d829ff26fd2791ac544230358d580bb6353e80e3469ce",
+        "summarize_iter7b_recovery.py": "f3a9e9643c3a6c65c41262af880196802a0d7c0e076ee388aabc3add27b27fe1",
+        "test_iter7b_recovery_fixture.py": "2d9ea524888cdfa2c73ea872f348314995755ba6f62c8bc816af3cd2b7814d6e"
+      }
+    }
+  }
+}
