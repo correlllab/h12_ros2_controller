@@ -2,8 +2,16 @@ import time
 from copy import deepcopy
 from dataclasses import asdict
 
+import numpy as np
+import pinocchio as pin
+
 from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_controller import (
     CounterDDPVelocityController,
+)
+from h12_ros2_controller.core.controller.counter_balance.hand_error import (
+    fold_hand_error,
+    hand_momentum_map,
+    parse_hand_error_config,
 )
 from h12_ros2_controller.core.controller.counter_balance.scipy_nominal_planner import (
     ScipyNominalConfig,
@@ -179,4 +187,70 @@ class ScipyNominalMixin:
 
 class CounterDDPVelocityRobustController(
         ScipyNominalMixin, CounterDDPVelocityController):
-    '''Run the shared SciPy nominal controller without H2 models or OCP'''
+    '''Run the shared SciPy nominal controller without H2 models or OCP
+
+    An opt-in reactive_counter_balance.hand_error block reweights the momentum
+    rows by the moving hand's lever arm; with weight 0 the solve is unchanged.
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        config = getattr(self, 'config', None) or {}
+        reactive = config.get('reactive_counter_balance', {})
+        self.hand_error = parse_hand_error_config(reactive.get('hand_error'))
+        self._hand_map = None
+
+    def _hand_error_enabled(self):
+        config = getattr(self, 'hand_error', None)
+        return config is not None and config.weight > 0.0
+
+    def _model_terms(self, motor_q):
+        terms = super()._model_terms(motor_q)
+        self._hand_map = None
+        if self._hand_error_enabled():
+            self._hand_map = self._compute_hand_map(motor_q)
+        return terms
+
+    def _compute_hand_map(self, motor_q):
+        # frame placements were refreshed by the base model-terms pass
+        model = self.robot_model.model_body
+        data = self._reactive_data
+        body_q = self._body_q(motor_q)
+        pin.ccrba(model, data, body_q, np.zeros(model.nv))
+        frame = self.hand_error.frame or f'{self.moving_arm}_wrist_yaw_link'
+        ankles = [data.oMf[model.getFrameId(f'{side}_ankle_roll_link')].translation
+                  for side in ('left', 'right')]
+        return hand_momentum_map(
+            hand=data.oMf[model.getFrameId(frame)].translation,
+            pivot=np.mean(ankles, axis=0),
+            com_inertia=data.Ig.inertia,
+            mass=data.Ig.mass,
+            com=data.com[0],
+        )
+
+    def _isolated_velocity_solve(
+            self, com_counter, momentum_counter, com_rhs, momentum_rhs,
+            posture_target, lower, upper, balance_scale):
+        hand_map = getattr(self, '_hand_map', None)
+        if not self._hand_error_enabled() or hand_map is None:
+            return super()._isolated_velocity_solve(
+                com_counter, momentum_counter, com_rhs, momentum_rhs,
+                posture_target, lower, upper, balance_scale,
+            )
+        momentum_counter, momentum_rhs = fold_hand_error(
+            momentum_counter, momentum_rhs, hand_map,
+            self.momentum_weight, self.momentum_scale, self.hand_error,
+        )
+        return solve_scipy_nominal(
+            com_counter, momentum_counter, com_rhs, momentum_rhs,
+            posture_target, lower, upper, balance_scale,
+            ScipyNominalConfig(
+                com_weight=self.com_weight,
+                momentum_weight=1.0,
+                posture_weight=self.posture_weight,
+                damping=self.damping,
+                com_velocity_scale=self.com_velocity_scale,
+                momentum_scale=1.0,
+                posture_velocity_scale=self.posture_velocity_scale,
+            ),
+        )
