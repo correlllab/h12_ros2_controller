@@ -129,3 +129,16 @@ def test_set_hand_wrench_validates_input():
     for bad in ([0.0, 0.0], [np.inf, 0.0, 0.0]):
         with pytest.raises(ValueError):
             controller.set_hand_wrench(bad)
+
+
+def test_extra_arm_torque_is_added_to_gravity_compensation():
+    controller = _robust()
+    controller.control_configuration_step(np.zeros(14), np.zeros(14))
+    base = np.copy(controller.low_cmd_handler.calls[-1]['tau'])
+    extra = np.zeros(14); extra[1] = 3.5
+    controller.set_extra_arm_torque(extra)
+    controller.control_configuration_step(np.zeros(14), np.zeros(14))
+    np.testing.assert_allclose(controller.low_cmd_handler.calls[-1]['tau'] - base, extra)
+    controller.set_extra_arm_torque(None)
+    with pytest.raises(ValueError):
+        controller.set_extra_arm_torque(np.zeros(13))

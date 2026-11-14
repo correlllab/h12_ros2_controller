@@ -432,6 +432,16 @@ class CounterBalanceController(FrameController):
         if self.moving_arm not in ('left', 'right'):
             raise RuntimeError('moving arm is not configured')
 
+    def set_extra_arm_torque(self, tau):
+        '''Add a feedforward torque to the 14 arm joints, or clear it with None'''
+        if tau is None:
+            self._extra_arm_tau = None
+            return
+        tau = np.asarray(tau, dtype=np.float64).reshape(-1)
+        if tau.shape != (14,) or not np.all(np.isfinite(tau)):
+            raise ValueError('extra arm torque must be a finite 14-vector')
+        self._extra_arm_tau = tau
+
     def set_hand_wrench(self, force):
         '''Set the known external force on the moving hand, world frame'''
         force = np.asarray(force, dtype=np.float64).reshape(-1)
@@ -1032,6 +1042,10 @@ class CounterBalanceController(FrameController):
                 measured_motor_q
             )
             tau = np.asarray(gravity, dtype=np.float64)[self.arm_ids]
+            extra = getattr(self, '_extra_arm_tau', None)
+            if extra is not None:
+                # e.g. a known hand load carried by the moving arm, -J^T F
+                tau = tau + np.asarray(extra, dtype=np.float64)
             if tau.shape != (14,) or not np.all(np.isfinite(tau)):
                 raise ValueError('Nonfinite gravity compensation')
         except Exception:
