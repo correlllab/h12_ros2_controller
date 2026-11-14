@@ -7,6 +7,7 @@ from h12_ros2_controller.core.controller.counter_balance.hand_error import (
     fold_hand_error,
     hand_momentum_map,
     parse_hand_error_config,
+    wrench_com_offset,
 )
 from test_counter_ddp_velocity_robust_controller import _robust
 
@@ -93,3 +94,38 @@ def test_enabled_hand_error_solves_folded_problem(monkeypatch):
     np.testing.assert_allclose(seen['momentum'], rows)
     np.testing.assert_allclose(seen['rhs'], target)
     assert (seen['config'].momentum_weight, seen['config'].momentum_scale) == (1.0, 1.0)
+
+
+def test_downward_hand_load_in_front_moves_com_target_back():
+    offset = wrench_com_offset(
+        hand=[0.4, 0.0, 1.0], pivot=np.zeros(3), force=[0.0, 0.0, -20.0], mass=68.0,
+    )
+    np.testing.assert_allclose(offset, [-20.0 * 0.4 / (68.0 * 9.81), 0.0])
+
+
+def test_lateral_hand_load_moves_com_target_sideways():
+    offset = wrench_com_offset(
+        hand=[0.0, 0.3, 1.0], pivot=np.zeros(3), force=[0.0, 0.0, -20.0], mass=68.0,
+    )
+    np.testing.assert_allclose(offset, [0.0, -20.0 * 0.3 / (68.0 * 9.81)])
+    with pytest.raises(ValueError):
+        wrench_com_offset([0, 0, 1], np.zeros(3), [np.nan, 0, 0], 68.0)
+
+
+def test_com_feedforward_shifts_target_and_defaults_to_zero():
+    controller = _robust()
+    controller.control_configuration_step(np.zeros(14), np.zeros(14))
+    baseline = np.copy(controller.latest_com_target)
+    np.testing.assert_array_equal(controller.latest_com_feedforward_offset, np.zeros(2))
+    controller._com_feedforward_offset = lambda: np.array([0.01, -0.02])
+    controller.control_configuration_step(np.zeros(14), np.zeros(14))
+    np.testing.assert_allclose(controller.latest_com_target - baseline, [0.01, -0.02])
+
+
+def test_set_hand_wrench_validates_input():
+    controller = _robust()
+    controller.set_hand_wrench([0.0, 0.0, -20.0])
+    np.testing.assert_array_equal(controller._hand_wrench, [0.0, 0.0, -20.0])
+    for bad in ([0.0, 0.0], [np.inf, 0.0, 0.0]):
+        with pytest.raises(ValueError):
+            controller.set_hand_wrench(bad)

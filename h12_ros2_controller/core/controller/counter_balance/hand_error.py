@@ -61,6 +61,24 @@ def hand_momentum_map(hand, pivot, com_inertia, mass, com):
     return hand_map
 
 
+def wrench_com_offset(hand, pivot, force, mass, gravity=9.81):
+    '''Return the planar CoM shift whose gravity moment cancels a hand force
+
+    The force acts at the hand; its moment about the ankle pivot is
+    (hand - pivot) x force. Shifting the whole-body CoM by d on the floor plane
+    adds the gravity moment d x (0, 0, -m g), so the cancelling shift is
+    d = (-M_y, M_x) / (m g). Frames are the upright model frame.
+    '''
+    force = np.asarray(force, dtype=np.float64)
+    if force.shape != (3,) or not np.all(np.isfinite(force)):
+        raise ValueError('hand force must be a finite three-vector')
+    if not np.isfinite(mass) or mass <= 0.0:
+        raise ValueError('mass must be finite and positive')
+    lever = np.asarray(hand, dtype=np.float64) - np.asarray(pivot, dtype=np.float64)
+    moment = np.cross(lever, force)
+    return np.array([-moment[1], moment[0]]) / (mass * gravity)
+
+
 def fold_hand_error(momentum_counter, momentum_rhs, hand_map,
                     momentum_weight, momentum_scale, config):
     '''Fold momentum and hand-error weights into one pair of momentum rows

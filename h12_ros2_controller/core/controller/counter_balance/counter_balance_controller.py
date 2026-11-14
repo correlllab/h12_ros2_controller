@@ -8,6 +8,9 @@ from h12_ros2_controller.core.controller.counter_balance.frozen_3c_planner impor
     Frozen3CVelocitySolve,
     plan_frozen_3c_velocity,
 )
+from h12_ros2_controller.core.controller.counter_balance.hand_error import (
+    wrench_com_offset,
+)
 from h12_ros2_controller.core.controller.counter_balance.objective import (
     CounterVelocityBoundsError,
     reaction_targets,
@@ -228,7 +231,9 @@ class CounterBalanceController(FrameController):
         self.latest_activation_scale = activation_scale
         self.latest_balance_scale = balance_scale
 
-        com_target = support.center + self.com_offset_ref
+        com_target = (
+            support.center + self.com_offset_ref + self._com_feedforward_offset()
+        )
         com_error = np.asarray(com[:2] - com_target, dtype=np.float64)
         gyro, gyro_available = self._torso_gyro(torso_rotation)
         self.latest_com_target = np.copy(com_target)
@@ -427,6 +432,29 @@ class CounterBalanceController(FrameController):
         if self.moving_arm not in ('left', 'right'):
             raise RuntimeError('moving arm is not configured')
 
+    def set_hand_wrench(self, force):
+        '''Set the known external force on the moving hand, world frame'''
+        force = np.asarray(force, dtype=np.float64).reshape(-1)
+        if force.shape != (3,) or not np.all(np.isfinite(force)):
+            raise ValueError('hand force must be a finite three-vector')
+        self._hand_wrench = force
+
+    def _com_feedforward_offset(self):
+        # a known hand load shifts the CoM target so gravity cancels its moment
+        force = getattr(self, '_hand_wrench', None)
+        self.latest_com_feedforward_offset = np.zeros(2, dtype=np.float64)
+        if force is None or not np.any(force) or self.moving_arm is None:
+            return self.latest_com_feedforward_offset
+        model = self.robot_model.model_body
+        data = self._reactive_data
+        ankles = [data.oMf[model.getFrameId(f'{side}_ankle_roll_link')].translation
+                  for side in ('left', 'right')]
+        hand = data.oMf[model.getFrameId(f'{self.moving_arm}_wrist_yaw_link')].translation
+        self.latest_com_feedforward_offset = wrench_com_offset(
+            hand, np.mean(ankles, axis=0), force, pin.computeTotalMass(model),
+        )
+        return self.latest_com_feedforward_offset
+
     def diagnostics(self):
         '''Return serializable reactive controller diagnostics'''
         return {
@@ -434,6 +462,8 @@ class CounterBalanceController(FrameController):
             'moving_arm': self.moving_arm,
             'counter_arm': self.counter_arm,
             'balance_scale': float(self.latest_balance_scale),
+            'com_feedforward_offset': np.asarray(getattr(
+                self, 'latest_com_feedforward_offset', np.zeros(2))).tolist(),
             'activation_scale': float(self.latest_activation_scale),
             'requested_counter_dq': (
                 self.latest_requested_counter_dq.tolist()
