@@ -13,6 +13,10 @@ from h12_ros2_controller.core.controller.counter_balance.hand_error import (
     hand_momentum_map,
     parse_hand_error_config,
 )
+from h12_ros2_controller.core.controller.counter_balance.yaw_momentum import (
+    parse_yaw_momentum_config,
+    yaw_momentum_row,
+)
 from h12_ros2_controller.core.controller.counter_balance.scipy_nominal_planner import (
     ScipyNominalConfig,
     solve_scipy_nominal,
@@ -190,7 +194,9 @@ class CounterDDPVelocityRobustController(
     '''Run the shared SciPy nominal controller without H2 models or OCP
 
     An opt-in reactive_counter_balance.hand_error block reweights the momentum
-    rows by the moving hand's lever arm; with weight 0 the solve is unchanged.
+    rows by the moving hand's lever arm, and an opt-in yaw_momentum block adds a
+    row cancelling the arms' angular momentum about the vertical; with weight 0
+    either leaves the solve unchanged.
     '''
 
     def __init__(self, *args, **kwargs):
@@ -198,7 +204,30 @@ class CounterDDPVelocityRobustController(
         config = getattr(self, 'config', None) or {}
         reactive = config.get('reactive_counter_balance', {})
         self.hand_error = parse_hand_error_config(reactive.get('hand_error'))
+        self.yaw_momentum = parse_yaw_momentum_config(reactive.get('yaw_momentum'))
         self._hand_map = None
+        self._yaw_terms = None
+        self._yaw_inputs = None
+
+    def _yaw_enabled(self):
+        config = getattr(self, 'yaw_momentum', None)
+        return config is not None and config.weight > 0.0
+
+    def _plan_counter_velocity(self, inputs):
+        self._yaw_inputs = (np.copy(inputs.moving_dq), float(np.asarray(inputs.gyro).reshape(-1)[2])
+                            if np.asarray(inputs.gyro).size >= 3 else 0.0)
+        try:
+            return super()._plan_counter_velocity(inputs)
+        finally:
+            self._yaw_inputs = None
+
+    def _yaw_rows(self, balance_scale):
+        if not self._yaw_enabled() or self._yaw_terms is None or self._yaw_inputs is None:
+            return None, None
+        yaw_counter, yaw_moving = self._yaw_terms
+        moving_dq, gyro_z = self._yaw_inputs
+        return yaw_momentum_row(yaw_counter, yaw_moving, moving_dq, gyro_z,
+                                float(balance_scale), self.yaw_momentum, self.momentum_scale)
 
     def _hand_error_enabled(self):
         config = getattr(self, 'hand_error', None)
@@ -207,6 +236,11 @@ class CounterDDPVelocityRobustController(
     def _model_terms(self, motor_q):
         terms = super()._model_terms(motor_q)
         self._hand_map = None
+        self._yaw_terms = None
+        if self._yaw_enabled():
+            momentum_map = np.asarray(terms[3])
+            self._yaw_terms = (np.copy(momentum_map[2, self.counter_v_indices]),
+                               np.copy(momentum_map[2, self.moving_v_indices]))
         if self._hand_error_enabled():
             self._hand_map = self._compute_hand_map(motor_q)
         return terms
@@ -232,25 +266,32 @@ class CounterDDPVelocityRobustController(
             self, com_counter, momentum_counter, com_rhs, momentum_rhs,
             posture_target, lower, upper, balance_scale):
         hand_map = getattr(self, '_hand_map', None)
-        if not self._hand_error_enabled() or hand_map is None:
+        hand = self._hand_error_enabled() and hand_map is not None
+        extra_rows, extra_target = self._yaw_rows(balance_scale)
+        if not hand and extra_rows is None:
             return super()._isolated_velocity_solve(
                 com_counter, momentum_counter, com_rhs, momentum_rhs,
                 posture_target, lower, upper, balance_scale,
             )
-        momentum_counter, momentum_rhs = fold_hand_error(
-            momentum_counter, momentum_rhs, hand_map,
-            self.momentum_weight, self.momentum_scale, self.hand_error,
-        )
+        momentum_weight, momentum_scale = self.momentum_weight, self.momentum_scale
+        if hand:
+            momentum_counter, momentum_rhs = fold_hand_error(
+                momentum_counter, momentum_rhs, hand_map,
+                self.momentum_weight, self.momentum_scale, self.hand_error,
+            )
+            momentum_weight, momentum_scale = 1.0, 1.0
         return solve_scipy_nominal(
             com_counter, momentum_counter, com_rhs, momentum_rhs,
             posture_target, lower, upper, balance_scale,
             ScipyNominalConfig(
                 com_weight=self.com_weight,
-                momentum_weight=1.0,
+                momentum_weight=momentum_weight,
                 posture_weight=self.posture_weight,
                 damping=self.damping,
                 com_velocity_scale=self.com_velocity_scale,
-                momentum_scale=1.0,
+                momentum_scale=momentum_scale,
                 posture_velocity_scale=self.posture_velocity_scale,
             ),
+            **({} if extra_rows is None else
+               {'extra_rows': extra_rows, 'extra_target': extra_target}),
         )
