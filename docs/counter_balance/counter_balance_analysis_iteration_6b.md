@@ -81,7 +81,7 @@ Endpoint, progress, completion and recorded outcome remain visible because a sma
 spatial error on a partial path is not successful manipulation. Base-fixed execution
 RMS is retained only as a mechanism diagnostic, not a spatial-task substitute.
 The detailed contract and test rationale are in the
-[straight-line benchmark specification](../../../../docs/straight_line_trajectory_benchmark.md).
+[straight-line benchmark specification](../../../../docs/straight_line_trajectory_benchmark.html).
 
 ## 4. Final Spatial Results
 

@@ -62,7 +62,7 @@ compares to the scheduled desired point at the same trajectory time and therefor
 includes phase/servo lag. A spatially accurate partial path is not task completion.
 Base-fixed execution RMS is a mechanism diagnostic, never a substitute for spatial
 task accuracy. The precise contract is in the
-[Straight-Line Trajectory Benchmark](../../../../docs/straight_line_trajectory_benchmark.md).
+[Straight-Line Trajectory Benchmark](../../../../docs/straight_line_trajectory_benchmark.html).
 
 ## Evidence Status
 
