@@ -5,7 +5,7 @@ topics:
   low_state: rt/lowstate
 
 network:
-  domain_id: 1
+  domain_id: 0
   interface: ''
 
 controller:

@@ -30,7 +30,7 @@ dependencies = [
 
 [tool.uv.workspace]
 members = [
-    "submodules/unitree_sdk2_python",
+    "../../../unitree_sdk2_python",
 ]
 
 [tool.uv.sources]
