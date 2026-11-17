@@ -12,7 +12,8 @@ class ArmController(UpperController):
                  init: bool=True,
                  handless: bool=False,
                  visualize: bool=False,
-                 config: dict=None):
+                 config: dict=None,
+                 control_timing=None):
         # initialize base controller
         super().__init__(
             urdf_path=urdf_path,
@@ -22,6 +23,7 @@ class ArmController(UpperController):
             handless=handless,
             visualize=visualize,
             config=config,
+            control_timing=control_timing,
         )
 
         # add frame tasks to IK solver

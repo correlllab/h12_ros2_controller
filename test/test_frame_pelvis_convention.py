@@ -3,7 +3,7 @@
 import ast
 import threading
 from pathlib import Path
-from types import SimpleNamespace
+from types import SimpleNamespace, MethodType
 from unittest.mock import Mock
 
 import numpy as np
@@ -11,11 +11,20 @@ import pinocchio as pin
 import pytest
 
 from h12_ros2_controller.core.controller.frame_controller import FrameController
+from h12_ros2_controller.core.controller.upper_controller import PathExecutionCancelled
 from h12_ros2_controller.core.ik_solver import IKSolver
 from h12_ros2_controller.core.planner.kinematic_pipeline import KinematicPipeline
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.utility.joint_definition import BODY_JOINTS, ENABLED_JOINTS
 from h12_ros2_controller.utility.path_definition import URDF_MAGPIE_PATH
+
+
+@pytest.fixture(autouse=True)
+def source_robot_asset(monkeypatch):
+    if not Path(URDF_MAGPIE_PATH).exists():
+        asset = Path(__file__).resolve().parents[4] / 'CL_Assets/ros_assets/h1_2_magpie.urdf'
+        if asset.is_file():
+            monkeypatch.setitem(globals(), 'URDF_MAGPIE_PATH', str(asset))
 
 
 def test_measured_frame_uses_pelvis_not_imu_or_frozen_reference():
@@ -159,19 +168,32 @@ def load_server_methods():
     namespace = {
         'FrameTask': SimpleNamespace(Result=Result),
         'StaleStateError': type('StaleStateError', (RuntimeError,), {}),
+        'PathExecutionCancelled': PathExecutionCancelled,
         'StringArray': Message, 'PoseArray': Message,
         'matrix_to_pose': lambda value: value.copy(),
-        'pose_to_matrix': lambda value: value,
+        'pose_to_matrix': lambda value: np.eye(4),
+        'Pose': lambda: SimpleNamespace(position=SimpleNamespace(x=0., y=0., z=0.),
+                                       orientation=SimpleNamespace(x=0., y=0., z=0., w=1.)),
         'np': np,
+        'SLOW_MODE_SCALE': 0.25,
         'GoalResponse': SimpleNamespace(ACCEPT=1, REJECT=2),
     }
     for node in server.body:
         if isinstance(node, ast.FunctionDef) and node.name in {
             'frame_task_callback', '_frame_task_callback', '_resolve_target',
             'publisher_callback', '_stamp_pose',
+            '_validated_frame_targets', '_install_frame_targets', '_goal_timeout',
         }:
             module = ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[]))
             exec(compile(module, str(source), 'exec'), namespace)
+    callback = namespace['_frame_task_callback']
+
+    def with_helpers(server, goal):
+        for name in ('_validated_frame_targets', '_install_frame_targets', '_goal_timeout'):
+            setattr(server, name, MethodType(namespace[name], server))
+        return callback(server, goal)
+
+    namespace['_frame_task_callback'] = with_helpers
     return namespace
 
 
@@ -186,6 +208,7 @@ def test_invalid_frame_goal_aborts_before_mutating_tasks(names, targets):
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
         frame_names=['previous'], frame_targets=['previous target'],
+        get_parameter=lambda name: SimpleNamespace(value='frame'), _upper_controller='frame',
         _comparison_active=False, normal_goal_callback=lambda request: 1,
     )
     server._frame_task_callback = lambda goal: methods['_frame_task_callback'](server, goal)
@@ -215,6 +238,7 @@ def test_nonfinite_frame_target_is_rejected_before_task_mutation():
     server = SimpleNamespace(
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
+        get_parameter=lambda name: SimpleNamespace(value='frame'), _upper_controller='frame',
         _comparison_active=False, normal_goal_callback=lambda request: 1,
     )
     server._frame_task_callback = lambda goal: methods['_frame_task_callback'](server, goal)
@@ -260,6 +284,7 @@ def test_ros_frame_goal_installs_two_tasks_before_one_planned_motion():
         controller=controller, _controller_lock=threading.Lock(),
         get_logger=lambda: SimpleNamespace(info=Mock(), error=Mock()),
         timeout=1.0, frame_names=[], frame_targets=[],
+        get_parameter=lambda name: SimpleNamespace(value='frame'), _upper_controller='frame',
         _comparison_active=False,
         _resolve_target=lambda name, target, relative, measured_q: target,
         _plan_frame_task_callback=Mock(return_value='one plan'),

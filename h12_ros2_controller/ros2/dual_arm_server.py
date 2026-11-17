@@ -25,6 +25,7 @@ from h12_ros2_controller.utility.path_definition_ros import (
     CONFIG_DIR
 )
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
+from h12_ros2_controller.ros2.control_timing import node_control_timing
 
 # Speed multiplier applied when a NamedConfig goal requests slow_mode. The
 # controller applies it per execution mode: a direct move scales joint
@@ -62,6 +63,7 @@ class DualArmServer(Node):
         )
         self.config_name = config_name
 
+        control_timing = node_control_timing(self, self.timeout)
         self.controller = ArmController(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
@@ -70,6 +72,7 @@ class DualArmServer(Node):
             handless=False,
             visualize=False,
             config=config,
+            control_timing=control_timing,
         )
         maybe_start_controller_logging(self.controller)
         self._target_snapshot = (
@@ -165,23 +168,30 @@ class DualArmServer(Node):
             duration = goal.duration.sec + goal.duration.nanosec * 1e-9
             timeout = duration if duration > 0.0 else self.timeout
             plan = goal.plan
-            if plan:
-                return self._plan_dual_arm_callback(goal_handle, timeout)
-            else:
-                return self._direct_dual_arm_callback(goal_handle, timeout)
+            try:
+                if plan:
+                    return self._plan_dual_arm_callback(goal_handle, timeout)
+                else:
+                    return self._direct_dual_arm_callback(goal_handle, timeout)
+            except PathExecutionCancelled as err:
+                self.get_logger().info(str(err))
+                goal_handle.canceled()
+                result = DualArm.Result()
+                result.success = False
+                return result
 
     def _direct_dual_arm_callback(self, goal_handle, timeout):
         # main loop
-        start_time = time.time()
+        start_time = time.monotonic()
         ik_converged = False
         steady_state_converged = False
-        while time.time() - start_time < timeout:
+        while time.monotonic() - start_time < timeout:
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
                 result = DualArm.Result()
                 result.success = False
                 return result
-            frame_start_time = time.time()
+            frame_start_time = self.controller.control_time()
             if not ik_converged:
                 vel = self.controller.control_step_reduced()
                 vel_error = np.max(np.abs(vel))
@@ -218,10 +228,10 @@ class DualArmServer(Node):
                 if steady_state_converged:
                     break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
@@ -266,10 +276,10 @@ class DualArmServer(Node):
 
         # hold the final target using the existing steady-state controller
         self.controller.init_steady_state()
-        start_time = time.time()
+        start_time = time.monotonic()
         steady_state_converged = False
-        while time.time() - start_time < timeout:
-            frame_start_time = time.time()
+        while time.monotonic() - start_time < timeout:
+            frame_start_time = self.controller.control_time()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
@@ -292,10 +302,10 @@ class DualArmServer(Node):
             if steady_state_converged:
                 break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if steady_state_converged:
             self.get_logger().info('Goal reached')
@@ -395,21 +405,27 @@ class DualArmServer(Node):
                         q_reduced,
                         timeout,
                     )
+            except PathExecutionCancelled as err:
+                self.get_logger().info(str(err))
+                goal_handle.canceled()
+                result = NamedConfig.Result()
+                result.success = False
+                return result
             finally:
                 self.controller.speed_scale = 1.0
 
     def _direct_named_config_callback(self, goal_handle, q_reduced, timeout):
         # main loop
-        start_time = time.time()
+        start_time = time.monotonic()
         ik_converged = False
         steady_state_converged = False
-        while time.time() - start_time < timeout:
+        while time.monotonic() - start_time < timeout:
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
                 result = NamedConfig.Result()
                 result.success = False
                 return result
-            frame_start_time = time.time()
+            frame_start_time = self.controller.control_time()
             if not ik_converged:
                 vel = self.controller.goto_reduced_configuration(q_reduced)
                 vel_error = np.max(np.abs(vel))
@@ -444,10 +460,10 @@ class DualArmServer(Node):
                 if steady_state_converged:
                     break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
@@ -495,11 +511,11 @@ class DualArmServer(Node):
 
         # hold the final joint target using steady-state control
         self.controller.init_steady_state()
-        start_time = time.time()
+        start_time = time.monotonic()
         steady_state_converged = False
         blocked = False
-        while time.time() - start_time < timeout:
-            frame_start_time = time.time()
+        while time.monotonic() - start_time < timeout:
+            frame_start_time = self.controller.control_time()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
@@ -523,10 +539,10 @@ class DualArmServer(Node):
             if steady_state_converged:
                 break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if blocked:
             self.get_logger().warn('Hold blocked at a joint position limit')

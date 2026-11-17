@@ -27,7 +27,8 @@ def load_planned_callbacks(server_file):
     tree = ast.parse(source.read_text())
     server = next(node for node in tree.body if isinstance(node, ast.ClassDef))
     methods = [node for node in server.body if isinstance(node, ast.FunctionDef)
-               and node.name.startswith('_plan_') and node.name.endswith('_callback')]
+               and (node.name.startswith('_plan_') or node.name == '_hold_frame_task_callback')
+               and node.name.endswith('_callback')]
     namespace = {
         'PathExecutionCancelled': PathExecutionCancelled,
         'FrameTask': SimpleNamespace(Result=Result),
@@ -109,6 +110,9 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
             _visualize_planned_path=Mock(),
             _log_hold_outcome=Mock(),
         )
+        if '_hold_frame_task_callback' in namespace:
+            server._hold_frame_task_callback = lambda goal, timeout: namespace[
+                '_hold_frame_task_callback'](server, goal, timeout)
         args = (goal, [0], timeout) if named else (goal, timeout)
         result = namespace[method](server, *args)
         return goal, controller, result
@@ -266,7 +270,7 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                            if isinstance(node, ast.Call) and
                            isinstance(node.func, ast.Name) and
                            node.func.id == 'ActionServer']
-                self.assertEqual(len(servers), 3 if filename == 'frame_task_server.py' else 2)
+                self.assertEqual(len(servers), 5 if filename == 'frame_task_server.py' else 2)
                 for server in servers:
                     self.assertIn('callback_group',
                                   [keyword.arg for keyword in server.keywords])
@@ -281,9 +285,13 @@ class PlannedExecutionAdapterTest(unittest.TestCase):
                     clock = [0.0]
                     namespace['time'] = SimpleNamespace(
                         time=lambda: clock[0],
+                        monotonic=lambda: clock[0],
                         sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds),
                     )
                     controller = Mock(dt=0.01)
+                    controller.control_time.side_effect = lambda: clock[0]
+                    controller.wait_control_tick.side_effect = lambda *args, **kwargs: (
+                        clock.__setitem__(0, clock[0] + controller.dt))
                     controller.plan_to_configuration.return_value = [0, 1]
                     controller.steady_state_step.return_value = True
                     controller.robot_model.state_reduced = {'q': np.array([measured])}

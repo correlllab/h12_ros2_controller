@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import numpy as np
 
 from h12_ros2_controller.core.controller.upper_controller import UpperController
@@ -9,13 +11,24 @@ from h12_ros2_controller.core.controller.counter_balance.counter_goto_controller
 
 
 class CounterFrameController(CounterGotoController):
-    '''Use the robust 3C counter core for single-arm frame action goals'''
+    '''Route plain frame goals or single-arm counter goals through one writer'''
 
     def __init__(self, *args, **kwargs):
+        self.control_mode = 'counter'
         # staged initialization has no moving-arm ownership and commands both arms
         super().__init__(*args, plain_goto=True, **kwargs)
 
+    def set_control_mode(self, mode):
+        '''Select normal goal routing without changing any motor command'''
+        if mode not in ('frame', 'counter'):
+            raise ValueError('control_mode must be frame or counter')
+        self.control_mode = mode
+
     def prepare_frame_goal(self, frame_names):
+        if getattr(self, 'control_mode', 'counter') == 'frame':
+            self.plain_goto = True
+            self.balanced_live = False
+            return 'plain frame goal (both arms)'
         if len(frame_names) != 1:
             raise ValueError('Counter mode requires exactly one moving-arm frame goal')
         moving_arm = self._arm_for_frame(frame_names[0])
@@ -24,6 +37,33 @@ class CounterFrameController(CounterGotoController):
         self.plain_goto = True
         self.balanced_live = True
         return f'balanced moving={self.moving_arm}, counter={self.counter_arm}'
+
+    def _apply_velocity_command(self, velocity):
+        if not self.balanced_live:
+            return UpperController._apply_velocity_command(self, velocity)
+        return super()._apply_velocity_command(velocity)
+
+    @contextmanager
+    def planned_task_control(self, frame_names, check=None):
+        '''Share Upper playback and the free-arm-only overlay through endpoint hold'''
+        self.prepare_frame_goal(frame_names)
+        names = ('_comparison_mode', '_comparison_playback', '_comparison_pending',
+                 '_comparison_audit', '_comparison_check', '_comparison_max_deviation',
+                 '_comparison_velocity', '_comparison_written', '_planned_previous')
+        saved = {name: getattr(self, name, None) for name in names}
+        self._comparison_mode = 'counter' if self.balanced_live else None
+        self._comparison_playback = False
+        self._comparison_pending = None
+        self._comparison_audit = None
+        self._comparison_check = check
+        self._comparison_max_deviation = np.zeros(3)
+        try:
+            if self.balanced_live and not self._reference_captured:
+                self.capture_reference()
+            yield
+        finally:
+            for name, value in saved.items():
+                setattr(self, name, value)
 
     def prepare_named_goal(self):
         self.plain_goto = True
@@ -55,10 +95,13 @@ class CounterFrameController(CounterGotoController):
                 )
             finally:
                 self._comparison_playback = False
-        if validation is not None:
-            raise ValueError('Saved reference validation requires comparison mode')
         if not self.balanced_live:
-            return super().execute_path(path, validate=validate, cancel_check=cancel_check)
+            return UpperController.execute_path(
+                self, path, validate=validate, cancel_check=cancel_check,
+                validation=validation,
+            )
+        if validation is not None:
+            raise ValueError('Saved reference validation requires planned_task_control')
         self._planned_previous = np.asarray(path[0], dtype=float).copy()
         self.planned_balance = True
         try:

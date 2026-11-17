@@ -299,6 +299,8 @@ def test_execution_preflight_rejects_invalid_timing_without_commands():
 @pytest.mark.parametrize('entrypoint', (UpperController.execute_path, demo.execute_path))
 def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch, entrypoint):
     controller = object.__new__(UpperController)
+    controller.control_time = lambda: 0.0
+    controller.wait_control_tick = lambda *args, **kwargs: True
     controller.dt = 1.0 / 30.0
     controller.max_state_lag_ms = 0.0
     mask = np.r_[np.zeros(13, dtype=bool), np.ones(14, dtype=bool)]
@@ -388,6 +390,8 @@ def test_execution_requires_fresh_matching_unclipped_plan(monkeypatch, entrypoin
 
 def test_execution_cancellation_stops_before_next_command(monkeypatch):
     controller = object.__new__(UpperController)
+    controller.control_time = lambda: 0.0
+    controller.wait_control_tick = lambda *args, **kwargs: True
     controller.dt = 1.0 / 30.0
     controller.max_state_lag_ms = 0.0
     controller.robot_model = SimpleNamespace(

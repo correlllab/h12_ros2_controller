@@ -5,6 +5,7 @@ import pinocchio as pin
 from tqdm import tqdm
 
 from h12_ros2_controller.core.ik_solver import IKSolver
+from h12_ros2_controller.core.control_timing import ControlTiming
 from h12_ros2_controller.core.robot_model import RobotModel
 from h12_ros2_controller.core.low_cmd_handler import LowCmdHandler
 from h12_ros2_controller.core.planner import PlannerClient
@@ -56,7 +57,9 @@ class UpperController:
                  init: bool=True,
                  handless: bool=False,
                  visualize=False,
-                 config=None):
+                 config=None,
+                 control_timing=None):
+        self.control_timing = ControlTiming() if control_timing is None else control_timing
         self.config = deepcopy(config) if config is not None else load_controller_config()
         controller_cfg = self.config.get('controller', {})
         control_dt = 1.0 / float(self.config.get('frequency', {}).get('ctrl_hz', 50.0))
@@ -191,17 +194,35 @@ class UpperController:
             )
         self._move_torso_to_target(torso_init, torso_target)
 
+    def control_time(self):
+        return self.control_timing.now()
+
+    def wait_control_tick(self, started, *, cancel_check=None, wall_deadline=None):
+        '''Wait one control period while retaining freshness and wall-time guards'''
+        bounded = wall_deadline is None
+        if bounded:
+            wall_deadline = time.monotonic() + max(self.timeout, self.dt)
+        completed = self.control_timing.wait(
+            started, self.dt, check=self.check_state_fresh,
+            cancel_check=cancel_check, wall_deadline=wall_deadline,
+        )
+        cancelled = cancel_check is not None and cancel_check()
+        if not completed and bounded and not cancelled:
+            raise TimeoutError('Control clock did not advance before wall timeout')
+        return completed
+
     def _move_to_reduced_configuration(
         self, q_reduced,
         steps=150, threshold=1e-3,
         desc='Moving configuration',
     ):
         for _ in tqdm(range(steps), desc=desc, leave=False):
+            started = self.control_time()
             self.goto_reduced_configuration(q_reduced)
             error = np.max(np.abs(self.robot_model.state_reduced['q'] - q_reduced))
             if error < threshold:
                 return
-            time.sleep(self.dt)
+            self.wait_control_tick(started)
         command_error = np.max(np.abs(
             self.low_cmd_handler.q_cmd[self.enabled_ids] - q_reduced
         ))
@@ -227,6 +248,8 @@ class UpperController:
         steps = max(1, int(np.ceil(abs(torso_target - torso_init) / step_size)))
 
         for step in tqdm(range(steps), desc='Moving torso to target', leave=False):
+            started = self.control_time()
+            self.check_state_fresh()
             alpha = (step + 1) / steps
             q_target = (1.0 - alpha) * torso_init + alpha * torso_target
             self.low_cmd_handler.set_joint_commands(
@@ -237,7 +260,7 @@ class UpperController:
             torso_position = float(self.robot_model.state['q'][torso_id])
             if abs(torso_position - torso_target) < threshold:
                 break
-            time.sleep(self.dt)
+            self.wait_control_tick(started)
         # measured convergence can occur before the final interpolation sample
         self.low_cmd_handler.set_joint_commands(
             q=np.array([torso_target], dtype=np.float64), joint_ids=[torso_id],
@@ -664,7 +687,7 @@ class UpperController:
         Ordinary calls use the latest plan's provenance and age limit. Replays
         supply the result of ``revalidate_plan`` and still undergo start,
         timing, limit, freshness and collision checks. Playback uses the
-        existing wall-clock controller period; cancellation is cooperative
+        injected control-clock period; cancellation is cooperative
         '''
         path = self._as_reduced_path(path)
         if not len(path):
@@ -698,6 +721,7 @@ class UpperController:
             if cancel_check is not None and cancel_check():
                 raise PathExecutionCancelled('Path execution canceled')
             step_start_time = time.monotonic()
+            control_started = self.control_time()
             self.check_state_fresh()
             q = np.asarray(self.robot_model.state['q'], dtype=float).copy()
             q[self.robot_model.reduced_mask] = q_reduced
@@ -713,14 +737,13 @@ class UpperController:
                 step_event({'type': 'step', 'phase': 'playback',
                             'work_elapsed': elapsed,
                             'overrun': max(0.0, elapsed - step_period)})
-            # subtract validation and FK work from the next control-period wait
-            time.sleep(max(
-                0.0,
-                step_period - (time.monotonic() - step_start_time)
-            ))
+            if not self.wait_control_tick(control_started, cancel_check=cancel_check):
+                raise PathExecutionCancelled('Goal canceled while waiting for control clock')
 
     def _validate_execution_path(self, path, period):
         '''Check command start, period, clipping and configured playback rates'''
+        if not len(path):
+            raise ValueError('Cannot execute an empty path')
         self.check_state_fresh()
         if not np.isclose(period, self.dt, rtol=0.0, atol=1e-9):
             raise ValueError('Path period differs from controller period')

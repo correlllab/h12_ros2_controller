@@ -1,6 +1,7 @@
 import rclpy
 import argparse
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -12,6 +13,7 @@ import threading
 import sys
 import os
 import tempfile
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +24,7 @@ from custom_ros_messages.action import FrameTask, NamedConfig
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from h12_ros2_controller.core.controller.frame_controller import FrameController
+from h12_ros2_controller.core.saved_frame_plan import SavedFramePlan, planning_only
 from h12_ros2_controller.core.controller.upper_controller import (
     PathExecutionCancelled,
     StaleStateError,
@@ -39,6 +42,7 @@ from h12_ros2_controller.utility.path_definition_ros import (
     CONFIG_DIR
 )
 from h12_ros2_controller.ros2.utility import pose_to_matrix, matrix_to_pose
+from h12_ros2_controller.ros2.control_timing import node_control_timing
 
 # Speed multiplier applied when a goal requests slow_mode. The controller
 # applies it per execution mode: a direct move scales joint velocity, a planned
@@ -78,6 +82,12 @@ class FrameTaskServer(Node):
         super().__init__('frame_task_server')
         selected = self.declare_parameter('upper_controller', 'frame').value
         controller_type = controller_class(selected)
+        mode = self.declare_parameter('control_mode', '').value
+        mode = selected if mode == '' else mode
+        if mode not in ('frame', 'counter') or (selected == 'frame' and mode == 'counter'):
+            raise ValueError('control_mode must be frame, or counter with the counter backend')
+        self.set_parameters([Parameter('control_mode', value=mode)])
+        self._saved_frame_plan = None
         self._comparison_active = False
         self._comparison_state_lock = threading.Lock()
         comparison_order(self.declare_parameter('comparison_order', 'frame,counter').value)
@@ -110,6 +120,7 @@ class FrameTaskServer(Node):
         self._frame_publish_snapshot = ((), ())
 
         self.get_logger().info(f'Upper controller: {selected} ({controller_type.__name__})')
+        control_timing = node_control_timing(self, self.timeout)
         self.controller = controller_type(
             URDF_MAGPIE_PIN_PATH,
             URDF_MAGPIE_SPHERE_PATH,
@@ -118,8 +129,10 @@ class FrameTaskServer(Node):
             handless=False,
             visualize=False,
             config=config,
+            control_timing=control_timing,
         )
         if selected == 'counter':
+            self.controller.set_control_mode(mode)
             maybe_start_controller_logging(self.controller)
 
         # publisher publishing frame names and target poses
@@ -157,6 +170,20 @@ class FrameTaskServer(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self._action_callback_group,
         )
+        self.plan_frame_server = ActionServer(
+            self, FrameTask, 'plan_frame_task',
+            execute_callback=self.plan_frame_task_callback,
+            goal_callback=self.normal_goal_callback,
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
+        )
+        self.replay_frame_server = ActionServer(
+            self, FrameTask, 'replay_frame_task',
+            execute_callback=self.replay_frame_task_callback,
+            goal_callback=self.normal_goal_callback,
+            cancel_callback=self.cancel_callback,
+            callback_group=self._action_callback_group,
+        )
         if selected == 'counter':
             from h12_ros2_controller.core.controller.planned_comparison import PlannedComparison
             self._planned_comparison = PlannedComparison(self.controller)
@@ -175,7 +202,13 @@ class FrameTaskServer(Node):
 
     def _comparison_parameters_callback(self, parameters):
         with self._comparison_state_lock:
+            mode_parameters = [p for p in parameters if p.name == 'control_mode']
+            acquired = False
             try:
+                if mode_parameters:
+                    acquired = self._controller_lock.acquire(blocking=False)
+                    if self._comparison_active or not acquired:
+                        raise ValueError('control_mode is idle-only; controller busy')
                 for parameter in parameters:
                     if parameter.name == 'upper_controller':
                         if parameter.value != self._upper_controller:
@@ -187,8 +220,17 @@ class FrameTaskServer(Node):
                             comparison_order(parameter.value)
                         else:
                             self._validate_comparison_prepare(parameter.value)
+                    elif parameter.name == 'control_mode':
+                        mode = parameter.value
+                        if mode not in ('frame', 'counter'):
+                            raise ValueError('control_mode must be frame or counter')
+                        if mode == 'counter' and self._upper_controller != 'counter':
+                            raise ValueError('control_mode counter requires the counter backend')
             except ValueError as err:
                 return SetParametersResult(successful=False, reason=str(err))
+            finally:
+                if acquired:
+                    self._controller_lock.release()
         return SetParametersResult(successful=True)
 
     def normal_goal_callback(self, request):
@@ -400,6 +442,159 @@ class FrameTaskServer(Node):
         result.success = False
         return result
 
+    def _validated_frame_targets(self, goal, frame_names=None):
+        names = goal.frame_names if frame_names is None else frame_names
+        if not names or len(names) != len(goal.frame_targets):
+            raise ValueError('frame_names and frame_targets must have matching nonempty lengths')
+        if len(set(names)) != len(names):
+            raise ValueError('Frame goal names must be distinct')
+        frames = {frame.name for frame in self.controller.robot_model.model_body.frames}
+        if any(name not in frames for name in names):
+            raise ValueError('Frame goal contains an unknown robot frame')
+        matrices = []
+        for target in goal.frame_targets:
+            position, orientation = target.position, target.orientation
+            values = np.array([position.x, position.y, position.z,
+                               orientation.x, orientation.y, orientation.z, orientation.w])
+            if not np.isfinite(values).all() or np.linalg.norm(values[3:]) < 1e-8:
+                raise ValueError('Frame goal contains a nonfinite pose or invalid quaternion')
+            normalized = Pose()
+            normalized.position.x, normalized.position.y, normalized.position.z = values[:3].tolist()
+            (normalized.orientation.x, normalized.orientation.y,
+             normalized.orientation.z, normalized.orientation.w) = (
+                values[3:] / np.linalg.norm(values[3:])).tolist()
+            matrices.append(pose_to_matrix(normalized))
+        self.controller.check_state_fresh()
+        measured_q = self.controller.robot_model.state['q'].copy()
+        return [self._resolve_target(name, target, goal.relative, measured_q)
+                for name, target in zip(names, matrices)]
+
+    def _install_frame_targets(self, names, targets):
+        self.controller.clear_frame_tasks()
+        for name, target in zip(names, targets):
+            self.controller.add_frame_task(f'{name}_task', name, target)
+        self.controller.update_ik_solver()
+        self.frame_names = list(names)
+        self.frame_targets = [matrix_to_pose(matrix) for matrix in targets]
+        self._frame_publish_snapshot = (tuple(self.frame_names), tuple(self.frame_targets))
+
+    def _goal_timeout(self, goal):
+        if goal.duration.sec < 0 or not 0 <= goal.duration.nanosec < 1000000000:
+            raise ValueError('duration must be a nonnegative timeout')
+        duration = goal.duration.sec + goal.duration.nanosec * 1e-9
+        return duration if duration > 0.0 else self.timeout
+
+    def plan_frame_task_callback(self, goal_handle):
+        return self._saved_frame_callback(goal_handle, replay=False)
+
+    def replay_frame_task_callback(self, goal_handle):
+        return self._saved_frame_callback(goal_handle, replay=True)
+
+    def _saved_frame_callback(self, goal_handle, replay):
+        result = FrameTask.Result()
+        result.success = False
+        if self.normal_goal_callback(goal_handle.request) == GoalResponse.REJECT:
+            goal_handle.abort()
+            return result
+        with self._controller_lock:
+            try:
+                if self._comparison_active:
+                    raise ValueError('Comparison batch active')
+                goal = goal_handle.request
+                mode = self.get_parameter('control_mode').value
+                timeout = self._goal_timeout(goal)
+                deadline = time.monotonic() + timeout
+
+                def check():
+                    if goal_handle.is_cancel_requested:
+                        raise PathExecutionCancelled('Saved approach canceled; holding last command')
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError('Saved approach timeout exceeded')
+                    self.controller.check_state_fresh()
+
+                check()
+                if not replay:
+                    if not goal.plan:
+                        raise ValueError('plan_frame_task requires plan=true')
+                    targets = self._validated_frame_targets(goal)
+                    if mode == 'counter':
+                        if len(goal.frame_names) != 1:
+                            raise ValueError('Counter mode requires exactly one moving-arm frame goal')
+                        self.controller._arm_for_frame(goal.frame_names[0])
+                    with planning_only(self.controller):
+                        self.controller.speed_scale = SLOW_MODE_SCALE if goal.slow_mode else 1.0
+                        self.controller.clear_frame_tasks()
+                        for name, target in zip(goal.frame_names, targets):
+                            self.controller.add_frame_task(f'{name}_task', name, target)
+                        path = self.controller.plan_to_ik_target()
+                        saved = SavedFramePlan.capture(self.controller, path, goal.frame_names, targets)
+                    check()
+                    self._saved_frame_plan = saved
+                    self.get_logger().info(
+                        f'Saved approach: {len(saved.reference.path)} waypoints, '
+                        f'hash={saved.reference.checksum}, created_at={saved.reference.created_at!r}, '
+                        f'config_digest={saved.reference.config_digest}; no motor commands changed')
+                    result.success = True
+                    goal_handle.succeed()
+                    return result
+                saved = self._saved_frame_plan
+                if saved is None:
+                    raise ValueError('No saved approach; use /plan_frame_task first')
+                saved.assert_goal(goal)
+                if goal.frame_targets:
+                    if len(goal.frame_targets) != len(saved.frame_names):
+                        raise ValueError('Replay frame_targets must match every saved endpoint')
+                    # assertions are absolute, never resolved against the current pose
+                    targets = self._validated_frame_targets(goal, saved.frame_names)
+                    if not np.allclose(targets, saved.targets, rtol=0.0, atol=1e-9):
+                        raise ValueError('Replay frame_targets differ from the saved absolute endpoint')
+                previous_scale = self.controller.speed_scale
+                try:
+                    self.controller.speed_scale = saved.speed_scale
+                    if self._upper_controller == 'counter':
+                        self.controller.set_control_mode(mode)
+                    prepare = getattr(self.controller, 'prepare_frame_goal', None)
+                    if prepare is not None:
+                        prepare(saved.frame_names)
+                    # validate before any finish/hold helper can publish a command
+                    try:
+                        validation = self.controller.revalidate_plan(saved.reference)
+                    except ValueError as err:
+                        if 'planned start' in str(err):
+                            raise ValueError(f'{err}; return using /named_config approach_start') from err
+                        raise
+                    self.get_logger().info(
+                        f'Replaying saved approach: mode={mode}, hash={saved.reference.checksum}, '
+                        f'created_at={saved.reference.created_at!r}, '
+                        f'config_digest={saved.reference.config_digest}')
+                    self._install_frame_targets(saved.frame_names, saved.targets)
+                    context = getattr(self.controller, 'planned_task_control', None)
+                    with (context(saved.frame_names, check=check)
+                          if context is not None else nullcontext()):
+                        try:
+                            check()
+                            self.controller.execute_path(
+                                saved.reference.path, validation=validation,
+                                cancel_check=lambda: (check() or False),
+                            )
+                            check()
+                            return self._hold_frame_task_callback(
+                                goal_handle, deadline - time.monotonic(),
+                            )
+                        finally:
+                            finish = getattr(self.controller, 'finish_goal', None)
+                            if finish is not None:
+                                finish()
+                finally:
+                    self.controller.speed_scale = previous_scale
+            except PathExecutionCancelled as err:
+                self.get_logger().info(str(err))
+                goal_handle.canceled()
+            except Exception as err:
+                self.get_logger().error(f'Saved approach aborted: {err}')
+                goal_handle.abort()
+        return result
+
     def frame_task_callback(self, goal_handle):
         if self.normal_goal_callback(goal_handle.request) == GoalResponse.REJECT:
             goal_handle.abort()
@@ -410,7 +605,13 @@ class FrameTaskServer(Node):
             return self._frame_task_callback(goal_handle)
         except StaleStateError as err:
             return self._abort_stale(goal_handle, FrameTask.Result(), err)
-        except ValueError as err:
+        except PathExecutionCancelled as err:
+            self.get_logger().info(str(err))
+            goal_handle.canceled()
+            result = FrameTask.Result()
+            result.success = False
+            return result
+        except Exception as err:
             self.get_logger().error(f'Aborting invalid frame goal: {err}')
             goal_handle.abort()
             result = FrameTask.Result()
@@ -427,60 +628,21 @@ class FrameTaskServer(Node):
                 return result
             self.get_logger().info('Received goal')
             goal = goal_handle.request
-            if not goal.frame_names or len(goal.frame_names) != len(goal.frame_targets):
-                raise ValueError('frame_names and frame_targets must have matching nonempty lengths')
-            if len(set(goal.frame_names)) != len(goal.frame_names):
-                raise ValueError('Frame goal names must be distinct')
-            frames = {frame.name for frame in self.controller.robot_model.model_body.frames}
-            if any(name not in frames for name in goal.frame_names):
-                raise ValueError('Frame goal contains an unknown robot frame')
-            for target in goal.frame_targets:
-                position = target.position
-                orientation = target.orientation
-                values = np.array([
-                    position.x, position.y, position.z,
-                    orientation.x, orientation.y, orientation.z, orientation.w,
-                ], dtype=float)
-                if (not np.all(np.isfinite(values)) or
-                        np.linalg.norm(values[3:]) < 1e-8):
-                    raise ValueError('Frame goal contains a nonfinite pose or invalid quaternion')
-            # relative targets are resolved against the measured pose
-            self.controller.check_state_fresh()
-            measured_q = self.controller.robot_model.state['q']
+            mode = self.get_parameter('control_mode').value
+            target_matrices = self._validated_frame_targets(goal)
 
-            # resolve targets to absolute pelvis-frame poses before the
-            # current tasks are cleared
-            target_matrices = [
-                self._resolve_target(name, pose_to_matrix(target), goal.relative, measured_q)
-                for name, target in zip(goal.frame_names, goal.frame_targets)
-            ]
-
+            if self._upper_controller == 'counter':
+                self.controller.set_control_mode(mode)
             prepare = getattr(self.controller, 'prepare_frame_goal', None)
             if prepare is not None:
                 self.get_logger().info(f'Upper controller goal: {prepare(goal.frame_names)}')
 
-            # clear existing frame tasks
-            self.controller.clear_frame_tasks()
-            self.frame_names = goal.frame_names
-            self.frame_targets = [matrix_to_pose(m) for m in target_matrices]
-
-            # set frame tasks
+            self._install_frame_targets(goal.frame_names, target_matrices)
             self.get_logger().info(
                 'Going to target frame poses'
                 + (' (relative)' if goal.relative else '')
             )
-            for frame_name, target_matrix in zip(goal.frame_names, target_matrices):
-                task_name = f'{frame_name}_task'
-                self.controller.add_frame_task(task_name, frame_name, target_matrix)
-
-            # update ik solver with current state
-            self.controller.update_ik_solver()
-            self._frame_publish_snapshot = (
-                tuple(self.frame_names), tuple(self.frame_targets),
-            )
-
-            duration = goal.duration.sec + goal.duration.nanosec * 1e-9
-            timeout = duration if duration > 0.0 else self.timeout
+            timeout = self._goal_timeout(goal)
             plan = goal.plan
             # slow the arm for this goal only; restore full speed afterwards
             self.controller.speed_scale = (
@@ -522,17 +684,17 @@ class FrameTaskServer(Node):
 
     def _direct_frame_task_callback(self, goal_handle, timeout):
         # main loop
-        start_time = time.time()
+        start_time = time.monotonic()
         ik_converged = False
         steady_state_converged = False
         blocked = None
-        while time.time() - start_time < timeout:
+        while time.monotonic() - start_time < timeout:
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
                 result = FrameTask.Result()
                 result.success = False
                 return result
-            frame_start_time = time.time()
+            frame_start_time = self.controller.control_time()
             if not ik_converged:
                 vel = self.controller.control_step_reduced()
                 vel_error = np.max(np.abs(vel))
@@ -576,10 +738,10 @@ class FrameTaskServer(Node):
                 if steady_state_converged:
                     break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
@@ -647,13 +809,16 @@ class FrameTaskServer(Node):
             result.success = False
             return result
 
+        return self._hold_frame_task_callback(goal_handle, timeout)
+
+    def _hold_frame_task_callback(self, goal_handle, timeout):
         # hold the final target using the existing steady-state controller
         self.controller.init_steady_state()
-        start_time = time.time()
+        start_time = time.monotonic()
         steady_state_converged = False
         blocked = None
-        while time.time() - start_time < timeout:
-            frame_start_time = time.time()
+        while time.monotonic() - start_time < timeout:
+            frame_start_time = self.controller.control_time()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
@@ -683,10 +848,10 @@ class FrameTaskServer(Node):
             if steady_state_converged:
                 break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         self._log_hold_outcome(steady_state_converged, blocked)
 
@@ -751,6 +916,18 @@ class FrameTaskServer(Node):
             return self._named_config_callback(goal_handle)
         except StaleStateError as err:
             return self._abort_stale(goal_handle, NamedConfig.Result(), err)
+        except PathExecutionCancelled as err:
+            self.get_logger().info(str(err))
+            goal_handle.canceled()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
+        except Exception as err:
+            self.get_logger().error(f'Aborting named goal: {err}')
+            goal_handle.abort()
+            result = NamedConfig.Result()
+            result.success = False
+            return result
 
     def _named_config_callback(self, goal_handle):
         with self._controller_lock:
@@ -765,15 +942,25 @@ class FrameTaskServer(Node):
 
             # check if the named config exists
             config_name = goal.config_name
-            if config_name not in NAMED_CONFIGS:
+            if config_name == 'approach_start':
+                saved = self._saved_frame_plan
+                if saved is None:
+                    self.get_logger().error('No saved approach; use /plan_frame_task first')
+                    goal_handle.abort()
+                    result = NamedConfig.Result()
+                    result.success = False
+                    return result
+                q_reduced = saved.start.copy()
+            elif config_name not in NAMED_CONFIGS:
                 self.get_logger().warn(f'Named config "{config_name}" not found')
                 goal_handle.abort()
                 result = NamedConfig.Result()
                 result.success = False
                 return result
+            else:
+                q_reduced = NAMED_CONFIGS[config_name]
 
             self.get_logger().info(f'Going to named config: {config_name}')
-            q_reduced = NAMED_CONFIGS[config_name]
 
             prepare = getattr(self.controller, 'prepare_named_goal', None)
             if prepare is not None:
@@ -814,17 +1001,17 @@ class FrameTaskServer(Node):
 
     def _direct_named_config_callback(self, goal_handle, q_reduced, timeout):
         # main loop
-        start_time = time.time()
+        start_time = time.monotonic()
         ik_converged = False
         steady_state_converged = False
         blocked = None
-        while time.time() - start_time < timeout:
+        while time.monotonic() - start_time < timeout:
             if goal_handle.is_cancel_requested:
                 goal_handle.canceled()
                 result = NamedConfig.Result()
                 result.success = False
                 return result
-            frame_start_time = time.time()
+            frame_start_time = self.controller.control_time()
             if not ik_converged:
                 vel = self.controller.goto_reduced_configuration(q_reduced)
                 vel_error = np.max(np.abs(vel))
@@ -863,10 +1050,10 @@ class FrameTaskServer(Node):
                     self.get_logger().info('Named config reached')
                     break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         if not ik_converged:
             self.get_logger().warn('Timed out before IK convergence')
@@ -919,11 +1106,11 @@ class FrameTaskServer(Node):
 
         # hold the final joint target using steady-state control
         self.controller.init_steady_state()
-        start_time = time.time()
+        start_time = time.monotonic()
         steady_state_converged = False
         blocked = None
-        while time.time() - start_time < timeout:
-            frame_start_time = time.time()
+        while time.monotonic() - start_time < timeout:
+            frame_start_time = self.controller.control_time()
 
             if goal_handle.is_cancel_requested:
                 self.get_logger().info('Goal cancelled')
@@ -947,10 +1134,10 @@ class FrameTaskServer(Node):
             if steady_state_converged:
                 break
 
-            time.sleep(max(
-                0.0,
-                self.controller.dt - (time.time() - frame_start_time)
-            ))
+            self.controller.wait_control_tick(
+                frame_start_time, cancel_check=lambda: goal_handle.is_cancel_requested,
+                wall_deadline=start_time + timeout,
+            )
 
         self._log_hold_outcome(steady_state_converged, blocked)
 

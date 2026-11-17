@@ -32,6 +32,9 @@ def controller_fixture():
     controller.enabled_ids = list(range(13, 27))
     controller.robot_model = SimpleNamespace(state={'q': np.zeros(27)})
     controller.dt = 0.02
+    controller.control_time = lambda: 0.0
+    controller.wait_control_tick = lambda *args, **kwargs: True
+    controller.check_state_fresh = lambda: None
     controller.update_robot_model = lambda: None
     return controller, sent
 

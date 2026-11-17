@@ -86,11 +86,15 @@ class PlannedComparison:
         def paced_step(function):
             check()
             tick = time.monotonic()
+            control_started = controller.control_time()
             result = function()
             elapsed = time.monotonic() - tick
             emit({'type': 'step', 'phase': 'hold', 'work_elapsed': elapsed,
                   'overrun': max(0.0, elapsed - controller.dt)})
-            time.sleep(max(0.0, controller.dt - elapsed))
+            controller.wait_control_tick(
+                control_started, cancel_check=lambda: (check() or False),
+                wall_deadline=deadline,
+            )
             return result
 
         def settle(preparation=False):

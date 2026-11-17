@@ -31,6 +31,9 @@ def controller_fixture():
     exec(compile(ast.Module(body=[cls], type_ignores=[]), str(source), 'exec'), namespace)
     controller = namespace['UpperController']()
     controller.dt = 0.02
+    controller.control_time = lambda: 0.0
+    controller.wait_control_tick = lambda started: sleeps.append(controller.dt)
+    controller.check_state_fresh = lambda: None
     controller.timeout = 5.0
     controller.enabled_ids = [13]
     controller.robot_model = SimpleNamespace(

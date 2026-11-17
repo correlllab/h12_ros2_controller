@@ -38,6 +38,7 @@ class FakeNode:
         self.parameters = dict(self.overrides)
         self.logger = Mock()
         self.publishers = []
+        self.parameter_callbacks = []
 
     def declare_parameter(self, name, default):
         self.parameters.setdefault(name, default)
@@ -45,6 +46,18 @@ class FakeNode:
 
     def get_parameter(self, name):
         return SimpleNamespace(value=self.parameters[name])
+
+    def set_parameters(self, parameters):
+        return [self.set_parameters_atomically([parameter]) for parameter in parameters]
+
+    def set_parameters_atomically(self, parameters):
+        for callback in self.parameter_callbacks:
+            result = callback(parameters)
+            if not result.successful:
+                return result
+        for parameter in parameters:
+            self.parameters[parameter.name] = parameter.value
+        return SimpleNamespace(successful=True, reason='')
 
     def get_logger(self):
         return self.logger
@@ -59,6 +72,7 @@ class FakeNode:
 
     def add_on_set_parameters_callback(self, callback):
         self.parameter_callback = callback
+        self.parameter_callbacks.insert(0, callback)
 
     def get_clock(self):
         return SimpleNamespace(now=lambda: SimpleNamespace(to_msg=lambda: 123))
@@ -94,8 +108,10 @@ def load_server():
                      SRDF_MAGPIE_SPHERE_PATH='srdf',
                      pose_to_matrix=pose_to_matrix, matrix_to_pose=lambda matrix: matrix.copy(),
                      PathExecutionCancelled=PathExecutionCancelled,
+                     node_control_timing=lambda node, timeout: None,
                      ReentrantCallbackGroup=Mock(), ActionServer=Mock(),
                      maybe_start_controller_logging=Mock())
+    namespace['Parameter'] = lambda name, value: SimpleNamespace(name=name, value=value)
     config = {'controller': dict(timeout=1, threshold_ik=.1, threshold_joint=.1,
                                  threshold_linear=.01, threshold_angular=.01)}
     namespace['load_controller_config'] = Mock(return_value=config)
@@ -159,25 +175,38 @@ class ROSComparisonTests(unittest.TestCase):
         self.helper.assert_called_once_with(self.controller)
         actions = self.namespace['ActionServer'].call_args_list
         self.assertEqual([call.args[2] for call in actions],
-                         ['frame_task', 'named_config', 'compare_frame_task'])
+                         ['frame_task', 'named_config', 'plan_frame_task',
+                          'replay_frame_task', 'compare_frame_task'])
         self.assertEqual(len(self.server.publishers), 7)
         self.assertTrue(all(call.args[0] is self.server for call in actions))
         self.namespace['ActionServer'].reset_mock()
         FakeNode.overrides = {}
         frame_server = self.namespace['FrameTaskServer']()
         self.assertFalse(hasattr(frame_server, 'compare_action_server'))
-        self.assertEqual(self.namespace['ActionServer'].call_count, 2)
+        self.assertEqual(self.namespace['ActionServer'].call_count, 4)
         self.assertEqual(self.helper.call_count, 1)
 
     def test_invalid_startup_parameters_fail_before_controller_construction(self):
         for parameters in ({'comparison_order': ''}, {'comparison_order': ['frame']},
                            {'comparison_order': 'frame,green'},
-                           {'comparison_prepare_config': 'missing'}):
+                           {'comparison_prepare_config': 'missing'},
+                           {'control_mode': 'counter'}, {'control_mode': 'bad'},
+                           {'control_mode': 3}):
             self.factory.reset_mock()
             FakeNode.overrides = parameters
             with self.assertRaises(ValueError):
                 self.namespace['FrameTaskServer']()
             self.factory.assert_not_called()
+
+    def test_normalized_mode_defaults_and_explicit_frame_on_counter_backend(self):
+        for selected, requested, expected in [('frame', '', 'frame'),
+                                              ('counter', '', 'counter'),
+                                              ('counter', 'frame', 'frame')]:
+            FakeNode.overrides = {'upper_controller': selected, 'control_mode': requested}
+            server = self.namespace['FrameTaskServer']()
+            self.assertEqual(server.get_parameter('control_mode').value, expected)
+            if selected == 'counter':
+                self.controller.set_control_mode.assert_called_with(expected)
 
     def test_invalid_goals_abort_before_core_motion_and_release(self):
         invalid = [dict(plan=False), dict(frame_names=[]),

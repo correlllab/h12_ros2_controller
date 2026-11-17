@@ -21,6 +21,8 @@ from test_counter_frame_controller import action_controller
 def comparison_controller(monkeypatch):
     '''Use actual playback, Upper motor law and robust solve with one mock writer'''
     controller = action_controller()
+    controller.control_time = lambda: time.monotonic()
+    controller.wait_control_tick = lambda *args, **kwargs: True
     controller.enabled_ids = list(range(13, 27))
     controller.speed_scale = 1.0
     controller.timeout = 0.04

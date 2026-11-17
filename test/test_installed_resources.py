@@ -112,9 +112,15 @@ def test_unverified_root_does_not_use_coincidentally_named_resources(installed_s
     assert calls == ['h12_ros2_controller', 'h12_ros2_model']
 
 
-def test_checkout_and_explicit_resources_need_no_ros_imports():
+def test_checkout_and_explicit_resources_need_no_ros_imports(tmp_path):
+    source = tmp_path / 'checkout'
+    source.mkdir()
+    for marker in ('setup.py', 'package.xml'):
+        (source / marker).touch()
+    _model_family(source / 'submodules' / 'CL_Assets' / 'ros_assets')
     script = '''
 import builtins
+from pathlib import Path
 original = builtins.__import__
 def no_ros(name, *args, **kwargs):
     if name.startswith(('ament_index_python', 'rclpy')) or name.endswith('path_definition_ros'):
@@ -124,14 +130,15 @@ builtins.__import__ = no_ros
 from h12_ros2_controller.utility import path_definition as resources
 from h12_ros2_controller.utility.controller_config import load_controller_config
 assert load_controller_config()['mode'] == 'debug'
+resources.PROJECT_ROOT = Path(CHECKOUT)
 assert resources.resolve_model_paths()
-from pathlib import Path
 resources.PROJECT_ROOT = Path('/nonexistent/site-packages')
 assert load_controller_config(Path(CONFIG))['mode'] == 'debug'
 assert load_controller_config('config/safety_split', config_dir=Path(CONFIG).parent)['mode'] == 'debug'
 '''
     result = subprocess.run(
-        [sys.executable, '-c', script.replace('CONFIG', repr(str(ROOT / 'config' / 'safety_split.yaml')))],
+        [sys.executable, '-c', script.replace('CHECKOUT', repr(str(source))).replace(
+            'CONFIG', repr(str(ROOT / 'config' / 'safety_split.yaml')))],
         cwd=ROOT, capture_output=True, text=True, timeout=30,
     )
 

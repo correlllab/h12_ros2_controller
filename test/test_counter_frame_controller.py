@@ -246,7 +246,7 @@ def test_planned_route_reuses_cancel_guard_and_restores_hold(monkeypatch):
     seen = []
     cancel_check = lambda: True
 
-    def execute(self, path, validate=True, cancel_check=None):
+    def execute(self, path, validate=True, cancel_check=None, validation=None):
         seen.append((self.planned_balance, validate, cancel_check()))
         raise PathExecutionCancelled('canceled')
 
@@ -263,10 +263,36 @@ def test_planned_route_reuses_cancel_guard_and_restores_hold(monkeypatch):
     assert seen[-1] == (False, True, True)
 
 
-def test_example_and_action_adapter_share_routing_without_importing_ui():
+@pytest.mark.parametrize('plain, balanced', [(False, False), (False, True),
+                                          (True, False), (True, True)])
+def test_example_and_action_adapter_share_routing_without_importing_ui(
+        monkeypatch, plain, balanced):
     from h12_ros2_controller.example.frame_controller_counter_balance_goto import DemoController
     assert DemoController is CounterGotoController
     assert CounterFrameController.__bases__ == (CounterGotoController,)
+    assert issubclass(DemoController, CounterDDPVelocityRobustController)
+    monkeypatch.setattr(CounterDDPVelocityRobustController, '_steady_state_control_ids',
+                        lambda self: [13, 14])
+    monkeypatch.setattr(CounterDDPVelocityRobustController, '_publish_position_command',
+                        lambda self, q, dq, tau: ('balanced', q, dq, tau))
+    monkeypatch.setattr(UpperController, '_publish_position_command',
+                        lambda self, q, dq, tau: ('plain', q, dq, tau))
+    outputs = []
+    for cls in (DemoController, CounterFrameController):
+        controller = object.__new__(cls)
+        controller.plain_goto, controller.balanced_live = plain, balanced
+        controller.planned_balance = False
+        controller.moving_ids, controller.upper_ids = [13], list(range(12, 27))
+        controller.low_cmd_handler = SimpleNamespace(
+            q_cmd=np.arange(27, dtype=float), tau_cmd=np.ones(27),
+        )
+        outputs.append((controller._steady_state_control_ids(),
+                        controller._publish_position_command(
+                            np.full(27, 0.2), np.full(27, 0.3), np.full(27, 0.4))))
+    assert outputs[0][0] == outputs[1][0]
+    assert outputs[0][1][0] == outputs[1][1][0]
+    for example, adapter in zip(outputs[0][1][1:], outputs[1][1][1:]):
+        np.testing.assert_array_equal(example, adapter)
 
 
 @pytest.mark.parametrize('planned', [False, True])
@@ -293,7 +319,7 @@ def test_action_hooks_keep_lock_slow_mode_timeout_and_final_hold(planned):
             state={'q': np.zeros(27)},
             model_body=SimpleNamespace(frames=[SimpleNamespace(name='left_graspgenx_frame')]),
         ),
-        prepare_frame_goal=prepare, finish_goal=Mock(),
+        prepare_frame_goal=prepare, finish_goal=Mock(), set_control_mode=Mock(),
         check_state_fresh=Mock(), clear_frame_tasks=Mock(), add_frame_task=Mock(),
         update_ik_solver=Mock(), speed_scale=1.0,
     )
@@ -307,6 +333,7 @@ def test_action_hooks_keep_lock_slow_mode_timeout_and_final_hold(planned):
 
     server = SimpleNamespace(
         controller=controller, _controller_lock=lock, timeout=5.0,
+        get_parameter=lambda name: SimpleNamespace(value='counter'), _upper_controller='counter',
         _comparison_active=False,
         get_logger=lambda: SimpleNamespace(info=Mock()),
         _resolve_target=lambda name, target, relative, measured_q: target,
@@ -321,5 +348,6 @@ def test_action_hooks_keep_lock_slow_mode_timeout_and_final_hold(planned):
         methods['_frame_task_callback'](server, goal)
     assert calls == [('prepare', ['left_graspgenx_frame']), ('execute', planned)]
     assert controller.speed_scale == 1.0
+    controller.set_control_mode.assert_called_once_with('counter')
     controller.finish_goal.assert_called_once()
     assert not lock.locked()

@@ -30,7 +30,8 @@ class CounterBalanceController(FrameController):
     def __init__(self, urdf_path: str, urdf_sphere_path: str,
                  srdf_sphere_path: str, moving_arm: str = None,
                  init: bool = True, handless: bool = False,
-                 visualize: bool = False, config: dict = None):
+                 visualize: bool = False, config: dict = None,
+                 control_timing=None):
         if moving_arm not in (None, 'left', 'right'):
             raise ValueError('moving_arm must be "left" or "right"')
         resolved_config = (
@@ -50,6 +51,7 @@ class CounterBalanceController(FrameController):
             handless=handless,
             visualize=visualize,
             config=resolved_config,
+            control_timing=control_timing,
         )
 
         self.motor_q_indices, self.motor_v_indices = self._body_indices()
