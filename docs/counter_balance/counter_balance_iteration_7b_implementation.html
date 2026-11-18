@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iteration 7b | Diagnostic Implementation and Evidence</title>
+    <link rel="stylesheet" href="counter_balance_reports.css">
+</head>
+<body><main>
+    <nav aria-label="Related documents">
+        <a href="counter_balance_iteration_7b.html">Revised diagnostic plan</a>
+        <a href="../../../../docs/iteration7b_diagnostic_hardware.html">Root hardware guide</a>
+        <a href="data/iteration7b_20261118_diagnostics/snapshot_manifest.json">Frozen evidence manifest</a>
+        <a href="https://github.com/TonyZYT2000/h12_zmp_benchmark/discussions/2#discussioncomment-19699591">Collaboration summary</a>
+    </nav>
+    <header>
+        <p class="eyebrow">Implementation evidence / 18 November 2026</p>
+        <h1>Command parity established. No winner or hardware clearance.</h1>
+        <p class="lead">The opt-in suite isolates feedback branches without strengthening the allocator.
+            Frozen replays support software correctness; four completed stand-policy simulation cells
+            support execution, but all fail tracking and settling. C0 repeat variability prevents a causal ranking.</p>
+    </header>
+    <div class="callout warning"><strong>Not a hardware release.</strong> No hardware operations or peg
+        contact were performed. Predictive actuation is unqualified, momentum-rate actuation is unavailable,
+        and recovery remains a pure, unwired research planner. No loaded-result claim is made from
+        saved-trajectory runs whose applied force was zero.</div>
+
+    <section id="results">
+        <h2>Primary results</h2>
+        <div class="scroll"><table>
+            <thead><tr><th>Evidence</th><th>Result</th><th>Decision boundary</th></tr></thead>
+            <tbody>
+                <tr><td>Frozen nominal allocation</td><td>4,056 problems; C0 requested actions bitwise exact.
+                    Move action-change RMS: combined-off 0.08494, CoM-off 0.08407,
+                    gyro-off 0.00693 rad/s.</td><td>CoM-off is informative, not a demonstrated improvement.</td></tr>
+                <tr><td>Full command-path replay</td><td>1,012 rows, 4,048 controller steps; historical C0 q/dq
+                    buffers exact. Historical tau <strong>not exact</strong>: maximum 0.003533 Nm.</td>
+                    <td>No collision rejection/backtracking occurred; fallback was not exercised.</td></tr>
+                <tr><td>Actuation-aware response (AR)</td><td>At provisional 40 ms, held-out MSE improves 2.1%
+                    for position-derived velocity and worsens 5.8% for reported dq versus the current
+                    decision-time reference.</td><td>All exported models remain <code>qualified=false</code>.</td></tr>
+                <tr><td>New stand-policy simulation</td><td>Four cells complete, stable, survived and reached;
+                    all tracking/settling <strong>FAIL</strong>.</td><td>C0 repeat variability 18.7% exceeds
+                    the initial CoM-off drift difference of 7.5%; no causal effect or winner established.</td></tr>
+                <tr><td>Consolidated unique regressions</td><td>757 passed, 2 deselected, 46 warnings in
+                    70.08 s.</td><td>The two deselected asset-dependent tests failed in a separate
+                    197-pass / 2-fail run. This is not an all-suite-pass result.</td></tr>
+            </tbody>
+        </table></div>
+        <p class="small">Refreshed snapshot capture completed <time datetime="2026-11-18T04:13:45Z">2026-11-18
+            04:13:45 UTC</time>. The completed follow-up adds exactly two cells, C0 repeat and gyro-off,
+            to the original two. The manifest preserves the previous 04:08:40 UTC capture record.
+            This page and its evidence remain a frozen capture, not a live worker mirror.</p>
+    </section>
+
+    <section id="implementation">
+        <h2>What is implemented</h2>
+        <p><code>CounterBalanceDiagnosticController</code> is an explicit opt-in subclass with per-trial reset
+            and parent execution-clock sampling. The diagnostic adapter/session selection is opt-in;
+            ordinary controller defaults are not replaced by this report.</p>
+        <div class="scroll"><table>
+            <thead><tr><th>Variant</th><th>Actuated behavior</th></tr></thead><tbody>
+                <tr><td><code>c0</code></td><td>Unchanged robust Counter commands plus diagnostic logging.</td></tr>
+                <tr><td><code>feedback_off</code></td><td>Remove scaled CoM and gyro feedback only.</td></tr>
+                <tr><td><code>com_feedback_off</code></td><td>Remove scaled CoM feedback only.</td></tr>
+                <tr><td><code>gyro_feedback_off</code></td><td>Remove scaled gyro feedback only.</td></tr>
+                <tr><td><code>ar_shadow</code>, <code>momentum_rate_shadow</code></td><td>Actuate C0;
+                    record shadow diagnostics, not predictive/rate feedback.</td></tr>
+            </tbody>
+        </table></div>
+        <p>Ablations use the existing post-scale target-offset hook. Feedforward, posture, weights, gains,
+            bounds, collision finalization and publisher interface remain unchanged. C0 and both shadows
+            preserve nominal problems, commands and buffers bitwise in both-arm software fixtures.
+            This parity is not evidence that historical torque inputs can be reconstructed exactly.</p>
+        <p>Diagnostics separate feedforward, CoM feedback, gyro feedback, requested/applied/buffered action
+            and measured motion. Momentum is partial two-arm model-frame angular momentum, not measured
+            whole-body reaction or contact feasibility. Timestamp-qualified derived rates include 3/5/9-sample
+            sensitivity; recorded zero ddq fields are not treated as measured acceleration. Shadows do not
+            perform extra controller solves.</p>
+        <p class="small">Implementation paths:
+            <a href="../../h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py">diagnostic controller</a>,
+            <a href="../../../../h12_zmp_benchmark/runtime/diagnostic_real_controller_adapter.py">diagnostic adapter</a>,
+            <a href="../../../../h12_zmp_benchmark/experiment/real_counter_balance_session.py">session entry point</a>.
+            These are working-tree sources, not archived clean-commit attestations.</p>
+    </section>
+
+    <section id="stand-pair">
+        <h2>Completed stand-policy controls</h2>
+        <p>New <code>model_almi_manip_stand.pt</code>, left-overhang-sideways, cold isolated cells,
+            DDS 189 on loopback, 0.8 duration factor (1.2 s move). Actual saved pair configurations differ
+            only in name and <code>counter_diagnostics</code>; lower-policy configs are identical. Physics,
+            upper gains, limits and rates are fixed. The generic <code>MJLAB_ALMI_MANIP</code> backend
+            uses the explicit stand config; dedicated global stand registration is deferred.</p>
+        <div class="scroll"><table>
+            <thead><tr><th>Measure</th><th>C0</th><th>CoM-feedback-off</th></tr></thead><tbody>
+                <tr><td>Complete / stable / survived / reached</td><td>Yes / yes / yes / yes</td><td>Yes / yes / yes / yes</td></tr>
+                <tr><td>Overall / tracking / settled</td><td>FAIL / FAIL / false</td><td>FAIL / FAIL / false</td></tr>
+                <tr><td>Move peak orientation drift (deg)</td><td>1.399</td><td>1.504</td></tr>
+                <tr><td>Move gyro RMS (rad/s)</td><td>0.02703</td><td>0.02900</td></tr>
+                <tr><td>Live timed tracking RMS (mm)</td><td>24.002</td><td>24.473</td></tr>
+                <tr><td>Frozen timed tracking RMS (mm)</td><td>23.298</td><td>23.808</td></tr>
+                <tr><td>Counter peak excursion (deg)</td><td>26.22</td><td>24.57</td></tr>
+                <tr><td>Move counter PD+FF proxy RMS (Nm)</td><td>3.941</td><td>3.804</td></tr>
+                <tr><td>Solver failures / collision rejections</td><td>0 / 0</td><td>0 / 0</td></tr>
+            </tbody>
+        </table></div>
+        <p>Actual variant and execution-clock lifecycle samples were verified. Applied and simulator-received
+            counter velocity are nonzero and peak at 1 rad/s in both cells; measured peak speeds differ
+            from these commands. No AR or momentum-rate actuation ran. The effort column is reconstructed
+            received-command PD+FF, <strong>not measured torque or electrical energy</strong>.</p>
+        <p>The table above retains the initial two-cell comparison. The completed follow-up adds one unchanged
+            C0 repeat and one gyro-feedback-off control, not four additional cells. All four are complete,
+            stable, survived and reached; all four fail tracking and settling. Lower-policy configs are
+            identical, the C0 repeat resolved config is semantically identical to the initial C0, and
+            physics, gains, limits, rates, scene and target remain fixed.</p>
+        <div class="scroll"><table>
+            <thead><tr><th>Cell</th><th>Move peak drift (deg)</th><th>Postfade peak drift (deg)</th>
+                <th>Tail peak drift (deg)</th><th>Move gyro RMS (rad/s)</th></tr></thead><tbody>
+                <tr><td>C0 initial</td><td>1.3990</td><td>1.5190</td><td>1.1110</td><td>0.02703</td></tr>
+                <tr><td>CoM-off</td><td>1.5036</td><td>1.6814</td><td>1.2010</td><td>0.02900</td></tr>
+                <tr><td>C0 repeat</td><td>1.6611</td><td>1.8167</td><td>1.1929</td><td>0.03168</td></tr>
+                <tr><td>Gyro-off</td><td>1.7024</td><td>1.8855</td><td>1.2981</td><td>0.03174</td></tr>
+            </tbody>
+        </table></div>
+        <p class="small">Tail is the last 1.0 physics seconds of the recorded task, a subset of postfade.
+            Drift is standing-reference orientation drift; these are phase peaks, not the distinct
+            terminal-drift scalar in the earlier comparison.</p>
+        <p>Initial simulator pose and motor q/dq match exactly across checked pairs, but standing and onset
+            states diverge. Standing R0 differs by 2.016 deg between initial/repeat C0 and by 0.557 deg
+            between C0 repeat/gyro-off. Aligned gravity checks use simulator pelvis ground truth from
+            saved rotations; host-only policy timestamps cannot be exactly aligned to physics onset.
+            No time-aligned policy-sensor observation is fabricated.</p>
+        <p class="callout warning">C0 repeat move drift varies by 18.7%, greater than the initial CoM-off
+            difference of 7.5%. Reset/onset differences and baseline variability preclude causal attribution
+            of these differences to feedback removal. Operational completion and a stable classification
+            do not override tracking/settling failure; smaller excursion does not establish a winner.</p>
+        <p>Move/fade/postfade/tail details and raw source paths/hashes are retained in the
+            <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_final_control_summary.json">completed four-cell summary</a>
+            and <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_final_control_table.txt">phase table</a>.
+            The <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_fixed_sim_comparison.json">initial stand comparison</a>
+            remains unchanged as stage-specific evidence.</p>
+    </section>
+
+    <section id="frame-contract">
+        <h2>Optional observation-frame correction</h2>
+        <p>The benchmark previously consumed raw torso IMU while native stand deployment requires pelvis-frame
+            gyro/gravity. The optional <code>actor.observation.imu_frame</code> setting defaults to
+            <code>torso</code>, preserving legacy observations bitwise; <code>pelvis</code> uses measured waist
+            yaw and velocity for the native transform. Commanded zero waist is not measured zero motion.
+            This is a frame-contract correction, <strong>not observation masking</strong>, waist freezing,
+            calibration, physics tuning or altered policy weights.</p>
+        <p>The 24-test focused run includes all 65 observation channels against native deployment over noisy,
+            nonzero-waist states, native config parity, invalid-frame rejection before actor/DDS initialization,
+            and identity logging. Two unrelated checkpoint-inventory tests were deselected. Strict loading
+            verifies 65 observations, 12 Unitree-order actions, LSTM64x1 and [64,32] MLP without normalization.</p>
+        <p>Stand checkpoint SHA256:
+            <code>b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683</code>.
+            It matches the published Stage-2 update-900 snapshot (iteration field 899), but has no embedded
+            training/default-pose config. This is a <strong>distinct policy identity</strong>, not the absent
+            historical finetune model or an attestation of historical real-hardware checkpoints.</p>
+        <p><a href="../../../../h12_zmp_benchmark/runtime/mjlab_policy_runtime.py">Runtime source</a> and
+            <a href="../../../../config/lower_body/mjlab_almi_manip_stand.yaml">explicit stand config</a>
+            are current paths; frozen comparison hashes record the source used for the completed cells.</p>
+    </section>
+
+    <section id="offline">
+        <h2>Offline identification limits</h2>
+        <details>
+            <summary>4,056 frozen nominal problems: action changes are not body outcomes</summary>
+            <p>The Nov10 FAME and two Nov13 ALMI manipulation-standing sessions supply every stored Counter
+                problem, including one unpaired ALMI recording for state-only analysis. Missing Frame
+                matrices were not fabricated. Stored matrices, weights, bounds, posture and damping are
+                preserved; C0 requested actions reproduce bit-for-bit. All 3,430 zero-balance-scale rows
+                remain identical across variants. Combined removal is not sufficient to identify a term;
+                the separate CoM/gyro ablations supply that distinction.</p>
+            <p>Move action-change RMS per scalar joint is 0.08494 / 0.08407 / 0.00693 rad/s for combined,
+                CoM and gyro removal. Original composite and feedforward-only cancellation targets are
+                scored separately. First-row CoM reference errors are effectively zero and cannot diagnose
+                that branch. No tilt, translation, contact or lower-policy counterfactual follows from
+                this algebra. See the archived script, JSON and per-case/phase CSV below.</p>
+        </details>
+        <details>
+            <summary>1,012-row full controller replay: exact q/dq, incomplete historical tau parity</summary>
+            <p>FAME F02 left sideways (337), F03 right sideways (338), and Nov13 190215 ALMI trial 6 right
+                sideways (337) yield 4,048 full controller executions across four active variants.
+                Controller and LowCmdHandler constructors were bypassed with <code>__new__</code>;
+                constructor guards prevented DDS setup. Real Pinocchio, sphere/SRDF FCL, gravity,
+                finalizer, bounds, clipping and float32 memory buffers ran. Publication was memory-only.</p>
+            <p>C0 q/dq, nominal problem, prepared context and requested action are exact. All variant
+                commands are finite, bounded and model-valid; moving-arm, torso, counter-wrist and tau
+                buffers are identical across variants. All 858 zero-balance observations preserve buffers.
+                No collision backtracking/rejection occurred, so this is not fallback coverage.</p>
+            <p>Historical tau maximum differences by recording are 0.003533, 0.002838 and 0.001291 Nm.
+                Current gravity uses live model-state IMU; exact historical gravity-time input is absent
+                from nominal context. Recorded tau was not substituted to manufacture parity. Each row
+                resets its original state/buffer: this is not an evolving plant rollout. Final counts
+                describe the last complete pass, not cumulative smoke/repeated executions.</p>
+        </details>
+        <details>
+            <summary>AR qualification: shared response model fails the relevant baseline</summary>
+            <p>24 recordings and held-outs by family, arm, policy and Frame/Counter use one canonical
+                seven-joint gain/effective-delay model, not trajectory or policy branches. Gains span
+                0.976-1.014 and effective delays 35-50 ms, including sampling/servo/filter effects;
+                they are not independently measured transport delays.</p>
+            <p>Large apparent gains versus nominal dq at future target time are not the relevant test.
+                Against the current decision-time reference at provisional 40 ms, held-out MSE improves
+                only 2.1% for derived velocity and degrades 5.8% for reported dq. Aggregate and group
+                screens fail. Horizon sensitivity changes the velocity screen, but no counter effective
+                actuation horizon is independently validated. Every export remains unqualified and
+                AR actuation is refused. Recorded ddq is not used.</p>
+        </details>
+    </section>
+
+    <section id="recovery">
+        <h2>Recovery is unwired</h2>
+        <p>The pure <a href="../../h12_ros2_controller/core/controller/counter_balance/recovery_reference.py">recovery reference planner</a>
+            uses immutable commands/bounds and two-phase propose/commit with exact positive local-buffer
+            readback. It guards cadence/freshness, finite values, position/excursion, velocity/acceleration,
+            reference lead/stopping reserve and total PD+FF effort, and requires external validation.</p>
+        <p>Rejection, false writes, writer exceptions or clipping/readback mismatches latch STOP_REQUEST
+            and emit no new command rather than snapping to measured position. Explicit unique-trial
+            reset requires mode acknowledgement; external STOP cannot be cleared. The prior command can
+            remain live until an independent lease acts. Local reference guards and frozen-measurement
+            stopping reserve are not physical braking guarantees.</p>
+        <p class="callout warning"><strong>External blockers remain:</strong> full-robot swept collision
+            checking, independent expiring command lease, mode supervision, transport/actuator acknowledgement
+            and whole-body/effort commissioning. Synthetic coupled-inertia evidence at a 0.1 rad/s research
+            cap is not whole-body validation; the earlier 0.2 rad/s fixture is not established feasible.
+            No recovery connection to a live publisher or hardware enable is provided.</p>
+    </section>
+
+    <section id="history">
+        <h2>Retained failures</h2>
+        <p>The later stand-policy pair does not erase failed baselines or make their missing metrics zero.</p>
+        <details>
+            <summary>Original ALMI finetune missing; FAME standing collapse before release</summary>
+            <p>The fixed <code>model_almi_manip_finetune.pt</code> was missing, so original ALMI C0 failed
+                before policy readiness. No substitution or candidate run belongs to that experiment.
+                FAME C0 failed standing initialization at the saved left-overhang-sideways start and
+                collapsed before task release. The diagnostic log key existed but payload stayed empty;
+                nominal execution and nonzero applied/received counter action were not established.</p>
+            <p>Move/fade/postfade, tracking, gyro, physical-bound and excursion comparison metrics are
+                unavailable for these failures. Startup data and any labelled PD+FF proxy are not task
+                validation. Original isolated domains were 187/188 on loopback. Inner-forward cells
+                excluded by duration/velocity/acceleration feasibility were not silently slowed or retuned.</p>
+        </details>
+        <details>
+            <summary>Original stand wrapper investigation stopped before simulation</summary>
+            <p>The original contract probe found a 0.075 maximum discrepancy in the first six scaled
+                gyro/gravity channels at waist yaw 0.2 rad and velocity 0.3 rad/s; the other 59 channels
+                were bitwise equal. With no frame selector then available, the investigation stopped
+                without further full cells. The archived wrapper-contract JSON is that historical state,
+                not the current readiness verdict. Its later resolution is the optional frame correction
+                and separate stand pair above.</p>
+        </details>
+        <p>The simulation-summary JSON intentionally retains original top-level failure language and later
+            investigation nodes. Read those nodes chronologically with the stand comparison; the top-level
+            historical failure does not describe all later cells.</p>
+    </section>
+
+    <section id="evidence">
+        <h2>Frozen evidence and provenance</h2>
+        <p>All links below point to captured bytes, not mutable <code>/tmp/kilo</code> targets.
+            The <a href="data/iteration7b_20261118_diagnostics/snapshot_manifest.json">manifest</a>
+            records current and previous capture completion, source directory and SHA256 for all 13 copied files.</p>
+        <ul>
+            <li>Frozen allocation:
+                <a href="data/iteration7b_20261118_diagnostics/frozen_feedback_ablation.py">script</a>,
+                <a href="data/iteration7b_20261118_diagnostics/frozen_feedback_ablation.json">JSON</a>,
+                <a href="data/iteration7b_20261118_diagnostics/frozen_feedback_ablation.csv">CSV</a>.</li>
+            <li>Full command replay:
+                <a href="data/iteration7b_20261118_diagnostics/diagnostic_recorded_command_replay.py">script</a>,
+                <a href="data/iteration7b_20261118_diagnostics/diagnostic_recorded_command_replay.json">JSON</a>.</li>
+            <li>Response identification:
+                <a href="data/iteration7b_20261118_diagnostics/counter_response_qualification.json">qualification</a>,
+                <a href="data/iteration7b_20261118_diagnostics/counter_response_summary.json">summary</a>.</li>
+            <li>Simulation investigation:
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_diagnostic_sim_summary.json">chronological summary</a>,
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_diagnostic_config_verification.json">configuration verification</a>.</li>
+            <li>Stand checkpoint:
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_wrapper_contract.json">original contract investigation</a>,
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_fixed_sim_comparison.json">completed fixed-frame pair</a>.</li>
+            <li>Completed controls:
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_final_control_summary.json">four-cell summary</a>,
+                <a href="data/iteration7b_20261118_diagnostics/iter7b_stand_final_control_table.txt">phase table</a>.</li>
+        </ul>
+        <p>Historical raw sources are Nov10
+            <code>runs/real_experiments/iter7b_fame_validation_20261110_184722</code> and Nov13
+            <code>iter7b_almi_manip_stand_session_20261113_190215</code> / <code>191535</code>.
+            FAME records benchmark <code>d46d79f6</code> dirty; ALMI records <code>1e2e6433</code> dirty.
+            Their saved controller-config SHA256 is
+            <code>00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff</code>.
+            Historical real-policy checkpoint/version is unrecorded: a policy label is not checkpoint attestation.</p>
+        <p>Implementation evidence was produced across dirty working trees, not one clean committed release.
+            Embedded source hashes can differ between stages as work progressed. Absolute source/run paths
+            inside JSON identify provenance, not portable archived raw payloads; scripts retain their original
+            environment/path assumptions. Raw runs, checkpoints and every dependency are not bundled here.
+            The manifest authenticates copied evidence bytes, not complete end-to-end reproducibility.</p>
+    </section>
+
+    <section id="regressions">
+        <h2>Final regression status</h2>
+        <p>The combined unique regression run reports <strong>757 passed, 2 deselected, 46 warnings in
+            70.08 s</strong>. The stale-generation/blocked-close regression passes and is included in
+            those 757, not an additional test. Earlier 188-focused and 24-frame-focused counts describe
+            overlapping stage-specific runs and must not be added to the final unique count.</p>
+        <p>Independent final review found and resolved two integration defects: the diagnostic adapter
+            now forwards keyword-only shutdown confirmation correctly; saved-line acceleration diagnostics
+            now normalize joint order before selecting the moving arm. New tests cover unarmed cleanup,
+            refusal without fresh armed confirmation, confirmed idempotent teardown and reversed joint
+            order for both arms. Independent follow-up review confirmed both findings resolved with no
+            outstanding findings in these fixes. These regressions are included in the final count. Historical simulation
+            source hashes remain unchanged: those captures predate the final fixes.</p>
+        <p>A separate mock real-interface end-to-end run passed 13 tests with two dependency deprecation
+            warnings. This is a separate run, not an addition to the consolidated run count.</p>
+        <p>The two deselected tests actually failed in a separate <strong>197 passed, 2 failed</strong>
+            run because required assets are absent in <code>submodules/h12_mjlab</code>:</p>
+        <ul>
+            <li><code>test_mjlab_manip_finetune_checkpoint_inference</code>: missing
+                <code>data/model_almi_manip_finetune.pt</code>.</li>
+            <li><code>test_mjlab_almi_checkpoint_abis_load</code>: missing
+                <code>config/deploy_almi_manip_real.yaml</code>.</li>
+        </ul>
+        <p>No fixes or skip modifications were made to conceal these failures. The selected consolidated
+            run passed its executed tests, but <strong>the full suite did not pass</strong>. Final test counts
+            come from the root agent's final consolidated pytest run after the audit fixes and are recorded
+            in the manifest; raw regression logs are not bundled in this evidence capture.</p>
+    </section>
+
+    <section id="remaining">
+        <h2>Remaining gates</h2>
+        <ul>
+            <li>Resolve or explicitly provision the two missing assets before claiming full-suite regression
+                success; preserve the separate failure and test-selection records.</li>
+            <li>Retain matched repetitions, directional guards and policy hold-outs before candidate
+                selection; do not tune physics, lower-policy inputs or authority to make an ablation win.</li>
+            <li>Resolve the external recovery/lease/acknowledgement and commissioning contracts separately.
+                The linked hardware guide is a supervised procedure, not clearance granted by this report.</li>
+        </ul>
+    </section>
+    <footer>Documentation and immutable evidence capture only. Existing plan, hardware guide, production
+        code and tests were not edited for this report. No robot operation, contact claim or controller winner.</footer>
+</main></body>
+</html>

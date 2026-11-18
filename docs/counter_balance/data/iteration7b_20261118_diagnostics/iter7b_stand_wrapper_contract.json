@@ -1,0 +1,206 @@
+{
+  "experiment_id": "new_almi_manip_stand_wrapper_investigation",
+  "separate_policy_identity": true,
+  "historical_model_equivalence_claim": false,
+  "hardware_checkpoint_attestation": false,
+  "checkpoint": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/data/model_almi_manip_stand.pt",
+  "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+  "checkpoint_iteration_field": 899,
+  "checkpoint_infos": null,
+  "checkpoint_metadata_limit": "No embedded observation/default-pose training config; identity tied to current deployment/training source and matching published audited-snapshot SHA256, not hardware identity",
+  "published_snapshot_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+  "architecture": {
+    "strict_actor_load_passed": true,
+    "observation_size": 65,
+    "action_count": 12,
+    "recurrent": "LSTM64x1",
+    "mlp": [
+      64,
+      32
+    ],
+    "normalization": false,
+    "finite_native_observation_action_passed": true
+  },
+  "derived_contract": {
+    "terms": [
+      "almi_base_ang_vel",
+      "proj_grav",
+      "almi_command_vel",
+      "almi_q_pos",
+      "almi_q_vel",
+      "prev_action",
+      "almi_phase"
+    ],
+    "history": 1,
+    "joint_selection_unitree_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      20,
+      21,
+      22,
+      23
+    ],
+    "lower_action_order": "unitree",
+    "lower_action_scale": [
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25
+    ],
+    "lower_default_pos": [
+      0.0,
+      -0.4,
+      0.0,
+      0.8,
+      -0.4,
+      0.0,
+      0.0,
+      -0.4,
+      0.0,
+      0.8,
+      -0.4,
+      0.0
+    ],
+    "upper_default_pos": [
+      0.0,
+      0.4,
+      0.2,
+      0.0,
+      0.3,
+      0.0,
+      0.0,
+      0.0,
+      0.4,
+      -0.2,
+      0.0,
+      0.3,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "policy_hz": 50.0,
+    "zero_command_phase": [
+      0,
+      0
+    ],
+    "imu_frame_required": "pelvis"
+  },
+  "wrapper_gap": {
+    "status": "blocked_before_simulation",
+    "reason": "Benchmark consumes raw torso IMU without native measured waist q/dq pelvis-frame transform; no YAML option selects that transform",
+    "not_valid_workaround": "Commanding zero waist is not measured zero yaw/velocity. Freezing the waist or changing sensors/observations would change the fixed experiment. No production edit authorized.",
+    "references": {
+      "actor_frame_contract": "submodules/h12_mjlab/h12_mjlab/utility/actor.py:87-115",
+      "native_waist_transform": "submodules/h12_mjlab/h12_mjlab/deploy/deploy_real.py:115-165,215-282",
+      "benchmark_omits_transform": "h12_zmp_benchmark/runtime/mjlab_policy_runtime.py:168-194",
+      "torso_imu_site": "submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml:211-216,456-457",
+      "benchmark_raw_sensor_publication": "h12_zmp_benchmark/runtime/mujoco_runtime.py:152-164",
+      "training_default_pose": "submodules/h12_mjlab/h12_mjlab/utility/h12_cfg.py:41-53",
+      "deployment_defaults_action_order": "submodules/h12_mjlab/config/deploy_almi_manip_stand_real.yaml:20-83"
+    }
+  },
+  "numerical_probe": {
+    "synthetic_not_plant": true,
+    "waist_yaw_rad": 0.20000000298023224,
+    "waist_velocity_rad_s": 0.30000001192092896,
+    "benchmark_first6": [
+      0.02500000037252903,
+      -0.05000000074505806,
+      0.07500000298023224,
+      0.34260836243629456,
+      -0.0,
+      -0.9394783973693848
+    ],
+    "native_first6": [
+      0.03443513065576553,
+      -0.04403659701347351,
+      0.0,
+      0.33577901124954224,
+      0.06806577742099762,
+      -0.9394785165786743
+    ],
+    "max_first6_absolute_difference": 0.07500000298023224,
+    "remaining59_bitwise_equal": true
+  },
+  "additional_full_cells": 0,
+  "candidate_cells": 0,
+  "temporary_runnable_config_created": false,
+  "native_contract_tests": {
+    "path": "submodules/h12_mjlab/tests/test_observation_contract.py",
+    "passed": 4,
+    "warnings": 35,
+    "hardware": false
+  },
+  "reserved_domain_if_verifiable": 189,
+  "physics_gains_limits_rates_changed": false,
+  "conclusion": "No meaningful correctness cell possible through unchanged benchmark wrapper; stop rather than simulate a known observation mismatch",
+  "source_hashes": [
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/data/model_almi_manip_stand.pt",
+      "sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/deploy_almi_manip_stand_real.yaml",
+      "sha256": "ed396774fe7da7d0a7ae58419a9bc0163b9850ce4aacf7e607b281bf593a97d3"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/deploy_almi_manip_stand_sim.yaml",
+      "sha256": "c43f75e3e202645085e3e8290561a7f6a25a456958530574ef2a41cb9ffff926"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/train_almi_manip_stand.yaml",
+      "sha256": "e67abcb08f0cea7d71a014b538bbd05f946e3a8e25ea49f278034868d3183e27"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/docs/analysis/2026-11-10_2049_new_manip_stand_finetune.html",
+      "sha256": "b16ab6e2fe993ceb936987f7bd3057a3cc75ac116443c4aae8a97043ae493d9a"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/utility/actor.py",
+      "sha256": "ff35fb676513419bdd316f9b244c9cefdcf9d257bb70673b47484cddac2634e0"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/deploy/deploy_real.py",
+      "sha256": "3b0b245a701fe963f940f5eea41d888d7ddfdd146d9d044558acb63240e69f1a"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+      "sha256": "1568a75e17f5bfd431cdcfb6dd6c219a0affb732af412aeffc961128cb635438"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+      "sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mujoco_runtime.py",
+      "sha256": "af178c00b5323f5b0f82962e25e8d28f47c73cb9197cf11249d5b20c521453d4"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/utility/h12_cfg.py",
+      "sha256": "3da48f3c609f6038615eaf136923a8a78943e18168ebb7fbea12f985be73ee09"
+    }
+  ]
+}

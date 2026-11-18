@@ -1,0 +1,4083 @@
+{
+  "schema_version": 1,
+  "model_type": "canonical7_gain_effective_delay",
+  "joint_order": [
+    "shoulder_pitch",
+    "shoulder_roll",
+    "shoulder_yaw",
+    "elbow",
+    "wrist_roll",
+    "wrist_pitch",
+    "wrist_yaw"
+  ],
+  "gains": [
+    1.003347952962158,
+    1.0143805299921635,
+    0.9759658897999889,
+    0.9898870577695723,
+    0.9895834025735657,
+    0.9837963072557168,
+    0.9773112745225024
+  ],
+  "effective_delays_s": [
+    0.04,
+    0.045,
+    0.05,
+    0.035,
+    0.035,
+    0.035,
+    0.045
+  ],
+  "bias": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "horizon_s": 0.04,
+  "frame": "signed joint coordinates, same canonical order for left/right",
+  "prediction": "gain * analytic_qdot(actual_elapsed + horizon - effective_delay)",
+  "extrapolation": "clamp to trajectory ends, zero velocity outside task move",
+  "screen": {
+    "min_reduction": 0.1,
+    "max_degradation": 0.05,
+    "excitation_rms": 0.03,
+    "min_excited_runs": 2,
+    "max_delay_s": 0.2,
+    "delay_step_s": 0.005,
+    "min_gain": 0.5,
+    "max_gain": 1.5,
+    "filter_half_width_s": 0.06,
+    "horizon_s": 0.04,
+    "kind": "provisional engineering, not statistical"
+  },
+  "filter": {
+    "method": "centered irregular-time local cubic derivative",
+    "minimum_samples": 7,
+    "minimum_half_width_s": 0.06,
+    "edge_handling": "exclude points lacking full two-sided actual radius"
+  },
+  "scoring": "fit sample-weighted; test equal-trial MSE; aggregate equal-fold MSE; both decision-time and target-time nominal baselines",
+  "timestamp_alignment": "snapshot.arrival_monotonic - execution_start_monotonic; no command/snapshot co-timing assumption",
+  "excited_runs": [
+    24,
+    24,
+    24,
+    24,
+    24,
+    24,
+    24
+  ],
+  "fit_metrics": {
+    "derived": {
+      "nominal_target_mse": 0.003787422213493756,
+      "model_mse": 0.0006119814208041687,
+      "nominal_decision_mse": 0.0007039461770923758,
+      "decision_reduction": 0.13064174404364864,
+      "reduction": 0.8384174284494048
+    },
+    "reported": {
+      "nominal_target_mse": 0.005255234694133572,
+      "model_mse": 0.0017253787318433293,
+      "nominal_decision_mse": 0.0017101868110251915,
+      "decision_reduction": -0.00888319376584995,
+      "reduction": 0.6716837910646745
+    }
+  },
+  "held_out_metrics": {
+    "derived": {
+      "reduction": 0.814858194160611,
+      "decision_reduction": 0.02101035910700423
+    },
+    "reported": {
+      "reduction": 0.6568066512361752,
+      "decision_reduction": -0.05777804993875056
+    }
+  },
+  "folds": [
+    {
+      "dimension": "family",
+      "held_out": "diagonal_outward_up",
+      "train_runs": 20,
+      "test_runs": 4,
+      "gains": [
+        0.9981591034467905,
+        1.0122082261027638,
+        0.9848014529509495,
+        0.9907894373625505,
+        0.9901593098517403,
+        0.9854157642112166,
+        0.977382628172679
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "excited_training_runs": [
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.002541396818523627,
+          "model_mse": 0.00048681544551891135,
+          "nominal_decision_mse": 0.0005226518631374416,
+          "decision_reduction": 0.06856651654010527,
+          "reduction": 0.8084457169495801
+        },
+        "reported": {
+          "nominal_target_mse": 0.0035137897493317844,
+          "model_mse": 0.0010323757779820608,
+          "nominal_decision_mse": 0.001081420488436967,
+          "decision_reduction": 0.04535211879126959,
+          "reduction": 0.7061930702659751
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.002450066987789993,
+            "model_mse": 0.0004726593368340892,
+            "nominal_decision_mse": 0.0004772881326883623,
+            "decision_reduction": 0.009698116373019825,
+            "reduction": 0.8070830964256872
+          },
+          "reported": {
+            "nominal_target_mse": 0.0034819520740141507,
+            "model_mse": 0.0010979073120869949,
+            "nominal_decision_mse": 0.0011164792628900822,
+            "decision_reduction": 0.016634389388489445,
+            "reduction": 0.6846862654197081
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0026327266492572614,
+            "model_mse": 0.0005009715542037335,
+            "nominal_decision_mse": 0.0005680155935865209,
+            "decision_reduction": 0.11803204021119043,
+            "reduction": 0.8097137982991639
+          },
+          "reported": {
+            "nominal_target_mse": 0.0035456274246494185,
+            "model_mse": 0.0009668442438771266,
+            "nominal_decision_mse": 0.0010463617139838516,
+            "decision_reduction": 0.07599424658225998,
+            "reduction": 0.727313637875326
+          }
+        }
+      }
+    },
+    {
+      "dimension": "family",
+      "held_out": "overhang_inner_forward",
+      "train_runs": 16,
+      "test_runs": 8,
+      "gains": [
+        1.008392717214553,
+        1.017522662088193,
+        0.9798668774244007,
+        0.983604114182411,
+        0.9882045613514935,
+        0.9706388235311086,
+        0.9917434250207317
+      ],
+      "delays_s": [
+        0.04,
+        0.04,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.035
+      ],
+      "excited_training_runs": [
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.004507255597492109,
+          "model_mse": 0.0009592868840769839,
+          "nominal_decision_mse": 0.0009515397908298052,
+          "decision_reduction": -0.008141638764704388,
+          "reduction": 0.7871682971316865
+        },
+        "reported": {
+          "nominal_target_mse": 0.0058962491720586565,
+          "model_mse": 0.002168099199266521,
+          "nominal_decision_mse": 0.0019820119420434004,
+          "decision_reduction": -0.09388806054885303,
+          "reduction": 0.6322917950040541
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.004325846968706187,
+            "model_mse": 0.0009337799803358018,
+            "nominal_decision_mse": 0.0009339303157150929,
+            "decision_reduction": 0.00016097065997470924,
+            "reduction": 0.7841393865546092
+          },
+          "reported": {
+            "nominal_target_mse": 0.0059339749966928375,
+            "model_mse": 0.002351894064934327,
+            "nominal_decision_mse": 0.002078165024236376,
+            "decision_reduction": -0.13171670079402528,
+            "reduction": 0.6036562226424783
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0046886642262780305,
+            "model_mse": 0.000984793787818166,
+            "nominal_decision_mse": 0.0009691492659445176,
+            "decision_reduction": -0.016142530798288895,
+            "reduction": 0.7899628251690956
+          },
+          "reported": {
+            "nominal_target_mse": 0.005858523347424474,
+            "model_mse": 0.0019843043335987156,
+            "nominal_decision_mse": 0.0018858588598504246,
+            "decision_reduction": -0.05220193082535302,
+            "reduction": 0.6612961635680676
+          }
+        }
+      }
+    },
+    {
+      "dimension": "family",
+      "held_out": "overhang_sideways",
+      "train_runs": 12,
+      "test_runs": 12,
+      "gains": [
+        1.0058994299018418,
+        1.0109016253968204,
+        0.9498825681068309,
+        0.9938337814469541,
+        0.9900574601490779,
+        0.985741640056669,
+        0.9525644729953126
+      ],
+      "delays_s": [
+        0.035,
+        0.05,
+        0.045,
+        0.035,
+        0.035,
+        0.035,
+        0.065
+      ],
+      "excited_training_runs": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003722875089151564,
+          "model_mse": 0.0008863039377797078,
+          "nominal_decision_mse": 0.0005993152059190673,
+          "decision_reduction": -0.4788610884993898,
+          "reduction": 0.7619302510679469
+        },
+        "reported": {
+          "nominal_target_mse": 0.005408373357117447,
+          "model_mse": 0.0021198582995493416,
+          "nominal_decision_mse": 0.0017385588312091276,
+          "decision_reduction": -0.21931927841350582,
+          "reduction": 0.6080414276947805
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0035906217522591447,
+            "model_mse": 0.0008968119204612828,
+            "nominal_decision_mse": 0.0006063360380288721,
+            "decision_reduction": -0.479067487686719,
+            "reduction": 0.7502349224345262
+          },
+          "reported": {
+            "nominal_target_mse": 0.005169275493756692,
+            "model_mse": 0.0019585897997445646,
+            "nominal_decision_mse": 0.0015765623977966622,
+            "decision_reduction": -0.24231670277168088,
+            "reduction": 0.6211094181166983
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003855128426043983,
+            "model_mse": 0.0008757959550981329,
+            "nominal_decision_mse": 0.0005922943738092623,
+            "decision_reduction": -0.47864979615721814,
+            "reduction": 0.7728231440536344
+          },
+          "reported": {
+            "nominal_target_mse": 0.005647471220478199,
+            "model_mse": 0.0022811267993541186,
+            "nominal_decision_mse": 0.0019005552646215926,
+            "decision_reduction": -0.20024228803906902,
+            "reduction": 0.5960799603400255
+          }
+        }
+      }
+    },
+    {
+      "dimension": "arm",
+      "held_out": "left",
+      "train_runs": 20,
+      "test_runs": 4,
+      "gains": [
+        1.0041838540040378,
+        1.0139724992059016,
+        0.9727137419852876,
+        0.9905888723080186,
+        0.9888448321338319,
+        0.9839251994474394,
+        0.9732417822727434
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.045,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "excited_training_runs": [
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003725073243724392,
+          "model_mse": 0.0006945042508436199,
+          "nominal_decision_mse": 0.0007389422507912748,
+          "decision_reduction": 0.06013731100105555,
+          "reduction": 0.8135595717443551
+        },
+        "reported": {
+          "nominal_target_mse": 0.005376942259634939,
+          "model_mse": 0.0018030712290353476,
+          "nominal_decision_mse": 0.0017183833574617783,
+          "decision_reduction": -0.04928345657319545,
+          "reduction": 0.6646660607514567
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003658762011496531,
+            "model_mse": 0.0006993345856984067,
+            "nominal_decision_mse": 0.0007571815679911882,
+            "decision_reduction": 0.07639776869668158,
+            "reduction": 0.8088603239289783
+          },
+          "reported": {
+            "nominal_target_mse": 0.004974922384204952,
+            "model_mse": 0.0015818933008015345,
+            "nominal_decision_mse": 0.0014898295729240457,
+            "decision_reduction": -0.06179480495664883,
+            "reduction": 0.682026536569909
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0037913844759522534,
+            "model_mse": 0.000689673915988833,
+            "nominal_decision_mse": 0.0007207029335913616,
+            "decision_reduction": 0.04305382447648264,
+            "reduction": 0.8180944400750565
+          },
+          "reported": {
+            "nominal_target_mse": 0.005778962135064927,
+            "model_mse": 0.002024249157269161,
+            "nominal_decision_mse": 0.0019469371419995108,
+            "decision_reduction": -0.039709558979521234,
+            "reduction": 0.6497209862326917
+          }
+        }
+      }
+    },
+    {
+      "dimension": "arm",
+      "held_out": "right",
+      "train_runs": 4,
+      "test_runs": 20,
+      "gains": [
+        0.9999230989452866,
+        1.0161487736762633,
+        0.9899775298065208,
+        0.9858627503303854,
+        0.992895302316677,
+        0.9777449618149694,
+        0.9909631375086569
+      ],
+      "delays_s": [
+        0.04,
+        0.04,
+        0.06,
+        0.035,
+        0.035,
+        0.03,
+        0.03
+      ],
+      "excited_training_runs": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0037998920074476293,
+          "model_mse": 0.0007006148372642038,
+          "nominal_decision_mse": 0.0006969469623525958,
+          "decision_reduction": -0.005262774801725058,
+          "reduction": 0.8156224345610276
+        },
+        "reported": {
+          "nominal_target_mse": 0.005230893181033298,
+          "model_mse": 0.0018766896482004774,
+          "nominal_decision_mse": 0.0017085475017378743,
+          "decision_reduction": -0.09841233345375232,
+          "reduction": 0.641229598225181
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003642972834096654,
+            "model_mse": 0.0006702834067083839,
+            "nominal_decision_mse": 0.0006813950620427953,
+            "decision_reduction": 0.016307214350950925,
+            "reduction": 0.8160064767887314
+          },
+          "reported": {
+            "nominal_target_mse": 0.00517656123289299,
+            "model_mse": 0.0018996875968859573,
+            "nominal_decision_mse": 0.0017025333863657551,
+            "decision_reduction": -0.11580049595447257,
+            "reduction": 0.6330213221829714
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003956811180798604,
+            "model_mse": 0.0007309462678200238,
+            "nominal_decision_mse": 0.0007124988626623964,
+            "decision_reduction": -0.025891136287144262,
+            "reduction": 0.8152688530180263
+          },
+          "reported": {
+            "nominal_target_mse": 0.005285225129173607,
+            "model_mse": 0.0018536916995149978,
+            "nominal_decision_mse": 0.0017145616171099936,
+            "decision_reduction": -0.0811461548051665,
+            "reduction": 0.6492691126281617
+          }
+        }
+      }
+    },
+    {
+      "dimension": "policy",
+      "held_out": "almi_manip_stand",
+      "train_runs": 12,
+      "test_runs": 12,
+      "gains": [
+        1.0041201929986177,
+        1.0155191875471572,
+        0.9780309435254954,
+        0.9898626674851273,
+        0.990886190974856,
+        0.9842934540428506,
+        0.9774712793143964
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "excited_training_runs": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0036456043636633006,
+          "model_mse": 0.0006029717894969639,
+          "nominal_decision_mse": 0.0006940261463675274,
+          "decision_reduction": 0.13119730048663744,
+          "reduction": 0.8346030645818447
+        },
+        "reported": {
+          "nominal_target_mse": 0.005142954758111651,
+          "model_mse": 0.0016997826455428626,
+          "nominal_decision_mse": 0.0016670827507921369,
+          "decision_reduction": -0.019615039946390148,
+          "reduction": 0.6694929810802039
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0036456043636633006,
+            "model_mse": 0.0006029717894969639,
+            "nominal_decision_mse": 0.0006940261463675274,
+            "decision_reduction": 0.13119730048663744,
+            "reduction": 0.8346030645818447
+          },
+          "reported": {
+            "nominal_target_mse": 0.005142954758111651,
+            "model_mse": 0.0016997826455428626,
+            "nominal_decision_mse": 0.0016670827507921369,
+            "decision_reduction": -0.019615039946390148,
+            "reduction": 0.6694929810802039
+          }
+        }
+      }
+    },
+    {
+      "dimension": "policy",
+      "held_out": "fame",
+      "train_runs": 12,
+      "test_runs": 12,
+      "gains": [
+        1.0025763823370604,
+        1.0132424629455252,
+        0.9742003279163606,
+        0.9899114432000795,
+        0.9882846560362275,
+        0.9834734606762254,
+        0.9771513433248974
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.045,
+        0.035,
+        0.035,
+        0.03,
+        0.045
+      ],
+      "excited_training_runs": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003929240063324212,
+          "model_mse": 0.000635847858600453,
+          "nominal_decision_mse": 0.0007138662078172239,
+          "decision_reduction": 0.10928987583727515,
+          "reduction": 0.8381753600306839
+        },
+        "reported": {
+          "nominal_target_mse": 0.005367514630155494,
+          "model_mse": 0.0017889761304895038,
+          "nominal_decision_mse": 0.0017532908712582463,
+          "decision_reduction": -0.02035330236200227,
+          "reduction": 0.6667030732550274
+        }
+      },
+      "per_policy": {
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003929240063324212,
+            "model_mse": 0.000635847858600453,
+            "nominal_decision_mse": 0.0007138662078172239,
+            "decision_reduction": 0.10928987583727515,
+            "reduction": 0.8381753600306839
+          },
+          "reported": {
+            "nominal_target_mse": 0.005367514630155494,
+            "model_mse": 0.0017889761304895038,
+            "nominal_decision_mse": 0.0017532908712582463,
+            "decision_reduction": -0.02035330236200227,
+            "reduction": 0.6667030732550274
+          }
+        }
+      }
+    },
+    {
+      "dimension": "mode",
+      "held_out": "counter",
+      "train_runs": 12,
+      "test_runs": 12,
+      "gains": [
+        1.0043925319695588,
+        1.0137748400708855,
+        0.9759444332142342,
+        0.9901227148594548,
+        0.9896013495016658,
+        0.9838127771480344,
+        0.9768086326138579
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.045,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "excited_training_runs": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.004034628392543732,
+          "model_mse": 0.000634100649737242,
+          "nominal_decision_mse": 0.0007084441453308484,
+          "decision_reduction": 0.10493910646814282,
+          "reduction": 0.8428354267002376
+        },
+        "reported": {
+          "nominal_target_mse": 0.005590264908942939,
+          "model_mse": 0.0018655170298061486,
+          "nominal_decision_mse": 0.0018503171061773742,
+          "decision_reduction": -0.008214766851600039,
+          "reduction": 0.6662918376512325
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003852024111707031,
+            "model_mse": 0.0006163850051992577,
+            "nominal_decision_mse": 0.0006953583675066142,
+            "decision_reduction": 0.11357217515126158,
+            "reduction": 0.8399841259233173
+          },
+          "reported": {
+            "nominal_target_mse": 0.005413829892758731,
+            "model_mse": 0.0018369472816968174,
+            "nominal_decision_mse": 0.0018160591859941865,
+            "decision_reduction": -0.01150188048039627,
+            "reduction": 0.6606935721874405
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0042172326733804335,
+            "model_mse": 0.0006518162942752265,
+            "nominal_decision_mse": 0.0007215299231550825,
+            "decision_reduction": 0.09661917911181629,
+            "reduction": 0.8454398073908628
+          },
+          "reported": {
+            "nominal_target_mse": 0.005766699925127146,
+            "model_mse": 0.00189408677791548,
+            "nominal_decision_mse": 0.0018845750263605618,
+            "decision_reduction": -0.005047159928297987,
+            "reduction": 0.6715475397527784
+          }
+        }
+      }
+    },
+    {
+      "dimension": "mode",
+      "held_out": "frame",
+      "train_runs": 12,
+      "test_runs": 12,
+      "gains": [
+        1.0023033369627836,
+        1.0149859790410494,
+        0.9760844895983805,
+        0.9896511958231488,
+        0.9895654595803527,
+        0.9837798117565025,
+        0.977815420956782
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "excited_training_runs": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        12,
+        12
+      ],
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0035402160344437795,
+          "model_mse": 0.0005918408084476726,
+          "nominal_decision_mse": 0.0006994482088539029,
+          "decision_reduction": 0.15384613048413254,
+          "reduction": 0.8328235331715682
+        },
+        "reported": {
+          "nominal_target_mse": 0.004920204479324206,
+          "model_mse": 0.0015859955142484932,
+          "nominal_decision_mse": 0.0015700565158730088,
+          "decision_reduction": -0.010151862824263799,
+          "reduction": 0.6776565850234072
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0034391846156195693,
+            "model_mse": 0.0005894671693576706,
+            "nominal_decision_mse": 0.0006926939252284405,
+            "decision_reduction": 0.14902217575638077,
+            "reduction": 0.8286026383461599
+          },
+          "reported": {
+            "nominal_target_mse": 0.00487207962346457,
+            "model_mse": 0.0015724421749828037,
+            "nominal_decision_mse": 0.001518106315590087,
+            "decision_reduction": -0.03579186703508072,
+            "reduction": 0.6772544177213942
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0036412474532679893,
+            "model_mse": 0.0005942144475376746,
+            "nominal_decision_mse": 0.0007062024924793654,
+            "decision_reduction": 0.1585778103791711,
+            "reduction": 0.8368101989321347
+          },
+          "reported": {
+            "nominal_target_mse": 0.004968329335183841,
+            "model_mse": 0.0015995488535141822,
+            "nominal_decision_mse": 0.0016220067161559308,
+            "decision_reduction": 0.013845727282173394,
+            "reduction": 0.678050961278517
+          }
+        }
+      }
+    }
+  ],
+  "qualified": false,
+  "reasons": [
+    "arm=left/almi_manip_stand: reported degradation",
+    "arm=right/almi_manip_stand: reported degradation",
+    "arm=right/fame: reported degradation",
+    "arm=right: reported degradation",
+    "counter effective actuation horizon not independently validated",
+    "family=overhang_inner_forward/almi_manip_stand: reported degradation",
+    "family=overhang_inner_forward/fame: reported degradation",
+    "family=overhang_inner_forward: reported degradation",
+    "family=overhang_sideways/almi_manip_stand: derived degradation",
+    "family=overhang_sideways/almi_manip_stand: reported degradation",
+    "family=overhang_sideways/fame: derived degradation",
+    "family=overhang_sideways/fame: reported degradation",
+    "family=overhang_sideways: derived degradation",
+    "family=overhang_sideways: reported degradation",
+    "held-out aggregate derived improvement below screen",
+    "held-out aggregate reported improvement below screen"
+  ],
+  "velocity_screen_passed": false,
+  "scope": "offline/shadow only; no contact, sensor, causal stability or pure transport delay claim",
+  "dataset": [
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0001_frame_right_diagonal_outward_up/right_diagonal_outward_up/arm_target.jsonl",
+      "raw_sha256": "61ae2b6b006d5519094f9f03e3ec47bdcf32161920b2d9725c75fafa1ecbb394",
+      "metadata_sha256": "4c2c7126afac5027d09bb4df4fe8a48767d8f4d334a10042404f4a48cb4d9c02",
+      "provenance_sha256": "8a6fe33391fc2b0a090dac3bff1e822452d0d4b0b3d0442b006998f4a6b5bb91",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/bank.json",
+            "sha256": "0c8ca534a68476152836fb8310a1fff5dde29dc934d50414d79aa3b451f2967a"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/right_diagonal_outward_up.json",
+            "sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4",
+      "trajectory_payload_sha256": "745ddaadf734bdd402b324cd40a8cf3bc186b9eab4e4cddc01c47c2ffc3f6ae7",
+      "duration_s": 1.3341842759291005,
+      "arm": "right",
+      "family": "diagonal_outward_up",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 47,
+      "observed_interval_s": [
+        0.002569633536040783,
+        11.33486632630229
+      ],
+      "filter_radius_s": [
+        0.09855127334594727,
+        0.20069365669041872
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.049700409173965e-05,
+        0.0004092678427696228
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0002_counter_right_diagonal_outward_up/right_diagonal_outward_up/arm_target.jsonl",
+      "raw_sha256": "f30ef30a9c7b7304b12017c98cbdab68e6b3fb7663dbf6cdc925c5702e9a936c",
+      "metadata_sha256": "8b49d03a76b5bf57861cf565448d4e2209d575288c0a63acb96ce02bc6f6f84c",
+      "provenance_sha256": "8a6fe33391fc2b0a090dac3bff1e822452d0d4b0b3d0442b006998f4a6b5bb91",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/bank.json",
+            "sha256": "0c8ca534a68476152836fb8310a1fff5dde29dc934d50414d79aa3b451f2967a"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/right_diagonal_outward_up.json",
+            "sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4",
+      "trajectory_payload_sha256": "745ddaadf734bdd402b324cd40a8cf3bc186b9eab4e4cddc01c47c2ffc3f6ae7",
+      "duration_s": 1.3341842759291005,
+      "arm": "right",
+      "family": "diagonal_outward_up",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 47,
+      "observed_interval_s": [
+        0.002429320476949215,
+        11.335512933321297
+      ],
+      "filter_radius_s": [
+        0.09891248121857643,
+        0.20214546285569668
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.221156895160675e-05,
+        0.0008583171293139458
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0003_counter_left_overhang_sideways/left_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "584a140f82c07f2161cd882a5d691553b12f63c89415eea552685db23362aef9",
+      "metadata_sha256": "14589b8bd11f56297fe2269b9dbe1bf9fad5ab6d867c0df048700ea1c65e9524",
+      "provenance_sha256": "9611f9d5037b029c91eebbc3eab48d1e00eb3866a1448f6f984ae2f14b0f010e",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/left_overhang_sideways.json",
+            "sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9",
+      "trajectory_payload_sha256": "11a7025ef7fe3d0b2600f4983c7f9d81b967f4f0d6066d35c9d859650e5d4640",
+      "duration_s": 1.2000000000000002,
+      "arm": "left",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0027612829580903053,
+        11.20053019747138
+      ],
+      "filter_radius_s": [
+        0.09898648876696825,
+        0.1979622058570385
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.270144462585449e-05,
+        0.00046670716255903244
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0004_frame_left_overhang_sideways/left_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "34826e49f3b694a549732dbccd004b277803db069275fee14ac13331905e2dfa",
+      "metadata_sha256": "a4bef1281e61c334707ff25f394986ab0b655e5602859dabdbb8a92b7a573198",
+      "provenance_sha256": "9611f9d5037b029c91eebbc3eab48d1e00eb3866a1448f6f984ae2f14b0f010e",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/left_overhang_sideways.json",
+            "sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9",
+      "trajectory_payload_sha256": "11a7025ef7fe3d0b2600f4983c7f9d81b967f4f0d6066d35c9d859650e5d4640",
+      "duration_s": 1.2000000000000002,
+      "arm": "left",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0023712273687124252,
+        11.202919552102685
+      ],
+      "filter_radius_s": [
+        0.09896211046725512,
+        0.20216460712254047
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.985346019268036e-05,
+        0.0004072394222021103
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0005_frame_right_overhang_sideways/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "a24832a1c4c5c7ad82547decc76a8c9acbbd0ef6b6e7de3570a777ced724c559",
+      "metadata_sha256": "76d3608d4f519caf565bb5c1e7d8e578755269d2f4349f554bd9a372db1643ea",
+      "provenance_sha256": "7092d1e4c981f68828f6473a3a152a168607883b6e3e234a4b27d02ce0269123",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0024406854063272476,
+        11.166831849142909
+      ],
+      "filter_radius_s": [
+        0.09900528751313686,
+        0.2002108059823513
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.064601570367813e-05,
+        0.00042073987424373627
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0006_counter_right_overhang_sideways/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "d318800e45943d2ebddb0eb4fd359f33d2a5fd73f0dc0e936c6fbb125de05513",
+      "metadata_sha256": "26ace63afe2fdef99a67f01f6f45927f64fd989a9c4b77ed6cf6bace863c8c05",
+      "provenance_sha256": "7092d1e4c981f68828f6473a3a152a168607883b6e3e234a4b27d02ce0269123",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.002538285218179226,
+        11.200178678147495
+      ],
+      "filter_radius_s": [
+        0.09919868782162666,
+        0.19950981996953487
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.142460137605667e-05,
+        0.00036324094980955124
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0007_counter_right_overhang_inner_forward/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "d410b1b98acb0dd08e8c463cc559922b75f0707953f393a9322d68bbf1d069cd",
+      "metadata_sha256": "9211c347d14e5251c597c00be0da3d4a04a39c7523bec9fda9ba4201669a444a",
+      "provenance_sha256": "11c8b4ffd8ac6ee8f6001e81da31c771bb2fb6fc16e3ca45e82ddd8e3e79298a",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.003130771219730377,
+        11.233323506079614
+      ],
+      "filter_radius_s": [
+        0.09852817561477423,
+        0.19788546860218048
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        8.418411016464233e-05,
+        0.00042007677257061005
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_191535/trial_0001_frame_right_overhang_inner_forward/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "bed0c707f65a1ed1c03643424a8c57e2940bc8af3207d68213c0d1d3028df322",
+      "metadata_sha256": "aaa55dea6b5da28809f4faa6596e94b7d377c81bcfb001b3c19aa731eba586f5",
+      "provenance_sha256": "11c8b4ffd8ac6ee8f6001e81da31c771bb2fb6fc16e3ca45e82ddd8e3e79298a",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0023666275665163994,
+        11.23432548996061
+      ],
+      "filter_radius_s": [
+        0.09902653750032187,
+        0.2011795938014984
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.674191147089005e-05,
+        0.00037716981023550034
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_191535/trial_0002_counter_right_overhang_sideways/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "4ce9291dc5faec8f3e4e34013b3ac14abde9826a8cdc01bccb77f5c3ee73c89d",
+      "metadata_sha256": "848f6b6f082b75a849d95354d4d8a7771abe5d7a188482d69dc2af044e859ecf",
+      "provenance_sha256": "7092d1e4c981f68828f6473a3a152a168607883b6e3e234a4b27d02ce0269123",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0028938231989741325,
+        11.16878323815763
+      ],
+      "filter_radius_s": [
+        0.09891628194600344,
+        0.20212806109339
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.887836545705795e-05,
+        0.0006491681560873985
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_191535/trial_0003_frame_right_overhang_sideways/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "51db0192b79fd438ff854e9a3b897c8aa8d89a96bf3eac179cc000420340cc04",
+      "metadata_sha256": "bd0e624911fc999d56928d2ce968a48ff77f810a68f11a1c9106cb114fc9f2a3",
+      "provenance_sha256": "7092d1e4c981f68828f6473a3a152a168607883b6e3e234a4b27d02ce0269123",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.002530389465391636,
+        11.20184667315334
+      ],
+      "filter_radius_s": [
+        0.0990019915625453,
+        0.2012888016179204
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.735006511211395e-05,
+        0.0003409590572118759
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_191535/trial_0004_frame_right_overhang_inner_forward/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "f3bf97eb8fecc8f92d0fbe190a67db94690ed39e931286e1daaab105bf02dd03",
+      "metadata_sha256": "612ac2f2cfa88827e2f61a0364370bfaf9ff51a7ffa1361d5893c2eccae7e4c3",
+      "provenance_sha256": "11c8b4ffd8ac6ee8f6001e81da31c771bb2fb6fc16e3ca45e82ddd8e3e79298a",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "almi_manip_stand",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0024250438436865807,
+        11.234037109650671
+      ],
+      "filter_radius_s": [
+        0.09893323294818401,
+        0.2004492301493883
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.82310962677002e-05,
+        0.0003065010532736778
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_almi_manip_stand_session_20261113_191535/trial_0005_counter_right_overhang_inner_forward/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "524693a824fb4db4ad636ddf6e76e2372e363fdeadcdc72d21e966664f88897d",
+      "metadata_sha256": "a7aff1fab97485ffab9871d21c7bf7f986ffc1be0d4626688b0afecd9448efdd",
+      "provenance_sha256": "11c8b4ffd8ac6ee8f6001e81da31c771bb2fb6fc16e3ca45e82ddd8e3e79298a",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "e995478a92823012a5cb3b4f1bbc6a7623bde5aabfaf05dadf89c5522b2ba71d",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "async_recording": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/async_real_experiment_recording.py",
+            "sha256": "a55ae27e018a806c494b79846c6bc112f95124a272ba0f2ebc63f2e195a45dfe"
+          },
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "entry_point": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/experiment/real_counter_balance_session.py",
+            "sha256": "050981cce01fb8aca8f326669f762f45808335d1ab76e13f7304cac7a6118d93"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "5ce24a3f5b88d8132097285de9dc29898cc4dd9b5de820caa202bf1e39be0b53"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "session_engine": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_session.py",
+            "sha256": "0204a6e8c852712792f93ea90d85a0f48f4d42c40f3cd823e022282e825e27be"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "almi_manip_stand",
+      "mode": "counter",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0023961197584867477,
+        11.235587726347148
+      ],
+      "filter_radius_s": [
+        0.09929077234119177,
+        0.2004302702844143
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "multi_trial_async_v1",
+      "command_observation_gap_s": [
+        7.807370275259018e-05,
+        0.0004375157877802849
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F01_counter/right_diagonal_outward_up/arm_target.jsonl",
+      "raw_sha256": "a4b09129cb042d719920848737e80222fe91d00ab602b624d47b576a9bc7eaf0",
+      "metadata_sha256": "c675215c7cc24382487b547ebcce08020c55b1e7ac962645abb5cf8f08e576b9",
+      "provenance_sha256": "f4af4974db214c837bfaa63a5b06f2b18469a39df31ff3d73157de86843beeae",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/bank.json",
+            "sha256": "0c8ca534a68476152836fb8310a1fff5dde29dc934d50414d79aa3b451f2967a"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "c1fd9fc12d8ea7c215b658db31340a3b1428d4d6e12f76575e4232d53e466a55"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/right_diagonal_outward_up.json",
+            "sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4",
+      "trajectory_payload_sha256": "745ddaadf734bdd402b324cd40a8cf3bc186b9eab4e4cddc01c47c2ffc3f6ae7",
+      "duration_s": 1.3341842759291005,
+      "arm": "right",
+      "family": "diagonal_outward_up",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 47,
+      "observed_interval_s": [
+        0.02136468142271042,
+        11.35029806336388
+      ],
+      "filter_radius_s": [
+        0.09896954894065857,
+        0.20143134100362659
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.28104093670845e-05,
+        0.0007000509649515152
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F01_frame/right_diagonal_outward_up/arm_target.jsonl",
+      "raw_sha256": "82790285a6db8f5ec82f038be88eaed1f5617affa63e9f9cde7939bf151a0735",
+      "metadata_sha256": "1592a248e0185b97fb9471d45ac481427e5611d767a8f334ee8040ad85efbb8b",
+      "provenance_sha256": "f4af4974db214c837bfaa63a5b06f2b18469a39df31ff3d73157de86843beeae",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/bank.json",
+            "sha256": "0c8ca534a68476152836fb8310a1fff5dde29dc934d50414d79aa3b451f2967a"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "c1fd9fc12d8ea7c215b658db31340a3b1428d4d6e12f76575e4232d53e466a55"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/directional_traj/right_diagonal_outward_up.json",
+            "sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "1a630bd622c1a4877a1d0ea2c2a404d17f5cc901835acf0b6cb6711d00c4d3b4",
+      "trajectory_payload_sha256": "745ddaadf734bdd402b324cd40a8cf3bc186b9eab4e4cddc01c47c2ffc3f6ae7",
+      "duration_s": 1.3341842759291005,
+      "arm": "right",
+      "family": "diagonal_outward_up",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 46,
+      "observed_interval_s": [
+        0.026481925044208765,
+        11.357786156237125
+      ],
+      "filter_radius_s": [
+        0.09903828473761678,
+        0.20035077119246125
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.162669837474823e-05,
+        0.0006664758548140526
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+      "metadata_sha256": "d78ba77024a53c13488ed074da63d067c66c4e1b5d8d8b5e9512b2b4624b1df5",
+      "provenance_sha256": "f5115b2fedf81b7cac7d252e71cbc4d7ceafa05d0605240700734c4445705848",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/left_overhang_sideways.json",
+            "sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9",
+      "trajectory_payload_sha256": "11a7025ef7fe3d0b2600f4983c7f9d81b967f4f0d6066d35c9d859650e5d4640",
+      "duration_s": 1.2000000000000002,
+      "arm": "left",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.003231105860322714,
+        11.19892247999087
+      ],
+      "filter_radius_s": [
+        0.09875938296318054,
+        0.19866138603538275
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.102087303996086e-05,
+        0.00035304389894008636
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_frame/left_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "93ac31ace8bef1e51515e888647efb1c15cc8869cd00e49d58e759c856297454",
+      "metadata_sha256": "19903ab3f2aad51371d0a66f38d6f4ff29abbe41e51b950e3e7856e952f0b5aa",
+      "provenance_sha256": "f5115b2fedf81b7cac7d252e71cbc4d7ceafa05d0605240700734c4445705848",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/left_overhang_sideways.json",
+            "sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "6babbdea491260977c345a6df588da0fe59d61ce30f4685e08d8e3d9247c7ce9",
+      "trajectory_payload_sha256": "11a7025ef7fe3d0b2600f4983c7f9d81b967f4f0d6066d35c9d859650e5d4640",
+      "duration_s": 1.2000000000000002,
+      "arm": "left",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0026032631285488605,
+        11.202582287136465
+      ],
+      "filter_radius_s": [
+        0.09915145812556148,
+        0.20151579286903143
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.73766839504242e-05,
+        0.00043448712676763535
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+      "metadata_sha256": "0740ca9e7055fabd3e436ba40840b227577afc53aedb1816f259b6d4c132fea8",
+      "provenance_sha256": "58a7deb2400bda7941717fb35f5a7ca23b7a38d0b996203d05831dbd9864fbce",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.002906342037022114,
+        11.233242677059025
+      ],
+      "filter_radius_s": [
+        0.09887008927762508,
+        0.2016531121917069
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.268607780337334e-05,
+        0.0003404160961508751
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_frame/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "a10c16150dee2e2202f161e4da1ae1fe6b2ba55b4a09c7f06e7e7ac446743345",
+      "metadata_sha256": "beb31383933329bbdc0f7c1620e7d2b5a11c113e997351f22e62aaacc61a0e8c",
+      "provenance_sha256": "58a7deb2400bda7941717fb35f5a7ca23b7a38d0b996203d05831dbd9864fbce",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 44,
+      "observed_interval_s": [
+        0.005484909750521183,
+        11.205878394655883
+      ],
+      "filter_radius_s": [
+        0.09905614424496889,
+        0.2004491169936955
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.219107985496521e-05,
+        0.0003431793302297592
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F03r_counter/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "fbb407d475f3bdaf79ee26b7747a2742fafeeaec6325bf478874d44a2a5da5fb",
+      "metadata_sha256": "129cf41b60135cb9baf0321d59e6f826e0d633e0896bb4344af1667b715372ad",
+      "provenance_sha256": "58a7deb2400bda7941717fb35f5a7ca23b7a38d0b996203d05831dbd9864fbce",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0030914279632270336,
+        11.232318860013038
+      ],
+      "filter_radius_s": [
+        0.0990417581051588,
+        0.19941976014524698
+      ],
+      "analytic_command_dq_max_error": 1.1102230246251565e-16,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.594989776611328e-05,
+        0.00044511817395687103
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F03r_frame/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "09365d359c77af01605186711d89b2b043642a6fd23006e96f00006421281f25",
+      "metadata_sha256": "740bf7f6114a28be4297e6aaca8673721314e222ffc59f06238a380e199fb1fe",
+      "provenance_sha256": "58a7deb2400bda7941717fb35f5a7ca23b7a38d0b996203d05831dbd9864fbce",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.json",
+            "sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4bef8b98237e02dc5ea225f8a6552be3e122282b1629488a5cfd6e0acfef27db",
+      "trajectory_payload_sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f",
+      "duration_s": 1.2000000000000002,
+      "arm": "right",
+      "family": "overhang_sideways",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0026910360902547836,
+        11.229179363232106
+      ],
+      "filter_radius_s": [
+        0.09898911928758025,
+        0.20073157222941518
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.551543578505516e-05,
+        0.002303584013134241
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F04_counter/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "56ac86c72a8c63c0da168c21f36e9b6de89c7fbba888a077b89650c28f142a92",
+      "metadata_sha256": "80e87141d4fd153ef3d39c4565da404dbb8cd2e8f96d9e479b285d5afd592b3f",
+      "provenance_sha256": "0af20244bb45c0fe10ef8573377f2cafc58eb0e988924a6bb2afa5080c710c11",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 44,
+      "observed_interval_s": [
+        0.0029424219392240047,
+        11.206065487116575
+      ],
+      "filter_radius_s": [
+        0.09906165394932032,
+        0.2024251138791442
+      ],
+      "analytic_command_dq_max_error": 2.220446049250313e-16,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.52951779961586e-05,
+        0.0003165281377732754
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F04_frame/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "c2cc8e0d432cb8a98845fa3b5fd49974f537a5bf84dd79a42c5f39c5e8458754",
+      "metadata_sha256": "f45c32e473eb19e385fdbdff13da2de06a343acd654773786f879384ec797148",
+      "provenance_sha256": "0af20244bb45c0fe10ef8573377f2cafc58eb0e988924a6bb2afa5080c710c11",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0032333750277757645,
+        11.202852319926023
+      ],
+      "filter_radius_s": [
+        0.09895111806690693,
+        0.20006789080798626
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.372077718377113e-05,
+        0.0008043698035180569
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F04r_counter/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "8a19eec149fbe37b86949f305b32905913cc388ce79902e752fa985c42144a0f",
+      "metadata_sha256": "2b01dfefdc9e9879bd05a9c506d9b2529dcb6b0a94d81988257756d5f160b3e1",
+      "provenance_sha256": "0af20244bb45c0fe10ef8573377f2cafc58eb0e988924a6bb2afa5080c710c11",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "fame",
+      "mode": "counter",
+      "samples": 43,
+      "observed_interval_s": [
+        0.0032851980067789555,
+        11.225074112880975
+      ],
+      "filter_radius_s": [
+        0.09837173158302903,
+        0.20079811895266175
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.410774171352386e-05,
+        0.0007404009811580181
+      ]
+    },
+    {
+      "path": "runs/real_experiments/iter7b_fame_validation_20261110_184722/F04r_frame/right_overhang_inner_forward/arm_target.jsonl",
+      "raw_sha256": "467c4136b2b535e507dd9cd978ce941ef8b338b9f47ce3ef17c4be94228b11fb",
+      "metadata_sha256": "821e7d280b6c42b312cfed3d9a4ceaca75dcbd0a3327c15abdd7fac006576da8",
+      "provenance_sha256": "0af20244bb45c0fe10ef8573377f2cafc58eb0e988924a6bb2afa5080c710c11",
+      "recorded_provenance": {
+        "git": {
+          "benchmark": {
+            "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+            "dirty": true,
+            "error": null
+          }
+        },
+        "resolved_config_sha256": "daebb49d76ddc715fc579c6afaf88abd1bf9e830c506a0a147829d6de339ee22",
+        "snapshot_phase": "prepared",
+        "source_flags": {
+          "environment": "real",
+          "ground_truth": false,
+          "physical_classification_available": false,
+          "physical_evidence": true,
+          "physical_evidence_scope": "raw_joint_and_IMU_sensor_source_only_not_world_pass",
+          "sensor_source": "real_lowstate",
+          "sensor_source_basis": "caller_declared_environment_not_independent_hardware_attestation",
+          "world_ground_truth_available": false,
+          "world_translation": false
+        },
+        "sources": {
+          "bank": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/bank.json",
+            "sha256": "36d3afdcf50331e676f310c89c64d1f8d19a7c61c42bf9e67ee0d2a889bc0e35"
+          },
+          "catalog": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "collision_srdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere_collision.srdf",
+            "sha256": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+          },
+          "collision_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie_sphere.urdf",
+            "sha256": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b"
+          },
+          "config": {
+            "error": null,
+            "path": "config/real_counter_balance.yaml",
+            "sha256": "09425126af23193079f1a1ef109887f5bc2e35c71c4cb5c88c1c5881e2d11414"
+          },
+          "controller_config": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+            "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+          },
+          "metrics_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/utility/real_experiment_metrics.py",
+            "sha256": "0277b921f69573344015e1e5b3225f03297c050b1707a00e1b560eb608b995ff"
+          },
+          "model": {
+            "error": "source not provided",
+            "path": null,
+            "sha256": null
+          },
+          "real_adapter": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_controller_adapter.py",
+            "sha256": "334c67630f5c3e7e9dea817cebe4c04917e072413ce03cce1b13119f189d6c89"
+          },
+          "recording_code": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_experiment_recording.py",
+            "sha256": "2a0cfb3c092f925f74e75e3e8c1f677de480bda6636e33298af540cb1aec1faa"
+          },
+          "robot_urdf": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/ros_assets/h1_2_magpie.urdf",
+            "sha256": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f"
+          },
+          "safety_monitor": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/h12_zmp_benchmark/runtime/real_safety_monitor.py",
+            "sha256": "87c3465009458975b8388ada619e5c9544687571584ffffc65869e2c5e0e713d"
+          },
+          "trajectory": {
+            "error": null,
+            "path": "/home/correlllab/Programs/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_inner_forward.json",
+            "sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6"
+          }
+        },
+        "versions": {
+          "numpy": "2.2.6",
+          "python": "3.10.12"
+        }
+      },
+      "source_config_sha256": "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646",
+      "trajectory_metadata_sha256": "4f7b15ebb62a6c7881e5aecd40c3fa72aafb5550a43f978a4dcee346e80ad1d6",
+      "trajectory_payload_sha256": "57807610ff0122e06a5b69e30913305326e3e131d5f55cad96998e79e9e944cb",
+      "duration_s": 1.205969457085075,
+      "arm": "right",
+      "family": "overhang_inner_forward",
+      "policy": "fame",
+      "mode": "frame",
+      "samples": 44,
+      "observed_interval_s": [
+        0.00299487030133605,
+        11.213048083242029
+      ],
+      "filter_radius_s": [
+        0.09891121368855238,
+        0.2003695392049849
+      ],
+      "analytic_command_dq_max_error": 0.0,
+      "checkpoint_identity": null,
+      "measurement_clock": "snapshot.arrival_monotonic",
+      "pipeline_revision": "pre_iteration7_absolute_deadline_v1",
+      "command_observation_gap_s": [
+        8.652498945593834e-05,
+        0.0003736298531293869
+      ]
+    }
+  ],
+  "excluded": [],
+  "source_config_hashes": [
+    "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646"
+  ],
+  "dataset_sha256": "235b5f516e607ca211dda9fdc6fa65446c428b82667859fcb5c0c119864d625c",
+  "json_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": [
+      "schema_version",
+      "model_type",
+      "gains",
+      "effective_delays_s",
+      "horizon_s",
+      "frame",
+      "source_config_hashes",
+      "dataset",
+      "dataset_sha256",
+      "fit_metrics",
+      "held_out_metrics",
+      "qualified",
+      "reasons"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": 1
+      },
+      "model_type": {
+        "const": "canonical7_gain_effective_delay"
+      },
+      "gains": {
+        "type": "array",
+        "minItems": 7,
+        "maxItems": 7,
+        "items": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "effective_delays_s": {
+        "type": "array",
+        "minItems": 7,
+        "maxItems": 7,
+        "items": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "horizon_s": {
+        "type": "number",
+        "minimum": 0
+      },
+      "frame": {
+        "type": "string"
+      },
+      "source_config_hashes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dataset": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "dataset_sha256": {
+        "type": "string"
+      },
+      "fit_metrics": {
+        "type": "object"
+      },
+      "held_out_metrics": {
+        "type": "object"
+      },
+      "qualified": {
+        "type": "boolean"
+      },
+      "reasons": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,823 @@
+{
+  "model_type": "canonical7_gain_effective_delay",
+  "gains": [
+    1.003347952962158,
+    1.0143805299921635,
+    0.9759658897999889,
+    0.9898870577695723,
+    0.9895834025735657,
+    0.9837963072557168,
+    0.9773112745225024
+  ],
+  "effective_delays_s": [
+    0.04,
+    0.045,
+    0.05,
+    0.035,
+    0.035,
+    0.035,
+    0.045
+  ],
+  "horizon_s": 0.04,
+  "screen": {
+    "min_reduction": 0.1,
+    "max_degradation": 0.05,
+    "excitation_rms": 0.03,
+    "min_excited_runs": 2,
+    "max_delay_s": 0.2,
+    "delay_step_s": 0.005,
+    "min_gain": 0.5,
+    "max_gain": 1.5,
+    "filter_half_width_s": 0.06,
+    "horizon_s": 0.04,
+    "kind": "provisional engineering, not statistical"
+  },
+  "fit_metrics": {
+    "derived": {
+      "nominal_target_mse": 0.003787422213493756,
+      "model_mse": 0.0006119814208041687,
+      "nominal_decision_mse": 0.0007039461770923758,
+      "decision_reduction": 0.13064174404364864,
+      "reduction": 0.8384174284494048
+    },
+    "reported": {
+      "nominal_target_mse": 0.005255234694133572,
+      "model_mse": 0.0017253787318433293,
+      "nominal_decision_mse": 0.0017101868110251915,
+      "decision_reduction": -0.00888319376584995,
+      "reduction": 0.6716837910646745
+    }
+  },
+  "held_out_metrics": {
+    "derived": {
+      "reduction": 0.814858194160611,
+      "decision_reduction": 0.02101035910700423
+    },
+    "reported": {
+      "reduction": 0.6568066512361752,
+      "decision_reduction": -0.05777804993875056
+    }
+  },
+  "velocity_screen_passed": false,
+  "qualified": false,
+  "reasons": [
+    "arm=left/almi_manip_stand: reported degradation",
+    "arm=right/almi_manip_stand: reported degradation",
+    "arm=right/fame: reported degradation",
+    "arm=right: reported degradation",
+    "counter effective actuation horizon not independently validated",
+    "family=overhang_inner_forward/almi_manip_stand: reported degradation",
+    "family=overhang_inner_forward/fame: reported degradation",
+    "family=overhang_inner_forward: reported degradation",
+    "family=overhang_sideways/almi_manip_stand: derived degradation",
+    "family=overhang_sideways/almi_manip_stand: reported degradation",
+    "family=overhang_sideways/fame: derived degradation",
+    "family=overhang_sideways/fame: reported degradation",
+    "family=overhang_sideways: derived degradation",
+    "family=overhang_sideways: reported degradation",
+    "held-out aggregate derived improvement below screen",
+    "held-out aggregate reported improvement below screen"
+  ],
+  "source_config_hashes": [
+    "f55b2be2abafca0129e74b230093d9335f6019ad4a69ad616e99fb53fd672646"
+  ],
+  "dataset_sha256": "235b5f516e607ca211dda9fdc6fa65446c428b82667859fcb5c0c119864d625c",
+  "runs": 24,
+  "samples": 1055,
+  "policies": [
+    "almi_manip_stand",
+    "fame"
+  ],
+  "folds": [
+    {
+      "dimension": "family",
+      "held_out": "diagonal_outward_up",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.002541396818523627,
+          "model_mse": 0.00048681544551891135,
+          "nominal_decision_mse": 0.0005226518631374416,
+          "decision_reduction": 0.06856651654010527,
+          "reduction": 0.8084457169495801
+        },
+        "reported": {
+          "nominal_target_mse": 0.0035137897493317844,
+          "model_mse": 0.0010323757779820608,
+          "nominal_decision_mse": 0.001081420488436967,
+          "decision_reduction": 0.04535211879126959,
+          "reduction": 0.7061930702659751
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.002450066987789993,
+            "model_mse": 0.0004726593368340892,
+            "nominal_decision_mse": 0.0004772881326883623,
+            "decision_reduction": 0.009698116373019825,
+            "reduction": 0.8070830964256872
+          },
+          "reported": {
+            "nominal_target_mse": 0.0034819520740141507,
+            "model_mse": 0.0010979073120869949,
+            "nominal_decision_mse": 0.0011164792628900822,
+            "decision_reduction": 0.016634389388489445,
+            "reduction": 0.6846862654197081
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0026327266492572614,
+            "model_mse": 0.0005009715542037335,
+            "nominal_decision_mse": 0.0005680155935865209,
+            "decision_reduction": 0.11803204021119043,
+            "reduction": 0.8097137982991639
+          },
+          "reported": {
+            "nominal_target_mse": 0.0035456274246494185,
+            "model_mse": 0.0009668442438771266,
+            "nominal_decision_mse": 0.0010463617139838516,
+            "decision_reduction": 0.07599424658225998,
+            "reduction": 0.727313637875326
+          }
+        }
+      }
+    },
+    {
+      "dimension": "family",
+      "held_out": "overhang_inner_forward",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.004507255597492109,
+          "model_mse": 0.0009592868840769839,
+          "nominal_decision_mse": 0.0009515397908298052,
+          "decision_reduction": -0.008141638764704388,
+          "reduction": 0.7871682971316865
+        },
+        "reported": {
+          "nominal_target_mse": 0.0058962491720586565,
+          "model_mse": 0.002168099199266521,
+          "nominal_decision_mse": 0.0019820119420434004,
+          "decision_reduction": -0.09388806054885303,
+          "reduction": 0.6322917950040541
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.004325846968706187,
+            "model_mse": 0.0009337799803358018,
+            "nominal_decision_mse": 0.0009339303157150929,
+            "decision_reduction": 0.00016097065997470924,
+            "reduction": 0.7841393865546092
+          },
+          "reported": {
+            "nominal_target_mse": 0.0059339749966928375,
+            "model_mse": 0.002351894064934327,
+            "nominal_decision_mse": 0.002078165024236376,
+            "decision_reduction": -0.13171670079402528,
+            "reduction": 0.6036562226424783
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0046886642262780305,
+            "model_mse": 0.000984793787818166,
+            "nominal_decision_mse": 0.0009691492659445176,
+            "decision_reduction": -0.016142530798288895,
+            "reduction": 0.7899628251690956
+          },
+          "reported": {
+            "nominal_target_mse": 0.005858523347424474,
+            "model_mse": 0.0019843043335987156,
+            "nominal_decision_mse": 0.0018858588598504246,
+            "decision_reduction": -0.05220193082535302,
+            "reduction": 0.6612961635680676
+          }
+        }
+      }
+    },
+    {
+      "dimension": "family",
+      "held_out": "overhang_sideways",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003722875089151564,
+          "model_mse": 0.0008863039377797078,
+          "nominal_decision_mse": 0.0005993152059190673,
+          "decision_reduction": -0.4788610884993898,
+          "reduction": 0.7619302510679469
+        },
+        "reported": {
+          "nominal_target_mse": 0.005408373357117447,
+          "model_mse": 0.0021198582995493416,
+          "nominal_decision_mse": 0.0017385588312091276,
+          "decision_reduction": -0.21931927841350582,
+          "reduction": 0.6080414276947805
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0035906217522591447,
+            "model_mse": 0.0008968119204612828,
+            "nominal_decision_mse": 0.0006063360380288721,
+            "decision_reduction": -0.479067487686719,
+            "reduction": 0.7502349224345262
+          },
+          "reported": {
+            "nominal_target_mse": 0.005169275493756692,
+            "model_mse": 0.0019585897997445646,
+            "nominal_decision_mse": 0.0015765623977966622,
+            "decision_reduction": -0.24231670277168088,
+            "reduction": 0.6211094181166983
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003855128426043983,
+            "model_mse": 0.0008757959550981329,
+            "nominal_decision_mse": 0.0005922943738092623,
+            "decision_reduction": -0.47864979615721814,
+            "reduction": 0.7728231440536344
+          },
+          "reported": {
+            "nominal_target_mse": 0.005647471220478199,
+            "model_mse": 0.0022811267993541186,
+            "nominal_decision_mse": 0.0019005552646215926,
+            "decision_reduction": -0.20024228803906902,
+            "reduction": 0.5960799603400255
+          }
+        }
+      }
+    },
+    {
+      "dimension": "arm",
+      "held_out": "left",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003725073243724392,
+          "model_mse": 0.0006945042508436199,
+          "nominal_decision_mse": 0.0007389422507912748,
+          "decision_reduction": 0.06013731100105555,
+          "reduction": 0.8135595717443551
+        },
+        "reported": {
+          "nominal_target_mse": 0.005376942259634939,
+          "model_mse": 0.0018030712290353476,
+          "nominal_decision_mse": 0.0017183833574617783,
+          "decision_reduction": -0.04928345657319545,
+          "reduction": 0.6646660607514567
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003658762011496531,
+            "model_mse": 0.0006993345856984067,
+            "nominal_decision_mse": 0.0007571815679911882,
+            "decision_reduction": 0.07639776869668158,
+            "reduction": 0.8088603239289783
+          },
+          "reported": {
+            "nominal_target_mse": 0.004974922384204952,
+            "model_mse": 0.0015818933008015345,
+            "nominal_decision_mse": 0.0014898295729240457,
+            "decision_reduction": -0.06179480495664883,
+            "reduction": 0.682026536569909
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0037913844759522534,
+            "model_mse": 0.000689673915988833,
+            "nominal_decision_mse": 0.0007207029335913616,
+            "decision_reduction": 0.04305382447648264,
+            "reduction": 0.8180944400750565
+          },
+          "reported": {
+            "nominal_target_mse": 0.005778962135064927,
+            "model_mse": 0.002024249157269161,
+            "nominal_decision_mse": 0.0019469371419995108,
+            "decision_reduction": -0.039709558979521234,
+            "reduction": 0.6497209862326917
+          }
+        }
+      }
+    },
+    {
+      "dimension": "arm",
+      "held_out": "right",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0037998920074476293,
+          "model_mse": 0.0007006148372642038,
+          "nominal_decision_mse": 0.0006969469623525958,
+          "decision_reduction": -0.005262774801725058,
+          "reduction": 0.8156224345610276
+        },
+        "reported": {
+          "nominal_target_mse": 0.005230893181033298,
+          "model_mse": 0.0018766896482004774,
+          "nominal_decision_mse": 0.0017085475017378743,
+          "decision_reduction": -0.09841233345375232,
+          "reduction": 0.641229598225181
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003642972834096654,
+            "model_mse": 0.0006702834067083839,
+            "nominal_decision_mse": 0.0006813950620427953,
+            "decision_reduction": 0.016307214350950925,
+            "reduction": 0.8160064767887314
+          },
+          "reported": {
+            "nominal_target_mse": 0.00517656123289299,
+            "model_mse": 0.0018996875968859573,
+            "nominal_decision_mse": 0.0017025333863657551,
+            "decision_reduction": -0.11580049595447257,
+            "reduction": 0.6330213221829714
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003956811180798604,
+            "model_mse": 0.0007309462678200238,
+            "nominal_decision_mse": 0.0007124988626623964,
+            "decision_reduction": -0.025891136287144262,
+            "reduction": 0.8152688530180263
+          },
+          "reported": {
+            "nominal_target_mse": 0.005285225129173607,
+            "model_mse": 0.0018536916995149978,
+            "nominal_decision_mse": 0.0017145616171099936,
+            "decision_reduction": -0.0811461548051665,
+            "reduction": 0.6492691126281617
+          }
+        }
+      }
+    },
+    {
+      "dimension": "policy",
+      "held_out": "almi_manip_stand",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0036456043636633006,
+          "model_mse": 0.0006029717894969639,
+          "nominal_decision_mse": 0.0006940261463675274,
+          "decision_reduction": 0.13119730048663744,
+          "reduction": 0.8346030645818447
+        },
+        "reported": {
+          "nominal_target_mse": 0.005142954758111651,
+          "model_mse": 0.0016997826455428626,
+          "nominal_decision_mse": 0.0016670827507921369,
+          "decision_reduction": -0.019615039946390148,
+          "reduction": 0.6694929810802039
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0036456043636633006,
+            "model_mse": 0.0006029717894969639,
+            "nominal_decision_mse": 0.0006940261463675274,
+            "decision_reduction": 0.13119730048663744,
+            "reduction": 0.8346030645818447
+          },
+          "reported": {
+            "nominal_target_mse": 0.005142954758111651,
+            "model_mse": 0.0016997826455428626,
+            "nominal_decision_mse": 0.0016670827507921369,
+            "decision_reduction": -0.019615039946390148,
+            "reduction": 0.6694929810802039
+          }
+        }
+      }
+    },
+    {
+      "dimension": "policy",
+      "held_out": "fame",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.003929240063324212,
+          "model_mse": 0.000635847858600453,
+          "nominal_decision_mse": 0.0007138662078172239,
+          "decision_reduction": 0.10928987583727515,
+          "reduction": 0.8381753600306839
+        },
+        "reported": {
+          "nominal_target_mse": 0.005367514630155494,
+          "model_mse": 0.0017889761304895038,
+          "nominal_decision_mse": 0.0017532908712582463,
+          "decision_reduction": -0.02035330236200227,
+          "reduction": 0.6667030732550274
+        }
+      },
+      "per_policy": {
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.003929240063324212,
+            "model_mse": 0.000635847858600453,
+            "nominal_decision_mse": 0.0007138662078172239,
+            "decision_reduction": 0.10928987583727515,
+            "reduction": 0.8381753600306839
+          },
+          "reported": {
+            "nominal_target_mse": 0.005367514630155494,
+            "model_mse": 0.0017889761304895038,
+            "nominal_decision_mse": 0.0017532908712582463,
+            "decision_reduction": -0.02035330236200227,
+            "reduction": 0.6667030732550274
+          }
+        }
+      }
+    },
+    {
+      "dimension": "mode",
+      "held_out": "counter",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.004034628392543732,
+          "model_mse": 0.000634100649737242,
+          "nominal_decision_mse": 0.0007084441453308484,
+          "decision_reduction": 0.10493910646814282,
+          "reduction": 0.8428354267002376
+        },
+        "reported": {
+          "nominal_target_mse": 0.005590264908942939,
+          "model_mse": 0.0018655170298061486,
+          "nominal_decision_mse": 0.0018503171061773742,
+          "decision_reduction": -0.008214766851600039,
+          "reduction": 0.6662918376512325
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.003852024111707031,
+            "model_mse": 0.0006163850051992577,
+            "nominal_decision_mse": 0.0006953583675066142,
+            "decision_reduction": 0.11357217515126158,
+            "reduction": 0.8399841259233173
+          },
+          "reported": {
+            "nominal_target_mse": 0.005413829892758731,
+            "model_mse": 0.0018369472816968174,
+            "nominal_decision_mse": 0.0018160591859941865,
+            "decision_reduction": -0.01150188048039627,
+            "reduction": 0.6606935721874405
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0042172326733804335,
+            "model_mse": 0.0006518162942752265,
+            "nominal_decision_mse": 0.0007215299231550825,
+            "decision_reduction": 0.09661917911181629,
+            "reduction": 0.8454398073908628
+          },
+          "reported": {
+            "nominal_target_mse": 0.005766699925127146,
+            "model_mse": 0.00189408677791548,
+            "nominal_decision_mse": 0.0018845750263605618,
+            "decision_reduction": -0.005047159928297987,
+            "reduction": 0.6715475397527784
+          }
+        }
+      }
+    },
+    {
+      "dimension": "mode",
+      "held_out": "frame",
+      "metrics": {
+        "derived": {
+          "nominal_target_mse": 0.0035402160344437795,
+          "model_mse": 0.0005918408084476726,
+          "nominal_decision_mse": 0.0006994482088539029,
+          "decision_reduction": 0.15384613048413254,
+          "reduction": 0.8328235331715682
+        },
+        "reported": {
+          "nominal_target_mse": 0.004920204479324206,
+          "model_mse": 0.0015859955142484932,
+          "nominal_decision_mse": 0.0015700565158730088,
+          "decision_reduction": -0.010151862824263799,
+          "reduction": 0.6776565850234072
+        }
+      },
+      "per_policy": {
+        "almi_manip_stand": {
+          "derived": {
+            "nominal_target_mse": 0.0034391846156195693,
+            "model_mse": 0.0005894671693576706,
+            "nominal_decision_mse": 0.0006926939252284405,
+            "decision_reduction": 0.14902217575638077,
+            "reduction": 0.8286026383461599
+          },
+          "reported": {
+            "nominal_target_mse": 0.00487207962346457,
+            "model_mse": 0.0015724421749828037,
+            "nominal_decision_mse": 0.001518106315590087,
+            "decision_reduction": -0.03579186703508072,
+            "reduction": 0.6772544177213942
+          }
+        },
+        "fame": {
+          "derived": {
+            "nominal_target_mse": 0.0036412474532679893,
+            "model_mse": 0.0005942144475376746,
+            "nominal_decision_mse": 0.0007062024924793654,
+            "decision_reduction": 0.1585778103791711,
+            "reduction": 0.8368101989321347
+          },
+          "reported": {
+            "nominal_target_mse": 0.004968329335183841,
+            "model_mse": 0.0015995488535141822,
+            "nominal_decision_mse": 0.0016220067161559308,
+            "decision_reduction": 0.013845727282173394,
+            "reduction": 0.678050961278517
+          }
+        }
+      }
+    }
+  ],
+  "sensitivity_not_selection": [
+    {
+      "filter_min_half_width_s": 0.04,
+      "assumed_horizon_s": 0.04,
+      "gains": [
+        1.003347952962158,
+        1.0143805299921635,
+        0.9759658897999889,
+        0.9898870577695723,
+        0.9895834025735657,
+        0.9837963072557168,
+        0.9773112745225024
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.814858194160611,
+          "decision_reduction": 0.02101035910700423
+        },
+        "reported": {
+          "reduction": 0.6568066512361752,
+          "decision_reduction": -0.05777804993875056
+        }
+      },
+      "velocity_screen_passed": false,
+      "qualified": false,
+      "reasons": [
+        "arm=left/almi_manip_stand: reported degradation",
+        "arm=right/almi_manip_stand: reported degradation",
+        "arm=right/fame: reported degradation",
+        "arm=right: reported degradation",
+        "counter effective actuation horizon not independently validated",
+        "family=overhang_inner_forward/almi_manip_stand: reported degradation",
+        "family=overhang_inner_forward/fame: reported degradation",
+        "family=overhang_inner_forward: reported degradation",
+        "family=overhang_sideways/almi_manip_stand: derived degradation",
+        "family=overhang_sideways/almi_manip_stand: reported degradation",
+        "family=overhang_sideways/fame: derived degradation",
+        "family=overhang_sideways/fame: reported degradation",
+        "family=overhang_sideways: derived degradation",
+        "family=overhang_sideways: reported degradation",
+        "held-out aggregate derived improvement below screen",
+        "held-out aggregate reported improvement below screen"
+      ]
+    },
+    {
+      "filter_min_half_width_s": 0.1,
+      "assumed_horizon_s": 0.04,
+      "gains": [
+        1.003347952962158,
+        1.0143805299921635,
+        0.9759658897999889,
+        0.9898870577695723,
+        0.9895834025735657,
+        0.9837963072557168,
+        0.9773112745225024
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.814858194160611,
+          "decision_reduction": 0.02101035910700423
+        },
+        "reported": {
+          "reduction": 0.6568066512361752,
+          "decision_reduction": -0.05777804993875056
+        }
+      },
+      "velocity_screen_passed": false,
+      "qualified": false,
+      "reasons": [
+        "arm=left/almi_manip_stand: reported degradation",
+        "arm=right/almi_manip_stand: reported degradation",
+        "arm=right/fame: reported degradation",
+        "arm=right: reported degradation",
+        "counter effective actuation horizon not independently validated",
+        "family=overhang_inner_forward/almi_manip_stand: reported degradation",
+        "family=overhang_inner_forward/fame: reported degradation",
+        "family=overhang_inner_forward: reported degradation",
+        "family=overhang_sideways/almi_manip_stand: derived degradation",
+        "family=overhang_sideways/almi_manip_stand: reported degradation",
+        "family=overhang_sideways/fame: derived degradation",
+        "family=overhang_sideways/fame: reported degradation",
+        "family=overhang_sideways: derived degradation",
+        "family=overhang_sideways: reported degradation",
+        "held-out aggregate derived improvement below screen",
+        "held-out aggregate reported improvement below screen"
+      ]
+    },
+    {
+      "filter_min_half_width_s": 0.15,
+      "assumed_horizon_s": 0.04,
+      "gains": [
+        1.003113541652707,
+        1.014398584278283,
+        0.9764542768983558,
+        0.9896653924977278,
+        0.9893159006287364,
+        0.9838551382428561,
+        0.9772311293503411
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.045,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.8354332268060031,
+          "decision_reduction": 0.035268563358631835
+        },
+        "reported": {
+          "reduction": 0.652914672194064,
+          "decision_reduction": -0.056697241996929874
+        }
+      },
+      "velocity_screen_passed": false,
+      "qualified": false,
+      "reasons": [
+        "arm=left/almi_manip_stand: reported degradation",
+        "arm=left: reported degradation",
+        "arm=right/almi_manip_stand: reported degradation",
+        "arm=right/fame: reported degradation",
+        "arm=right: reported degradation",
+        "counter effective actuation horizon not independently validated",
+        "family=overhang_inner_forward/almi_manip_stand: reported degradation",
+        "family=overhang_inner_forward/fame: reported degradation",
+        "family=overhang_inner_forward: reported degradation",
+        "family=overhang_sideways/almi_manip_stand: derived degradation",
+        "family=overhang_sideways/almi_manip_stand: reported degradation",
+        "family=overhang_sideways/fame: derived degradation",
+        "family=overhang_sideways/fame: reported degradation",
+        "family=overhang_sideways: derived degradation",
+        "family=overhang_sideways: reported degradation",
+        "held-out aggregate derived improvement below screen",
+        "held-out aggregate reported improvement below screen"
+      ]
+    },
+    {
+      "filter_min_half_width_s": 0.06,
+      "assumed_horizon_s": 0.02,
+      "gains": [
+        1.003347952962158,
+        1.0143805299921635,
+        0.9759658897999889,
+        0.9898870577695723,
+        0.9895834025735657,
+        0.9837963072557168,
+        0.9773112745225024
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.814858194160611,
+          "decision_reduction": 0.5070995718880994
+        },
+        "reported": {
+          "reduction": 0.6568066512361752,
+          "decision_reduction": 0.3112969554842876
+        }
+      },
+      "velocity_screen_passed": true,
+      "qualified": false,
+      "reasons": [
+        "counter effective actuation horizon not independently validated"
+      ]
+    },
+    {
+      "filter_min_half_width_s": 0.06,
+      "assumed_horizon_s": 0.06,
+      "gains": [
+        1.003347952962158,
+        1.0143805299921635,
+        0.9759658897999889,
+        0.9898870577695723,
+        0.9895834025735657,
+        0.9837963072557168,
+        0.9773112745225024
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.814858194160611,
+          "decision_reduction": 0.5994011179699047
+        },
+        "reported": {
+          "reduction": 0.6568066512361752,
+          "decision_reduction": 0.3130551115304029
+        }
+      },
+      "velocity_screen_passed": true,
+      "qualified": false,
+      "reasons": [
+        "counter effective actuation horizon not independently validated"
+      ]
+    },
+    {
+      "filter_min_half_width_s": 0.06,
+      "assumed_horizon_s": 0.08,
+      "gains": [
+        1.003347952962158,
+        1.0143805299921635,
+        0.9759658897999889,
+        0.9898870577695723,
+        0.9895834025735657,
+        0.9837963072557168,
+        0.9773112745225024
+      ],
+      "delays_s": [
+        0.04,
+        0.045,
+        0.05,
+        0.035,
+        0.035,
+        0.035,
+        0.045
+      ],
+      "held_out_metrics": {
+        "derived": {
+          "reduction": 0.814858194160611,
+          "decision_reduction": 0.8427256378056236
+        },
+        "reported": {
+          "reduction": 0.6568066512361752,
+          "decision_reduction": 0.6585534151765491
+        }
+      },
+      "velocity_screen_passed": true,
+      "qualified": false,
+      "reasons": [
+        "counter effective actuation horizon not independently validated"
+      ]
+    }
+  ],
+  "retained_figure_sources_sha256": {
+    "results.json": "a91e33e46aae3e18867bbe32410f627d2fbe1b5dffaab5c68dae33080e61dd50",
+    "mechanism_summary.json": "3cc829442046c3ce740b02dba320903774597883ed3a05baed2b5615433c5c25",
+    "cam_sensitivity_summary.json": "7e525984351d561dbe181d28c6651507154cca4eba7fc5eb4ec56f37c6713889"
+  },
+  "conclusion": "Effective reference-to-motion lag is reproducible, not pure transport lag. At assumed 40ms counter horizon, present nominal dq_ref(t) already captures most of this effect; C-AR fails primary held-out decision-baseline screen. Counter actuation timing and physical balance usefulness remain unvalidated. No C-AR actuation justified; shadow only. Loaded/pull claims not used."
+}

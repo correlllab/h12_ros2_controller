@@ -1,0 +1,52 @@
+{
+    "capture_completed_utc": "2026-11-18T04:13:45Z",
+    "previous_capture": {
+        "capture_completed_utc": "2026-11-18T04:08:40Z",
+        "copied_file_count": 11,
+        "iter7b_diagnostic_sim_summary_sha256": "ca1c13118067d0d3675dd7b416b446a223e3e6a528b82ec0ff225bb6aa8f3ab6",
+        "coverage": "First two completed stand cells; follow-up C0 repeat and gyro-off then in progress"
+    },
+    "source_directory": "/tmp/kilo",
+    "capture_method": "Byte-for-byte copies; SHA256 calculated on destination snapshots",
+    "scope": "Offline unloaded diagnostic evidence; no hardware operation or peg contact",
+    "refresh_policy": "Frozen capture, not a live mirror. Static simulation summary refreshed and completed two-cell follow-up archived: four total stand cells. Unchanged evidence retains its original capture. A later refresh must state its own capture time and hashes.",
+    "consolidated_regressions": {
+        "provenance": "Final consolidated pytest run executed by root agent after independent audit fixes; test logs are not bundled in this archive",
+        "verified_utc": "2026-11-18T04:18:58Z",
+        "unique_combined_run": {"passed": 757, "deselected": 2, "warnings": 46, "duration_s": 70.08},
+        "separate_asset_check_run": {"passed": 197, "failed": 2},
+        "asset_failures": {
+            "test_mjlab_manip_finetune_checkpoint_inference": "Missing data/model_almi_manip_finetune.pt in h12_mjlab",
+            "test_mjlab_almi_checkpoint_abis_load": "Missing config/deploy_almi_manip_real.yaml in h12_mjlab"
+        },
+        "stale_generation_blocked_close_test": "Passed; included in the 757, not an additional unique test",
+        "audit_regressions": "Unarmed and confirmed/refused armed shutdown; canonical acceleration diagnostics for both arms with reversed saved joint order; all included in the 757",
+        "independent_audit_followup": "Both integration findings confirmed resolved; no unresolved findings in the minimal fixes",
+        "separate_mock_real_interface_end_to_end": {"passed": 13, "warnings": 2},
+        "missing_asset_test_modifications": false,
+        "all_suite_passed_claim": false
+    },
+    "document_validation": {
+        "pages": 3,
+        "local_links_and_anchors": 43,
+        "snapshot_hashes": 13,
+        "folds_preserved": true,
+        "root_and_controller_diff_check": "passed"
+    },
+    "provenance_caveat": "Evidence was produced across dirty working-tree revisions. Embedded source paths/hashes identify individual captures, not a single clean reproducible commit. Historical real-policy checkpoint identity is not attested.",
+    "files": {
+        "counter_response_qualification.json": "14c11376288028eda73c234266871f0905e9f01867c1cda27a3eba8d981f09ed",
+        "counter_response_summary.json": "30f821b605a90ace62a2ee5b22f563bdb6d5e39101122ffa88ad440ca41ccd7c",
+        "diagnostic_recorded_command_replay.json": "9f65f288f50d45e724db87d22adebbab9be7b5e487b0869f8e58ccbff9b5e104",
+        "diagnostic_recorded_command_replay.py": "0afa51b9692353df7b3ae77c85b57d3dffcc2c4731affcea15b1a5126dde98d4",
+        "frozen_feedback_ablation.csv": "f51da05078e08cd7ef48479129b2b8e7ac8443cf898b20ff8624ea1f3926ce65",
+        "frozen_feedback_ablation.json": "b80ee562b738a12bdf371efc9b35c2ddc5c3e41e9ff8fc81ddd7abfe4d129f5a",
+        "frozen_feedback_ablation.py": "3513371e277da571a0515c6fb1268e8ee0d23fb52b11e9b0dac05080ea80acea",
+        "iter7b_diagnostic_config_verification.json": "936acef0513ceb0290ef0c6ea7dc8dd66165919f7b47c22367885a05d78d83d8",
+        "iter7b_diagnostic_sim_summary.json": "8bfa8771009720989076dd9a4d99e25ede6ce86aa599f07908e7ec29d4c381aa",
+        "iter7b_stand_final_control_summary.json": "9b8f4a6b21967d364c3f9fc5b0e7db590949c614e2903a8376010c07b692e50f",
+        "iter7b_stand_final_control_table.txt": "16268ec7e7c2ff88d35b4ade4dddddabcf6a476356a95a283f46880950d28eb9",
+        "iter7b_stand_fixed_sim_comparison.json": "c95fa31d18f02c0a74cc75ba88928b2efca0a120134e57ac781af1cff128b258",
+        "iter7b_stand_wrapper_contract.json": "8fc244f0ef3182a8b69f0c8cd983b8fc3822f4a565495f90980c014fb027af27"
+    }
+}

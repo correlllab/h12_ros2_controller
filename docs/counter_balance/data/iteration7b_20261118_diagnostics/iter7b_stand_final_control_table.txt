@@ -1,0 +1,14 @@
+| Cell | Phase | Peak Drift (deg) | Gyro RMS (rad/s) | Excursion (deg) | Effort Proxy RMS (Nm) |
+|---|---|---:|---:|---:|---:|
+| C0_initial | move | 1.3990 | 0.02703 | 26.222 | 3.941 |
+| C0_initial | postfade | 1.5190 | 0.00944 | 23.874 | 2.737 |
+| C0_initial | tail | 1.1110 | 0.00780 | 5.363 | 2.596 |
+| CoM_off | move | 1.5036 | 0.02900 | 24.574 | 3.804 |
+| CoM_off | postfade | 1.6814 | 0.00946 | 21.939 | 2.736 |
+| CoM_off | tail | 1.2010 | 0.00764 | 5.366 | 2.595 |
+| C0_repeat | move | 1.6611 | 0.03168 | 26.710 | 3.976 |
+| C0_repeat | postfade | 1.8167 | 0.00986 | 24.522 | 2.740 |
+| C0_repeat | tail | 1.1929 | 0.00748 | 5.349 | 2.599 |
+| Gyro_off | move | 1.7024 | 0.03174 | 26.801 | 4.024 |
+| Gyro_off | postfade | 1.8855 | 0.00953 | 24.553 | 2.742 |
+| Gyro_off | tail | 1.2981 | 0.00756 | 5.358 | 2.598 |

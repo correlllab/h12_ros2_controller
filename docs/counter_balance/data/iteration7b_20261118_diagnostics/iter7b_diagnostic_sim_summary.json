@@ -1,0 +1,3797 @@
+{
+  "scope": "bounded unloaded simulation investigation; no repository code/config edits",
+  "comparison": "diagnostic C0 versus CoM feedback off, not Frame",
+  "outcome": "Both C0 baselines failed initialization; no candidate run or parameter fitting",
+  "cell_counts": {
+    "almi": 1,
+    "fame": 1,
+    "candidate": 0
+  },
+  "config_verification": {
+    "almi": {
+      "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/sweep_configs/iteration7a_almi.yaml",
+      "source_sha256": "daef64bda470b6e325045a00e7787428a2426f0c5dc3ae1aa69dbe0c52b4bf92",
+      "config": "/tmp/kilo/iter7b_diagnostic_almi.yaml",
+      "clone_changes": [
+        "baseline",
+        "controllers",
+        "network"
+      ],
+      "generated_pairs": {
+        "left_overhang_sideways": {
+          "differences": [
+            "name",
+            "counter_diagnostics"
+          ],
+          "execution_duration": 1.2000000000000002
+        },
+        "right_overhang_sideways": {
+          "differences": [
+            "name",
+            "counter_diagnostics"
+          ],
+          "execution_duration": 1.2000000000000002
+        }
+      },
+      "body_physics_gains_limits_policy_identical": true,
+      "speed_exclusions": [
+        {
+          "id": "left_overhang_inner_forward",
+          "duration_factor": 0.8,
+          "execution_duration": 1.205969457085075,
+          "nominal_duration": 1.5074618213563435,
+          "minimum_feasible_duration": 1.5070185663980524,
+          "acceleration_envelope": null,
+          "reason": "duration override exceeds effective velocity/acceleration limits"
+        },
+        {
+          "id": "right_overhang_inner_forward",
+          "duration_factor": 0.8,
+          "execution_duration": 1.205969457085075,
+          "nominal_duration": 1.5074618213563435,
+          "minimum_feasible_duration": 1.5070185663980524,
+          "acceleration_envelope": null,
+          "reason": "duration override exceeds effective velocity/acceleration limits"
+        }
+      ]
+    },
+    "fame": {
+      "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/sweep_configs/iteration7a_fame.yaml",
+      "source_sha256": "9e3213ba5d6cd06464ccd3f47c430075b3cb38f86c352f67ae3966d536da43e4",
+      "config": "/tmp/kilo/iter7b_diagnostic_fame.yaml",
+      "clone_changes": [
+        "baseline",
+        "controllers",
+        "network"
+      ],
+      "generated_pairs": {
+        "left_overhang_sideways": {
+          "differences": [
+            "name",
+            "counter_diagnostics"
+          ],
+          "execution_duration": 1.2000000000000002
+        },
+        "right_overhang_sideways": {
+          "differences": [
+            "name",
+            "counter_diagnostics"
+          ],
+          "execution_duration": 1.2000000000000002
+        }
+      },
+      "body_physics_gains_limits_policy_identical": true,
+      "speed_exclusions": [
+        {
+          "id": "left_overhang_inner_forward",
+          "duration_factor": 0.8,
+          "execution_duration": 1.205969457085075,
+          "nominal_duration": 1.5074618213563435,
+          "minimum_feasible_duration": 1.5070185663980524,
+          "acceleration_envelope": null,
+          "reason": "duration override exceeds effective velocity/acceleration limits"
+        },
+        {
+          "id": "right_overhang_inner_forward",
+          "duration_factor": 0.8,
+          "execution_duration": 1.205969457085075,
+          "nominal_duration": 1.5074618213563435,
+          "minimum_feasible_duration": 1.5070185663980524,
+          "acceleration_envelope": null,
+          "reason": "duration override exceeds effective velocity/acceleration limits"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q -p no:cacheprovider tests/test_counter_diagnostic_integration.py submodules/h12_ros2_controller/test/test_counter_balance_diagnostics.py",
+    "passed": 64,
+    "warnings": 2,
+    "hardware": false
+  },
+  "source_revisions": {
+    "benchmark": {
+      "head": "9b210de565df29ae9abde3b2e104fbef45e7f461",
+      "status": " M h12_zmp_benchmark/experiment/real_counter_balance_session.py\n M h12_zmp_benchmark/runtime/arm_target_runtime.py\n M h12_zmp_benchmark/runtime/real_experiment_session.py\n M h12_zmp_benchmark/utility/config.py\n m submodules/h12_ros2_controller\n?? h12_zmp_benchmark/experiment/identify_counter_response.py\n?? h12_zmp_benchmark/runtime/diagnostic_real_controller_adapter.py\n?? tests/test_counter_diagnostic_integration.py\n?? tests/test_identify_counter_response.py\n"
+    },
+    "controller": {
+      "head": "f3976dab639c3b1ace1c0672dc71d84a78ad6016",
+      "status": " M docs/counter_balance/counter_balance_iteration_7b.html\n?? h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py\n?? h12_ros2_controller/core/controller/counter_balance/recovery_reference.py\n?? test/test_counter_balance_diagnostics.py\n?? test/test_recovery_reference.py\n"
+    },
+    "mjlab": {
+      "head": "01b62d8dc5cdde8fbcf08aac9ff2c5d006ef49ce",
+      "status": ""
+    },
+    "mujoco": {
+      "head": "6e246b0e33503b84f632defa2a3ffbe76166b708",
+      "status": ""
+    }
+  },
+  "source_hashes": [
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/arm_target_runtime.py",
+      "exists": true,
+      "sha256": "5aaecde3311ea5f1b990f9813d06619524e4c3c1f5a415fe1edc22b5586d3f3a"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/utility/config.py",
+      "exists": true,
+      "sha256": "84483a17b2d2ce2f6ec902e331458126b008eb39af178e7635da56bfc97c1a4e"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/sweep/arm_reachability_sweep.py",
+      "exists": true,
+      "sha256": "8b9aed3b0df48568684208da4e6a5a38bc2273fac9a588211dcfd6a9c4e19bf9"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py",
+      "exists": true,
+      "sha256": "78d5154240d25bc573466b3c6e7a35fd55b9eec37c23779059bf2e75f8a04a46"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/config/real_benchmark_upper.yaml",
+      "exists": true,
+      "sha256": "00404e7680037c20a6b906e2c17654f977e5dfab0006228cfe7447f835b56dff"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_2_finetune.yaml",
+      "exists": true,
+      "sha256": "440c6f4eb67d02ec07e9f9e48e46b3c5631b79da5e67f6052a9f86447d4ffd70"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/data/model_almi_manip_finetune.pt",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/left_overhang_sideways.npz",
+      "exists": true,
+      "sha256": "11a7025ef7fe3d0b2600f4983c7f9d81b967f4f0d6066d35c9d859650e5d4640"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/data/trajectory_banks/overhang_traj/right_overhang_sideways.npz",
+      "exists": true,
+      "sha256": "82b6e3f685d20e816edcd3c6153d68cae8a8c189ff6ae6430f3739b5d5a74e9f"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/submodules/CL_Assets/mujoco_assets/scene_h1_2_magpie.xml",
+      "exists": true,
+      "sha256": "551bea6124d4c07dc424fc6da74613cf9033529fbac3b236c73f4d7ba8911606"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h1_mujoco/submodules/CL_Assets/mujoco_assets/scene_h1_2_magpie.xml",
+      "exists": true,
+      "sha256": "551bea6124d4c07dc424fc6da74613cf9033529fbac3b236c73f4d7ba8911606"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_adaptive_policy/submodules/h12_ros2_controller/submodules/CL_Assets/mujoco_assets/scene_h1_2_magpie.xml",
+      "exists": true,
+      "sha256": "551bea6124d4c07dc424fc6da74613cf9033529fbac3b236c73f4d7ba8911606"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/scene_h1_2_magpie.xml",
+      "exists": true,
+      "sha256": "551bea6124d4c07dc424fc6da74613cf9033529fbac3b236c73f4d7ba8911606"
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/submodules/CL_Assets/mujoco_assets/scene_h1_2_magpie.xml",
+      "exists": true,
+      "sha256": "551bea6124d4c07dc424fc6da74613cf9033529fbac3b236c73f4d7ba8911606"
+    }
+  ],
+  "runs": [
+    {
+      "policy": "almi",
+      "sweep": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0",
+      "raw_path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+      "result": {
+        "arm": "left",
+        "attempt": 1,
+        "attempted": true,
+        "base_drift_reference": null,
+        "base_drift_reference_sample_count": null,
+        "base_drift_reference_start_time": null,
+        "base_drift_release_time": null,
+        "candidate_id": "left_overhang_sideways",
+        "classification": "infrastructure",
+        "classification_reason": "benchmark child exited with status 1",
+        "com_margin": null,
+        "command": [
+          "/home/tonyzyt2000/Programming/h12_zmp_benchmark/.venv/bin/python",
+          "-m",
+          "h12_zmp_benchmark.sweep.run_benchmark",
+          "--config",
+          "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+          "--output-dir",
+          "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01"
+        ],
+        "config": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+        "configuration_error": null,
+        "controller_complete": null,
+        "controller_solver_failure_count": null,
+        "direction_id": "left_overhang_sideways",
+        "dry_run": false,
+        "duration_factor": 0.8,
+        "execution_duration": 1.2000000000000002,
+        "foot_displacement_reference": null,
+        "foot_displacement_reference_sample_count": null,
+        "group": "overhang_traj",
+        "key": "[\"diag_c0\",\"left_overhang_sideways\",\"fast\",0.8]",
+        "left_foot_displacement": null,
+        "left_foot_lift": null,
+        "max_base_drift": null,
+        "max_foot_displacement": null,
+        "max_foot_lift": null,
+        "nominal_duration": 1.5,
+        "passed": null,
+        "profile": "fast",
+        "rank": 0,
+        "reached": null,
+        "returncode": 1,
+        "right_foot_displacement": null,
+        "right_foot_lift": null,
+        "rms_base_drift": null,
+        "run_complete": null,
+        "run_dir": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+        "run_video": null,
+        "settled": null,
+        "speed_acceleration_limit": null,
+        "straight_line_completion": null,
+        "straight_line_endpoint_orientation_error": null,
+        "straight_line_endpoint_position_error": null,
+        "straight_line_hold_orientation_max": null,
+        "straight_line_hold_orientation_rms": null,
+        "straight_line_hold_position_max": null,
+        "straight_line_hold_position_rms": null,
+        "straight_line_line_complete": null,
+        "straight_line_onset_position_error": null,
+        "straight_line_passed": null,
+        "straight_line_prescribed_orientation_max": null,
+        "straight_line_prescribed_orientation_rms": null,
+        "straight_line_progress_final": null,
+        "straight_line_progress_max": null,
+        "straight_line_reference": null,
+        "straight_line_schema_version": null,
+        "straight_line_segment_distance_max": null,
+        "straight_line_segment_distance_rms": null,
+        "straight_line_stalled": null,
+        "straight_line_status": null,
+        "straight_line_timed_position_max": null,
+        "straight_line_timed_position_rms": null,
+        "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0",
+        "straight_line_window_complete": null,
+        "stumbled": null,
+        "survived": null,
+        "target_position": [
+          0.4,
+          0.4760000000000001,
+          0.2
+        ],
+        "target_rpy_degrees": null,
+        "tracking_classification": "infrastructure",
+        "tracking_reason": "benchmark child exited with status 1",
+        "trial_error": "benchmark child exited with status 1",
+        "variant": "diag_c0",
+        "video": null,
+        "video_unavailable_reason": null,
+        "zmp_margin": null
+      },
+      "resolved_diagnostics": {
+        "enabled": true,
+        "candidate": "c0"
+      },
+      "network": {
+        "domain_id": 187,
+        "interface": "lo"
+      },
+      "runtime_variant": [
+        "counter_ddp_velocity_robust"
+      ],
+      "raw_hashes": [
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/command_plan.json",
+          "exists": true,
+          "sha256": "874edc3b52af57d9f1574c84dae92b96cce79b9a113088d1deab4059cb26e4f2"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_startup.json",
+          "exists": true,
+          "sha256": "501a4983dfced87e53b13687c939c26f4203440d9b57a62554ac8b5b99ca57de"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+          "exists": true,
+          "sha256": "9d76a1534d6b590ab53a0f82a3839ec98341d08931e6e57d2d8bc1c0e8706bb2"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/provenance.json",
+          "exists": true,
+          "sha256": "2f268fdcf21705c5597a55e2b5340bc28becd02b8c2d1e71b60984a8bf73a4db"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/integration_notes.md",
+          "exists": true,
+          "sha256": "83a26e33c594a0bf2f50038eb99630c1a5b3a01b695a2caba6785e448f330443"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/mujoco_status.json",
+          "exists": true,
+          "sha256": "2ae6a63fe6762c4cf229e31927dd3d19de9e8cf4a592cba95237fa6ffdacb899"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+          "exists": true,
+          "sha256": "0343a2eb8a521a60f7f0a9b652cc09895306baca1e19477f1046af092ff2ce6d"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/safety.yaml",
+          "exists": true,
+          "sha256": "c2cd04c76e366d734b6b418033d401befc8fae932bf8daaf47ba0372bcee4f23"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+          "exists": true,
+          "sha256": "9ee99d2f75730e9f023768cd94d32f80422d2c5570b56ffcdec317911f8af5ee"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/arm_target.yaml",
+          "exists": true,
+          "sha256": "65b61eca710948f2cab27ad7bd63bc13fb6d6a9e41bffd5a94fe18b12be0e4ba"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/arm_target.stderr.log",
+          "exists": true,
+          "sha256": "8e53075caafb15284319b720698cd391568d50e54b88b58bc9441da3c68565b2"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/safety.stdout.log",
+          "exists": true,
+          "sha256": "a5d29d66d9f3fa206aa8869d3361360e08fee04defdbae763e4b73a223edd63d"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/safety.stderr.log",
+          "exists": true,
+          "sha256": "11fe00aa9d5af959bc4ef0e9c16a273c6fa2ff16daf89002a5efa1ef5303ff43"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/mujoco.stdout.log",
+          "exists": true,
+          "sha256": "e95ddcc94ac44e3e86139614e63748d3aba1e98acd5004c9d54cbefecc893499"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/mujoco.stderr.log",
+          "exists": true,
+          "sha256": "ec81cef0101d822e8754077ab449cfd36d5742396cfe2c6f2fe7d54062e85e12"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/lower_body.stdout.log",
+          "exists": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/arm_target.stdout.log",
+          "exists": true,
+          "sha256": "be96de0949287016551f7f542eb1d6a219ff69928182be0160e36184144bac3d"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203412_iter7b_diag_almi_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203414_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/lower_body.stderr.log",
+          "exists": true,
+          "sha256": "e2a47c65ab0ca1d1311bd573bea79dc2df93a1d7dabdd071a3c36a6fe73dc981"
+        }
+      ],
+      "controller_rows": 212,
+      "diagnostic_subclass_key_rows": 212,
+      "nonempty_diagnostic_payload_rows": 0,
+      "nominal_statuses": [
+        "not_run"
+      ],
+      "applied_counter_dq_peak": 0.0,
+      "candidate_variant_execution_verified": false,
+      "metrics_coverage": {
+        "move": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "fade": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "postfade": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "tracking": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "gyro": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "physical_bounds": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "excursion": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "effort_proxy": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        }
+      },
+      "failure": "Missing fixed ALMI checkpoint; no lower-policy readiness"
+    },
+    {
+      "policy": "fame",
+      "sweep": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0",
+      "raw_path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+      "result": {
+        "arm": "left",
+        "attempt": 1,
+        "attempted": true,
+        "base_drift_reference": null,
+        "base_drift_reference_sample_count": null,
+        "base_drift_reference_start_time": null,
+        "base_drift_release_time": null,
+        "candidate_id": "left_overhang_sideways",
+        "classification": "initialization_failed",
+        "classification_reason": "saved start pose failed standing readiness",
+        "com_margin": -0.5793021900449926,
+        "command": [
+          "/home/tonyzyt2000/Programming/h12_zmp_benchmark/.venv/bin/python",
+          "-m",
+          "h12_zmp_benchmark.sweep.run_benchmark",
+          "--config",
+          "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+          "--output-dir",
+          "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01"
+        ],
+        "config": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+        "configuration_error": null,
+        "controller_complete": true,
+        "controller_solver_failure_count": 0,
+        "direction_id": "left_overhang_sideways",
+        "dry_run": false,
+        "duration_factor": 0.8,
+        "execution_duration": 1.2000000000000002,
+        "foot_displacement_reference": null,
+        "foot_displacement_reference_sample_count": null,
+        "group": "overhang_traj",
+        "key": "[\"diag_c0\",\"left_overhang_sideways\",\"fast\",0.8]",
+        "left_foot_displacement": null,
+        "left_foot_lift": null,
+        "max_base_drift": null,
+        "max_foot_displacement": null,
+        "max_foot_lift": null,
+        "nominal_duration": 1.5,
+        "passed": false,
+        "profile": "fast",
+        "rank": 0,
+        "reached": false,
+        "returncode": 1,
+        "right_foot_displacement": null,
+        "right_foot_lift": null,
+        "rms_base_drift": null,
+        "run_complete": false,
+        "run_dir": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+        "run_video": null,
+        "settled": false,
+        "speed_acceleration_limit": null,
+        "straight_line": {
+          "error": "saved start pose failed standing readiness",
+          "initialization_failure_diagnostic": {
+            "fall_confirmed": false,
+            "max_base_tilt": 2.786328448178676,
+            "min_base_height": 0.036644599475525126,
+            "reason": "saved start pose failed standing readiness before release"
+          },
+          "passed": false,
+          "schema_version": 1,
+          "status": "initialization_failed",
+          "window_complete": false
+        },
+        "straight_line_completion": null,
+        "straight_line_endpoint_orientation_error": null,
+        "straight_line_endpoint_position_error": null,
+        "straight_line_hold_orientation_max": null,
+        "straight_line_hold_orientation_rms": null,
+        "straight_line_hold_position_max": null,
+        "straight_line_hold_position_rms": null,
+        "straight_line_line_complete": null,
+        "straight_line_onset_position_error": null,
+        "straight_line_passed": false,
+        "straight_line_prescribed_orientation_max": null,
+        "straight_line_prescribed_orientation_rms": null,
+        "straight_line_progress_final": null,
+        "straight_line_progress_max": null,
+        "straight_line_reference": null,
+        "straight_line_schema_version": 1.0,
+        "straight_line_segment_distance_max": null,
+        "straight_line_segment_distance_rms": null,
+        "straight_line_stalled": null,
+        "straight_line_status": "initialization_failed",
+        "straight_line_timed_position_max": null,
+        "straight_line_timed_position_rms": null,
+        "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0",
+        "straight_line_window_complete": false,
+        "stumbled": null,
+        "survived": null,
+        "target_position": [
+          0.4,
+          0.4760000000000001,
+          0.2
+        ],
+        "target_rpy_degrees": null,
+        "tracking_classification": "infrastructure",
+        "tracking_reason": "fixed-reference straight line: initialization_failed",
+        "trial_error": "benchmark child exited with status 1",
+        "variant": "diag_c0",
+        "video": null,
+        "video_unavailable_reason": null,
+        "zmp_margin": -0.5723716559595096
+      },
+      "resolved_diagnostics": {
+        "enabled": true,
+        "candidate": "c0"
+      },
+      "network": {
+        "domain_id": 188,
+        "interface": "lo"
+      },
+      "runtime_variant": [
+        "counter_ddp_velocity_robust"
+      ],
+      "raw_hashes": [
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/command_plan.json",
+          "exists": true,
+          "sha256": "4cf53f9591809247d1822ac0573e85e93db281b592f7951d377490c083f0c105"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_startup.json",
+          "exists": true,
+          "sha256": "23673a648b8c693446cb5ff563b789fbe260aeeacac3d0ec77515fbd4d3a27c6"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/startup_unfreeze.json",
+          "exists": true,
+          "sha256": "00eb81dbf81a17b9211e9dc83f7badfd4f2876fc929dbd7f1a3d5d1288b22d51"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/process_status.json",
+          "exists": true,
+          "sha256": "537d3d84e3ca8af086197b5181b7d8545e6798ed0049acae790a7f9e06da38fb"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+          "exists": true,
+          "sha256": "244ce28cbeddd9dacfc0c2706aa9660bdc61468ae1bc6fc2c7d9a7ba8895cfdf"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/readiness_failure.flag",
+          "exists": true,
+          "sha256": "174490ccd56007868a8c22cb8331834b9afb37e354bd45b653ac543ded6efc33"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/provenance.json",
+          "exists": true,
+          "sha256": "0395856893d28ebbfd48a099bf4d78687decb4f23275fa007694816a67a04123"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/integration_notes.md",
+          "exists": true,
+          "sha256": "83a26e33c594a0bf2f50038eb99630c1a5b3a01b695a2caba6785e448f330443"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/start.flag",
+          "exists": true,
+          "sha256": "46210dddc66714c3d8d226711510cf8421774214016c508c72a833a05370f6b5"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+          "exists": true,
+          "sha256": "2dd4ae89cc361ca82e3a2d6bad9fa480a23ffddddf98f629b02fe6ae5a51301a"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+          "exists": true,
+          "sha256": "3d1f847293b0c2ef8916805246ef8ebd7c8c9fa6a46e328db5d5018f15dbae44"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+          "exists": true,
+          "sha256": "e622d8a9d4977070e16ec6e3b69ad98cd123846c658e57c1197c2309a21e902c"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/physics_start.ready.json",
+          "exists": true,
+          "sha256": "63f5c6e7116d6d63ebe7d302f53eac1a3fdea5db9a93504157889d5d9f7407c7"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/mujoco_status.json",
+          "exists": true,
+          "sha256": "3f6ccc4e7c97f5e37a5ab5b232d63ceebf096819ebd30159139e8ddc099bf6e0"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+          "exists": true,
+          "sha256": "be718e5f17f630ba95a040305006f20c531da4e3caf2446340323924fb231d3c"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/physics_start.json",
+          "exists": true,
+          "sha256": "2d246c67fa20c20ed420ed936642d964438795e2df93cb1444b6fc4bc429d76f"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/safety.yaml",
+          "exists": true,
+          "sha256": "4b695eba3266dfe74bc4f714b3788f835f2f99530ff0b615353e38db40afcfec"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+          "exists": true,
+          "sha256": "5d36a05c6fd1f05a780d4f4ecc7197cff31f2ec6fe5e6f28626e38a8937ce7cc"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/arm_target.yaml",
+          "exists": true,
+          "sha256": "13e4e744703f0c8b020b7c56b34a9bed82585d1ede2faf713e9e1155f7ef39ea"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/arm_target.stderr.log",
+          "exists": true,
+          "sha256": "d728fe8fe8481b4dc077f920e1a38e197102272f2fcc919e58cb2519e51fa184"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/safety.stdout.log",
+          "exists": true,
+          "sha256": "a5d29d66d9f3fa206aa8869d3361360e08fee04defdbae763e4b73a223edd63d"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/safety.stderr.log",
+          "exists": true,
+          "sha256": "81308317e4cc792333feaf0b6d930b5a7be1d8dab9c9b87a7389b2531eb04554"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/mujoco.stdout.log",
+          "exists": true,
+          "sha256": "25c5c6c590e914414c3353430e2c994cb22faf1314c6e462225a35ca499ce054"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/mujoco.stderr.log",
+          "exists": true,
+          "sha256": "3669f1b106c99412b7eec869732298ff619e23933e0de75640aa393a969b95ef"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/lower_body.stdout.log",
+          "exists": true,
+          "sha256": "97106b847f9fee7a6b6b20bf8dbaa018d20f2bee68776f190b5dc49a0de2a03b"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/arm_target.stdout.log",
+          "exists": true,
+          "sha256": "00ff22690fb235c5077cd5c51dbc142ab72aab4677a9ad964c04199a5eeb604b"
+        },
+        {
+          "path": "/tmp/kilo/20261117_203525_iter7b_diag_fame_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_203526_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/logs/lower_body.stderr.log",
+          "exists": true,
+          "sha256": "51327c8df2367a02bf898dfb2982c13f375884274e05d9e0bf85ad5065653bc4"
+        }
+      ],
+      "controller_rows": 755,
+      "diagnostic_subclass_key_rows": 755,
+      "nonempty_diagnostic_payload_rows": 0,
+      "nominal_statuses": [
+        "not_run"
+      ],
+      "applied_counter_dq_peak": 0.0,
+      "candidate_variant_execution_verified": false,
+      "metrics_coverage": {
+        "move": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "fade": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "postfade": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "tracking": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "gyro": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "physical_bounds": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "excursion": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        },
+        "effort_proxy": {
+          "status": "unavailable",
+          "reason": "C0 initialization failed before task release"
+        }
+      },
+      "startup_only": {
+        "samples": 7574,
+        "standing_ready_samples": 0,
+        "arm_released_samples": 0,
+        "height_min_m": 0.036644599475525126,
+        "tilt_peak_rad": 2.786328448178676,
+        "received_command_count_max": 18040,
+        "counter_received_dq_peak": 0.0,
+        "counter_received_q_peak": 0.0,
+        "any_received_kp_nonzero": true,
+        "pd_plus_ff_effort_proxy_peak_nm": 194.50464614262876,
+        "received_command_finite_row_count": 7442,
+        "proxy_caveat": "startup whole-body PD+FF proxy only; not measured motor torque, electrical effort, task metric, or a constraint certificate"
+      },
+      "failure": "Saved initial overhang pose failed standing readiness; startup collapse before task release"
+    }
+  ],
+  "readiness": {
+    "software": "64 focused tests pass and diagnostic subclass logging observed during FAME startup; full task branch/candidate actuation not exercised",
+    "physical": "Not hardware-ready from this investigation; no successful standing baseline or causal candidate comparison",
+    "ar_recovery_actuation": "Not enabled or attempted; existing shadows remain C0-actuating only"
+  },
+  "additional_experiments": {
+    "new_almi_manip_stand_wrapper_investigation": {
+      "experiment_id": "new_almi_manip_stand_wrapper_investigation",
+      "separate_policy_identity": true,
+      "historical_model_equivalence_claim": false,
+      "hardware_checkpoint_attestation": false,
+      "checkpoint": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/data/model_almi_manip_stand.pt",
+      "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+      "checkpoint_iteration_field": 899,
+      "checkpoint_infos": null,
+      "checkpoint_metadata_limit": "No embedded observation/default-pose training config; identity tied to current deployment/training source and matching published audited-snapshot SHA256, not hardware identity",
+      "published_snapshot_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+      "architecture": {
+        "strict_actor_load_passed": true,
+        "observation_size": 65,
+        "action_count": 12,
+        "recurrent": "LSTM64x1",
+        "mlp": [
+          64,
+          32
+        ],
+        "normalization": false,
+        "finite_native_observation_action_passed": true
+      },
+      "derived_contract": {
+        "terms": [
+          "almi_base_ang_vel",
+          "proj_grav",
+          "almi_command_vel",
+          "almi_q_pos",
+          "almi_q_vel",
+          "prev_action",
+          "almi_phase"
+        ],
+        "history": 1,
+        "joint_selection_unitree_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          20,
+          21,
+          22,
+          23
+        ],
+        "lower_action_order": "unitree",
+        "lower_action_scale": [
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25,
+          0.25
+        ],
+        "lower_default_pos": [
+          0.0,
+          -0.4,
+          0.0,
+          0.8,
+          -0.4,
+          0.0,
+          0.0,
+          -0.4,
+          0.0,
+          0.8,
+          -0.4,
+          0.0
+        ],
+        "upper_default_pos": [
+          0.0,
+          0.4,
+          0.2,
+          0.0,
+          0.3,
+          0.0,
+          0.0,
+          0.0,
+          0.4,
+          -0.2,
+          0.0,
+          0.3,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "policy_hz": 50.0,
+        "zero_command_phase": [
+          0,
+          0
+        ],
+        "imu_frame_required": "pelvis"
+      },
+      "wrapper_gap": {
+        "status": "blocked_before_simulation",
+        "reason": "Benchmark consumes raw torso IMU without native measured waist q/dq pelvis-frame transform; no YAML option selects that transform",
+        "not_valid_workaround": "Commanding zero waist is not measured zero yaw/velocity. Freezing the waist or changing sensors/observations would change the fixed experiment. No production edit authorized.",
+        "references": {
+          "actor_frame_contract": "submodules/h12_mjlab/h12_mjlab/utility/actor.py:87-115",
+          "native_waist_transform": "submodules/h12_mjlab/h12_mjlab/deploy/deploy_real.py:115-165,215-282",
+          "benchmark_omits_transform": "h12_zmp_benchmark/runtime/mjlab_policy_runtime.py:168-194",
+          "torso_imu_site": "submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml:211-216,456-457",
+          "benchmark_raw_sensor_publication": "h12_zmp_benchmark/runtime/mujoco_runtime.py:152-164",
+          "training_default_pose": "submodules/h12_mjlab/h12_mjlab/utility/h12_cfg.py:41-53",
+          "deployment_defaults_action_order": "submodules/h12_mjlab/config/deploy_almi_manip_stand_real.yaml:20-83"
+        }
+      },
+      "numerical_probe": {
+        "synthetic_not_plant": true,
+        "waist_yaw_rad": 0.20000000298023224,
+        "waist_velocity_rad_s": 0.30000001192092896,
+        "benchmark_first6": [
+          0.02500000037252903,
+          -0.05000000074505806,
+          0.07500000298023224,
+          0.34260836243629456,
+          -0.0,
+          -0.9394783973693848
+        ],
+        "native_first6": [
+          0.03443513065576553,
+          -0.04403659701347351,
+          0.0,
+          0.33577901124954224,
+          0.06806577742099762,
+          -0.9394785165786743
+        ],
+        "max_first6_absolute_difference": 0.07500000298023224,
+        "remaining59_bitwise_equal": true
+      },
+      "additional_full_cells": 0,
+      "candidate_cells": 0,
+      "temporary_runnable_config_created": false,
+      "native_contract_tests": {
+        "path": "submodules/h12_mjlab/tests/test_observation_contract.py",
+        "passed": 4,
+        "warnings": 35,
+        "hardware": false
+      },
+      "reserved_domain_if_verifiable": 189,
+      "physics_gains_limits_rates_changed": false,
+      "conclusion": "No meaningful correctness cell possible through unchanged benchmark wrapper; stop rather than simulate a known observation mismatch",
+      "source_hashes": [
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/data/model_almi_manip_stand.pt",
+          "sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/deploy_almi_manip_stand_real.yaml",
+          "sha256": "ed396774fe7da7d0a7ae58419a9bc0163b9850ce4aacf7e607b281bf593a97d3"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/deploy_almi_manip_stand_sim.yaml",
+          "sha256": "c43f75e3e202645085e3e8290561a7f6a25a456958530574ef2a41cb9ffff926"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/config/train_almi_manip_stand.yaml",
+          "sha256": "e67abcb08f0cea7d71a014b538bbd05f946e3a8e25ea49f278034868d3183e27"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/docs/analysis/2026-11-10_2049_new_manip_stand_finetune.html",
+          "sha256": "b16ab6e2fe993ceb936987f7bd3057a3cc75ac116443c4aae8a97043ae493d9a"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/utility/actor.py",
+          "sha256": "ff35fb676513419bdd316f9b244c9cefdcf9d257bb70673b47484cddac2634e0"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/deploy/deploy_real.py",
+          "sha256": "3b0b245a701fe963f940f5eea41d888d7ddfdd146d9d044558acb63240e69f1a"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+          "sha256": "1568a75e17f5bfd431cdcfb6dd6c219a0affb732af412aeffc961128cb635438"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/CL_Assets/mujoco_assets/h1_2_magpie.xml",
+          "sha256": "90645a871329b752c2a307d0092753a639ae973e32f665c6aad8539d4e803755"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mujoco_runtime.py",
+          "sha256": "af178c00b5323f5b0f82962e25e8d28f47c73cb9197cf11249d5b20c521453d4"
+        },
+        {
+          "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_mjlab/h12_mjlab/utility/h12_cfg.py",
+          "sha256": "3da48f3c609f6038615eaf136923a8a78943e18168ebb7fbea12f985be73ee09"
+        }
+      ]
+    },
+    "new_almi_manip_stand_optional_pelvis_fix_simulation": {
+      "experiment_id": "new_almi_manip_stand_optional_pelvis_fix_simulation",
+      "separate_policy_identity": true,
+      "historical_or_hardware_identity_claim": false,
+      "configuration_verification": {
+        "source": "/tmp/kilo/iter7b_diagnostic_almi.yaml",
+        "config": "/tmp/kilo/iter7b_new_almi_manip_stand_diagnostic.yaml",
+        "changes_from_prior_almi": [
+          "name",
+          "lower_body",
+          "network"
+        ],
+        "pair_differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "physics_upper_gains_limits_rates_identical": true,
+        "generic_backend": "MJLAB_ALMI_MANIP",
+        "model_identity": "model_almi_manip_stand.pt",
+        "imu_frame": "pelvis",
+        "registry_note": "New MJLAB_ALMI_MANIP_STAND global registry deferred by parent; generic MJLab runner with explicit config, not historical model identity"
+      },
+      "focused_tests": {
+        "passed": 24,
+        "deselected": 2,
+        "deselection_reason": "legacy absent finetune checkpoints and unrelated checkpoint ABI inventory",
+        "new_imu_contract_tests": 12
+      },
+      "cells": [
+        {
+          "variant": "c0",
+          "raw_path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "sweep_path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0",
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.3990223787093201,
+            "move_rms_tilt_deviation_deg": 0.36958434590265404,
+            "full_peak_drift_deg": 1.6736483410197223,
+            "terminal_drift_deg": 1.1028155500480699,
+            "peak_base_angular_speed_rad_s": 0.04515957645485244,
+            "timed_frozen_rms_mm": 23.298471578547655,
+            "uniform_frozen_rms_mm": 3.6083582644338845,
+            "counter_excursion_peak_deg": 26.22235247664996,
+            "counter_measured_peak_speed_rad_s": 0.6687818817756659,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.43243243243243246,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 0,
+            "active_steps": 37
+          },
+          "sweep_result": {
+            "key": "[\"diag_c0\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_c0",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.007748294137995382",
+            "com_margin": "0.10339493302216134",
+            "zmp_margin": "0.10325187446880657",
+            "max_base_drift": "0.02716294412582225",
+            "rms_base_drift": "0.012946910867134577",
+            "base_drift_reference": "[0.004821923022455503,-0.015535475729118517]",
+            "base_drift_release_time": "22.754999999999757",
+            "base_drift_reference_start_time": "21.754999999999956",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.0056932244772057924",
+            "left_foot_displacement": "0.005402390324681855",
+            "right_foot_displacement": "0.0056932244772057924",
+            "max_foot_lift": "0.0005810263165305085",
+            "left_foot_lift": "-3.527119153619307e-05",
+            "right_foot_lift": "0.0005810263165305085",
+            "foot_displacement_reference": "{\"left\":[-0.030076528205699907,0.1354805052542241,0.0441759465618851],\"right\":[-0.009257766874128829,-0.1871731440767211,0.04364857405912054]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0175869299099147",
+            "straight_line_progress_max": "1.0175869299099147",
+            "straight_line_onset_position_error": "0.004398472602176376",
+            "straight_line_endpoint_position_error": "0.009233196883846788",
+            "straight_line_endpoint_orientation_error": "0.028644254382706468",
+            "straight_line_timed_position_rms": "0.024001514234342842",
+            "straight_line_timed_position_max": "0.038202510993380866",
+            "straight_line_segment_distance_rms": "0.004996049194301662",
+            "straight_line_segment_distance_max": "0.009233196883846788",
+            "straight_line_prescribed_orientation_rms": "0.02011257700962968",
+            "straight_line_prescribed_orientation_max": "0.028644254382706468",
+            "straight_line_hold_position_rms": "0.010945047082398431",
+            "straight_line_hold_position_max": "0.01267606554217085",
+            "straight_line_hold_orientation_rms": "0.026293335775965272",
+            "straight_line_hold_orientation_max": "0.03782427585921385",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "model_identity_log_rows": 857,
+          "actual_diagnostic_variant_verified": true,
+          "execution_clock_and_lifecycle_verified": true,
+          "diagnostic_rows": 404,
+          "diagnostic_actuation_labels": [
+            "c0"
+          ],
+          "no_rate_or_ar_actuation": true,
+          "source_artifact_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "de4be8436e4895fcb5a27b2b503f27b0eabf84a6cd97c21907a8444128592b66"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "728cbdb236a5d074721598826183429c83a5171ecbecfbe305fb5dab642d24e9"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "2b2b2819c91cd86a917edcf9945bd448fa70049c1cca8f018670b57de38c3e43"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "3b6052910babcb2e470410f9103790004c7972f54e506d0841b6128ba025a446"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "0a39b266fbddcbf8d16093c9bcee2d72f5dee13632aa3169bd033057ef720af0"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/tests/test_mjlab_policy_imu_frame.py",
+              "sha256": "598c5edd25d61c515802be6b496d8e2509a4b70df57023bb8b43938fe5abdff7"
+            }
+          ],
+          "phases": {
+            "move": {
+              "sim_samples": 240,
+              "controller_samples": 37,
+              "tilt_peak_deg": 2.00056286846746,
+              "orientation_drift_peak_deg": 1.3990223787093201,
+              "gyro_rms_rad_s": 0.02703304903631952,
+              "gyro_peak_rad_s": 0.04515957645485244,
+              "base_height_min_m": 0.9624269285938898,
+              "counter_excursion_peak_rad": 0.4576663883360313,
+              "counter_requested_peak_rad_s": 1.0,
+              "counter_applied_peak_rad_s": 1.0,
+              "counter_received_peak_rad_s": 1.0,
+              "counter_measured_peak_rad_s": 0.6687818817756659,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.773165046912377,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.9413934177356915
+            },
+            "fade": {
+              "sim_samples": 100,
+              "controller_samples": 15,
+              "tilt_peak_deg": 2.2676516193646528,
+              "orientation_drift_peak_deg": 1.6736483410197223,
+              "gyro_rms_rad_s": 0.02398932626946557,
+              "gyro_peak_rad_s": 0.03559312514379832,
+              "base_height_min_m": 0.9622768271452945,
+              "counter_excursion_peak_rad": 0.4596772238094563,
+              "counter_requested_peak_rad_s": 0.3707845158079353,
+              "counter_applied_peak_rad_s": 0.3707845211029053,
+              "counter_received_peak_rad_s": 0.3707845211029053,
+              "counter_measured_peak_rad_s": 0.2080071208983151,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.7319115573913715,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.1987220074902765
+            },
+            "postfade": {
+              "sim_samples": 2300,
+              "controller_samples": 352,
+              "tilt_peak_deg": 1.9938634642780366,
+              "orientation_drift_peak_deg": 1.5189973367354932,
+              "gyro_rms_rad_s": 0.009444706382575609,
+              "gyro_peak_rad_s": 0.0307054211242981,
+              "base_height_min_m": 0.9622789659408091,
+              "counter_excursion_peak_rad": 0.4166761942939677,
+              "counter_requested_peak_rad_s": 0.4146036362844237,
+              "counter_applied_peak_rad_s": 0.41460365056991577,
+              "counter_received_peak_rad_s": 0.41460365056991577,
+              "counter_measured_peak_rad_s": 0.26239095440031185,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.8169130879097315,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7374254137301217
+            }
+          },
+          "phase_definition": {
+            "execution_begin": 22.755,
+            "move_duration": 1.2000000000000002,
+            "fade_end_elapsed": 1.7000000000000002,
+            "postfade_end_elapsed": 13.199999999999942
+          },
+          "metrics_coverage": {
+            "move_fade_postfade": "complete",
+            "tracking": "existing execution-clock live/frozen straight-line metrics",
+            "physical_bounds": "dynamic requested solver box checked; measured rates and excursion reported, not physical certification",
+            "effort_proxy": "received-command PD+FF reconstructed at saved plant state; not measured torque/electrical energy"
+          }
+        },
+        {
+          "variant": "com_feedback_off",
+          "raw_path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "sweep_path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off",
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.5035974821421028,
+            "move_rms_tilt_deviation_deg": 0.38380250274520855,
+            "full_peak_drift_deg": 1.8145298002105017,
+            "terminal_drift_deg": 1.1920607424124945,
+            "peak_base_angular_speed_rad_s": 0.04887550075880969,
+            "timed_frozen_rms_mm": 23.80802787576481,
+            "uniform_frozen_rms_mm": 3.6578465435837795,
+            "counter_excursion_peak_deg": 24.57355716278921,
+            "counter_measured_peak_speed_rad_s": 0.6864820057319933,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.43243243243243246,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 0,
+            "active_steps": 37
+          },
+          "sweep_result": {
+            "key": "[\"diag_com_off\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_com_off",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/configs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.007745790742914815",
+            "com_margin": "0.09514849171117662",
+            "zmp_margin": "0.09478412124086981",
+            "max_base_drift": "0.02946635739978315",
+            "rms_base_drift": "0.014028634454130013",
+            "base_drift_reference": "[0.004996540999863969,-0.014922310164723982]",
+            "base_drift_release_time": "23.119999999999685",
+            "base_drift_reference_start_time": "22.119999999999884",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.005852140812475192",
+            "left_foot_displacement": "0.005810707474856857",
+            "right_foot_displacement": "0.005852140812475192",
+            "max_foot_lift": "0.0005883337201198074",
+            "left_foot_lift": "-4.9060189173083524e-05",
+            "right_foot_lift": "0.0005883337201198074",
+            "foot_displacement_reference": "{\"left\":[-0.027653192749996575,0.13580093878391175,0.04418028189472032],\"right\":[-0.013828233558096972,-0.1862931767921732,0.04374304241159585]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0162302758645165",
+            "straight_line_progress_max": "1.0162302758645165",
+            "straight_line_onset_position_error": "0.004385716957804547",
+            "straight_line_endpoint_position_error": "0.009410851495649415",
+            "straight_line_endpoint_orientation_error": "0.029569226527711136",
+            "straight_line_timed_position_rms": "0.024472669100056056",
+            "straight_line_timed_position_max": "0.038783182098468975",
+            "straight_line_segment_distance_rms": "0.005129725516474476",
+            "straight_line_segment_distance_max": "0.009410851495649415",
+            "straight_line_prescribed_orientation_rms": "0.019846871851065442",
+            "straight_line_prescribed_orientation_max": "0.029569226527711136",
+            "straight_line_hold_position_rms": "0.011467852432826383",
+            "straight_line_hold_position_max": "0.013166762873752135",
+            "straight_line_hold_orientation_rms": "0.027796456548201037",
+            "straight_line_hold_orientation_max": "0.040579931692247606",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "model_identity_log_rows": 859,
+          "actual_diagnostic_variant_verified": true,
+          "execution_clock_and_lifecycle_verified": true,
+          "diagnostic_rows": 404,
+          "diagnostic_actuation_labels": [
+            "com_feedback_off"
+          ],
+          "no_rate_or_ar_actuation": true,
+          "source_artifact_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "51035eb71315f954cb32d9dbdad6ba42b2544c1b1fbc7fb3b2470248ce862618"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "4392fa2e06b178de15634d15f76b5c43eb90afc5be0ed11ee85be9857e9d4e57"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "ea7a19a4913d402bf203ce5d9138e3ab5a3704cb41d2bd3e2340923d73872280"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "01a68e15f16e59dafcca7170fa9f015cd87f6931c2855366d78b545cd928a94e"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "08cc3d08d44e609b3c8fc1d3b874713a6ca9f53c402cc114f2b13dbcf6335368"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/tests/test_mjlab_policy_imu_frame.py",
+              "sha256": "598c5edd25d61c515802be6b496d8e2509a4b70df57023bb8b43938fe5abdff7"
+            }
+          ],
+          "phases": {
+            "move": {
+              "sim_samples": 240,
+              "controller_samples": 37,
+              "tilt_peak_deg": 2.086596102807259,
+              "orientation_drift_peak_deg": 1.5035974821421028,
+              "gyro_rms_rad_s": 0.02900262416164665,
+              "gyro_peak_rad_s": 0.04887550075880969,
+              "base_height_min_m": 0.9624277616268141,
+              "counter_excursion_peak_rad": 0.4288894814177079,
+              "counter_requested_peak_rad_s": 1.0,
+              "counter_applied_peak_rad_s": 1.0,
+              "counter_received_peak_rad_s": 1.0,
+              "counter_measured_peak_rad_s": 0.6864820057319933,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.96858169189284,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.804003657425827
+            },
+            "fade": {
+              "sim_samples": 100,
+              "controller_samples": 15,
+              "tilt_peak_deg": 2.3913111959116256,
+              "orientation_drift_peak_deg": 1.8145298002105017,
+              "gyro_rms_rad_s": 0.025138914953012622,
+              "gyro_peak_rad_s": 0.043419819345509425,
+              "base_height_min_m": 0.9620741734599103,
+              "counter_excursion_peak_rad": 0.4272998546114534,
+              "counter_requested_peak_rad_s": 0.324520108562295,
+              "counter_applied_peak_rad_s": 0.3245201110839844,
+              "counter_received_peak_rad_s": 0.3245201110839844,
+              "counter_measured_peak_rad_s": 0.21614033324606205,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.203885459622597,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.1095560447465673
+            },
+            "postfade": {
+              "sim_samples": 2300,
+              "controller_samples": 352,
+              "tilt_peak_deg": 2.1384772316340093,
+              "orientation_drift_peak_deg": 1.6813702482512227,
+              "gyro_rms_rad_s": 0.009456711017064889,
+              "gyro_peak_rad_s": 0.03584403980320169,
+              "base_height_min_m": 0.9621708789513055,
+              "counter_excursion_peak_rad": 0.38291404820010927,
+              "counter_requested_peak_rad_s": 0.38100832865332523,
+              "counter_applied_peak_rad_s": 0.3810083270072937,
+              "counter_received_peak_rad_s": 0.3810083270072937,
+              "counter_measured_peak_rad_s": 0.25871620660444694,
+              "measured_over_command_cap_fraction": 0.0,
+              "requested_box_bound_violation_max_rad_s": 0.0,
+              "collision_rejections": 0,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.996502459249825,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7362473822991977
+            }
+          },
+          "phase_definition": {
+            "execution_begin": 23.12,
+            "move_duration": 1.2000000000000002,
+            "fade_end_elapsed": 1.7000000000000002,
+            "postfade_end_elapsed": 13.200000000000127
+          },
+          "metrics_coverage": {
+            "move_fade_postfade": "complete",
+            "tracking": "existing execution-clock live/frozen straight-line metrics",
+            "physical_bounds": "dynamic requested solver box checked; measured rates and excursion reported, not physical certification",
+            "effort_proxy": "received-command PD+FF reconstructed at saved plant state; not measured torque/electrical energy"
+          }
+        }
+      ],
+      "hardware_ready": false,
+      "interpretation": "One unreplicated cold pair, fixed physics/settings and candidate-only config difference. Both stable/operationally complete but tracking_failed and not settled. No winner or hardware acceptance claim.",
+      "actual_resolved_pair_differences": [
+        "name",
+        "counter_diagnostics"
+      ],
+      "actual_lower_policy_configs_identical": true,
+      "nonzero_action_both_applied_and_received": true
+    },
+    "new_stand_final_c0_repeat_and_gyro_negative_control": {
+      "experiment_id": "new_stand_final_c0_repeat_and_gyro_negative_control",
+      "new_cells": 2,
+      "context_cells_reused": 2,
+      "configuration_verification": {
+        "source_config": "/tmp/kilo/iter7b_new_almi_manip_stand_diagnostic.yaml",
+        "config": "/tmp/kilo/iter7b_new_stand_final_control.yaml",
+        "repeat_c0_identical_to_previous_actual_resolved_config": true,
+        "generated_pair_differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "policy_wrapper_source_unchanged": true,
+        "conditional_control_gate": "standing complete, operational complete, survived/reached/stable, zero solver or runtime safety failures; tracking acceptance remains separately reported",
+        "physics_gains_limits_rates_scene_target_identical": true
+      },
+      "tests": {
+        "passed": 26,
+        "deselected": 2,
+        "same_flags_as_prior_stage": true
+      },
+      "cells": [
+        {
+          "label": "C0_initial",
+          "variant": "c0",
+          "raw_path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "new_this_stage": false,
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.3990223787093201,
+            "move_rms_tilt_deviation_deg": 0.36958434590265404,
+            "full_peak_drift_deg": 1.6736483410197223,
+            "terminal_drift_deg": 1.1028155500480699,
+            "peak_base_angular_speed_rad_s": 0.04515957645485244,
+            "timed_frozen_rms_mm": 23.298471578547655,
+            "uniform_frozen_rms_mm": 3.6083582644338845,
+            "counter_excursion_peak_deg": 26.22235247664996,
+            "counter_measured_peak_speed_rad_s": 0.6687818817756659,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.43243243243243246,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 0,
+            "active_steps": 37
+          },
+          "result": {
+            "key": "[\"diag_c0\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_c0",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.007748294137995382",
+            "com_margin": "0.10339493302216134",
+            "zmp_margin": "0.10325187446880657",
+            "max_base_drift": "0.02716294412582225",
+            "rms_base_drift": "0.012946910867134577",
+            "base_drift_reference": "[0.004821923022455503,-0.015535475729118517]",
+            "base_drift_release_time": "22.754999999999757",
+            "base_drift_reference_start_time": "21.754999999999956",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.0056932244772057924",
+            "left_foot_displacement": "0.005402390324681855",
+            "right_foot_displacement": "0.0056932244772057924",
+            "max_foot_lift": "0.0005810263165305085",
+            "left_foot_lift": "-3.527119153619307e-05",
+            "right_foot_lift": "0.0005810263165305085",
+            "foot_displacement_reference": "{\"left\":[-0.030076528205699907,0.1354805052542241,0.0441759465618851],\"right\":[-0.009257766874128829,-0.1871731440767211,0.04364857405912054]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0175869299099147",
+            "straight_line_progress_max": "1.0175869299099147",
+            "straight_line_onset_position_error": "0.004398472602176376",
+            "straight_line_endpoint_position_error": "0.009233196883846788",
+            "straight_line_endpoint_orientation_error": "0.028644254382706468",
+            "straight_line_timed_position_rms": "0.024001514234342842",
+            "straight_line_timed_position_max": "0.038202510993380866",
+            "straight_line_segment_distance_rms": "0.004996049194301662",
+            "straight_line_segment_distance_max": "0.009233196883846788",
+            "straight_line_prescribed_orientation_rms": "0.02011257700962968",
+            "straight_line_prescribed_orientation_max": "0.028644254382706468",
+            "straight_line_hold_position_rms": "0.010945047082398431",
+            "straight_line_hold_position_max": "0.01267606554217085",
+            "straight_line_hold_orientation_rms": "0.026293335775965272",
+            "straight_line_hold_orientation_max": "0.03782427585921385",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "effective_imu_frame": "pelvis",
+          "actual_diagnostic_variant_verified": true,
+          "diagnostic_log_rows": 404,
+          "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+          "first_policy_gravity_unaligned": [
+            0.0,
+            -0.0,
+            -1.0
+          ],
+          "policy_log_path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+          "source_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "2b2b2819c91cd86a917edcf9945bd448fa70049c1cca8f018670b57de38c3e43"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "728cbdb236a5d074721598826183429c83a5171ecbecfbe305fb5dab642d24e9"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/standing_capture.json",
+              "sha256": "aac9866709db8c190f989360313f485cff44e3fa60d9e71a47b604f15564ca23"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "3b6052910babcb2e470410f9103790004c7972f54e506d0841b6128ba025a446"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "0a39b266fbddcbf8d16093c9bcee2d72f5dee13632aa3169bd033057ef720af0"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "de4be8436e4895fcb5a27b2b503f27b0eabf84a6cd97c21907a8444128592b66"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205131_iter7b_new_stand_pelvis_left_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205133_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py",
+              "sha256": "ccfa78a97b0c7fce4b02a500337656dcbbdbb1b3c4cd52a85209bc2efb8e27eb"
+            }
+          ],
+          "snapshots": {
+            "initial_sim": {
+              "absolute_simulation_time": 0.005,
+              "pelvis_world_position": [
+                0.0,
+                0.0,
+                1.03
+              ],
+              "pelvis_world_rotation": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "base_height_m": 1.03,
+              "tilt_deg": 0.0,
+              "motor_q": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.5237891502456324,
+                0.08864987996919449,
+                0.10266028913804398,
+                2.6869707998946355,
+                -0.19468583031915077,
+                0.2095620808628344,
+                -0.07735751757544118,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "motor_dq": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "waist_yaw_rad": 0.0,
+              "waist_dq_rad_s": 0.0
+            },
+            "first_standing_ready": {
+              "absolute_simulation_time": 22.74999999999976,
+              "pelvis_world_position": [
+                -0.034058191154178616,
+                -0.02487935600601575,
+                0.9630679148915924
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9962960314727975,
+                  -0.08408481398688032,
+                  -0.017998936867117572
+                ],
+                [
+                  0.08405058430373137,
+                  0.9964579621880125,
+                  -0.0026512016737315616
+                ],
+                [
+                  0.01815810975173609,
+                  0.0011285605456455893,
+                  0.9998344910040555
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.01815810975173609,
+                -0.0011285605456455893,
+                -0.9998344910040555
+              ],
+              "base_height_m": 0.9630679148915924,
+              "tilt_deg": 1.0424482732309102,
+              "motor_q": [
+                0.0020336233412130886,
+                -0.4038155953511954,
+                -0.0032177283952848027,
+                0.8049366560827265,
+                -0.38231300754248715,
+                -0.001961872713406624,
+                -0.0017148314838683592,
+                -0.39548554934750196,
+                -0.006285045545156396,
+                0.8040804746002793,
+                -0.3898189695347778,
+                -0.0038044987754360772,
+                -5.227962645049666e-05,
+                -1.5315642332964299,
+                0.09133681922540414,
+                0.10165942062421604,
+                2.68417469970477,
+                -0.19473795694589677,
+                0.2085077374237875,
+                -0.07733840374208432,
+                -0.0066324247938923725,
+                0.00013221493789931582,
+                -8.426210734013844e-06,
+                -0.01142257926783729,
+                -1.444239314599592e-07,
+                -0.005565593858151464,
+                9.736758109494832e-06
+              ],
+              "motor_dq": [
+                0.004421844762845636,
+                -0.002122628062514219,
+                0.007192175249211124,
+                0.002710847892259406,
+                -0.0018033361504439932,
+                0.010708080533241612,
+                0.005446093102429865,
+                -0.036545987258127584,
+                -0.005328800407182971,
+                0.07211897206996142,
+                -0.14406611279773202,
+                -0.013351990150454851,
+                0.0002390753257524606,
+                0.00024357890067958884,
+                -0.00032050114551583896,
+                -7.293682398596835e-05,
+                -0.00013516606338197674,
+                6.2373004736647895e-06,
+                -9.144453268759885e-05,
+                6.198854872252275e-05,
+                -0.0001444782370963313,
+                -0.00012338158014422415,
+                0.0001138962271247312,
+                0.002529228574167865,
+                9.430695830680913e-06,
+                0.00010325619478396419,
+                3.69250060913529e-05
+              ],
+              "waist_yaw_rad": -5.227962645049666e-05,
+              "waist_dq_rad_s": 0.0002390753257524606
+            },
+            "onset": {
+              "absolute_simulation_time": 22.754999999999757,
+              "pelvis_world_position": [
+                -0.03404452453160798,
+                -0.024875665710779593,
+                0.9630730710807726
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9963026907580409,
+                  -0.08401180746494444,
+                  -0.017971215728517197
+                ],
+                [
+                  0.0839780680576758,
+                  0.9964641449693993,
+                  -0.0026252382186089575
+                ],
+                [
+                  0.0181282231227489,
+                  0.0011063439235523592,
+                  0.9998350581618624
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.0181282231227489,
+                -0.0011063439235523592,
+                -0.9998350581618624
+              ],
+              "base_height_m": 0.9630730710807726,
+              "tilt_deg": 1.0406605783765415,
+              "motor_q": [
+                0.002041973932381109,
+                -0.40378804030900006,
+                -0.0031488944740614318,
+                0.8049072851174738,
+                -0.3824062285920102,
+                -0.0020987914921407063,
+                -0.001680278013879143,
+                -0.3957183996133992,
+                -0.006339381351083386,
+                0.804492465680188,
+                -0.39026413999306503,
+                -0.003198185279988305,
+                -5.356113033574902e-05,
+                -1.5315633294361704,
+                0.09133492334508175,
+                0.1016589733503148,
+                2.6841739488104674,
+                -0.19473792324458236,
+                0.20850729890236866,
+                -0.07733809526575365,
+                -0.006632674378798852,
+                0.0001316210170831082,
+                -7.798448681160436e-06,
+                -0.011412663054121709,
+                -9.118138899199377e-08,
+                -0.00556515250039056,
+                9.916428657895612e-06
+              ],
+              "motor_dq": [
+                0.0016701182336040419,
+                0.005511008439062733,
+                0.013766784244674146,
+                -0.005874193050546806,
+                -0.018644209904609788,
+                -0.02738375574681646,
+                0.00691069399784327,
+                -0.04657005317945528,
+                -0.010867161185397928,
+                0.08239821598172227,
+                -0.08903409165745149,
+                0.12126269908955437,
+                -0.00025630077705047263,
+                0.0001807720518924305,
+                -0.00037917606447663795,
+                -8.94547802462306e-05,
+                -0.00015017886052552025,
+                6.740262879274659e-06,
+                -8.770428376640741e-05,
+                6.169526613576102e-05,
+                -4.991698129602701e-05,
+                -0.00011878416324151974,
+                0.00012555241057068145,
+                0.0019832427431161325,
+                1.0648508493593087e-05,
+                8.827155218076953e-05,
+                3.593410968015593e-05
+              ],
+              "waist_yaw_rad": -5.356113033574902e-05,
+              "waist_dq_rad_s": -0.00025630077705047263
+            }
+          },
+          "phases": {
+            "pre_onset": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.3252803591314808,
+              "orientation_drift_mean_deg": 0.503991613916173,
+              "tilt_peak_deg": 1.2843423401918521,
+              "gyro_rms_rad_s": 0.040943150855865515,
+              "gyro_peak_rad_s": 0.07826874299785032,
+              "counter_excursion_peak_deg": 0.08408951130216527,
+              "counter_received_dq_peak_rad_s": 0.0,
+              "counter_measured_dq_peak_rad_s": 0.018068498282954867,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.2056455729104023,
+              "counter_pd_plus_ff_proxy_peak_nm": 3.543806299189039,
+              "base_height_min_m": 0.9628737339568176
+            },
+            "move": {
+              "sim_samples": 240,
+              "orientation_drift_peak_deg": 1.3990223787093201,
+              "orientation_drift_mean_deg": 0.6157799494148223,
+              "tilt_peak_deg": 2.00056286846746,
+              "gyro_rms_rad_s": 0.02703304903631952,
+              "gyro_peak_rad_s": 0.04515957645485244,
+              "counter_excursion_peak_deg": 26.222378246135367,
+              "counter_received_dq_peak_rad_s": 1.0,
+              "counter_measured_dq_peak_rad_s": 0.6687818817756659,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.9413934177356915,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.773165046912377,
+              "base_height_min_m": 0.9624269285938898,
+              "controller_samples": 37,
+              "counter_applied_dq_peak_rad_s": 1.0
+            },
+            "fade": {
+              "sim_samples": 100,
+              "orientation_drift_peak_deg": 1.6736483410197223,
+              "orientation_drift_mean_deg": 1.5966110024524263,
+              "tilt_peak_deg": 2.2676516193646528,
+              "gyro_rms_rad_s": 0.02398932626946557,
+              "gyro_peak_rad_s": 0.03559312514379832,
+              "counter_excursion_peak_deg": 26.33759063205781,
+              "counter_received_dq_peak_rad_s": 0.3707845211029053,
+              "counter_measured_dq_peak_rad_s": 0.2080071208983151,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.1987220074902765,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.7319115573913715,
+              "base_height_min_m": 0.9622768271452945,
+              "controller_samples": 15,
+              "counter_applied_dq_peak_rad_s": 0.3707845211029053
+            },
+            "postfade": {
+              "sim_samples": 2300,
+              "orientation_drift_peak_deg": 1.5189973367354932,
+              "orientation_drift_mean_deg": 1.050453242928725,
+              "tilt_peak_deg": 1.9938634642780366,
+              "gyro_rms_rad_s": 0.009444706382575609,
+              "gyro_peak_rad_s": 0.0307054211242981,
+              "counter_excursion_peak_deg": 23.87381312610283,
+              "counter_received_dq_peak_rad_s": 0.41460365056991577,
+              "counter_measured_dq_peak_rad_s": 0.26239095440031185,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7374254137301217,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.8169130879097315,
+              "base_height_min_m": 0.9622789659408091,
+              "controller_samples": 352,
+              "counter_applied_dq_peak_rad_s": 0.41460365056991577
+            },
+            "tail": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.111015490310446,
+              "orientation_drift_mean_deg": 1.1028155500480699,
+              "tilt_peak_deg": 1.5928123152609626,
+              "gyro_rms_rad_s": 0.007797205527296368,
+              "gyro_peak_rad_s": 0.01379580137057544,
+              "counter_excursion_peak_deg": 5.363287080683798,
+              "counter_received_dq_peak_rad_s": 0.09306541830301285,
+              "counter_measured_dq_peak_rad_s": 0.013482798046655883,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.595536872306667,
+              "counter_pd_plus_ff_proxy_peak_nm": 4.319744658267222,
+              "base_height_min_m": 0.9623599270860226
+            }
+          },
+          "clock": {
+            "standing_ready": 22.74999999999976,
+            "capture": 22.74999999999976,
+            "onset": 22.755,
+            "task_record_end": 35.95499999999994,
+            "fade_end_elapsed": 1.7000000000000002
+          },
+          "R0_standing_capture": [
+            [
+              0.9962960314727975,
+              -0.08408481398688032,
+              -0.017998936867117572
+            ],
+            [
+              0.08405058430373137,
+              0.9964579621880125,
+              -0.0026512016737315616
+            ],
+            [
+              0.01815810975173609,
+              0.0011285605456455893,
+              0.9998344910040555
+            ]
+          ],
+          "capture_gravity_pelvis_ground_truth": [
+            -0.01815810975173609,
+            -0.0011285605456455893,
+            -0.9998344910040555
+          ]
+        },
+        {
+          "label": "CoM_off",
+          "variant": "com_feedback_off",
+          "raw_path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "new_this_stage": false,
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.5035974821421028,
+            "move_rms_tilt_deviation_deg": 0.38380250274520855,
+            "full_peak_drift_deg": 1.8145298002105017,
+            "terminal_drift_deg": 1.1920607424124945,
+            "peak_base_angular_speed_rad_s": 0.04887550075880969,
+            "timed_frozen_rms_mm": 23.80802787576481,
+            "uniform_frozen_rms_mm": 3.6578465435837795,
+            "counter_excursion_peak_deg": 24.57355716278921,
+            "counter_measured_peak_speed_rad_s": 0.6864820057319933,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.43243243243243246,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 0,
+            "active_steps": 37
+          },
+          "result": {
+            "key": "[\"diag_com_off\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_com_off",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/configs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.007745790742914815",
+            "com_margin": "0.09514849171117662",
+            "zmp_margin": "0.09478412124086981",
+            "max_base_drift": "0.02946635739978315",
+            "rms_base_drift": "0.014028634454130013",
+            "base_drift_reference": "[0.004996540999863969,-0.014922310164723982]",
+            "base_drift_release_time": "23.119999999999685",
+            "base_drift_reference_start_time": "22.119999999999884",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.005852140812475192",
+            "left_foot_displacement": "0.005810707474856857",
+            "right_foot_displacement": "0.005852140812475192",
+            "max_foot_lift": "0.0005883337201198074",
+            "left_foot_lift": "-4.9060189173083524e-05",
+            "right_foot_lift": "0.0005883337201198074",
+            "foot_displacement_reference": "{\"left\":[-0.027653192749996575,0.13580093878391175,0.04418028189472032],\"right\":[-0.013828233558096972,-0.1862931767921732,0.04374304241159585]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0162302758645165",
+            "straight_line_progress_max": "1.0162302758645165",
+            "straight_line_onset_position_error": "0.004385716957804547",
+            "straight_line_endpoint_position_error": "0.009410851495649415",
+            "straight_line_endpoint_orientation_error": "0.029569226527711136",
+            "straight_line_timed_position_rms": "0.024472669100056056",
+            "straight_line_timed_position_max": "0.038783182098468975",
+            "straight_line_segment_distance_rms": "0.005129725516474476",
+            "straight_line_segment_distance_max": "0.009410851495649415",
+            "straight_line_prescribed_orientation_rms": "0.019846871851065442",
+            "straight_line_prescribed_orientation_max": "0.029569226527711136",
+            "straight_line_hold_position_rms": "0.011467852432826383",
+            "straight_line_hold_position_max": "0.013166762873752135",
+            "straight_line_hold_orientation_rms": "0.027796456548201037",
+            "straight_line_hold_orientation_max": "0.040579931692247606",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "effective_imu_frame": "pelvis",
+          "actual_diagnostic_variant_verified": true,
+          "diagnostic_log_rows": 404,
+          "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+          "first_policy_gravity_unaligned": [
+            0.0,
+            -0.0,
+            -1.0
+          ],
+          "policy_log_path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+          "source_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "ea7a19a4913d402bf203ce5d9138e3ab5a3704cb41d2bd3e2340923d73872280"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "4392fa2e06b178de15634d15f76b5c43eb90afc5be0ed11ee85be9857e9d4e57"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/standing_capture.json",
+              "sha256": "aa589f0dccedef06e6c2dbb1c921bdf0c95f62846e9875414b4c2f71a919abf0"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "01a68e15f16e59dafcca7170fa9f015cd87f6931c2855366d78b545cd928a94e"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "08cc3d08d44e609b3c8fc1d3b874713a6ca9f53c402cc114f2b13dbcf6335368"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "51035eb71315f954cb32d9dbdad6ba42b2544c1b1fbc7fb3b2470248ce862618"
+            },
+            {
+              "path": "/tmp/kilo/20261117_205251_iter7b_new_stand_pelvis_left_com_off/runs/diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_205252_diag_com_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py",
+              "sha256": "ccfa78a97b0c7fce4b02a500337656dcbbdbb1b3c4cd52a85209bc2efb8e27eb"
+            }
+          ],
+          "snapshots": {
+            "initial_sim": {
+              "absolute_simulation_time": 0.005,
+              "pelvis_world_position": [
+                0.0,
+                0.0,
+                1.03
+              ],
+              "pelvis_world_rotation": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "base_height_m": 1.03,
+              "tilt_deg": 0.0,
+              "motor_q": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.5237891502456324,
+                0.08864987996919449,
+                0.10266028913804398,
+                2.6869707998946355,
+                -0.19468583031915077,
+                0.2095620808628344,
+                -0.07735751757544118,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "motor_dq": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "waist_yaw_rad": 0.0,
+              "waist_dq_rad_s": 0.0
+            },
+            "first_standing_ready": {
+              "absolute_simulation_time": 23.114999999999686,
+              "pelvis_world_position": [
+                -0.03523715320968213,
+                -0.025135901264785848,
+                0.9631363787966697
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9976079949363481,
+                  -0.0665192239543114,
+                  -0.018801097935943242
+                ],
+                [
+                  0.06649081895245462,
+                  0.9977847578608927,
+                  -0.0021325983008923734
+                ],
+                [
+                  0.01890130773551569,
+                  0.0008773967159917321,
+                  0.999820969344458
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.01890130773551569,
+                -0.0008773967159917321,
+                -0.999820969344458
+              ],
+              "base_height_m": 0.9631363787966697,
+              "tilt_deg": 1.0841961639760664,
+              "motor_q": [
+                0.0014578027869642332,
+                -0.4037091844736324,
+                -0.0017620755160858866,
+                0.804594704936437,
+                -0.38154597521121036,
+                -0.0030272223198685236,
+                -0.0019524715554397772,
+                -0.3949705038080535,
+                -0.0043551945555942925,
+                0.8060019820857731,
+                -0.39196292743055805,
+                0.0015748785060812319,
+                -0.00027987163281743285,
+                -1.5315043381571234,
+                0.09123729800305953,
+                0.10168289010803924,
+                2.684175789345337,
+                -0.1947390444872074,
+                0.20851635465795945,
+                -0.07734532492993183,
+                -0.006500481353077215,
+                0.00016227349037292325,
+                -5.380557121761871e-05,
+                -0.011384173664282005,
+                -2.124580530242566e-07,
+                -0.005567285557764286,
+                3.824346152877007e-06
+              ],
+              "motor_dq": [
+                0.0021112205278111308,
+                0.008360004852350725,
+                0.012359779687415973,
+                -0.01436267315001891,
+                -0.023758024723506844,
+                -0.04618081591260827,
+                0.0006156827688527742,
+                0.003592527084174818,
+                0.00011775547887787723,
+                -0.036196830616616944,
+                0.048125931300908566,
+                -0.0686429493650969,
+                0.002082208241338653,
+                -0.00023876038361645048,
+                0.0006816172860964083,
+                -0.0003011804958807483,
+                -0.00024453794236677724,
+                -7.531338288322572e-07,
+                -0.00014215846378957318,
+                4.5812171287327395e-05,
+                -0.002216199974895835,
+                2.8621907583528076e-05,
+                0.00020991781035176025,
+                0.0002809768768386586,
+                -2.1316227560751293e-06,
+                -0.00019693771392709195,
+                4.626532596908918e-05
+              ],
+              "waist_yaw_rad": -0.00027987163281743285,
+              "waist_dq_rad_s": 0.002082208241338653
+            },
+            "onset": {
+              "absolute_simulation_time": 23.119999999999685,
+              "pelvis_world_position": [
+                -0.035199984560701676,
+                -0.02511681065702327,
+                0.9631445271377652
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9976146880130993,
+                  -0.0664381306175027,
+                  -0.01873256684439407
+                ],
+                [
+                  0.06641042080804227,
+                  0.9977901852817118,
+                  -0.0020981333578761648
+                ],
+                [
+                  0.018830567400553517,
+                  0.0008490910082765153,
+                  0.9998223286043547
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.018830567400553517,
+                -0.0008490910082765153,
+                -0.9998223286043547
+              ],
+              "base_height_m": 0.9631445271377652,
+              "tilt_deg": 1.080072403185164,
+              "motor_q": [
+                0.001462431072361132,
+                -0.4036611811201241,
+                -0.001685084814100682,
+                0.804505904328727,
+                -0.3817125202008148,
+                -0.0033836121963585434,
+                -0.0019428603699258432,
+                -0.3949907274403125,
+                -0.004367227634537599,
+                0.8058975610189995,
+                -0.3918070039626375,
+                0.001499221973250465,
+                -0.000273684125936665,
+                -1.5315051203341894,
+                0.091239195641484,
+                0.1016813896439593,
+                2.6841742471450747,
+                -0.19473903737629128,
+                0.2085155480313068,
+                -0.0773450248608586,
+                -0.006509169068654279,
+                0.00016235249420982632,
+                -5.2648928455845356e-05,
+                -0.011381570105762814,
+                -2.0369532857681927e-07,
+                -0.0055680138311431085,
+                4.069899499335603e-06
+              ],
+              "motor_dq": [
+                0.0009256570793797511,
+                0.009600670701655867,
+                0.015398140397040915,
+                -0.017760121541995563,
+                -0.033308997920894076,
+                -0.07127797529800392,
+                0.0019222371027867822,
+                -0.004044726451801864,
+                -0.002406615788661295,
+                -0.02088421335472763,
+                0.03118469358411073,
+                -0.015131306566153357,
+                0.001237501376153569,
+                -0.0001564354131809445,
+                0.0003795276848944684,
+                -0.0003000928159892971,
+                -0.0003084400524150984,
+                1.4221832255238998e-06,
+                -0.00016132533052987477,
+                6.001381464476344e-05,
+                -0.0017375431154127603,
+                1.5800767380614305e-05,
+                0.0002313285523546705,
+                0.0005207117038381157,
+                1.7525448894874643e-06,
+                -0.00014565467576450162,
+                4.911066929171913e-05
+              ],
+              "waist_yaw_rad": -0.000273684125936665,
+              "waist_dq_rad_s": 0.001237501376153569
+            }
+          },
+          "phases": {
+            "pre_onset": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.4740417331557052,
+              "orientation_drift_mean_deg": 0.584765690520756,
+              "tilt_peak_deg": 1.3530300006640568,
+              "gyro_rms_rad_s": 0.04243148770524821,
+              "gyro_peak_rad_s": 0.06690540055181154,
+              "counter_excursion_peak_deg": 0.09467916994932297,
+              "counter_received_dq_peak_rad_s": 0.0,
+              "counter_measured_dq_peak_rad_s": 0.015975981894857733,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.1949513000781504,
+              "counter_pd_plus_ff_proxy_peak_nm": 3.5637057846408204,
+              "base_height_min_m": 0.962727704107457
+            },
+            "move": {
+              "sim_samples": 240,
+              "orientation_drift_peak_deg": 1.5035974821421028,
+              "orientation_drift_mean_deg": 0.6572716657487706,
+              "tilt_peak_deg": 2.086596102807259,
+              "gyro_rms_rad_s": 0.02900262416164665,
+              "gyro_peak_rad_s": 0.04887550075880969,
+              "counter_excursion_peak_deg": 24.573518281296842,
+              "counter_received_dq_peak_rad_s": 1.0,
+              "counter_measured_dq_peak_rad_s": 0.6864820057319933,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.804003657425827,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.96858169189284,
+              "base_height_min_m": 0.9624277616268141,
+              "controller_samples": 37,
+              "counter_applied_dq_peak_rad_s": 1.0
+            },
+            "fade": {
+              "sim_samples": 100,
+              "orientation_drift_peak_deg": 1.8145298002105017,
+              "orientation_drift_mean_deg": 1.7320244504469828,
+              "tilt_peak_deg": 2.3913111959116256,
+              "gyro_rms_rad_s": 0.025138914953012622,
+              "gyro_peak_rad_s": 0.043419819345509425,
+              "counter_excursion_peak_deg": 24.4824393742976,
+              "counter_received_dq_peak_rad_s": 0.3245201110839844,
+              "counter_measured_dq_peak_rad_s": 0.21614033324606205,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.1095560447465673,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.203885459622597,
+              "base_height_min_m": 0.9620741734599103,
+              "controller_samples": 15,
+              "counter_applied_dq_peak_rad_s": 0.3245201110839844
+            },
+            "postfade": {
+              "sim_samples": 2300,
+              "orientation_drift_peak_deg": 1.6813702482512227,
+              "orientation_drift_mean_deg": 1.1624496409430642,
+              "tilt_peak_deg": 2.1384772316340093,
+              "gyro_rms_rad_s": 0.009456711017064889,
+              "gyro_peak_rad_s": 0.03584403980320169,
+              "counter_excursion_peak_deg": 21.93931999664287,
+              "counter_received_dq_peak_rad_s": 0.3810083270072937,
+              "counter_measured_dq_peak_rad_s": 0.25871620660444694,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7362473822991977,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.996502459249825,
+              "base_height_min_m": 0.9621708789513055,
+              "controller_samples": 352,
+              "counter_applied_dq_peak_rad_s": 0.3810083270072937
+            },
+            "tail": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.201009768666234,
+              "orientation_drift_mean_deg": 1.1920607424124945,
+              "tilt_peak_deg": 1.6017334388920592,
+              "gyro_rms_rad_s": 0.007637460695466771,
+              "gyro_peak_rad_s": 0.01426964233503118,
+              "counter_excursion_peak_deg": 5.366365374763408,
+              "counter_received_dq_peak_rad_s": 0.09314001351594925,
+              "counter_measured_dq_peak_rad_s": 0.013539292865656178,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.5954844526292393,
+              "counter_pd_plus_ff_proxy_peak_nm": 4.319601924208738,
+              "base_height_min_m": 0.9623493526474166
+            }
+          },
+          "clock": {
+            "standing_ready": 23.114999999999686,
+            "capture": 23.114999999999686,
+            "onset": 23.12,
+            "task_record_end": 36.32000000000013,
+            "fade_end_elapsed": 1.7000000000000002
+          },
+          "R0_standing_capture": [
+            [
+              0.9976079949363481,
+              -0.0665192239543114,
+              -0.018801097935943242
+            ],
+            [
+              0.06649081895245462,
+              0.9977847578608927,
+              -0.0021325983008923734
+            ],
+            [
+              0.01890130773551569,
+              0.0008773967159917321,
+              0.999820969344458
+            ]
+          ],
+          "capture_gravity_pelvis_ground_truth": [
+            -0.01890130773551569,
+            -0.0008773967159917321,
+            -0.999820969344458
+          ]
+        },
+        {
+          "label": "C0_repeat",
+          "variant": "c0",
+          "raw_path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "new_this_stage": true,
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.661079328186844,
+            "move_rms_tilt_deviation_deg": 0.5149365743691064,
+            "full_peak_drift_deg": 2.0064024050540117,
+            "terminal_drift_deg": 1.184195386284979,
+            "peak_base_angular_speed_rad_s": 0.04960534621215536,
+            "timed_frozen_rms_mm": 23.474659833120867,
+            "uniform_frozen_rms_mm": 3.6494200519292646,
+            "counter_excursion_peak_deg": 26.710304895338144,
+            "counter_measured_peak_speed_rad_s": 0.694949301953828,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.43243243243243246,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 0,
+            "active_steps": 37
+          },
+          "result": {
+            "key": "[\"diag_c0\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_c0",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/configs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.007768321298639913",
+            "com_margin": "0.09401883298072303",
+            "zmp_margin": "0.09382278584176154",
+            "max_base_drift": "0.03433024810455384",
+            "rms_base_drift": "0.017101489961071838",
+            "base_drift_reference": "[0.0039697764106845545,-0.010900444922092488]",
+            "base_drift_release_time": "23.13999999999968",
+            "base_drift_reference_start_time": "22.13999999999988",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.004630536231907505",
+            "left_foot_displacement": "0.004630536231907505",
+            "right_foot_displacement": "0.00453061302789182",
+            "max_foot_lift": "0.0005975854702119296",
+            "left_foot_lift": "-1.1599305916834557e-05",
+            "right_foot_lift": "0.0005975854702119296",
+            "foot_displacement_reference": "{\"left\":[-0.026414690779834,0.14071528512119247,0.044125363136634774],\"right\":[-0.017197508458900754,-0.18265619267192337,0.04371649037039551]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0174284499984338",
+            "straight_line_progress_max": "1.0174284499984338",
+            "straight_line_onset_position_error": "0.004345456290582263",
+            "straight_line_endpoint_position_error": "0.014033957778470975",
+            "straight_line_endpoint_orientation_error": "0.034638076980521224",
+            "straight_line_timed_position_rms": "0.024944501027529358",
+            "straight_line_timed_position_max": "0.039340295480348314",
+            "straight_line_segment_distance_rms": "0.005969653539011385",
+            "straight_line_segment_distance_max": "0.014033957778470975",
+            "straight_line_prescribed_orientation_rms": "0.022136613465542982",
+            "straight_line_prescribed_orientation_max": "0.034638076980521224",
+            "straight_line_hold_position_rms": "0.009604182205200136",
+            "straight_line_hold_position_max": "0.016358202763202784",
+            "straight_line_hold_orientation_rms": "0.029557086824070128",
+            "straight_line_hold_orientation_max": "0.04557487893696649",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "effective_imu_frame": "pelvis",
+          "actual_diagnostic_variant_verified": true,
+          "diagnostic_log_rows": 404,
+          "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+          "first_policy_gravity_unaligned": [
+            0.0,
+            -0.0,
+            -1.0
+          ],
+          "policy_log_path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+          "source_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "cf5d7b0cdc76c7ccbe789039be2b75a0e5780a6ae3a48e30ba2d633dde382635"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "0c091f47a2eb103dedb76bfa2d6bbbea6a64c8e7eebd22c33b31a61afc0ee920"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/standing_capture.json",
+              "sha256": "0d6bdfdd690ce9b892f53bc320d5edf836a6cd7ec84d3ee422d6e729583d2048"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "0eaf28ab4de5ec9b96586ee29479e9ed67a380678a26e2da0c97e315ae0ee061"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "b4b1b668742041d22d3db1de72cc823c3a0eb3d76bb111419b93d6871a2fdadd"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "de4be8436e4895fcb5a27b2b503f27b0eabf84a6cd97c21907a8444128592b66"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210514_iter7b_final_stand_repeat_c0/runs/diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210515_diag_c0_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py",
+              "sha256": "ccfa78a97b0c7fce4b02a500337656dcbbdbb1b3c4cd52a85209bc2efb8e27eb"
+            }
+          ],
+          "snapshots": {
+            "initial_sim": {
+              "absolute_simulation_time": 0.005,
+              "pelvis_world_position": [
+                0.0,
+                0.0,
+                1.03
+              ],
+              "pelvis_world_rotation": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "base_height_m": 1.03,
+              "tilt_deg": 0.0,
+              "motor_q": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.5237891502456324,
+                0.08864987996919449,
+                0.10266028913804398,
+                2.6869707998946355,
+                -0.19468583031915077,
+                0.2095620808628344,
+                -0.07735751757544118,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "motor_dq": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "waist_yaw_rad": 0.0,
+              "waist_dq_rad_s": 0.0
+            },
+            "first_standing_ready": {
+              "absolute_simulation_time": 23.134999999999682,
+              "pelvis_world_position": [
+                -0.0335601564301388,
+                -0.021293785539222676,
+                0.9630996590552777
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.998680813417584,
+                  -0.049170423319631805,
+                  -0.014795350018207717
+                ],
+                [
+                  0.049169362276383584,
+                  0.9987903603818935,
+                  -0.0004356851399090158
+                ],
+                [
+                  0.01479887579942534,
+                  -0.000292367535132864,
+                  0.9998904478973172
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.01479887579942534,
+                0.000292367535132864,
+                -0.9998904478973172
+              ],
+              "base_height_m": 0.9630996590552777,
+              "tilt_deg": 0.8481095628567479,
+              "motor_q": [
+                0.0002942159074418534,
+                -0.4048607268761157,
+                0.0015272099671460825,
+                0.805909098779828,
+                -0.38567905393962065,
+                -0.004820863415159979,
+                -0.0022113809160455916,
+                -0.3949541802205481,
+                -0.0014632670681026427,
+                0.8012687611868619,
+                -0.3879140341431461,
+                -0.0015211741709320547,
+                -0.0003023098340459104,
+                -1.5314958341516913,
+                0.09123735740598093,
+                0.10169930217799154,
+                2.6842458992609255,
+                -0.19473992926133116,
+                0.2085274836803268,
+                -0.07735043658518295,
+                -0.006525133645871165,
+                0.00011939816713550846,
+                -4.224759929964415e-05,
+                -0.01144878112334131,
+                -7.369741655014132e-07,
+                -0.005575676418485049,
+                -1.6230278175395553e-06
+              ],
+              "motor_dq": [
+                0.012291650679923449,
+                -0.011747925873010582,
+                -0.031928080646655616,
+                0.03350101982926637,
+                -0.026167473951896822,
+                -0.003469473392224588,
+                -0.008608324510385266,
+                0.01624569335651547,
+                -0.02173729883976314,
+                -0.05787480616639096,
+                0.13365394288848234,
+                -0.3316021514706973,
+                0.007833648630790157,
+                -9.594150869717509e-05,
+                0.003938956593006236,
+                -1.9029951263790283e-05,
+                -0.0006244920381589729,
+                -4.414494399294455e-06,
+                -0.00024896211053396987,
+                6.133711101235256e-05,
+                -0.004696203155127636,
+                0.00030938872933161166,
+                0.00019130679428720898,
+                -0.0035336833650610328,
+                4.415550729620183e-07,
+                -0.0001580904064613194,
+                3.0945375497606563e-06
+              ],
+              "waist_yaw_rad": -0.0003023098340459104,
+              "waist_dq_rad_s": 0.007833648630790157
+            },
+            "onset": {
+              "absolute_simulation_time": 23.13999999999968,
+              "pelvis_world_position": [
+                -0.033543450866014776,
+                -0.021275626552148843,
+                0.9630617887314791
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9986852033272365,
+                  -0.04908901565539824,
+                  -0.014769332998481745
+                ],
+                [
+                  0.04908642490881227,
+                  0.9987943899275858,
+                  -0.0005380881462754862
+                ],
+                [
+                  0.014777941159292436,
+                  -0.00018759308541210754,
+                  0.9998907826677504
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.014777941159292436,
+                0.00018759308541210754,
+                -0.9998907826677504
+              ],
+              "base_height_m": 0.9630617887314791,
+              "tilt_deg": 0.8468127097392605,
+              "motor_q": [
+                0.00035099188501296514,
+                -0.40491512594979295,
+                0.0013973199896747826,
+                0.8060511799714485,
+                -0.3857927628170916,
+                -0.0048352089309874275,
+                -0.0022095663197941517,
+                -0.3950065365900054,
+                -0.0015466269451518517,
+                0.8013294477913276,
+                -0.3879697589038784,
+                -0.003127784231646489,
+                -0.0002669046573873208,
+                -1.531492781865256,
+                0.09124595311472286,
+                0.10169864913123138,
+                2.6842426358515676,
+                -0.19473986391985212,
+                0.20852615917462303,
+                -0.07734973322691735,
+                -0.0065394380250788225,
+                0.00011958270468917203,
+                -4.100442676648281e-05,
+                -0.011447080003589004,
+                -6.692266755714878e-07,
+                -0.005575074108504598,
+                -1.3971407515367909e-06
+              ],
+              "motor_dq": [
+                0.011355195514222345,
+                -0.010879814735458125,
+                -0.025977995494259984,
+                0.028416238324102904,
+                -0.022741775494183623,
+                -0.002869103165489611,
+                0.0003629192502879932,
+                -0.010471273891453654,
+                -0.016671975409841795,
+                0.012137320893165326,
+                -0.011144952146460302,
+                -0.3213220121428869,
+                0.00708103533171792,
+                0.0006104572870620937,
+                0.001719141748384806,
+                -0.0001306093520341888,
+                -0.0006526818715889422,
+                1.3068295805945972e-05,
+                -0.0002649011407549536,
+                0.00014067165312048116,
+                -0.0028608758415314683,
+                3.690751073271348e-05,
+                0.00024863450663226687,
+                0.00034022395046099134,
+                1.3549497985985077e-05,
+                0.00012046199609008936,
+                4.5177413200552866e-05
+              ],
+              "waist_yaw_rad": -0.0002669046573873208,
+              "waist_dq_rad_s": 0.00708103533171792
+            }
+          },
+          "phases": {
+            "pre_onset": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.4467851110195584,
+              "orientation_drift_mean_deg": 0.5971115903872779,
+              "tilt_peak_deg": 1.0482409551838756,
+              "gyro_rms_rad_s": 0.04091125274130814,
+              "gyro_peak_rad_s": 0.0650004677610199,
+              "counter_excursion_peak_deg": 0.08659574440514198,
+              "counter_received_dq_peak_rad_s": 0.0,
+              "counter_measured_dq_peak_rad_s": 0.017621752291856425,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.1838754028473657,
+              "counter_pd_plus_ff_proxy_peak_nm": 3.4858616122770147,
+              "base_height_min_m": 0.9627968954408895
+            },
+            "move": {
+              "sim_samples": 240,
+              "orientation_drift_peak_deg": 1.661079328186844,
+              "orientation_drift_mean_deg": 0.7010847196741757,
+              "tilt_peak_deg": 2.1554867188357374,
+              "gyro_rms_rad_s": 0.03167915165411155,
+              "gyro_peak_rad_s": 0.04960534621215536,
+              "counter_excursion_peak_deg": 26.71033090109849,
+              "counter_received_dq_peak_rad_s": 1.0,
+              "counter_measured_dq_peak_rad_s": 0.694949301953828,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.9762131235925926,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.626321729328184,
+              "base_height_min_m": 0.9621239435425348,
+              "controller_samples": 37,
+              "counter_applied_dq_peak_rad_s": 1.0
+            },
+            "fade": {
+              "sim_samples": 100,
+              "orientation_drift_peak_deg": 2.0064024050540117,
+              "orientation_drift_mean_deg": 1.9142353019482456,
+              "tilt_peak_deg": 2.495725425012703,
+              "gyro_rms_rad_s": 0.02692003675476927,
+              "gyro_peak_rad_s": 0.0440403027732437,
+              "counter_excursion_peak_deg": 26.92786688851579,
+              "counter_received_dq_peak_rad_s": 0.38372477889060974,
+              "counter_measured_dq_peak_rad_s": 0.22398080966665376,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.2185121214173775,
+              "counter_pd_plus_ff_proxy_peak_nm": 6.120163227590387,
+              "base_height_min_m": 0.9617963114218884,
+              "controller_samples": 15,
+              "counter_applied_dq_peak_rad_s": 0.38372477889060974
+            },
+            "postfade": {
+              "sim_samples": 2300,
+              "orientation_drift_peak_deg": 1.8166538967149113,
+              "orientation_drift_mean_deg": 1.1072815710866708,
+              "tilt_peak_deg": 2.225177562847459,
+              "gyro_rms_rad_s": 0.009859768488000967,
+              "gyro_peak_rad_s": 0.03621367812780929,
+              "counter_excursion_peak_deg": 24.52240108037314,
+              "counter_received_dq_peak_rad_s": 0.42586731910705566,
+              "counter_measured_dq_peak_rad_s": 0.25944737568389137,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7396226770345944,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.9499495984453965,
+              "base_height_min_m": 0.9618642396838214,
+              "controller_samples": 352,
+              "counter_applied_dq_peak_rad_s": 0.42586731910705566
+            },
+            "tail": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.1928688392782885,
+              "orientation_drift_mean_deg": 1.184195386284979,
+              "tilt_peak_deg": 1.6214839021583265,
+              "gyro_rms_rad_s": 0.007478606375445702,
+              "gyro_peak_rad_s": 0.01276448879110021,
+              "counter_excursion_peak_deg": 5.349295463453895,
+              "counter_received_dq_peak_rad_s": 0.09287681430578232,
+              "counter_measured_dq_peak_rad_s": 0.013378572782472167,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.599160645610125,
+              "counter_pd_plus_ff_proxy_peak_nm": 4.326464141149015,
+              "base_height_min_m": 0.9622763074614988
+            }
+          },
+          "clock": {
+            "standing_ready": 23.134999999999682,
+            "capture": 23.134999999999682,
+            "onset": 23.14,
+            "task_record_end": 36.34000000000014,
+            "fade_end_elapsed": 1.7000000000000002
+          },
+          "R0_standing_capture": [
+            [
+              0.998680813417584,
+              -0.049170423319631805,
+              -0.014795350018207717
+            ],
+            [
+              0.049169362276383584,
+              0.9987903603818935,
+              -0.0004356851399090158
+            ],
+            [
+              0.01479887579942534,
+              -0.000292367535132864,
+              0.9998904478973172
+            ]
+          ],
+          "capture_gravity_pelvis_ground_truth": [
+            -0.01479887579942534,
+            0.000292367535132864,
+            -0.9998904478973172
+          ]
+        },
+        {
+          "label": "Gyro_off",
+          "variant": "gyro_feedback_off",
+          "raw_path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+          "new_this_stage": true,
+          "existing_metrics": {
+            "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "status": "complete",
+            "policy": "MJLAB_ALMI_MANIP",
+            "target": "left_overhang_sideways",
+            "posture_weight": 0.02,
+            "classification": "stable",
+            "tracking_classification": "imprecise",
+            "move_peak_drift_deg": 1.7024359379027503,
+            "move_rms_tilt_deviation_deg": 0.4847647812697755,
+            "full_peak_drift_deg": 2.0233170367727746,
+            "terminal_drift_deg": 1.2933935242489663,
+            "peak_base_angular_speed_rad_s": 0.04971888121987804,
+            "timed_frozen_rms_mm": 23.862920976572926,
+            "uniform_frozen_rms_mm": 3.668698679804409,
+            "counter_excursion_peak_deg": 26.800668901733243,
+            "counter_measured_peak_speed_rad_s": 0.670120786538788,
+            "counter_received_peak_speed_rad_s": 1.0,
+            "counter_requested_peak_speed_rad_s": 1.0,
+            "counter_applied_peak_speed_rad_s": 1.0,
+            "counter_rate_cap_touch_fraction": 0.4594594594594595,
+            "collision_rejections": 0,
+            "counter_invalid_candidates": 0,
+            "counter_zero_applied_steps": 1,
+            "active_steps": 37
+          },
+          "result": {
+            "key": "[\"diag_gyro_off\",\"left_overhang_sideways\",\"fast\",0.8]",
+            "variant": "diag_gyro_off",
+            "candidate_id": "left_overhang_sideways",
+            "direction_id": "left_overhang_sideways",
+            "group": "overhang_traj",
+            "arm": "left",
+            "rank": "0",
+            "profile": "fast",
+            "nominal_duration": "1.5",
+            "execution_duration": "1.2000000000000002",
+            "duration_factor": "0.8",
+            "speed_acceleration_limit": "",
+            "target_position": "[0.4,0.4760000000000001,0.2]",
+            "target_rpy_degrees": "",
+            "attempt": "1",
+            "attempted": "True",
+            "dry_run": "False",
+            "returncode": "0",
+            "run_dir": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust",
+            "config": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/configs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01.yaml",
+            "run_complete": "True",
+            "controller_complete": "True",
+            "controller_solver_failure_count": "0",
+            "survived": "True",
+            "reached": "True",
+            "settled": "False",
+            "passed": "False",
+            "configuration_error": "0.0077538969746042685",
+            "com_margin": "0.09404101979923976",
+            "zmp_margin": "0.09369074032392563",
+            "max_base_drift": "0.032207192085532355",
+            "rms_base_drift": "0.01572726010196339",
+            "base_drift_reference": "[0.0047068283779389845,-0.013004344227086071]",
+            "base_drift_release_time": "23.29999999999965",
+            "base_drift_reference_start_time": "22.299999999999848",
+            "base_drift_reference_sample_count": "200.0",
+            "stumbled": "False",
+            "max_foot_displacement": "0.0057193305483020365",
+            "left_foot_displacement": "0.0057193305483020365",
+            "right_foot_displacement": "0.00557643799585707",
+            "max_foot_lift": "0.0004533133124604988",
+            "left_foot_lift": "-4.322409816202161e-05",
+            "right_foot_lift": "0.0004533133124604988",
+            "foot_displacement_reference": "{\"left\":[-0.025250489971004084,0.13737921042271503,0.044160580751893976],\"right\":[-0.014616583352668362,-0.18480566359682926,0.043748020055594326]}",
+            "foot_displacement_reference_sample_count": "200.0",
+            "classification": "stable",
+            "classification_reason": "stable base orientation and foot placement",
+            "tracking_classification": "imprecise",
+            "tracking_reason": "fixed-reference straight line: tracking_failed",
+            "trial_error": "",
+            "run_video": "",
+            "video": "",
+            "video_unavailable_reason": "",
+            "straight_line_schema_version": "1.0",
+            "straight_line_status": "tracking_failed",
+            "straight_line_reference": "standing_capture_full_se3",
+            "straight_line_passed": "False",
+            "straight_line_line_complete": "True",
+            "straight_line_window_complete": "True",
+            "straight_line_completion": "True",
+            "straight_line_stalled": "False",
+            "straight_line_progress_final": "1.0189397221615157",
+            "straight_line_progress_max": "1.0189397221615157",
+            "straight_line_onset_position_error": "0.004433678853380399",
+            "straight_line_endpoint_position_error": "0.012121170036760826",
+            "straight_line_endpoint_orientation_error": "0.03292657715422311",
+            "straight_line_timed_position_rms": "0.024908333470722268",
+            "straight_line_timed_position_max": "0.03988924101649784",
+            "straight_line_segment_distance_rms": "0.00539955408895535",
+            "straight_line_segment_distance_max": "0.012121170036760826",
+            "straight_line_prescribed_orientation_rms": "0.021472759472396293",
+            "straight_line_prescribed_orientation_max": "0.03292657715422311",
+            "straight_line_hold_position_rms": "0.010729633985109599",
+            "straight_line_hold_position_max": "0.013856823817600686",
+            "straight_line_hold_orientation_rms": "0.030315743930014",
+            "straight_line_hold_orientation_max": "0.044902239515328665",
+            "straight_line_trajectory_content_hash": "e717bea58ee24648f7a7f625c965cdb1577dc82a23619cc2edd3d353776c2ee0"
+          },
+          "effective_imu_frame": "pelvis",
+          "actual_diagnostic_variant_verified": true,
+          "diagnostic_log_rows": 403,
+          "checkpoint_sha256": "b9462b7c98b8f6db9632bc1cddacbaebc8b9d7f2625a51f57ceae6a97c18d683",
+          "first_policy_gravity_unaligned": [
+            0.0,
+            -0.0,
+            -1.0
+          ],
+          "policy_log_path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+          "source_hashes": [
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/sim.npz",
+              "sha256": "235a89820e01c12957bf38749cd2901501cefc40ebe44831006a0feef5f1f14f"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/summary.json",
+              "sha256": "2bdfdd174f8bac2d4f09579415c911265e365ff34e5079771896d1dca7070836"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/standing_capture.json",
+              "sha256": "feb487405f87b65c50637ddd890f3b8be9807dd65a1d9b0eb2334b4ab9f29295"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/arm_target.jsonl",
+              "sha256": "0f78def07d2cd3ffd819c40680a2a891e1fa41689f3c73e1455c04560828de4c"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/policy.jsonl",
+              "sha256": "f8512b36371ac3569832ff11646898066a72b75f4e30ac4cacaef39049fb0ebd"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/resolved_config.yaml",
+              "sha256": "0975abf3b9bc57599e26a57f38dd6a9714da5bd8b8240c7701546bb1c22c6418"
+            },
+            {
+              "path": "/tmp/kilo/20261117_210616_iter7b_final_stand_gyro_off/runs/diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01/20261117_210617_diag_gyro_off_overhang_traj_left_left_overhang_sideways_fast_f0.8_a01_counter_ddp_velocity_robust/configs/lower_body.yaml",
+              "sha256": "f49e60afaa5c183fb616f21998857e40d41cd2be17ef0bc4d87f56a9b333a287"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/h12_zmp_benchmark/runtime/mjlab_policy_runtime.py",
+              "sha256": "4879e4154b4e526109935fbb94c2fe464aad93eac62aaf1d3275ce51a674029d"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/lower_body/mjlab_almi_manip_stand.yaml",
+              "sha256": "6de3a2b1a3346de24e83f4ab6e0419ae94217888c0d0898920744c1df94ce55a"
+            },
+            {
+              "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py",
+              "sha256": "ccfa78a97b0c7fce4b02a500337656dcbbdbb1b3c4cd52a85209bc2efb8e27eb"
+            }
+          ],
+          "snapshots": {
+            "initial_sim": {
+              "absolute_simulation_time": 0.005,
+              "pelvis_world_position": [
+                0.0,
+                0.0,
+                1.03
+              ],
+              "pelvis_world_rotation": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.0,
+                -0.0,
+                -1.0
+              ],
+              "base_height_m": 1.03,
+              "tilt_deg": 0.0,
+              "motor_q": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -1.5237891502456324,
+                0.08864987996919449,
+                0.10266028913804398,
+                2.6869707998946355,
+                -0.19468583031915077,
+                0.2095620808628344,
+                -0.07735751757544118,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "motor_dq": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "waist_yaw_rad": 0.0,
+              "waist_dq_rad_s": 0.0
+            },
+            "first_standing_ready": {
+              "absolute_simulation_time": 23.29499999999965,
+              "pelvis_world_position": [
+                -0.03287367237408419,
+                -0.024191059845606454,
+                0.9630710617836269
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9981424179311201,
+                  -0.05863236808811518,
+                  -0.016551705017851928
+                ],
+                [
+                  0.058610416505643755,
+                  0.9982792935261472,
+                  -0.0018086442359303268
+                ],
+                [
+                  0.01662926948645592,
+                  0.0008351822058538239,
+                  0.9998613753251152
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.01662926948645592,
+                -0.0008351822058538239,
+                -0.9998613753251152
+              ],
+              "base_height_m": 0.9630710617836269,
+              "tilt_deg": 0.9540320572395914,
+              "motor_q": [
+                0.000905117037335073,
+                -0.40497813271408867,
+                -0.0005930828023265789,
+                0.8051176262851566,
+                -0.3830654317842405,
+                -0.003945796830824008,
+                -0.0018282143609313242,
+                -0.39550292265978904,
+                -0.0027342819528854085,
+                0.8062604707914897,
+                -0.39370525703435916,
+                -0.0010238199932348575,
+                -0.00042037656176186974,
+                -1.5314756606828137,
+                0.0913051169350456,
+                0.10172567651123927,
+                2.684231946101722,
+                -0.19473933045851077,
+                0.20851964908921367,
+                -0.07734813939961702,
+                -0.00658300441188342,
+                0.00019721552330291648,
+                -7.792379021903998e-05,
+                -0.011328849106867144,
+                1.5223885435763575e-08,
+                -0.005557076055719498,
+                2.0597409373354696e-06
+              ],
+              "motor_dq": [
+                -0.0003633084751790783,
+                0.009108841724342454,
+                0.01845166780939649,
+                -0.008718206127663585,
+                -0.016852727708716653,
+                -0.019230015078704935,
+                0.0019441583363412503,
+                -0.01618094312907123,
+                -0.005039021965676026,
+                0.01893749924420447,
+                -0.008566012931995336,
+                0.17198445907457377,
+                0.0004887625122773677,
+                -0.00016411409376838846,
+                3.617906191155613e-05,
+                -0.0001451699738615559,
+                -0.00014467437968836467,
+                -1.7798363716368961e-06,
+                -9.148091675543835e-05,
+                2.1718300917440344e-05,
+                -0.00025354130758490127,
+                -2.633237514506546e-05,
+                0.00018179267477710475,
+                0.0005247236743079287,
+                3.364590607722588e-07,
+                -8.407229780913222e-05,
+                3.9977655592578855e-05
+              ],
+              "waist_yaw_rad": -0.00042037656176186974,
+              "waist_dq_rad_s": 0.0004887625122773677
+            },
+            "onset": {
+              "absolute_simulation_time": 23.319999999999645,
+              "pelvis_world_position": [
+                -0.03281928803346909,
+                -0.024098916783351895,
+                0.9631312143266904
+              ],
+              "pelvis_world_rotation": [
+                [
+                  0.9981689864838859,
+                  -0.058206238672486976,
+                  -0.016453212492805146
+                ],
+                [
+                  0.058189014263272804,
+                  0.9983044204083957,
+                  -0.0015240774671462017
+                ],
+                [
+                  0.016514025578294088,
+                  0.0005638906442837551,
+                  0.9998634751737563
+                ]
+              ],
+              "projected_gravity_pelvis_ground_truth": [
+                -0.016514025578294088,
+                -0.0005638906442837551,
+                -0.9998634751737563
+              ],
+              "base_height_m": 0.9631312143266904,
+              "tilt_deg": 0.9467785511034996,
+              "motor_q": [
+                0.000932427076524323,
+                -0.40486098794082387,
+                -0.000201593996420426,
+                0.8050077856054639,
+                -0.383202885013433,
+                -0.003875186836929985,
+                -0.0018004103703174303,
+                -0.3956295663463686,
+                -0.0027612229417787724,
+                0.8061773816176978,
+                -0.393811840552711,
+                0.0016183245845922227,
+                -0.0004053111066043032,
+                -1.5314779204123328,
+                0.09130739499921184,
+                0.10172237176020327,
+                2.68422797509995,
+                -0.1947395163904238,
+                0.2085171584110421,
+                -0.07734816051888102,
+                -0.006590770747748542,
+                0.00019674540689913804,
+                -7.445258063842364e-05,
+                -0.011318510313103542,
+                -3.316006597092054e-08,
+                -0.005560008777745618,
+                2.5022132173040344e-06
+              ],
+              "motor_dq": [
+                5.402556372431449e-05,
+                0.008043733777473987,
+                0.016911001179782798,
+                -0.008916701484918072,
+                -0.012593700680814465,
+                -0.019022006430938466,
+                0.0011176659689313808,
+                -0.0015884897072644855,
+                -0.0001600420142517542,
+                -0.011549669757276887,
+                0.001377111892151557,
+                0.07723529870565278,
+                0.0005009539409727962,
+                -0.00013830545855820402,
+                7.992259478819371e-05,
+                -0.00018594567136437164,
+                -0.00014021328159640202,
+                -1.0427488662674526e-06,
+                -9.577329195818223e-05,
+                3.231232004001761e-05,
+                -0.00033225005998673235,
+                -4.4896177972781096e-05,
+                0.00015479549198417968,
+                0.0003551453469185098,
+                -2.155800573909494e-06,
+                -0.00013637133219089893,
+                3.366420778974183e-05
+              ],
+              "waist_yaw_rad": -0.0004053111066043032,
+              "waist_dq_rad_s": 0.0005009539409727962
+            }
+          },
+          "phases": {
+            "pre_onset": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.2927272639649168,
+              "orientation_drift_mean_deg": 0.5084303271339653,
+              "tilt_peak_deg": 1.1287727235358385,
+              "gyro_rms_rad_s": 0.036818854094778954,
+              "gyro_peak_rad_s": 0.058485203701475454,
+              "counter_excursion_peak_deg": 0.06957317201857696,
+              "counter_received_dq_peak_rad_s": 0.0,
+              "counter_measured_dq_peak_rad_s": 0.01804821519646791,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.1948592324867433,
+              "counter_pd_plus_ff_proxy_peak_nm": 3.460375707597038,
+              "base_height_min_m": 0.9628666601154356
+            },
+            "move": {
+              "sim_samples": 240,
+              "orientation_drift_peak_deg": 1.7024359379027503,
+              "orientation_drift_mean_deg": 0.7545511207857949,
+              "tilt_peak_deg": 2.1743108029550178,
+              "gyro_rms_rad_s": 0.03174025616752526,
+              "gyro_peak_rad_s": 0.04971888121987804,
+              "counter_excursion_peak_deg": 26.80070244154319,
+              "counter_received_dq_peak_rad_s": 1.0,
+              "counter_measured_dq_peak_rad_s": 0.670120786538788,
+              "counter_pd_plus_ff_proxy_rms_nm": 4.024062064986742,
+              "counter_pd_plus_ff_proxy_peak_nm": 11.906038037285875,
+              "base_height_min_m": 0.9622540301778538,
+              "controller_samples": 37,
+              "counter_applied_dq_peak_rad_s": 1.0
+            },
+            "fade": {
+              "sim_samples": 100,
+              "orientation_drift_peak_deg": 2.0233170367727746,
+              "orientation_drift_mean_deg": 1.9382433168180462,
+              "tilt_peak_deg": 2.468365748325075,
+              "gyro_rms_rad_s": 0.02546343321236621,
+              "gyro_peak_rad_s": 0.040767646059814276,
+              "counter_excursion_peak_deg": 27.02287898887743,
+              "counter_received_dq_peak_rad_s": 0.38299721479415894,
+              "counter_measured_dq_peak_rad_s": 0.21928309491966397,
+              "counter_pd_plus_ff_proxy_rms_nm": 3.2390448584057157,
+              "counter_pd_plus_ff_proxy_peak_nm": 6.1682442949312595,
+              "base_height_min_m": 0.9618677466620196,
+              "controller_samples": 15,
+              "counter_applied_dq_peak_rad_s": 0.38299721479415894
+            },
+            "postfade": {
+              "sim_samples": 2296,
+              "orientation_drift_peak_deg": 1.8855138852969686,
+              "orientation_drift_mean_deg": 1.2505988860070176,
+              "tilt_peak_deg": 2.217224568434366,
+              "gyro_rms_rad_s": 0.009531674709595046,
+              "gyro_peak_rad_s": 0.031025800982433,
+              "counter_excursion_peak_deg": 24.552942746779415,
+              "counter_received_dq_peak_rad_s": 0.42529916763305664,
+              "counter_measured_dq_peak_rad_s": 0.25861560877896345,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.7421445866895904,
+              "counter_pd_plus_ff_proxy_peak_nm": 5.871338928056101,
+              "base_height_min_m": 0.9619690044093142,
+              "controller_samples": 351,
+              "counter_applied_dq_peak_rad_s": 0.42529916763305664
+            },
+            "tail": {
+              "sim_samples": 200,
+              "orientation_drift_peak_deg": 1.2981460682260582,
+              "orientation_drift_mean_deg": 1.2933935242489663,
+              "tilt_peak_deg": 1.6105581865424583,
+              "gyro_rms_rad_s": 0.007559233561814648,
+              "gyro_peak_rad_s": 0.013577877825496082,
+              "counter_excursion_peak_deg": 5.357817322976498,
+              "counter_received_dq_peak_rad_s": 0.092999167740345,
+              "counter_measured_dq_peak_rad_s": 0.01317113849147505,
+              "counter_pd_plus_ff_proxy_rms_nm": 2.5982958479312526,
+              "counter_pd_plus_ff_proxy_peak_nm": 4.3229223546695055,
+              "base_height_min_m": 0.9623090241988059
+            }
+          },
+          "clock": {
+            "standing_ready": 23.29499999999965,
+            "capture": 23.29499999999965,
+            "onset": 23.32,
+            "task_record_end": 36.50000000000022,
+            "fade_end_elapsed": 1.7000000000000002
+          },
+          "R0_standing_capture": [
+            [
+              0.9981424179311201,
+              -0.05863236808811518,
+              -0.016551705017851928
+            ],
+            [
+              0.058610416505643755,
+              0.9982792935261472,
+              -0.0018086442359303268
+            ],
+            [
+              0.01662926948645592,
+              0.0008351822058538239,
+              0.9998613753251152
+            ]
+          ],
+          "capture_gravity_pelvis_ground_truth": [
+            -0.01662926948645592,
+            -0.0008351822058538239,
+            -0.9998613753251152
+          ]
+        }
+      ],
+      "no_production_edits": true,
+      "hardware_operation": false,
+      "policy_identity": "new model_almi_manip_stand.pt, not historical ALMI or hardware attestation",
+      "gravity_coverage": "Standing/onset gravity below is simulator ground-truth pelvis projection from saved rotations, not time-aligned policy sensor observations. policy.jsonl logs effective pelvis frame and gravity, but host-only policy timestamps cannot be exactly aligned to physics onset; no fabricated alignment.",
+      "tail_definition": "last 1.0 physics seconds of the recorded task, subset of postfade",
+      "hardware_ready": false,
+      "pairwise_reset_checks": [
+        {
+          "pair": [
+            "C0_initial",
+            "CoM_off"
+          ],
+          "R0_rotation_difference_deg": 1.0103579773898352,
+          "capture_gravity_difference_norm": 0.0007846077667846064,
+          "initial_sim": {
+            "position_difference_norm_m": 0.0,
+            "rotation_difference_deg": 0.0,
+            "gravity_difference_norm": 0.0,
+            "motor_q_max_difference_rad": 0.0,
+            "motor_dq_max_difference_rad_s": 0.0
+          },
+          "first_standing_ready": {
+            "position_difference_norm_m": 0.0012084925752411267,
+            "rotation_difference_deg": 1.0103579773898352,
+            "gravity_difference_norm": 0.0007846077667846064,
+            "motor_q_max_difference_rad": 0.005379377281517309,
+            "motor_dq_max_difference_rad_s": 0.19219204409864057
+          },
+          "onset": {
+            "position_difference_norm_m": 0.0011825162713523267,
+            "rotation_difference_deg": 1.0107220165875446,
+            "gravity_difference_norm": 0.0007480832765255145,
+            "motor_q_max_difference_rad": 0.00469740725323877,
+            "motor_dq_max_difference_rad_s": 0.13639400565570772
+          }
+        },
+        {
+          "pair": [
+            "C0_initial",
+            "C0_repeat"
+          ],
+          "R0_rotation_difference_deg": 2.0157918360018585,
+          "capture_gravity_difference_norm": 0.0036478240816965844,
+          "initial_sim": {
+            "position_difference_norm_m": 0.0,
+            "rotation_difference_deg": 0.0,
+            "gravity_difference_norm": 0.0,
+            "motor_q_max_difference_rad": 0.0,
+            "motor_dq_max_difference_rad_s": 0.0
+          },
+          "first_standing_ready": {
+            "position_difference_norm_m": 0.003620132849857335,
+            "rotation_difference_deg": 2.0157918360018585,
+            "gravity_difference_norm": 0.0036478240816965844,
+            "motor_q_max_difference_rad": 0.004821778477053753,
+            "motor_dq_max_difference_rad_s": 0.3182501613202425
+          },
+          "onset": {
+            "position_difference_norm_m": 0.00363476052215705,
+            "rotation_difference_deg": 2.0159241285912026,
+            "gravity_difference_norm": 0.003591903038555757,
+            "motor_q_max_difference_rad": 0.004792754405931535,
+            "motor_dq_max_difference_rad_s": 0.44258471123244125
+          }
+        },
+        {
+          "pair": [
+            "C0_repeat",
+            "Gyro_off"
+          ],
+          "R0_rotation_difference_deg": 0.5566938879351202,
+          "capture_gravity_difference_norm": 0.0021500127167937834,
+          "initial_sim": {
+            "position_difference_norm_m": 0.0,
+            "rotation_difference_deg": 0.0,
+            "gravity_difference_norm": 0.0,
+            "motor_q_max_difference_rad": 0.0,
+            "motor_dq_max_difference_rad_s": 0.0
+          },
+          "first_standing_ready": {
+            "position_difference_norm_m": 0.002977629353965108,
+            "rotation_difference_deg": 0.5566938879351202,
+            "gravity_difference_norm": 0.0021500127167937834,
+            "motor_q_max_difference_rad": 0.005791222891213033,
+            "motor_dq_max_difference_rad_s": 0.5035866105452711
+          },
+          "onset": {
+            "position_difference_norm_m": 0.002915510152772172,
+            "rotation_difference_deg": 0.5342286654185476,
+            "gravity_difference_norm": 0.0018919467765046,
+            "motor_q_max_difference_rad": 0.005842081648832598,
+            "motor_dq_max_difference_rad_s": 0.3985573108485397
+          }
+        }
+      ],
+      "all_four_lower_policy_configs_identical": true,
+      "repeat_c0_resolved_config_bitwise_semantic_equal": true,
+      "relative_move_differences_percent": {
+        "earlier_com_off_vs_initial_c0": {
+          "orientation_drift_peak_deg": 7.474869953778662,
+          "gyro_rms_rad_s": 7.285804581943234
+        },
+        "repeat_c0_vs_initial_c0": {
+          "orientation_drift_peak_deg": 18.73143371153838,
+          "gyro_rms_rad_s": 17.186750231355276
+        },
+        "gyro_off_vs_repeat_c0": {
+          "orientation_drift_peak_deg": 2.489743205765449,
+          "gyro_rms_rad_s": 0.19288557370751302
+        }
+      },
+      "interpretation": "Software path works with actual candidate/action delivery. CoM-off was worse in the earlier single pair, but reset/onset and C0 repeat variability preclude causal attribution or winner selection. All four operationally complete/stable/reached but tracking_failed/unsettled; no hardware readiness."
+    }
+  },
+  "prior_summary_preserved_at": "/tmp/kilo/iter7b_diagnostic_sim_summary_before_stand.json"
+}

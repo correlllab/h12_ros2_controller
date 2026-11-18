@@ -1,0 +1,96 @@
+{
+  "almi": {
+    "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/sweep_configs/iteration7a_almi.yaml",
+    "source_sha256": "daef64bda470b6e325045a00e7787428a2426f0c5dc3ae1aa69dbe0c52b4bf92",
+    "config": "/tmp/kilo/iter7b_diagnostic_almi.yaml",
+    "clone_changes": [
+      "baseline",
+      "controllers",
+      "network"
+    ],
+    "generated_pairs": {
+      "left_overhang_sideways": {
+        "differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "execution_duration": 1.2000000000000002
+      },
+      "right_overhang_sideways": {
+        "differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "execution_duration": 1.2000000000000002
+      }
+    },
+    "body_physics_gains_limits_policy_identical": true,
+    "speed_exclusions": [
+      {
+        "id": "left_overhang_inner_forward",
+        "duration_factor": 0.8,
+        "execution_duration": 1.205969457085075,
+        "nominal_duration": 1.5074618213563435,
+        "minimum_feasible_duration": 1.5070185663980524,
+        "acceleration_envelope": null,
+        "reason": "duration override exceeds effective velocity/acceleration limits"
+      },
+      {
+        "id": "right_overhang_inner_forward",
+        "duration_factor": 0.8,
+        "execution_duration": 1.205969457085075,
+        "nominal_duration": 1.5074618213563435,
+        "minimum_feasible_duration": 1.5070185663980524,
+        "acceleration_envelope": null,
+        "reason": "duration override exceeds effective velocity/acceleration limits"
+      }
+    ]
+  },
+  "fame": {
+    "source": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/config/sweep_configs/iteration7a_fame.yaml",
+    "source_sha256": "9e3213ba5d6cd06464ccd3f47c430075b3cb38f86c352f67ae3966d536da43e4",
+    "config": "/tmp/kilo/iter7b_diagnostic_fame.yaml",
+    "clone_changes": [
+      "baseline",
+      "controllers",
+      "network"
+    ],
+    "generated_pairs": {
+      "left_overhang_sideways": {
+        "differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "execution_duration": 1.2000000000000002
+      },
+      "right_overhang_sideways": {
+        "differences": [
+          "name",
+          "counter_diagnostics"
+        ],
+        "execution_duration": 1.2000000000000002
+      }
+    },
+    "body_physics_gains_limits_policy_identical": true,
+    "speed_exclusions": [
+      {
+        "id": "left_overhang_inner_forward",
+        "duration_factor": 0.8,
+        "execution_duration": 1.205969457085075,
+        "nominal_duration": 1.5074618213563435,
+        "minimum_feasible_duration": 1.5070185663980524,
+        "acceleration_envelope": null,
+        "reason": "duration override exceeds effective velocity/acceleration limits"
+      },
+      {
+        "id": "right_overhang_inner_forward",
+        "duration_factor": 0.8,
+        "execution_duration": 1.205969457085075,
+        "nominal_duration": 1.5074618213563435,
+        "minimum_feasible_duration": 1.5070185663980524,
+        "acceleration_envelope": null,
+        "reason": "duration override exceeds effective velocity/acceleration limits"
+      }
+    ]
+  }
+}
