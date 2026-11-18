@@ -48,6 +48,15 @@ The four self-contained catalogs are in `arm_targets/`:
 - `arm_pitch_45_targets.yaml`: pitch 45°, 25 targets per arm.
 - `arm_horizontal_targets.yaml`: horizontal forward, 25 targets per arm.
 
+Open `h12_workspace_test.html` for 40 copyable frame-controller commands: five
+targets per arm and orientation, selected from these catalogs. Each group contains
+the center and four spread-out samples. Copy individual commands, a five-command
+group or the full suite. The document marks boundary targets beyond the default
+`safety_split.yaml` forward limit of 0.60 m.
+Each orientation has an interactive 3D view of its ten tests with the robot mesh,
+workspace boxes and camera cone. Labels L01–L05 and R01–R05 match the commands;
+click a target to select its command field.
+
 Each arm samples its own published working box using eight nearest feasible corners, six nearest
 grid face centers, the nearest grid center and ten normalized farthest-point samples.
 This samples the box boundaries and interior on the original 25 mm grid. It does not
@@ -77,6 +86,9 @@ Regenerate the catalogs and HTML from the existing sweep data:
 
 ```bash
 uv run python docs/workspace_analysis/scripts/training_targets.py
+
+# rebuild the manual test suite from the four catalogs
+uv run python docs/workspace_analysis/scripts/test_suite.py
 ```
 
 ## Scripts
