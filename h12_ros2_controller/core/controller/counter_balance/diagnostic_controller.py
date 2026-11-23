@@ -9,7 +9,7 @@ from h12_ros2_controller.core.controller.counter_balance.counter_ddp_velocity_ro
 
 
 class CounterBalanceDiagnosticController(CounterDDPVelocityRobustController):
-    '''Opt into feedback ablations without replacing the nominal finalizer
+    '''Opt into reaction-target ablations without replacing the nominal finalizer
 
     CoM rows are model-frame xy velocities (m/s); angular momentum rows are
     centroidal model-frame xy (kg m^2/s), not ground reaction. Gyro is already
@@ -21,7 +21,7 @@ class CounterBalanceDiagnosticController(CounterDDPVelocityRobustController):
     DIAGNOSTIC_SUITE = True
     VARIANTS = (
         'c0', 'feedback_off', 'com_feedback_off', 'gyro_feedback_off',
-        'ar_shadow', 'momentum_rate_shadow',
+        'ar_shadow', 'momentum_rate_shadow', 'ff_half',
     )
     RATE_DT_RANGE = (0.005, 0.2)
 
@@ -97,7 +97,7 @@ class CounterBalanceDiagnosticController(CounterDDPVelocityRobustController):
             'variant': self.diagnostic_variant,
             'actuation': (
                 self.diagnostic_variant if self.diagnostic_variant in (
-                    'feedback_off', 'com_feedback_off', 'gyro_feedback_off',
+                     'feedback_off', 'com_feedback_off', 'gyro_feedback_off', 'ff_half',
                 ) else 'c0'
             ),
             'sample': deepcopy(sample),
@@ -157,6 +157,12 @@ class CounterBalanceDiagnosticController(CounterDDPVelocityRobustController):
             com_offset = com_offset - com_feedback
         if variant in ('feedback_off', 'gyro_feedback_off'):
             momentum_offset = momentum_offset - gyro_feedback
+        if variant == 'ff_half':
+            feedforward_scale = 0.5
+            # the inherited target already contains the full feedforward component
+            com_offset += (feedforward_scale - 1.0) * components['com_feedforward']
+            momentum_offset += (feedforward_scale - 1.0) * components['momentum_feedforward']
+            self._diagnostic_record['feedforward_scale'] = feedforward_scale
         self._diagnostic_record['target_components'] = {
             key: value.tolist() for key, value in components.items()
         }

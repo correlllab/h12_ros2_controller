@@ -1,0 +1,307 @@
+{
+  "scope": "unloaded frozen-observation full command-path replay, no plant/body counterfactual",
+  "construction": "__new__ controller and LowCmdHandler; real RobotModel and Pin/FCL; memory publisher only",
+  "not_mocked": [
+    "control_configuration_step",
+    "_model_terms",
+    "_counter_velocity_bounds",
+    "_counter_excursion_bounds",
+    "_plan_counter_velocity",
+    "_finalize_counter_velocity",
+    "_backtrack_counter",
+    "_candidate_status",
+    "_publish_arm_command",
+    "_write_arm_command",
+    "LowCmdHandler.set_joint_commands",
+    "RobotDynamics.get_gravity_compensation"
+  ],
+  "references": "configure_diagnostic_trial resets first; restore all captured refs per row before full step",
+  "limits": "recorded publication limits and dt; actual model URDF intersection, dq_lim, excursion, publisher clips",
+  "tolerance": "one float32 epsilon times max(1,abs(original)); report exact equality separately",
+  "reset_scope": "each variant/row gets original pre-command buffer and same recorded observation; not an evolving rollout",
+  "historical_tau_limit": "q/dq parity is required; historical tau parity is measured, not assumed. Gravity uses live model.state IMU, not the nominal captured snapshot. Exact historical gravity-time IMU is not recorded.",
+  "prior_artifact_sha256": {
+    "/tmp/kilo/frozen_feedback_ablation.py": "3513371e277da571a0515c6fb1268e8ee0d23fb52b11e9b0dac05080ea80acea",
+    "/tmp/kilo/frozen_feedback_ablation.json": "b80ee562b738a12bdf371efc9b35c2ddc5c3e41e9ff8fc81ddd7abfe4d129f5a",
+    "/tmp/kilo/frozen_feedback_ablation.csv": "f51da05078e08cd7ef48479129b2b8e7ac8443cf898b20ff8624ea1f3926ce65"
+  },
+  "sources": {
+    "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/diagnostic_controller.py": "7f4eb33cd9ebb7fcd929197aefd463d8cacf96eec89d84cc2c132774c45ff134",
+    "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/counter_balance_controller.py": "e7bd0f294775a74b119892487976cb357e6ffbbe5571b75fe699398f34365a11",
+    "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/controller/counter_balance/scipy_nominal_planner.py": "ec414ded2dc6adbb5e5acaf199cb23e31bef8066d18a6c3cdc4258bdf7d1d351",
+    "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/low_cmd_handler.py": "3e322bd53a2335ab549f2460e1ab6bce5adc89eb9b2d5a58b0d3eabf9ca2f1bc",
+    "/home/tonyzyt2000/Programming/h12_zmp_benchmark/submodules/h12_ros2_controller/h12_ros2_controller/core/robot_model.py": "336f147fc2d6b8e6b8b6d4053247f099c70e8894a3af2727b950fc1e7a3a6277"
+  },
+  "runs": [
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F02_counter/left_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "dcb93bdb46202ecc52d5c299e5d5471b8c8b9f31b760bf0a26c5bc84aabed3b2",
+      "verified_model_sha256": {
+        "robot_urdf": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f",
+        "collision_urdf": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b",
+        "collision_srdf": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+      },
+      "moving_arm": "left",
+      "rows": 337,
+      "source_git": {
+        "benchmark": {
+          "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+          "dirty": true,
+          "error": null
+        }
+      },
+      "phases": {
+        "move": 36,
+        "fade": 16,
+        "postfade": 285
+      },
+      "c0_buffer_max_abs": {
+        "q": 0.0,
+        "dq": 0.0,
+        "tau": 0.003532886505126953
+      },
+      "c0_buffer_exact_rows": {
+        "q": 337,
+        "dq": 337,
+        "tau": 111
+      },
+      "c0_buffer_within_float32_rows": {
+        "q": 337,
+        "dq": 337,
+        "tau": 111
+      },
+      "c0_problem_max_abs": 0.0,
+      "c0_prepared_context_max_abs": 0.0,
+      "c0_requested_max_abs": 0.0,
+      "c0_offset_max_abs": 0.0,
+      "variant_counts": {
+        "c0": {
+          "executions": 337,
+          "statuses": {
+            "solved": 337
+          },
+          "finite": 337,
+          "published": 337,
+          "valid_candidate_pin_fcl": 337,
+          "request_within_actual_bounds": 337,
+          "buffers_within_publisher_limits": 337,
+          "noncounter_buffers_exact_c0": 337,
+          "tau_exact_c0": 337,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.0,
+          "delta_counter_dq_peak_rad_s": 0.0,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 337
+          }
+        },
+        "ff_half": {
+          "executions": 337,
+          "statuses": {
+            "solved": 337
+          },
+          "finite": 337,
+          "published": 337,
+          "valid_candidate_pin_fcl": 337,
+          "request_within_actual_bounds": 337,
+          "buffers_within_publisher_limits": 337,
+          "noncounter_buffers_exact_c0": 337,
+          "tau_exact_c0": 337,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.019579783082008362,
+          "delta_counter_dq_peak_rad_s": 0.5873935222625732,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 337
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_fame_validation_20261110_184722/F03_counter/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "f7009d872154c627d9266f17cc7ccf27ccb46f18f538984150d4d5b6b956169e",
+      "verified_model_sha256": {
+        "robot_urdf": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f",
+        "collision_urdf": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b",
+        "collision_srdf": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+      },
+      "moving_arm": "right",
+      "rows": 338,
+      "source_git": {
+        "benchmark": {
+          "commit": "d46d79f6141c369a4c02c10521551ec690d4a7a0",
+          "dirty": true,
+          "error": null
+        }
+      },
+      "phases": {
+        "move": 37,
+        "fade": 15,
+        "postfade": 286
+      },
+      "c0_buffer_max_abs": {
+        "q": 0.0,
+        "dq": 0.0,
+        "tau": 0.002837657928466797
+      },
+      "c0_buffer_exact_rows": {
+        "q": 338,
+        "dq": 338,
+        "tau": 94
+      },
+      "c0_buffer_within_float32_rows": {
+        "q": 338,
+        "dq": 338,
+        "tau": 94
+      },
+      "c0_problem_max_abs": 0.0,
+      "c0_prepared_context_max_abs": 0.0,
+      "c0_requested_max_abs": 0.0,
+      "c0_offset_max_abs": 0.0,
+      "variant_counts": {
+        "c0": {
+          "executions": 338,
+          "statuses": {
+            "solved": 338
+          },
+          "finite": 338,
+          "published": 338,
+          "valid_candidate_pin_fcl": 338,
+          "request_within_actual_bounds": 338,
+          "buffers_within_publisher_limits": 338,
+          "noncounter_buffers_exact_c0": 338,
+          "tau_exact_c0": 338,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.0,
+          "delta_counter_dq_peak_rad_s": 0.0,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 338
+          }
+        },
+        "ff_half": {
+          "executions": 338,
+          "statuses": {
+            "solved": 338
+          },
+          "finite": 338,
+          "published": 338,
+          "valid_candidate_pin_fcl": 338,
+          "request_within_actual_bounds": 338,
+          "buffers_within_publisher_limits": 338,
+          "noncounter_buffers_exact_c0": 338,
+          "tau_exact_c0": 338,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.018861278891563416,
+          "delta_counter_dq_peak_rad_s": 0.5658382773399353,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 338
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "path": "/home/tonyzyt2000/Programming/h12_zmp_benchmark/runs/real_experiments/iter7b_almi_manip_stand_session_20261113_190215/trial_0006_counter_right_overhang_sideways/right_overhang_sideways/arm_target.jsonl",
+      "raw_sha256": "d318800e45943d2ebddb0eb4fd359f33d2a5fd73f0dc0e936c6fbb125de05513",
+      "verified_model_sha256": {
+        "robot_urdf": "551cae47f77b2ca296c38fe8dc41bfc4fbe3dad93ec7f00db6951eda8f6c9a7f",
+        "collision_urdf": "7e6d6f65113fbce548ad471fd88cb07f54422a17719ddad73ff2529b8c0b6f4b",
+        "collision_srdf": "9d644b74fa32e29c404b385d1aa9207411eeb2216bb32af04034f3109b875ac5"
+      },
+      "moving_arm": "right",
+      "rows": 337,
+      "source_git": {
+        "benchmark": {
+          "commit": "1e2e643313b00aa7959fefca37b2c12061129f5d",
+          "dirty": true,
+          "error": null
+        }
+      },
+      "phases": {
+        "move": 36,
+        "fade": 15,
+        "postfade": 286
+      },
+      "c0_buffer_max_abs": {
+        "q": 0.0,
+        "dq": 0.0,
+        "tau": 0.0012912750244140625
+      },
+      "c0_buffer_exact_rows": {
+        "q": 337,
+        "dq": 337,
+        "tau": 134
+      },
+      "c0_buffer_within_float32_rows": {
+        "q": 337,
+        "dq": 337,
+        "tau": 134
+      },
+      "c0_problem_max_abs": 0.0,
+      "c0_prepared_context_max_abs": 0.0,
+      "c0_requested_max_abs": 0.0,
+      "c0_offset_max_abs": 0.0,
+      "variant_counts": {
+        "c0": {
+          "executions": 337,
+          "statuses": {
+            "solved": 337
+          },
+          "finite": 337,
+          "published": 337,
+          "valid_candidate_pin_fcl": 337,
+          "request_within_actual_bounds": 337,
+          "buffers_within_publisher_limits": 337,
+          "noncounter_buffers_exact_c0": 337,
+          "tau_exact_c0": 337,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.0,
+          "delta_counter_dq_peak_rad_s": 0.0,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 337
+          }
+        },
+        "ff_half": {
+          "executions": 337,
+          "statuses": {
+            "solved": 337
+          },
+          "finite": 337,
+          "published": 337,
+          "valid_candidate_pin_fcl": 337,
+          "request_within_actual_bounds": 337,
+          "buffers_within_publisher_limits": 337,
+          "noncounter_buffers_exact_c0": 337,
+          "tau_exact_c0": 337,
+          "zero_scale_buffers_exact_c0": 286,
+          "zero_scale_rows": 286,
+          "delta_counter_q_peak_rad": 0.019097238779067993,
+          "delta_counter_dq_peak_rad_s": 0.5729171335697174,
+          "bounds_max_abs_vs_recorded": 0.0,
+          "backtrack_scales": {
+            "1.0": 337
+          }
+        }
+      },
+      "errors": []
+    }
+  ],
+  "simulation": false,
+  "hardware": false,
+  "repository_edits": false,
+  "prior_artifacts_unchanged": true,
+  "total_observations": 1012,
+  "full_controller_steps": 2024,
+  "source_files_unchanged_during_replay": true,
+  "q_dq_and_variant_command_validation_passed": true,
+  "historical_tau_bitwise_parity_passed": false
+}

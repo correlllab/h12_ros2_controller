@@ -83,6 +83,14 @@ def test_saturated_fixed_and_shifted_problem(monkeypatch):
     assert not result.boxqp_polished
 
 
+@pytest.mark.parametrize('row', [(np.ones(3), 1.), (np.ones(4), [1.]),
+                                 (np.ones(4), np.nan), (np.full(4, np.inf), 0.)])
+def test_malformed_extra_row_rejects_before_backend(monkeypatch, row):
+    monkeypatch.setattr(planner, 'solve_bounded_least_squares', lambda *a: pytest.fail('called'))
+    result = planner.solve_scipy_nominal(*_nominal(), weighted_row=row)
+    assert not result.accepted and not result.diagnostics.attempts
+
+
 def test_all_fixed_without_solver(monkeypatch):
     monkeypatch.setattr(planner, 'lsq_linear', lambda *a, **k: pytest.fail('called'))
     bounds = np.array([0.2, -0.3, 0.4, 0.1])

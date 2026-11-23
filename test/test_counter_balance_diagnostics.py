@@ -65,7 +65,7 @@ def test_c0_and_shadows_are_bitwise_nominal_including_buffers(moving_arm, varian
 
 @pytest.mark.parametrize('variant', CounterBalanceDiagnosticController.VARIANTS)
 @pytest.mark.parametrize('scale', [0.0, 0.17, 1.0])
-def test_offsets_cancel_only_the_selected_scaled_feedback(variant, scale):
+def test_offsets_change_only_the_selected_reaction_components(variant, scale):
     controller = _controller(variant=variant)
     com = np.arange(14, dtype=float).reshape(2, 7) / 20
     momentum = np.flip(com, axis=1).copy()
@@ -80,23 +80,80 @@ def test_offsets_cancel_only_the_selected_scaled_feedback(variant, scale):
     rhs = reaction_targets(com, momentum, dq, error, gyro, scale, *gains)
     com_enabled = variant not in ('feedback_off', 'com_feedback_off')
     gyro_enabled = variant not in ('feedback_off', 'gyro_feedback_off')
+    ff_scale = 0.5 if variant == 'ff_half' else 1.0
     np.testing.assert_allclose(
         rhs[0] + offsets[0],
-        scale * (-com @ dq - (controller.com_gain * error if com_enabled else 0)),
-        atol=1e-16,
+        scale * (ff_scale * (-com @ dq) - (gains[0] * error if com_enabled else 0)),
+        rtol=0, atol=1e-16,
     )
     np.testing.assert_allclose(
         rhs[1] + offsets[1],
-        scale * (-momentum @ dq + (
-            controller.gyro_gain * gyro[:2] if gyro_enabled else 0
-        )), atol=1e-16,
+        scale * (ff_scale * (-momentum @ dq) + (gains[1] * gyro[:2] if gyro_enabled else 0)),
+        rtol=0, atol=1e-16,
     )
     assert (controller.com_gain, controller.gyro_gain) == gains
     for key in before['limits']:
         np.testing.assert_array_equal(controller.config['limits'][key], before['limits'][key])
     components = controller._diagnostic_record['target_components']
+    np.testing.assert_array_equal(components['com_feedforward'], scale * (-com @ dq))
+    np.testing.assert_array_equal(components['momentum_feedforward'], scale * (-momentum @ dq))
     np.testing.assert_allclose(components['com_feedback'], -scale * gains[0] * error)
     np.testing.assert_allclose(components['gyro_feedback'], scale * gains[1] * gyro[:2])
+    if variant == 'ff_half':
+        assert controller._diagnostic_record['feedforward_scale'] == 0.5
+        np.testing.assert_array_equal(offsets[0], -0.5 * scale * (-com @ dq))
+        np.testing.assert_array_equal(offsets[1], -0.5 * scale * (-momentum @ dq))
+
+
+@pytest.mark.parametrize('moving_arm', ['left', 'right'])
+def test_ff_half_changes_finalized_command_but_not_zero_scale_or_reset(moving_arm):
+    c0 = _controller(moving_arm, 'c0')
+    ff_half = _controller(moving_arm, 'ff_half')
+    q, dq = np.zeros(14), np.zeros(14)
+    dq[c0.moving_local] = [0.1, -0.2, 0.25, -0.15, 0.02, 0.04, 0.06]
+
+    def step(controller, scale):
+        controller._reference_captured = True
+        controller.q_counter_ref = np.zeros(4)
+        controller.counter_wrist_ref = np.zeros(3)
+        controller.robot_model.state['q'][controller.counter_ids] = [0.03, -0.04, 0.07, -0.08]
+        controller.com_offset_ref = np.array([-0.02, 0.01])
+        controller.robot_model.state['imu_state'].gyroscope = [0.2, -0.1, 0.3]
+        controller.set_diagnostic_sample(0.2, 1.0)
+        return controller.control_configuration_step(q, dq, balance_scale=scale)
+
+    for scale in (0.0, 0.37):
+        expected, actual = step(c0, scale), step(ff_half, scale)
+        nominal, half = c0._latest_nominal_plan, ff_half._latest_nominal_plan
+        assert nominal.accepted and half.accepted
+        for field in ('objective_matrix', 'lower', 'upper', 'posture_target'):
+            np.testing.assert_array_equal(getattr(half, field), getattr(nominal, field))
+        assert np.any(half.posture_target != 0)
+        record = ff_half.diagnostics()['counter_balance_diagnostic']
+        assert record['variant'] == record['actuation'] == 'ff_half'
+        assert record['feedforward_scale'] == 0.5
+        np.testing.assert_allclose(half.com_rhs, scale * np.array([-0.09, 0.12]),
+                                   rtol=0, atol=1e-16)
+        np.testing.assert_allclose(half.momentum_rhs, scale * np.array([-0.105, 0.065]),
+                                   rtol=0, atol=1e-16)
+        command, baseline = ff_half.low_cmd_handler, c0.low_cmd_handler
+        if scale == 0:
+            assert actual.tobytes() == expected.tobytes()
+            assert half.objective_target.tobytes() == nominal.objective_target.tobytes()
+            for field in ('q_cmd', 'dq_cmd', 'tau_cmd'):
+                assert getattr(command, field).tobytes() == getattr(baseline, field).tobytes()
+        else:
+            assert np.max(np.abs(command.dq_cmd[c0.counter_ids] - baseline.dq_cmd[c0.counter_ids])) > 0.02
+            np.testing.assert_array_equal(command.dq_cmd[c0.moving_ids], baseline.dq_cmd[c0.moving_ids])
+
+    for controller in (c0, ff_half):
+        controller.configure_diagnostic_trial('c0')
+        assert controller.diagnostics()['counter_balance_diagnostic'] == {}
+    assert step(ff_half, 0.37).tobytes() == step(c0, 0.37).tobytes()
+    np.testing.assert_array_equal(ff_half.low_cmd_handler.dq_cmd, c0.low_cmd_handler.dq_cmd)
+    record = ff_half.diagnostics()['counter_balance_diagnostic']
+    assert record['variant'] == record['actuation'] == 'c0'
+    assert 'feedforward_scale' not in record
 
 
 @pytest.mark.parametrize('variant', ['feedback_off', 'com_feedback_off', 'gyro_feedback_off'])

@@ -194,7 +194,7 @@ def solve_bounded_least_squares(matrix, target, lower, upper) -> ScipyVelocitySo
 
 def solve_scipy_nominal(com_counter, momentum_counter, com_rhs, momentum_rhs,
                         posture_target, lower, upper, balance_scale,
-                        config: ScipyNominalConfig) -> Frozen3CVelocitySolve:
+                        config: ScipyNominalConfig, *, weighted_row=None) -> Frozen3CVelocitySolve:
     '''Assemble the exact frozen affine objective and solve without publishing'''
     started = time.perf_counter()
     matrix = target = None
@@ -221,6 +221,12 @@ def solve_scipy_nominal(com_counter, momentum_counter, com_rhs, momentum_rhs,
             matrix, target = bounded_velocity_problem(
                 *arrays, float(balance), *weights, *scales,
             )
+            if weighted_row is not None:
+                row, rhs = (np.asarray(x, dtype=float) for x in weighted_row)
+                if (row.shape != (4,) or rhs.shape != () or
+                        not np.isfinite(row).all() or not np.isfinite(rhs)):
+                    raise ValueError('Invalid extra nominal objective row')
+                matrix, target = np.vstack((matrix, row)), np.append(target, rhs)
     except (ValueError, TypeError, OverflowError, AttributeError):
         result = ScipyVelocitySolve(velocity=_readonly(np.zeros(4)))
     else:
