@@ -100,7 +100,10 @@
         <h2 id="objective">Objective and baseline</h2>
         <p>The prospective stabilization target is <strong>motion-window peak orientation drift under the
             existing standing-pelvis reference, particularly on overhang trajectories</strong>. It does not
-            replace iteration 7's primary frozen <strong>Uniform Spatial RMS</strong>.</p>
+            replace iteration 7's primary frozen <strong>Uniform Spatial RMS</strong>. This is the historical
+            7a objective: full-orientation drift includes heading, whereas the later
+            <a href="../../../../docs/controller/iteration7b_summary.html#base-tilt">move-sway score</a>
+            measures RMS change in scalar base tilt from task onset.</p>
         <p>Retain directional stabilization. Evaluate executed-clock timed wrist error, frozen spatial
             error, full-record peak and terminal drift, raw peak gyro, counter excursion/speed and active
             constraints <strong>separately</strong>. Task-onset orientation and tilt-axis changes diagnose
